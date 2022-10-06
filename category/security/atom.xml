@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="en">
+	<title> - Security</title>
+	<link href="/category/security/atom.xml" rel="self" type="application/atom+xml"/>
+  <link href="/"/>
+	<generator uri="https://www.getzola.org/">Zola</generator>
+	<updated>2022-09-28T15:41:33+00:00</updated>
+	<id>/category/security/atom.xml</id>
+	<entry xml:lang="en">
+		<title>Upgrade now to address E2EE vulnerabilities in matrix-js-sdk, matrix-ios-sdk and matrix-android-sdk2</title>
+		<published>2022-09-28T15:41:33+00:00</published>
+		<updated>2022-09-28T15:41:33+00:00</updated>
+		<link rel="alternate" href="/blog/2022/09/28/upgrade-now-to-address-encryption-vulns-in-matrix-sdks-and-clients/" type="text/html"/>
+		<id>/blog/2022/09/28/upgrade-now-to-address-encryption-vulns-in-matrix-sdks-and-clients/</id>
+		<content type="html">&lt;p&gt;&lt;strong&gt;TL;DR:&lt;&#x2F;strong&gt;&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Two critical severity vulnerabilities in end-to-end encryption were found in
+the SDKs which power Element, Beeper, Cinny, SchildiChat, Circuli, Synod.im
+and any other clients based on matrix-js-sdk, matrix-ios-sdk or
+matrix-android-sdk2.&lt;&#x2F;li&gt;
+&lt;li&gt;These have now been fixed, and we have not seen evidence of them being
+exploited in the wild. All of the critical vulnerabilities require
+cooperation from a malicious homeserver to be exploited.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;Please upgrade immediately in order to be protected against these
+vulnerabilities.&lt;&#x2F;strong&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;Clients with other encryption implementations (including Hydrogen, ElementX,
+Nheko, FluffyChat, Syphon, Timmy, Gomuks and Pantalaimon) are not affected;
+&lt;strong&gt;this is not a protocol bug&lt;&#x2F;strong&gt;.&lt;&#x2F;li&gt;
+&lt;li&gt;We take the security of our end-to-end encryption extremely seriously, and we
+have an ongoing series of public independent audits booked to help guard
+against future vulnerabilities.  We will also be making some protocol changes
+in the future to provide additional layers of protection.&lt;&#x2F;li&gt;
+&lt;li&gt;This resolves the &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2022&#x2F;09&#x2F;23&#x2F;pre-disclosure-upcoming-critical-security-release-of-matrix-sd-ks-and-clients&quot;&gt;pre-disclosure&lt;&#x2F;a&gt; issued on September 23rd.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;Hi all,&lt;&#x2F;p&gt;
+&lt;p&gt;Recently we have been hard at work investigating some subtle security
+vulnerabilities in certain implementations of Matrix&#x27;s end-to-end encryption
+which were responsibly disclosed to us by researchers at Royal Holloway
+University London, University of Sheffield and Brave Software. Two of these
+vulnerabilities are critical severity, in that they could allow malicious
+server admins to attack their users, and are implementation bugs in clients
+using matrix-js-sdk (e.g. Element Web) or implementations derived from
+matrix-js-sdk, rather than protocol flaws. matrix-rust-sdk (and other 2nd&#x2F;3rd
+generation SDKs) are not affected by these.  These vulnerabilities are fixed in
+today&#x27;s release, and we are not aware of them having been exploited in the
+wild.&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;strong&gt;If you&#x27;re using Element or an application that shares the same SDKs (Beeper,
+Cinny, SchildiChat, Circuli, Synod.im) then please upgrade now. Do not perform
+verification with new devices until you have upgraded.&lt;&#x2F;strong&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;We&#x27;d like to thank the security researchers for investing significant time and
+effort into doing a deep dive to find these issues, and thus contributing
+materially to making Matrix more secure for the whole ecosystem.  Despite our
+best efforts, there is always a risk of security issues in software, and we&#x27;re
+very glad to have identified and fixed these issues while also taking the
+opportunity to improve our vulnerability disclosure and coordinated upgrade
+process.&lt;&#x2F;p&gt;
+&lt;p&gt;Please note that the critical severity issues are implementation issues in
+matrix-js-sdk and derivatives, and are &lt;strong&gt;not&lt;&#x2F;strong&gt; protocol issues in Matrix. The
+latest version of the researchers&#x27; paper that we&#x27;ve seen incorrectly presents
+Element as &#x27;the reference Matrix client&#x27;, and confuses the higher severity
+implementation bugs with lower severity protocol critique.  This is very
+unfortunate, given Hydrogen, ElementX, Nheko, FluffyChat, Syphon, Timmy, Gomuks
+and Pantalaimon and other independent implementations are not affected. In
+fact, every client independently implemented using the Matrix spec seems to
+have got it right, which speaks well of the protocol.  It&#x27;s only the first
+generation SDK (predating the spec) and its derivatives which had these bugs.&lt;&#x2F;p&gt;
+&lt;p&gt;The two critical severity issues lead to three attack scenarios, all of which
+are prevented by today&#x27;s releases:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;&amp;quot;&lt;em&gt;Key&#x2F;Device Identifier Confusion in SAS Verification&lt;&#x2F;em&gt;&amp;quot; – A bug existed in
+matrix-js-sdk where it confused together device IDs and cross-signing keys
+(given under the hood, cross-signing keys are represented as devices). This
+could be exploited by a malicious server admin to break emoji-based
+verification when cross-signing is in use, authenticating themselves rather
+than the target user being verified. This bug is only present in
+matrix-js-sdk (not iOS or Android SDKs), tracked as a critical severity CVE:
+CVE-2022-39250.&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;&amp;quot;&lt;em&gt;Trusted Impersonation&lt;&#x2F;em&gt;&amp;quot; – matrix-js-sdk (and derived SDKs) suffered from
+a protocol-confusion bug where it would incorrectly accept to-device messages
+encrypted by Megolm rather than Olm, attributing them to the Megolm sender
+rather than the actual sender. As a result, an attacker could fake the
+trusted sender of to-device messages, allowing them to send fake to-device
+messages to devices - e.g. fake keys to spoof historical messages from other
+users.  This bug is tracked as a critical severity CVE: CVE-2022-39251
+(matrix-js-sdk), CVE-2022-39255 (matrix-ios-sdk) and CVE-2022-39248
+(matrix-android-sdk2).&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;&amp;quot;&lt;em&gt;Malicious key backup&lt;&#x2F;em&gt;&amp;quot; – the above &#x27;trusted impersonation&#x27; bug in
+matrix-js-sdk (and derived SDKs) could be used by a malicious homeserver
+admin to add a malicious key backup to the user&#x27;s account under certain
+unusual conditions in order to exfiltrate message keys. While we are not
+aware of this being exploited in the wild, out of an abundance of caution we
+recommend checking your key backup settings. If you are particularly paranoid
+you may wish to reset your online key backup.  This doesn&#x27;t have a separate
+CVE, as the root cause is the same as &amp;quot;Trusted Impersonation&amp;quot;.&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;Three lower priority issues were also identified by the researchers:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;&amp;quot;&lt;em&gt;Semi-trusted Impersonation&lt;&#x2F;em&gt;&amp;quot; – matrix-js-sdk (and derived SDKs) accepted keys
+forwarded by other users, even if your client didn&#x27;t request them. As
+a result, a malicious server admin could fake an encrypted message to look as
+if it was sent from a given user on that server. However, impersonated
+messages like this are clearly marked  by clients like Element with a clear
+&amp;quot;The authenticity of this encrypted message can&#x27;t be guaranteed&amp;quot; warning
+– which is why we consider this low severity. That said, it&#x27;s an avoidable
+attack, and we&#x27;ve fixed this by ensuring that clients don&#x27;t accept &#x27;unsafe&#x27;
+keys (with the exception of keys forwarded when you invite a user to an
+existing conversation).  In future, in Olm&#x2F;Megolm v2 we&#x27;re also linking
+key-sending events to the underlying recipient Olm identity to ensure that
+keys cannot be misappropriated.  This issue is tracked as a moderate severity
+CVE: CVE-2022-39249 (matrix-js-sdk), CVE-2022-39257 (matrix-ios-sdk) and
+CVE-2022-39246 (matrix-android-sdk2).&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;&amp;quot;&lt;em&gt;Homeserver Control of Room Membership&lt;&#x2F;em&gt;&amp;quot; – A malicious homeserver can fake
+invites on behalf of its users to invite malicious users into their
+conversations, or add malicious devices into its users accounts.  However,
+when this happens, we clearly warn the user: if you have verified the users
+you are talking to, the room and user will be shown with a big red cross to
+mark if malicious devices have been added.  Similarly, if an unexpected user
+is invited to a conversation, all users can clearly see and take evasive
+action.  Therefore we consider this a low severity issue.  That said, this
+behaviour can be improved, and we&#x27;ve started work on switching our trust
+model to trust-on-first-use (so that new untrusted devices are proactively
+excluded from conversations, even if you haven&#x27;t explicitly verified their
+owner) - and we&#x27;re also looking to add cryptographic signatures to membership
+events in E2EE rooms to stop impersonated invites.  These fixes will land
+over the coming months.&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;&amp;quot;&lt;em&gt;IND-CCA break&lt;&#x2F;em&gt;&amp;quot; – Matrix&#x27;s usage of AES-CTR to encrypt attachments, secrets
+and symmetric key backups is not &amp;quot;IND-CCA2 secure&amp;quot;, because it does not
+include the AES initialisation vector within the hash used to secure the
+payload from tampering. As a result, if an attacker could observe the result
+of both a given encryption and a given decryption operation, it would be
+possible to extract the encryption private key. However, this is a purely
+theoretical attack as Matrix does not provide a way to mount the attack. In
+the future, we will fix our use of AES-CTR to include the IV within the hash.&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;We&#x27;d like to again thank Martin R. Albrecht and Dan Jones from the Information
+Security Group at Royal Holloway University London, Benjamin Dowling from
+Security of Advanced Systems Group, University of Sheffield and Sofía Celi from
+Brave Software for discovering these issues and responsibly disclosing them to
+us, and then working with us to agree on an extended disclosure window given
+the amount of work needed to verify and ship fixes throughout Matrix over the
+course of the summer period.  We welcome any further formal security analysis
+work, and hope that it will distinguish clearly between Matrix-the-protocol and
+Matrix implementations like matrix-js-sdk, rather than conflating them. You can
+read their full paper &lt;a href=&quot;https:&#x2F;&#x2F;nebuchadnezzar-megolm.github.io&#x2F;&quot;&gt;here&lt;&#x2F;a&gt;.&lt;&#x2F;p&gt;
+&lt;p&gt;We&#x27;d also like to thank all the downstream Element package maintainers,
+downstream forks and other affected clients for working together under time
+constraints for this coordinated release - your patience and understanding is
+very much appreciated indeed.&lt;&#x2F;p&gt;
+&lt;p&gt;Meanwhile, we are taking extreme measures to avoid future E2EE vulnerabilities.
+You will notice that matrix-rust-sdk, hydrogen-sdk and other 2nd and 3rd
+generation SDKs were not affected by the bugs at the root cause of the critical
+issues here. This is &lt;strong&gt;precisely&lt;&#x2F;strong&gt; why we have been working on replacing the
+first generation SDKs with a clean, carefully written Rust implementation in
+the form of matrix-rust-sdk, complete with an ongoing independent public audit.&lt;&#x2F;p&gt;
+&lt;p&gt;We started the process of auditing matrix-rust-sdk with the &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2022&#x2F;05&#x2F;16&#x2F;independent-public-audit-of-vodozemac-a-native-rust-reference-implementation-of-matrix-end-to-end-encryption&quot;&gt;Least Authority
+vodozemac audit in May&lt;&#x2F;a&gt;, and we have three more audits agreed
+– covering matrix-rust-sdk-crypto, matrix-rust-sdk, and a whole reference
+Matrix stack.  Ironically, the mitigation work for these vulnerabilities in the
+legacy SDKs has severely impacted our timelines for finishing
+matrix-rust-sdk-crypto work (in fact, we had to push back the Least Authority
+audit of matrix-rust-sdk-crypto given the
+&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-rust-sdk&#x2F;milestone&#x2F;1&quot;&gt;burndown&lt;&#x2F;a&gt; has not
+progressed), but we will be shifting to the new audited codebase as rapidly as
+we possibly can.&lt;&#x2F;p&gt;
+&lt;p&gt;Over the coming months we will also introduce our first ever major version
+update of Olm and Megolm, in order to fix the MAC truncation issue highlighted
+in the &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;media&#x2F;Least%20Authority%20-%20Matrix%20vodozemac%20Final%20Audit%20Report.pdf&quot;&gt;vodozemac audit&lt;&#x2F;a&gt; (Issue J), and reduce the risk of further
+key-forwarding issues (as per the &amp;quot;Semi-trusted Impersonation&amp;quot; vulnerability
+above). New conversations will default to using v2 of Olm&#x2F;Megolm for security,
+and existing conversations can be optionally upgraded (similar to a &#x27;room
+version&#x27; upgrade in Matrix today). We are also adding extensive end-to-end
+testing using &lt;a href=&quot;https:&#x2F;&#x2F;gitlab.com&#x2F;polyjuice&quot;&gt;Polyjuice&lt;&#x2F;a&gt; and &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;trafficlight&quot;&gt;Traffic
+Light&lt;&#x2F;a&gt; to stress-test encryption
+and improve reliability.&lt;&#x2F;p&gt;
+&lt;p&gt;Finally, we will continue our research into layering Matrix over Messaging
+Layer Security (MLS) - the IETF proposed standard for interoperable end-to-end
+encrypted group messaging.  This work has been delayed by the mitigation
+activity above, but otherwise it&#x27;s making good progress and we&#x27;re excited to
+see how Decentralised MLS performs in reality against Olm+Megolm v2.&lt;&#x2F;p&gt;
+&lt;p&gt;We&#x27;d like to apologise to the wider Matrix community for the inconvenience and
+disruption of these issues, and thank you for your patience while we&#x27;ve
+resolved them.&lt;&#x2F;p&gt;
+&lt;p&gt;Matthew, Denis and the Matrix cryptography &amp;amp; security teams.&lt;&#x2F;p&gt;
+</content>
+	</entry>
+	<entry xml:lang="en">
+		<title>Pre-disclosure: upcoming critical security release of Matrix SDKs and clients</title>
+		<published>2022-09-23T12:53:12+00:00</published>
+		<updated>2022-09-23T12:53:12+00:00</updated>
+		<link rel="alternate" href="/blog/2022/09/23/pre-disclosure-upcoming-critical-security-release-of-matrix-sd-ks-and-clients/" type="text/html"/>
+		<id>/blog/2022/09/23/pre-disclosure-upcoming-critical-security-release-of-matrix-sd-ks-and-clients/</id>
+		<content type="html">&lt;p&gt;We will be releasing a security update to matrix-js-sdk, matrix-ios-sdk and matrix-android-sdk2 and clients which implement end-to-end encryption with these libraries, to patch &lt;strong&gt;critical&lt;&#x2F;strong&gt; security issues, on &lt;strong&gt;Wed, Sept 28th&lt;&#x2F;strong&gt;. The releases will be published in the afternoon, followed by the disclosure blog post around 16:00 UTC. The affected clients include Element Web, Desktop, iOS and Android.  We will also be working with downstream packagers and forks over the coming days to ensure a synchronised release to address affected clients.&lt;&#x2F;p&gt;
+&lt;p&gt;Clients using matrix-rust-sdk, hydrogen-sdk and matrix-nio are not affected by these critical issues.  We are also auditing third-party client SDKs and clients in advance of the release, and will work with the projects if action is needed. So far we&#x27;ve confirmed that other popular SDK&#x2F;clients including mtxclient (nheko), Matrix Dart SDK (FluffyChat), Trixnity (Timmy), Syphon, mautrix-go (Gomuks) and mautrix-python are not affected by the issues in question.&lt;&#x2F;p&gt;
+&lt;p&gt;If you maintain or package a (potentially) affected E2EE-capable Matrix client and need to coordinate on the release, please contact &lt;a href=&quot;mailto:security@matrix.org&quot;&gt;security@matrix.org&lt;&#x2F;a&gt;.&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;strong&gt;We advise to upgrade as soon as possible after the patched versions are released.&lt;&#x2F;strong&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;Thank you for your patience while we work to resolve this issue.&lt;&#x2F;p&gt;
+</content>
+	</entry>
+	<entry xml:lang="en">
+		<title>Security release of matrix-appservice-irc 0.35.0 (High severity)</title>
+		<published>2022-09-13T14:56:43+00:00</published>
+		<updated>2022-09-13T14:56:43+00:00</updated>
+		<link rel="alternate" href="/blog/2022/09/13/security-release-of-matrix-appservice-irc-0-35-0-high-severity/" type="text/html"/>
+		<id>/blog/2022/09/13/security-release-of-matrix-appservice-irc-0-35-0-high-severity/</id>
+		<content type="html">&lt;p&gt;We&#x27;ve released a new version of matrix.org&#x27;s node-irc 1.3.0 and
+matrix-appservice-irc 0.35.0, to patch several security issues:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;IRC mode operator confusion (Low, &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-appservice-irc&#x2F;security&#x2F;advisories&#x2F;GHSA-cq7q-5c67-w39w&quot;&gt;GHSA-cq7q-5c67-w39w&lt;&#x2F;a&gt;)&lt;&#x2F;li&gt;
+&lt;li&gt;Parsing issue leading to room takeovers (High, &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-appservice-irc&#x2F;security&#x2F;advisories&#x2F;GHSA-xvqg-mv25-rwvw&quot;&gt;GHSA-xvqg-mv25-rwvw&lt;&#x2F;a&gt;)&lt;&#x2F;li&gt;
+&lt;li&gt;Undisclosed issue (Moderate, &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-appservice-irc&#x2F;security&#x2F;advisories&#x2F;GHSA-r3p6-cg2c-c4qw&quot;&gt;GHSA-r3p6-cg2c-c4qw&lt;&#x2F;a&gt;)&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;The details of the final vulnerability will be released at a later date,
+pending an audit of the codebase to ensure it&#x27;s not affected by other similar
+vulnerabilities.&lt;&#x2F;p&gt;
+&lt;p&gt;The vulnerabilities have been patched in node-irc version 1.3.0 and
+matrix-appservice-irc 0.35.0. You can get the release on
+&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-appservice-irc&#x2F;releases&quot;&gt;Github&lt;&#x2F;a&gt;.&lt;&#x2F;p&gt;
+&lt;p&gt;The bridges running on the Libera Chat, OFTC and other networks bridged by the
+Matrix.org Foundation have been patched.&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;strong&gt;Please upgrade your IRC bridge as soon as possible.&lt;&#x2F;strong&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;The above vulnerabilities were reported by &lt;a href=&quot;https:&#x2F;&#x2F;valentin-lorentz.fr&#x2F;&quot;&gt;Val
+Lorentz&lt;&#x2F;a&gt;. Thank you!&lt;&#x2F;p&gt;
+</content>
+	</entry>
+</feed>
