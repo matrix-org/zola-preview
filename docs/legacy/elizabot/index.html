@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="twitter:widgets:csp" content="on" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta name="twitter:site" content="@matrixdotorg" />
+    <meta name="twitter:creator" content="@matrixdotorg" />
+
+    <title>Matrix.org - Using Matrix to make Chatbot software from the 1960s available in 2018</title>
+    <link rel="shortcut icon" href="/assets/favicon.ico" />
+    <link rel="icon" type="image/png" href="/assets/favicon.png" />
+    <link rel="stylesheet" href="/style.css" />
+
+    </head>
+
+<body>
+    
+    
+
+
+<header class="site-header">
+    <a href="/" class="brand">
+        <img src="/images/matrix-logo.svg" alt="Matrix logo">
+    </a>
+    <input id="site-header-dropdown-checkbox" type="checkbox" class="dropdown-checkbox" aria-hidden="true">
+    <label for="site-header-dropdown-checkbox" class="dropdown-button">&#xe602;</label>
+    <label for="site-header-dropdown-checkbox" class="page-overlay"></label>
+    <nav>
+        
+        
+        <a href="&#x2F;about&#x2F;" class="
+            ">
+            About
+        </a>
+        
+        
+        
+        <a href="&#x2F;blog&#x2F;" class="
+            ">
+            Blog
+        </a>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;docs&#x2F;" class="section current">
+                Documentation
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;ecosystem&#x2F;" class="section ">
+                Ecosystem
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                    <a href="&#x2F;ecosystem&#x2F;clients&#x2F;">Clients</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;servers&#x2F;">Servers</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bots&#x2F;">Bots</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bridges&#x2F;">Bridges</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;sdks&#x2F;">SDKs</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;hosting&#x2F;">Hosting</a>
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        <a href="&#x2F;podcasts&#x2F;" class="
+            ">
+            Podcasts
+        </a>
+        
+        
+        
+        <a href="https:&#x2F;&#x2F;shop.matrix.org" class="
+            ">
+            Shop
+        </a>
+        
+        
+        
+        <a href="&#x2F;try-matrix&#x2F;" class="primary
+            ">
+            Try Matrix
+        </a>
+        
+        
+    </nav>
+</header>
+
+
+    <main>
+        
+<article class="content">
+    <header>
+        <div class="legacy-doc-warning">
+            <h2>Outdated documentation</h2>
+            <p>This documentation has been kept for posterity but might be or
+               will be outdated. It should not be used anymore. Please head to
+               <a href="/docs">the documentation section</a> for up to date
+               documentation and guides.
+            </p>
+        </div>
+        <h1>Using Matrix to make Chatbot software from the 1960s available in 2018</h1>
+    </header>
+    <p>In this article, we'll use Matrix, a Raspberry Pi and JavaScript to bring back
+chatbot software from the 1960s: ELIZA.</p>
+<h2 id="what-is-eliza">What is ELIZA?</h2>
+<p>ELIZA is a computer program written between 1964 and 1966, which imitates the
+conversation style of a psychotherapist of the era. It behaves like what we
+would now call a <em>chatbot</em>, but there was no such concept at the time - in fact
+there were only the first glimpses of text chat as we would recognise it today.</p>
+<p>The original program was designed and at the MIT Artificial Intelligence
+Laboratory by Joseph Weizenbaum. ELIZA was first implemented on the IBM 7094
+and written in MAD-SLIP, where
+<a href="https://en.wikipedia.org/wiki/MAD_(programming_language)">MAD</a> was a popular
+programming system for IBM mainframes of the time, and
+<a href="https://en.wikipedia.org/wiki/SLIP_(programming_language)">SLIP</a> was a
+list-processing extension of Weizenbaum's own creation.</p>
+<p>Seeing the results, in which users were highly willing to interact with ELIZA,
+Weizenbaum was disturbed by just how effective the apparently simple bot was. He
+was motivated to write a book explaining the way people tend to anthropomorphise
+technology by applying their own experiences to their usage.</p>
+<h2 id="2005-online-javascript-version-appeared">2005, online JavaScript version appeared</h2>
+<p>In 2005, <a href="https://twitter.com/mass_werk">Norbert Landsteiner</a> created a
+JavaScript program which he made available as <em>elizabot.js</em>, and made ELIZA
+available online through a web interface: <a href="https://www.masswerk.at/elizabot/">https://www.masswerk.at/elizabot/</a>.</p>
+<p>Now we'll make this available on Matrix.</p>
+<h2 id="making-the-bot">Making the bot</h2>
+<h3 id="using-the-library">Using the library</h3>
+<p>For this project I have chosen to use an adaptation of the elizabot.js library:
+<a href="https://github.com/natelewis/eliza-as-promised">eliza-as-promised</a>, which
+exposes the bot as a promise-based node.js module. This module makes working
+with ELIZA very simple. First we create an instance of the bot object:</p>
+<pre data-lang="javascript" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-javascript "><code class="language-javascript" data-lang="javascript"><span style="color:#569cd6;">const </span><span>Eliza = require(</span><span style="color:#d69d85;">&#39;eliza-as-promised&#39;</span><span>);
+</span><span style="color:#569cd6;">var </span><span>eliza = </span><span style="color:#569cd6;">new </span><span style="color:#4ec9b0;">Eliza</span><span>();
+</span></code></pre>
+<p>We can get an initial greeting as follows:</p>
+<pre data-lang="javascript" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-javascript "><code class="language-javascript" data-lang="javascript"><span>console.log(eliza.getInitial());
+</span></code></pre>
+<p>The <code>getResponse()</code> function takes a string from the user, and returns a
+<code>Promise</code> with a response, with either a <code>reply</code> or <code>final</code> field. If the
+response is a reply, we can give another string to get a response, if the
+response is final, the session is over. For example:</p>
+<pre data-lang="javascript" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-javascript "><code class="language-javascript" data-lang="javascript"><span>eliza.getResponse(</span><span style="color:#d69d85;">&quot;Help me Eliza!&quot;</span><span>)
+</span><span>.then((response) </span><span style="color:#569cd6;">=&gt; </span><span>{
+</span><span>    </span><span style="color:#569cd6;">if </span><span>(response.reply) {
+</span><span>        console.log(response.reply);
+</span><span>    }
+</span><span>    </span><span style="color:#569cd6;">if </span><span>(response.final) {
+</span><span>        console.log(response.final);
+</span><span>        process.exit(</span><span style="color:#b5cea8;">0</span><span>);
+</span><span>    }
+</span><span>});
+</span></code></pre>
+<h3 id="using-matrix-to-make-a-modern-chatbot">Using Matrix to make a modern Chatbot</h3>
+<p>Matrix is an open standard for real-time communication over IP. It is often used
+to enable Instant Messaging. Matrix is not just  Open Source, it is also
+designed to be interoperable, which makes it easy to take existing projects and
+integrate them.</p>
+<p>Matrix provides a decentralised architecture, in which servers connect to one
+another, but as a user your client connects to a single homeserver, as described
+in the diagram below.</p>
+<p><img src="/docs/legacy/matrix-diagram.png" alt="Matrix Design" /></p>
+<p>However, for this project we only need to look at the Client-Server API, which
+is the way in which clients and servers communicate with one another. To make it
+easier to connect the ELIZA library to Matrix, I chose to use a JavaScript
+library designed to access the Matrix Client-Server API: <a href="https://github.com/turt2live/matrix-bot-sdk">matrix-bot-sdk</a>
+from <a href="https://github.com/turt2live">TravisR</a>.</p>
+<h3 id="code-walkthrough">Code Walkthrough</h3>
+<p>First, we'll need a new instance of the Bot SDK, which we can obtain from NPM as
+follows:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>npm install matrix-bot-sdk
+</span></code></pre>
+<p>Then, in our application code, we will instantiate and start a new client. Note
+that you can obtain an access token for the bot <a href="https://t2bot.io/docs/access_tokens/">using
+Element</a>.</p>
+<pre data-lang="javascript" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-javascript "><code class="language-javascript" data-lang="javascript"><span style="color:#569cd6;">var </span><span>access_token = </span><span style="color:#d69d85;">&quot;...&quot;</span><span>;
+</span><span style="color:#569cd6;">const </span><span>MatrixClient = require(</span><span style="color:#d69d85;">&quot;matrix-bot-sdk&quot;</span><span>).MatrixClient;
+</span><span style="color:#569cd6;">const </span><span>AutojoinRoomsMixin = require(</span><span style="color:#d69d85;">&quot;matrix-bot-sdk&quot;</span><span>).AutojoinRoomsMixin;
+</span><span style="color:#569cd6;">const </span><span>client = </span><span style="color:#569cd6;">new </span><span style="color:#4ec9b0;">MatrixClient</span><span>(</span><span style="color:#d69d85;">&quot;https://matrix.org&quot;</span><span>, access_token);
+</span><span>AutojoinRoomsMixin.setupOnClient(client);
+</span><span>client.start().then(() </span><span style="color:#569cd6;">=&gt; </span><span>console.log(</span><span style="color:#d69d85;">&quot;Client started!&quot;</span><span>));
+</span></code></pre>
+<p>I also added the AutojoinRoomsMixin at this point, which instructs the bot to
+accept any room invitation it receives.</p>
+<p>Knowing that we can use
+<a href="https://github.com/natelewis/eliza-as-promised"><code>eliza-as-promised</code></a> to create
+new instances of Eliza, let's start by doing so whenever the bot joins a new
+room.</p>
+<pre data-lang="javascript" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-javascript "><code class="language-javascript" data-lang="javascript"><span style="color:#569cd6;">var </span><span>elizas = {};
+</span><span>client.on(</span><span style="color:#d69d85;">&quot;room.join&quot;</span><span>, (roomId) </span><span style="color:#569cd6;">=&gt; </span><span>{
+</span><span>    elizas[roomId] = {
+</span><span>        eliza: </span><span style="color:#569cd6;">new </span><span style="color:#4ec9b0;">Eliza</span><span>(),
+</span><span>        last: (</span><span style="color:#569cd6;">new </span><span style="color:#4ec9b0;">Date</span><span>()).getTime()
+</span><span>    }
+</span><span>    client.sendMessage(roomId, {
+</span><span>        </span><span style="color:#d69d85;">&quot;msgtype&quot;</span><span>: </span><span style="color:#d69d85;">&quot;m.notice&quot;</span><span>,
+</span><span>        </span><span style="color:#d69d85;">&quot;body&quot;</span><span>: elizas[roomId].eliza.getInitial()
+</span><span>    });
+</span><span>});
+</span></code></pre>
+<p>What's happening here? First we make a new object to contain a mapping of room
+IDs to <code>Eliza</code> objects. When we get a room join event, we assign a new <code>Eliza</code>
+object and the current time to the room ID. Next, we use the newly created
+object to send the initial greeting to the room, using the same call to
+<code>getInitial()</code> we used earlier.</p>
+<p>Next, we'll accept messages from the user and provide a response:</p>
+<pre data-lang="javascript" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-javascript "><code class="language-javascript" data-lang="javascript"><span>client.on(</span><span style="color:#d69d85;">&quot;room.message&quot;</span><span>, </span><span style="color:#569cd6;">async function </span><span>(roomId, event)  {
+</span><span>    </span><span style="color:#569cd6;">if </span><span>(event[</span><span style="color:#d69d85;">&quot;sender&quot;</span><span>] === </span><span style="color:#569cd6;">await </span><span>client.getUserId()) </span><span style="color:#569cd6;">return</span><span>;
+</span><span>    </span><span style="color:#569cd6;">if </span><span>(</span><span style="color:#569cd6;">! </span><span>event.content </span><span style="color:#569cd6;">|| ! </span><span>event.content.body) </span><span style="color:#569cd6;">return</span><span>;
+</span><span>
+</span><span>    elizas[roomId].eliza.getResponse(event.content.body)
+</span><span>        .then((response) </span><span style="color:#569cd6;">=&gt; </span><span>{
+</span><span>            </span><span style="color:#569cd6;">var </span><span>responseText = </span><span style="color:#d69d85;">&#39;&#39;</span><span>;
+</span><span>            </span><span style="color:#569cd6;">if </span><span>(response.reply) { responseText = response.reply; }
+</span><span>            </span><span style="color:#569cd6;">if </span><span>(response.final) { responseText = response.final; }
+</span><span>
+</span><span>            client.sendMessage(roomId, {
+</span><span>                </span><span style="color:#d69d85;">&quot;msgtype&quot;</span><span>: </span><span style="color:#d69d85;">&quot;m.notice&quot;</span><span>,
+</span><span>                </span><span style="color:#d69d85;">&quot;body&quot;</span><span>: responseText,
+</span><span>                </span><span style="color:#d69d85;">&quot;responds&quot;</span><span>: {
+</span><span>                    </span><span style="color:#d69d85;">&quot;sender&quot;</span><span>: event.sender,
+</span><span>                    </span><span style="color:#d69d85;">&quot;message&quot;</span><span>: event.content.body
+</span><span>                }
+</span><span>            }).then((eventId) </span><span style="color:#569cd6;">=&gt; </span><span>{
+</span><span>                </span><span style="color:#569cd6;">if </span><span>(response.final) {
+</span><span>                    client.leaveRoom(roomId);
+</span><span>                }
+</span><span>            });
+</span><span>    });
+</span><span>});
+</span></code></pre>
+<p>It looks like a lot of code, but in fact we can break down what is happening
+here quite simply.</p>
+<ol>
+<li>When an event is received in a room, we react to the event with a function
+that takes the <code>roomId</code> and <code>event</code> received as parameters.</li>
+<li>If the user is our own, or the event does not contain a body, we must
+return.</li>
+<li>We use the <code>roomId</code> to access the specific <code>Eliza</code> instance, as previously
+created.</li>
+<li>As above, we call <code>getResponse()</code> on the Eliza object, and we pass the
+message string we just received.</li>
+<li>We handle the promise returned by <code>getResponse()</code> by extracting the response
+string into <code>responseText</code>, and use that string as a message to send back
+into the room as a response.</li>
+<li>Finally, if the response text we took from our Eliza is &quot;final&quot;, we have
+Eliza leave the room. (The bot can always be re-invited!)</li>
+</ol>
+<p>That all the code needed to get a working version of the bot running. If you
+look at <a href="https://github.com/benparsons/elizabot">https://github.com/benparsons/elizabot</a>, you can find a simple
+implementation as described here in <code>simple.js</code>, and a more robust
+implementation in <code>index.js</code>.</p>
+<h2 id="deploying-on-a-raspberry-pi">Deploying on a Raspberry Pi</h2>
+<p>To run the bot, we simply run <code>node index.js</code>. However, part of this project is
+to get the bot running on a Raspberry Pi - and for convenience the way to do
+this is to have it run as soon as the device boots. Luckily, there are standard
+ways of achieving this, one of which is to use <code>systemd</code>. <a href="https://www.raspberrypi.org/documentation/usage/terminal/">Open a shell on your
+Pi</a> (possibly using a
+graphical desktop if one is installed, or using ssh) and enter this command to
+access the correct directory:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>cd /etc/systemd/system
+</span></code></pre>
+<p>Now, we'll use vim to create a file describing the service we want to create:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>vim elizabot.service
+</span></code></pre>
+<p>Finally, enter the following text (you may need to change paths depending on
+where your script is located):</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>[Unit]
+</span><span>Description=Elizabot
+</span><span>After=multi-user.target
+</span><span>
+</span><span>[Service]
+</span><span>Type=idle
+</span><span>ExecStart=/usr/bin/node /home/pi/elizabot/index.js &gt; /home/pi/elizabot/log.log 2&gt;&amp;1
+</span><span>
+</span><span>[Install]
+</span><span>WantedBy=multi-user.target
+</span></code></pre>
+<p>... and run the following to enable the service:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>sudo systemctl enable elizabot.service
+</span></code></pre>
+<p>Now, whenever you plug in your Pi, your bot will be launched and ready to go. Of
+course, it is quite possible to run this software on a server, but having a
+separate box makes it more fun. The physicality of a Raspberry Pi means it gets
+more attention and understanding from people who see it.</p>
+<p><img src="/docs/legacy/elizabot-pi.png" alt="Physical Pi" /></p>
+<p>To learn more about Matrix development, take a look at the <a href="https://matrix.org/docs/guides">Matrix Guides
+</a> page, and join us in the <a href="https://matrix.to/#/#matrix-dev:matrix.org">
+#matrix-dev:matrix.org</a> room!</p>
+
+</article>
+
+    </main>
+
+    <footer class="site-footer">
+    <div class="internal-links">
+        
+        <a href="&#x2F;faq">FAQs</a>
+        
+        <a href="&#x2F;security-disclosure-policy">Security Disclosure Policy</a>
+        
+        <a href="&#x2F;hall-of-fame">Security Hall of Fame</a>
+        
+        <a href="&#x2F;legal&#x2F;code-of-conduct">Code of Conduct for Matrix.org</a>
+        
+        <a href="&#x2F;legal">Legal</a>
+        
+        <a href="&#x2F;contact">Contact</a>
+        
+        <a href="https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;">Site Source</a>
+        
+    </div>
+    <div class="external-links">
+        <div>
+            
+            <a href="&#x2F;code"><img src="/assets/github.svg" alt="GitHub"></a>
+            
+            <a href="https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;"><img src="/assets/gitlab.svg" alt="GitLab"></a>
+            
+            <a href="https:&#x2F;&#x2F;mastodon.matrix.org&#x2F;@matrix"><img src="/assets/mastodon.svg" alt="Mastodon"></a>
+            
+            <a href="https:&#x2F;&#x2F;twitter.com&#x2F;matrixdotorg"><img src="/assets/twitter.svg" alt="Twitter"></a>
+            
+            <a href="https:&#x2F;&#x2F;www.youtube.com&#x2F;channel&#x2F;UCVFkW-chclhuyYRbmmfwt6w"><img src="/assets/youtube.svg" alt="YouTube"></a>
+            
+        </div>
+    </div>
+    <p>© 2022 The Matrix.org Foundation C.I.C.</p>
+</footer>
+
+</body>
+
+</html>

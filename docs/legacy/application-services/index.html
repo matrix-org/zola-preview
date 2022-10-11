@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="twitter:widgets:csp" content="on" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta name="twitter:site" content="@matrixdotorg" />
+    <meta name="twitter:creator" content="@matrixdotorg" />
+
+    <title>Matrix.org - Application Services</title>
+    <link rel="shortcut icon" href="/assets/favicon.ico" />
+    <link rel="icon" type="image/png" href="/assets/favicon.png" />
+    <link rel="stylesheet" href="/style.css" />
+
+    </head>
+
+<body>
+    
+    
+
+
+<header class="site-header">
+    <a href="/" class="brand">
+        <img src="/images/matrix-logo.svg" alt="Matrix logo">
+    </a>
+    <input id="site-header-dropdown-checkbox" type="checkbox" class="dropdown-checkbox" aria-hidden="true">
+    <label for="site-header-dropdown-checkbox" class="dropdown-button">&#xe602;</label>
+    <label for="site-header-dropdown-checkbox" class="page-overlay"></label>
+    <nav>
+        
+        
+        <a href="&#x2F;about&#x2F;" class="
+            ">
+            About
+        </a>
+        
+        
+        
+        <a href="&#x2F;blog&#x2F;" class="
+            ">
+            Blog
+        </a>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;docs&#x2F;" class="section current">
+                Documentation
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;ecosystem&#x2F;" class="section ">
+                Ecosystem
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                    <a href="&#x2F;ecosystem&#x2F;clients&#x2F;">Clients</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;servers&#x2F;">Servers</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bots&#x2F;">Bots</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bridges&#x2F;">Bridges</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;sdks&#x2F;">SDKs</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;hosting&#x2F;">Hosting</a>
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        <a href="&#x2F;podcasts&#x2F;" class="
+            ">
+            Podcasts
+        </a>
+        
+        
+        
+        <a href="https:&#x2F;&#x2F;shop.matrix.org" class="
+            ">
+            Shop
+        </a>
+        
+        
+        
+        <a href="&#x2F;try-matrix&#x2F;" class="primary
+            ">
+            Try Matrix
+        </a>
+        
+        
+    </nav>
+</header>
+
+
+    <main>
+        
+<article class="content">
+    <header>
+        <div class="legacy-doc-warning">
+            <h2>Outdated documentation</h2>
+            <p>This documentation has been kept for posterity but might be or
+               will be outdated. It should not be used anymore. Please head to
+               <a href="/docs">the documentation section</a> for up to date
+               documentation and guides.
+            </p>
+        </div>
+        <h1>Application Services</h1>
+    </header>
+    <p>Application services are distinct modules which sit alongside a homeserver
+providing arbitrary extensible functionality decoupled from the homeserver
+implementation. Just like the rest of Matrix, they communicate via HTTP using
+JSON. Application services function in a very similar way to traditional
+clients, but they are given much more power than a normal client. They can
+reserve entire namespaces of room aliases and user IDs for their own purposes.
+They can silently monitor events in rooms, or any events directed at any user
+ID. This power allows application services to have extremely useful abilities
+which overall enhance the end user experience.</p>
+<p>One of the main use cases for application services is protocol bridges. Our
+Matrix server on Matrix.org links in to various IRC channels and networks. This
+functionality was initially implemented as a simple bot which resided as a user
+on the Matrix rooms we wanted to link to freenode channels
+(#matrix, #matrix-dev, #openwebrtc and #vuc etc). There was nothing special
+about this bot; it is just treated as a client. However, as we started to rely
+on it more and more though, we realised that there were things that were
+impossible for simple client-side bots to do by themselves - for example, the
+bot could not reserve the virtual user IDs it wanted to create, and could not
+lazily bridge arbitrary IRC rooms on-the-fly - and this spurred the development
+of Application Services.</p>
+<h3 id="some-of-the-features-of-the-irc-application-service-we-have-since-implemented-include">Some of the features of the IRC application service we have since implemented include:</h3>
+<ul>
+<li>Specific channel-to-matrix room bridging : This is what the original IRC bot
+did. You can specify specific channels and specific room IDs, and messages
+will be bridged.</li>
+<li>Dynamic channel-to-matrix room bridging : This allows Matrix users to join any
+channel on an IRC network, rather than being forced to use one of the
+specific channels configured.</li>
+<li>Two-way PM support : IRC users can PM the virtual &quot;M-&quot; users and private
+Matrix rooms will be created. Likewise, Matrix users can invite the
+virtual &quot;@irc_Nick:domain&quot; user IDs to a room and a PM to the IRC nick will
+be made.</li>
+<li>IRC nick changing support: Matrix users are no longer forced to use &quot;M-&quot; nicks
+and can change them by sending &quot;!nick&quot; messages directly to the bridge.</li>
+<li>Ident support: This allows usernames to be authenticated for virtual IRC
+clients, which means IRC bans can be targeted at the Matrix user rather than
+the entire application service.</li>
+</ul>
+<h3 id="the-use-of-the-application-services-api-means">The use of the Application Services API means:</h3>
+<ul>
+<li>The bot can reserve user IDs. This prevents humans from registering
+for @irc_... user IDs which would then clash with the operation of the bot.</li>
+<li>The bot can reserve room aliases. This prevents humans from register
+for #irc_... aliases which would then clash with the operation of the bot.</li>
+<li>The bot can trivially manage hundreds of users. Events are pushed to the
+application service directly. If you tried to do this as a client-side bot,
+you would need one event stream connection per virtual user.</li>
+<li>The bot can lazily create rooms on demand. This means Matrix users can join
+non-existent room aliases and have the application service quickly track an
+IRC channel and create a room with that alias, allowing the join request to
+succeed.</li>
+</ul>
+<h3 id="implementation-details">Implementation details:</h3>
+<ul>
+<li>Written in Node.js, designed to be run using forever.</li>
+<li>Built on the generic <a href="https://github.com/matrix-org/matrix-appservice-node">matrix-appservice-node</a>
+framework.</li>
+<li>Supports sending metrics in statsd format.</li>
+<li>Uses matrix-appservice-node to provide a standardised interface when writing
+application services, rather than an explicit web framework (though under the
+hood matrix-appservice-node is using Express).</li>
+</ul>
+<p>At present, the IRC application service is in beta, and is being run on #matrix
+and #matrix-dev. If you want to give it a go, [check it out on Github ]
+(https://github.com/matrix-org/matrix-appservice-irc)!</p>
+<h2 id="what-application-services-can-do-for-you">What Application services can do for you</h2>
+<p>Application services have enormous potential for creating new and exciting ways
+to transform and enhance the core Matrix protocol. For example, you could
+aggregate information from multiple rooms into a summary room, or create
+throwaway virtual user accounts to proxy messages for a fixed user ID
+on-the-fly. As you may expect, all of this power assumes a high degree of trust
+between application services and homeservers. Only homeserver admins can allow
+an application service to link up with their homeserver, and the application
+service is in no way federated to other homeservers. You can think of
+application services as additional logic on the homeserver itself, without
+messing around with the book-keeping that homeservers have to do. This makes
+adding useful functionality very easy.</p>
+<h3 id="example">Example</h3>
+<p>The application service (AS) API itself uses webhooks to communicate from the
+homeserver to the AS:</p>
+<ul>
+<li>Room Alias Query API : The homeserver hits a URL on your application server to
+see if a room alias exists.</li>
+<li>User Query API : The homeserver hits a URL on your application server to see
+if a user ID exists.</li>
+<li>Push API : The homeserver hits a URL on your application server to notify you
+of new events for your users and rooms.</li>
+</ul>
+<p>A very basic application service may want to log all messages in rooms which
+have an alias starting with &quot;#logged_&quot; (side note: logging won't work if these
+rooms are using end-to-end encryption).</p>
+<p>Here's an example of a very basic application service using Python (with Flask
+and Requests) which logs room activity:</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span style="color:#608b4e;"># app_service.py:
+</span><span>
+</span><span style="color:#9b9b9b;">import </span><span>json, requests  </span><span style="color:#608b4e;"># we will use this later
+</span><span style="color:#9b9b9b;">from </span><span>flask </span><span style="color:#9b9b9b;">import </span><span>Flask, jsonify, request
+</span><span>app = Flask(__name__)
+</span><span>
+</span><span>@app.route(</span><span style="color:#d69d85;">&quot;/transactions/&lt;transaction&gt;&quot;</span><span>, methods=[</span><span style="color:#d69d85;">&quot;PUT&quot;</span><span>])
+</span><span style="color:#569cd6;">def </span><span>on_receive_events(transaction):
+</span><span>    events = request.get_json()[</span><span style="color:#d69d85;">&quot;events&quot;</span><span>]
+</span><span>    </span><span style="color:#569cd6;">for </span><span>event </span><span style="color:#569cd6;">in </span><span>events:
+</span><span>        </span><span style="color:#569cd6;">print </span><span style="color:#d69d85;">&quot;User: </span><span style="color:#b4cea8;">%s</span><span style="color:#d69d85;"> Room: </span><span style="color:#b4cea8;">%s</span><span style="color:#d69d85;">&quot; </span><span>% (event[</span><span style="color:#d69d85;">&quot;user_id&quot;</span><span>], event[</span><span style="color:#d69d85;">&quot;room_id&quot;</span><span>])
+</span><span>        </span><span style="color:#569cd6;">print </span><span style="color:#d69d85;">&quot;Event Type: </span><span style="color:#b4cea8;">%s</span><span style="color:#d69d85;">&quot; </span><span>% event[</span><span style="color:#d69d85;">&quot;type&quot;</span><span>]
+</span><span>        </span><span style="color:#569cd6;">print </span><span style="color:#d69d85;">&quot;Content: </span><span style="color:#b4cea8;">%s</span><span style="color:#d69d85;">&quot; </span><span>% event[</span><span style="color:#d69d85;">&quot;content&quot;</span><span>]
+</span><span>    </span><span style="color:#569cd6;">return </span><span>jsonify({})
+</span><span>
+</span><span style="color:#569cd6;">if </span><span>__name__ == </span><span style="color:#d69d85;">&quot;__main__&quot;</span><span>:
+</span><span>    app.run()
+</span></code></pre>
+<p>Set your new application service running on port 5000 with:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>python app_service.py
+</span></code></pre>
+<p>The homeserver needs to know that the application service exists before it will
+send requests to it. This is done via a registration YAML file which is
+specified in Synapse's main config file e.g. <code>homeserver.yaml</code>. The server
+admin needs to add the application service registration configuration file as
+an entry to this file.</p>
+<pre data-lang="yaml" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#608b4e;"># homeserver.yaml
+</span><span style="background-color:#282828;color:#569cd6;">app_service_config_files</span><span>:
+</span><span>  - </span><span style="color:#d69d85;">&quot;/path/to/appservice/registration.yaml&quot;
+</span></code></pre>
+<p>NB: Note the &quot;-&quot; at the start; this indicates a list element. The registration
+file <code>registration.yaml</code> should look like:</p>
+<pre data-lang="yaml" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="color:#608b4e;"># registration.yaml
+</span><span>
+</span><span style="color:#608b4e;"># An ID which is unique across all application services on your homeserver. This should never be changed once set.
+</span><span style="background-color:#282828;color:#569cd6;">id</span><span>: </span><span style="color:#d69d85;">&quot;something-good&quot;
+</span><span>
+</span><span style="color:#608b4e;"># this is the base URL of the application service
+</span><span style="background-color:#282828;color:#569cd6;">url</span><span>: </span><span style="color:#d69d85;">&quot;http://localhost:5000&quot;
+</span><span>
+</span><span style="color:#608b4e;"># This is the token that the AS should use as its access_token when using the Client-Server API
+</span><span style="color:#608b4e;"># This can be anything you want.
+</span><span style="background-color:#282828;color:#569cd6;">as_token</span><span>: </span><span style="background-color:#282828;color:#d69d85;">wfghWEGh3wgWHEf3478sHFWE</span><span>
+</span><span>
+</span><span style="color:#608b4e;"># This is the token that the HS will use when sending requests to the AS.
+</span><span style="color:#608b4e;"># This can be anything you want.
+</span><span style="background-color:#282828;color:#569cd6;">hs_token</span><span>: </span><span style="background-color:#282828;color:#d69d85;">ugw8243igya57aaABGFfgeyu</span><span>
+</span><span>
+</span><span style="color:#608b4e;"># this is the local part of the desired user ID for this AS (in this case @logging:localhost)
+</span><span style="background-color:#282828;color:#569cd6;">sender_localpart</span><span>: </span><span style="background-color:#282828;color:#d69d85;">logging</span><span>
+</span><span style="background-color:#282828;color:#569cd6;">namespaces</span><span>:
+</span><span>  </span><span style="background-color:#282828;color:#569cd6;">users</span><span>: []
+</span><span>  </span><span style="background-color:#282828;color:#569cd6;">rooms</span><span>: []
+</span><span>  </span><span style="background-color:#282828;color:#569cd6;">aliases</span><span>:
+</span><span>    - </span><span style="background-color:#282828;color:#569cd6;">exclusive</span><span>: </span><span style="color:#569cd6;">false
+</span><span>      </span><span style="background-color:#282828;color:#569cd6;">regex</span><span>: </span><span style="color:#d69d85;">&quot;#logged_.*&quot;
+</span></code></pre>
+<p><strong>You will need to restart the homeserver after editing the config file before
+it will take effect.</strong></p>
+<p>To test everything is working correctly, go ahead and explicitly create a room
+with the alias <code>#logged_test:localhost</code> and send a message into the room: the
+HS will relay the message to the AS by PUTing to <code>/transactions/&lt;id&gt;</code> and you
+should see your AS print the event on the terminal. This will monitor any room
+which has an alias prefix of <code>#logged_</code>, but it won't lazily create room
+aliases if they don't already exist. This means it will only log messages in
+the room you created before: <code>#logged_test:localhost</code>. Try joining the room
+<code>#logged_test2:localhost</code> without creating it, and it will fail. Let's fix that
+and add in lazy room creation:</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span>@app.route(</span><span style="color:#d69d85;">&quot;/rooms/&lt;alias&gt;&quot;</span><span>)
+</span><span style="color:#569cd6;">def </span><span>query_alias(alias):
+</span><span>    alias_localpart = alias.split(</span><span style="color:#d69d85;">&quot;:&quot;</span><span>)[</span><span style="color:#b5cea8;">0</span><span>][</span><span style="color:#b5cea8;">1</span><span>:]
+</span><span>    requests.post(
+</span><span>        </span><span style="color:#608b4e;"># NB: &quot;TOKEN&quot; is the as_token referred to in registration.yaml
+</span><span>        </span><span style="color:#d69d85;">&quot;http://localhost:8008/_matrix/client/api/v1/createRoom?access_token=TOKEN&quot;</span><span>,
+</span><span>        json.dumps({
+</span><span>            </span><span style="color:#d69d85;">&quot;room_alias_name&quot;</span><span>: alias_localpart
+</span><span>        }),
+</span><span>        headers={</span><span style="color:#d69d85;">&quot;Content-Type&quot;</span><span>:</span><span style="color:#d69d85;">&quot;application/json&quot;</span><span>}
+</span><span>    )
+</span><span>    </span><span style="color:#569cd6;">return </span><span>jsonify({})
+</span></code></pre>
+<p>This makes the application service lazily create a room with the requested alias
+whenever the HS queries the AS for the existence of that alias (when users try
+to join that room), allowing any room with the alias prefix #logged_ to be sent
+to the AS. Now try joining the room &quot;#logged_test2:localhost&quot; and it will work
+as you'd expect.  You can see that if this were a real bridge, the AS would
+have checked for the existence of #logged_test2 in the remote network, and then
+lazily-created it in Matrix as required.</p>
+<p>Application services are powerful components which extend the functionality of
+homeservers, but they are limited. They can only ever function in a &quot;passive&quot;
+way. For example, you cannot implement an application service which censors
+swear words in rooms, because there is no way to prevent the event from being
+sent. Aside from the fact that censoring will not work when using end-to-end
+encryption, all federated homeservers would also need to reject the event in
+order to stop developing an inconsistent event graph. To &quot;actively&quot; monitor
+events, another component called a &quot;Policy Server&quot; is required, which is beyond
+the scope of this post.  Also, Application Services can result in a performance
+bottleneck, as all events on the homeserver must be ordered and sent to the
+registered application services.  If you are bridging huge amounts of traffic,
+you may be better off having your bridge directly talk the Server-Server
+federation API rather than the simpler Application Service API.</p>
+<p>I hope this demonstrates how easy it is to create an application service, along with a few ideas of the kinds of things you can do with them. Obvious uses include build protocol bridges, search engines, invisible bots, etc. For more information on the AS HTTP API, check out the new <a href="https://spec.matrix.org/latest/application-service-api/">Application Service API</a> section in the spec, or the raw drafts and spec in <a href="https://github.com/matrix-org/matrix-doc/">https://github.com/matrix-org/matrix-doc/</a>.</p>
+
+</article>
+
+    </main>
+
+    <footer class="site-footer">
+    <div class="internal-links">
+        
+        <a href="&#x2F;faq">FAQs</a>
+        
+        <a href="&#x2F;security-disclosure-policy">Security Disclosure Policy</a>
+        
+        <a href="&#x2F;hall-of-fame">Security Hall of Fame</a>
+        
+        <a href="&#x2F;legal&#x2F;code-of-conduct">Code of Conduct for Matrix.org</a>
+        
+        <a href="&#x2F;legal">Legal</a>
+        
+        <a href="&#x2F;contact">Contact</a>
+        
+        <a href="https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;">Site Source</a>
+        
+    </div>
+    <div class="external-links">
+        <div>
+            
+            <a href="&#x2F;code"><img src="/assets/github.svg" alt="GitHub"></a>
+            
+            <a href="https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;"><img src="/assets/gitlab.svg" alt="GitLab"></a>
+            
+            <a href="https:&#x2F;&#x2F;mastodon.matrix.org&#x2F;@matrix"><img src="/assets/mastodon.svg" alt="Mastodon"></a>
+            
+            <a href="https:&#x2F;&#x2F;twitter.com&#x2F;matrixdotorg"><img src="/assets/twitter.svg" alt="Twitter"></a>
+            
+            <a href="https:&#x2F;&#x2F;www.youtube.com&#x2F;channel&#x2F;UCVFkW-chclhuyYRbmmfwt6w"><img src="/assets/youtube.svg" alt="YouTube"></a>
+            
+        </div>
+    </div>
+    <p>© 2022 The Matrix.org Foundation C.I.C.</p>
+</footer>
+
+</body>
+
+</html>

@@ -1,0 +1,1406 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="twitter:widgets:csp" content="on" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta name="twitter:site" content="@matrixdotorg" />
+    <meta name="twitter:creator" content="@matrixdotorg" />
+
+    <title>Matrix.org - Implementing more advanced e2ee features, such as cross-signing</title>
+    <link rel="shortcut icon" href="/assets/favicon.ico" />
+    <link rel="icon" type="image/png" href="/assets/favicon.png" />
+    <link rel="stylesheet" href="/style.css" />
+
+    </head>
+
+<body>
+    
+    
+
+
+<header class="site-header">
+    <a href="/" class="brand">
+        <img src="/images/matrix-logo.svg" alt="Matrix logo">
+    </a>
+    <input id="site-header-dropdown-checkbox" type="checkbox" class="dropdown-checkbox" aria-hidden="true">
+    <label for="site-header-dropdown-checkbox" class="dropdown-button">&#xe602;</label>
+    <label for="site-header-dropdown-checkbox" class="page-overlay"></label>
+    <nav>
+        
+        
+        <a href="&#x2F;about&#x2F;" class="
+            ">
+            About
+        </a>
+        
+        
+        
+        <a href="&#x2F;blog&#x2F;" class="
+            ">
+            Blog
+        </a>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;docs&#x2F;" class="section current">
+                Documentation
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;ecosystem&#x2F;" class="section ">
+                Ecosystem
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                    <a href="&#x2F;ecosystem&#x2F;clients&#x2F;">Clients</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;servers&#x2F;">Servers</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bots&#x2F;">Bots</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bridges&#x2F;">Bridges</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;sdks&#x2F;">SDKs</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;hosting&#x2F;">Hosting</a>
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        <a href="&#x2F;podcasts&#x2F;" class="
+            ">
+            Podcasts
+        </a>
+        
+        
+        
+        <a href="https:&#x2F;&#x2F;shop.matrix.org" class="
+            ">
+            Shop
+        </a>
+        
+        
+        
+        <a href="&#x2F;try-matrix&#x2F;" class="primary
+            ">
+            Try Matrix
+        </a>
+        
+        
+    </nav>
+</header>
+
+
+    <main>
+        
+<article class="content">
+    <header>
+        <div class="legacy-doc-warning">
+            <h2>Outdated documentation</h2>
+            <p>This documentation has been kept for posterity but might be or
+               will be outdated. It should not be used anymore. Please head to
+               <a href="/docs">the documentation section</a> for up to date
+               documentation and guides.
+            </p>
+        </div>
+        <h1>Implementing more advanced e2ee features, such as cross-signing</h1>
+    </header>
+    <p>PLEASE NOTE THAT THIS GUIDE IS STILL A WIP!</p>
+<p>So, you successfully implemented end-to-end encryption in your matrix client? Congratulations! This
+is a real step to be proud of and reason to celebrate!</p>
+<p>You might have noticed, however, that some things are still on the rough edge: You have to manually
+verify every other device by comparing the public keys, decryption keys aren't shared between your
+devices, etc. In comparison, Element has cross-signing so that you have to only verify people in a user-
+friendly way, and it has things like online key backup. If you want to implement these features into
+your own client (or only some of them), then this guide is for you!</p>
+<p>This guide will be using libolm. Of course, the general ideas etc. and process flows behind it will
+be the same, no matter if you use libolm or not. So, if you use something else than libolm, simply
+substitute those parts with whatever other libraries / algorithms you are using.</p>
+<p>Here is a general road map of what is needed in order implement all of the following:</p>
+<ol>
+<li>Emoji verification (SAS or Short Authentication Strings)</li>
+<li>Display verification status based on cross signing status</li>
+<li>SSSS (Secure Secret Storage and Sharing)</li>
+<li>Signing of other keys</li>
+<li>In-room verification (Verification through messages in a room)</li>
+<li>Miscellaneous cross-signing things</li>
+<li>Bootstrapping SSSS and cross-signing</li>
+<li>Online key backup</li>
+</ol>
+<p>Wow, that's a lot of steps... but don't worry, we'll tackle them one at a time. Each step (apart
+from perhaps #3) will greatly improve the user experience, so that should be a lot of motivation
+to keep going!</p>
+<p>As a general warning, at the point of writing this guide (May, June 2020) not everything discussed
+here is in the spec yet, and some of the information can only be found scattered across multiple MSCs
+and reading through the source code of <a href="https://github.com/matrix-org/matrix-js-sdk">matrix-js-sdk</a>.</p>
+<h2 id="1-implement-emoji-verification-sas">1. Implement emoji verification (SAS)</h2>
+<p>Emoji verification is part of a verification model called SAS, for Short Authentication String. In
+addition to emoji verification, there is also numerical verification. It is expected that all clients
+that support SAS support <em>at least</em> numerical verification. This is to ensure that clients that may
+not be able to display emoji (perhaps some CLI application or embedded device display) can still be
+verified. Fortunately, the way these verification methods work is almost identical.</p>
+<p>Unfortunately, due to legacy reasons, there are multiple ways you can receive a verification request
+for SAS. However, all of the cryptographically methods are already a part of libolm, so if you already
+use libolm bindings, it will be a breeze to implement!</p>
+<p>There are two ways to verify other devices (and, by extension, other people): One way is via to_device
+messages, and the other is via messages in rooms. Verification via to_device messages is typically
+done to verify <em>devices</em>, while verification via messages in a room is typically done to verify
+<em>people</em>. While in-room verification will be added in this guide only later on, it is a good idea to
+think about how to structure your code to already support this from the start.</p>
+<h3 id="a-general-look-at-the-verification-process">A general look at the verification process</h3>
+<p>Verification works via two devices sending each other messages, either via to_device messaging or through
+messages in a room. A device (Alice) that wants to verify another device (Bob) sends a <code>m.key.verification.request</code>
+message along with the methods it supports. Bob
+answers with a <code>m.key.verification.ready</code>, also informing Alice of which methods it support. In the
+client UI, Bob would get a new verification request popup after receiving a <code>m.key.verification.request</code>
+message. After both have accepted to start, either party (Alice and/or Bob) can send a <code>m.key.verification.start</code>,
+which is specific to the verification method used. In the case that both Alice and Bob send a
+<code>m.key.verification.start</code> and the verification method does <em>not</em> match, the verification request is
+canceled. If the verification matches, the <code>m.key.verification.start</code> of the lexicographically smaller
+user ID is used. If those also match up (as in, if you are verifying your own device), then the
+lexicographically smaller device ID is used. This ensures that it is unambiguous which <code>m.key.verification.start</code>
+is used. From now on, the device whose <code>m.key.verification.start</code> is used is the one who started the
+request (This is important as some things in SAS depend on who started the request). After that, some
+verification process happens, which is specific the specified verification method. If all is successful,
+both send a <code>m.key.verification.done</code> to each other.</p>
+<p>To make all this work, each verification request has a unique transaction ID, which is an
+opaque string used to identify the specific verification request. In case of room verification, this
+is the event ID of the first sent message (<code>m.key.verification.request</code>). A verification request can
+be canceled at any time by either party by sending an <code>m.key.verification.cancel</code>, along with some
+information on the reason for cancellation.</p>
+<p>As all messages sent get some common metadata added, it might be a good idea to write a <code>send</code> wrapper
+function to send key verification data. This function could also handle sending events as either to_device
+messages or as room events. The contents of the message differ slightly between to_device and for
+room verification:</p>
+<p>For to_device messages, the <code>transaction_id</code> and <code>from_device</code> is simply added to the object sent.
+<code>transaction_id</code> denotes the unique ID of the transaction, whereas <code>from_device</code> is simply a string
+containing your own device ID. A payload such as</p>
+<pre data-lang="json" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-json "><code class="language-json" data-lang="json"><span>{
+</span><span>  </span><span style="color:#d69d85;">&quot;foo&quot;</span><span>: </span><span style="color:#d69d85;">&quot;bar&quot;
+</span><span>}
+</span></code></pre>
+<p>would thus look like:</p>
+<pre data-lang="json" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-json "><code class="language-json" data-lang="json"><span>{
+</span><span>  </span><span style="color:#d69d85;">&quot;foo&quot;</span><span>: </span><span style="color:#d69d85;">&quot;bar&quot;</span><span>,
+</span><span>  </span><span style="color:#d69d85;">&quot;transaction_id&quot;</span><span>: </span><span style="color:#d69d85;">&quot;some-awesome-id&quot;</span><span>,
+</span><span>  </span><span style="color:#d69d85;">&quot;from_device&quot;</span><span>: </span><span style="color:#d69d85;">&quot;DXKKF&quot;
+</span><span>}
+</span></code></pre>
+<p>For room messages, the transaction ID, which is the event Id of the first event, is added in the
+<code>m.relates_to</code> section of the event. The device ID is the same as to_device massages; it should be
+set to the ID of the sending device. So the above payload becomes:</p>
+<pre data-lang="json" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-json "><code class="language-json" data-lang="json"><span>{
+</span><span>  </span><span style="color:#d69d85;">&quot;foo&quot;</span><span>: </span><span style="color:#d69d85;">&quot;bar&quot;</span><span>,
+</span><span>  </span><span style="color:#d69d85;">&quot;from_device&quot;</span><span>: </span><span style="color:#d69d85;">&quot;DXKKF&quot;</span><span>,
+</span><span>  </span><span style="color:#d69d85;">&quot;m.relates_to&quot;</span><span>: {
+</span><span>    </span><span style="color:#d69d85;">&quot;rel_type&quot;</span><span>: </span><span style="color:#d69d85;">&quot;m.reference&quot;</span><span>,
+</span><span>    </span><span style="color:#d69d85;">&quot;event_id&quot;</span><span>: </span><span style="color:#d69d85;">&quot;$firstEventId&quot;
+</span><span>  }
+</span><span>}
+</span></code></pre>
+<p>For simplicity, all payloads mentioned below will be shown without those extra keys.</p>
+<p>The to_devices sent don't have to be encrypted, as the entire idea of verification requests is that
+they could be out in the open. The client may, however, chose to do so anyways, if e.g. their function
+for sending to_device messages defaults to sending them encrypted. Whether room messages are encrypted
+typically depends on whether the room they are sent in is encrypted or not.</p>
+<h4 id="m-key-verification-request"><code>m.key.verification.request</code></h4>
+<p>Sending this starts a verification request. It sends all the verification methods you know (in the
+case of SAS that is only <code>m.sas.v1</code>), along with the current timestamp in milliseconds.</p>
+<pre data-lang="json" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-json "><code class="language-json" data-lang="json"><span>{
+</span><span>  </span><span style="color:#d69d85;">&quot;methods&quot;</span><span>: [</span><span style="color:#d69d85;">&quot;m.sas.v1&quot;</span><span>],
+</span><span>  </span><span style="color:#d69d85;">&quot;timestamp&quot;</span><span>: </span><span style="color:#b5cea8;">1590314157821
+</span><span>}
+</span></code></pre>
+<p>A receiving client is expected to reject the request if it is more than 10 minutes in the past or more
+than 5 minutes in the future.</p>
+<h4 id="m-key-verification-ready"><code>m.key.verification.ready</code></h4>
+<p>Sending this indicates that you accept the key verification request and additionally reveals which
+methods you support yourself. That way both verification partners will be able to figure out which
+methods they have in common.</p>
+<pre data-lang="json" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-json "><code class="language-json" data-lang="json"><span>{
+</span><span>  </span><span style="color:#d69d85;">&quot;methods&quot;</span><span>: [</span><span style="color:#d69d85;">&quot;m.sas.v1&quot;</span><span>],
+</span><span>}
+</span></code></pre>
+<h4 id="m-key-verification-start"><code>m.key.verification.start</code></h4>
+<p>Sending this indicates that you are starting verification with a specific method. The exact payload
+is dependent on the verification method.</p>
+<pre data-lang="json" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-json "><code class="language-json" data-lang="json"><span>{
+</span><span>  </span><span style="color:#d69d85;">&quot;method&quot;</span><span>: </span><span style="color:#d69d85;">&quot;m.sas.v1&quot;</span><span>,
+</span><span>  </span><span style="color:#608b4e;">// additional keys specific to m.sas.v1
+</span><span>}
+</span></code></pre>
+<h4 id="m-key-verification-done"><code>m.key.verification.done</code></h4>
+<p>Sending this indicates that the verification process is <em>fully</em> done.</p>
+<pre data-lang="json" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-json "><code class="language-json" data-lang="json"><span>{}
+</span></code></pre>
+<h4 id="m-key-verification-cancel"><code>m.key.verification.cancel</code></h4>
+<p>Sending this cancels the verification (timeout, key mismatch, user cancellation, etc.). It has a
+human-readable reason, along with a cancellation code.</p>
+<pre data-lang="json" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-json "><code class="language-json" data-lang="json"><span>{
+</span><span>  </span><span style="color:#d69d85;">&quot;reason&quot;</span><span>: </span><span style="color:#d69d85;">&quot;The verification timed out&quot;</span><span>,
+</span><span>  </span><span style="color:#d69d85;">&quot;code&quot;</span><span>: </span><span style="color:#d69d85;">&quot;m.timeout&quot;
+</span><span>}
+</span></code></pre>
+<p>A list of all cancellation codes and their use can be found in
+<a href="https://matrix.org/docs/spec/client_server/latest#m-key-verification-cancel">the Client-Server Spec</a>.</p>
+<h4 id="recap">Recap</h4>
+<p>To recap, the <em>general</em> verification process of Alice wanting to verify Bob works as follows:</p>
+<ol>
+<li>Alice sends Bob an <code>m.key.verification.request</code> along with the methods she supports.</li>
+<li>Bob receives that request. His device asks him if he wants to verify with Alice. He hits accept.</li>
+<li>Bob sends an <code>m.key.verification.ready</code> along with the methods he supports.</li>
+<li>Alice receives Bob's methods, and based on that and her own, she sends
+an <code>m.key.verification.start</code> for a method that they have in common.</li>
+<li>Bob also sends an <code>m.key.verification.start</code>, which happens to be the same method as alices</li>
+<li>As Alices user ID is lexicographically smaller (<code>@alice:example.org</code> vs <code>@bob:example.org</code>), the
+start command sent by Alice is used.</li>
+<li>The specific verification method follows here.</li>
+<li>When Alice and Bob are fully done with verification, they send each other an <code>m.key.verification.done</code>.</li>
+</ol>
+<h3 id="taking-a-look-at-sas">Taking a look at SAS</h3>
+<p>Okay, now that we took a look at how the verification process framework works in general, lets take a
+look at SAS specifically.</p>
+<p>For legacy reasons there are unfortunately clients that directly want to start SAS verification with
+<code>m.key.verification.start</code>, so that will need to be handled. If such a start request comes in, and
+it is SAS, prompt the user if they want to accept the verification or not. Then simply continue with
+the SAS flow as normal.</p>
+<p>The general idea of SAS verification is that both parties wanting to verify each other, Alice and Bob,
+generate an ephemeral public/private keypair and exchange the public keys. Using
+<a href="https://en.wikipedia.org/wiki/Elliptic-curve_Diffie%E2%80%93Hellman">Elliptic-curve Diffie-Hellman</a> (ECDH)
+they both generate the same key, provided that there was no man in the middle. This generated
+key is then compared, using either emoji or numbers. After it is verified that they both match up on
+either side, it is then known that the output of ECDH is the same. Thus the ephemeral public keys for
+ECDH sent to each other got successfully verified. With these keys, a secure channel can be formed,
+where the actual device keys that want to verify to each other are sent over. Upon receipt, the
+verification process is complete!</p>
+<p>In practice, this works as follows: Alice sends Bob a <code>m.key.verification.start</code> along with a bunch
+of different parameters she supports (hash method, emoji/number verification, which specific ECDH to
+use, etc.) and Bob will reply with a <code>m.key.verification.accept</code>, which will, based on the capabilities
+Alice advertised and based on what Bob knows he can do himself, determine which exact method to use.
+Afterwards, they both generate and send to each other the ephemeral public keys for ECDH, and the
+emojis or numbers are displayed on screen. Once they both verified that they match using some secure
+third-party channel like meeting up in person, they will send each other a <code>m.key.verification.mac</code>,
+containing a MAC of the keys they should verify. After verifying them, they both send each other a
+<code>m.key.verification.done</code> and they are verified!</p>
+<p>SAS introduces a few more cancellation codes, specific to SAS verification,
+<a href="https://matrix.org/docs/spec/client_server/latest#verification-messages-specific-to-sas">as seen in the client-server spec</a>.</p>
+<h4 id="m-key-verification-start-1"><code>m.key.verification.start</code></h4>
+<p>This sends a bunch of parameters that the sending device supports. Please note that you will have to
+remember this object while performing a commitment check (explained in the next section), of the one
+that <em>includes</em> the metadata of <code>transaction_id</code> and <code>from_device</code> keys, omitted in these examples.</p>
+<pre data-lang="json" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-json "><code class="language-json" data-lang="json"><span>{
+</span><span>  </span><span style="color:#d69d85;">&quot;method&quot;</span><span>: </span><span style="color:#d69d85;">&quot;m.sas.v1&quot;</span><span>,
+</span><span>  </span><span style="color:#d69d85;">&quot;key_agreement_protocols&quot;</span><span>: [</span><span style="color:#d69d85;">&quot;curve25519-hkdf-sha256&quot;</span><span>],
+</span><span>  </span><span style="color:#d69d85;">&quot;hashes&quot;</span><span>: [</span><span style="color:#d69d85;">&quot;sha256&quot;</span><span>],
+</span><span>  </span><span style="color:#d69d85;">&quot;message_authentication_codes&quot;</span><span>: [</span><span style="color:#d69d85;">&quot;hkdf-hmac-sha256&quot;</span><span>],
+</span><span>  </span><span style="color:#d69d85;">&quot;short_authentication_string&quot;</span><span>: [</span><span style="color:#d69d85;">&quot;emoji&quot;</span><span>, </span><span style="color:#d69d85;">&quot;decimal&quot;</span><span>]
+</span><span>}
+</span></code></pre>
+<h4 id="commitment-generation">Commitment generation</h4>
+<p>A commitment is an additional verification process. It is the hash (based on the hash method
+specified) of the concatenated ephemeral public key you generate and the canonical json of the
+<code>m.key.verification.start</code> body. Libolm provides both the hashing method and the public/private key
+generation. Code for calculating the commitment could look as follows:</p>
+<pre data-lang="dart" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-dart "><code class="language-dart" data-lang="dart"><span style="color:#569cd6;">var</span><span> sas = olm.SAS(); </span><span style="color:#608b4e;">// save for later. This will generate our ephemeral public/private keypair
+</span><span style="color:#569cd6;">var</span><span> canonicalJson = </span><span style="color:#d69d85;">&quot;&quot;</span><span>; </span><span style="color:#608b4e;">// the canonical json of the `m.key.verification.start` request
+</span><span>
+</span><span style="color:#569cd6;">var</span><span> commitment = </span><span style="color:#d69d85;">&quot;&quot;</span><span>;
+</span><span style="color:#569cd6;">if</span><span> (hashMethod == </span><span style="color:#d69d85;">&quot;sha256&quot;</span><span>) {
+</span><span>  </span><span style="color:#569cd6;">var</span><span> olmutil = olm.Utility();
+</span><span>  commitment = olmutil.sha256(sas.get_pubkey() + canonicalJson);
+</span><span>  olmutil.free();
+</span><span>} </span><span style="color:#569cd6;">else</span><span> {
+</span><span>  </span><span style="color:#569cd6;">throw </span><span style="color:#d69d85;">&quot;Unknown hash method&quot;</span><span>;
+</span><span>}
+</span></code></pre>
+<h4 id="m-key-verification-accept"><code>m.key.verification.accept</code></h4>
+<p>This accepts the <code>m.key.verification.start</code> request, and sends the parameters that both parties support.
+Along with that, it also sends a <code>commitment</code>, as defined above.</p>
+<pre data-lang="json" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-json "><code class="language-json" data-lang="json"><span>{
+</span><span>  </span><span style="color:#d69d85;">&quot;method&quot;</span><span>: </span><span style="color:#d69d85;">&quot;m.sas.v1&quot;</span><span>,
+</span><span>  </span><span style="color:#d69d85;">&quot;key_agreement_protocol&quot;</span><span>: </span><span style="color:#d69d85;">&quot;curve25519-hkdf-sha256&quot;</span><span>,
+</span><span>  </span><span style="color:#d69d85;">&quot;hash&quot;</span><span>: </span><span style="color:#d69d85;">&quot;sha256&quot;</span><span>,
+</span><span>  </span><span style="color:#d69d85;">&quot;message_authentication_code&quot;</span><span>: </span><span style="color:#d69d85;">&quot;hkdf-hmac-sha256&quot;</span><span>,
+</span><span>  </span><span style="color:#d69d85;">&quot;short_authentication_string&quot;</span><span>: [</span><span style="color:#d69d85;">&quot;emoji&quot;</span><span>, </span><span style="color:#d69d85;">&quot;decimal&quot;</span><span>],
+</span><span>  </span><span style="color:#d69d85;">&quot;commitment&quot;</span><span>: </span><span style="color:#d69d85;">&quot;the-commitment-calculated&quot;
+</span><span>}
+</span></code></pre>
+<h4 id="m-key-verification-key"><code>m.key.verification.key</code></h4>
+<p>This sends the ephemeral <em>public</em> key to each other. If you haven't generated it yet (due to not having
+calculated the commitment), do so now with <code>var sas = olm.SAS();</code> and read it with <code>sas.get_pubkey();</code>.
+Be sure that if you received the commitment, you use the received public key to verify the commitment
+you received earlier. The public key is both added to the <code>sas</code> object with <code>sas.set_their_key(payload[&quot;key&quot;]);</code>
+and also saved in a separate variable, as you'll need it later, as unfortunately the <code>sas</code> object does
+not allow for it to be retrieved again.</p>
+<pre data-lang="json" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-json "><code class="language-json" data-lang="json"><span>{
+</span><span>  </span><span style="color:#d69d85;">&quot;key&quot;</span><span>: </span><span style="color:#d69d85;">&quot;your-public-key&quot;
+</span><span>}
+</span></code></pre>
+<h4 id="display-emojis-numbers">Display Emojis / Numbers</h4>
+<p>Based on the agreed upon <code>key_agreement_protocol</code> and which <code>short_authentication_string</code>s are supported,
+the user should now be prompted with the emojis/numbers, so that they can verify that they match. For
+that, you will have to generate bytes to derive the emojis from for comparison. For that, a &quot;SAS info&quot;
+is created. For the key agreement protocol <code>curve25519-hkdf-sha256</code> it works as follows:</p>
+<p>The SAS info is <code>MATRIX_KEY_VERIFICATION_SAS|</code> concatenated with the user ID of whomever started the
+verification plus <code>|</code> plus the device ID who started the verification plus <code>|</code> plus the SAS public key
+who started the verification plus <code>|</code> plus the user ID who received the verification plus <code>|</code> plus
+the device ID who received the verification plus <code>|</code> plus the SAS public key of who received the verification
+plus <code>|</code> plus the transaction ID. In code that could look as follows:</p>
+<pre data-lang="dart" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-dart "><code class="language-dart" data-lang="dart"><span style="color:#569cd6;">var</span><span> ourInfo = </span><span style="color:#d69d85;">&#39;${</span><span>client.userID</span><span style="color:#d69d85;">}|${</span><span>client.deviceID</span><span style="color:#d69d85;">}|${</span><span>sas.get_pubkey()</span><span style="color:#d69d85;">}|&#39;</span><span>;
+</span><span style="color:#569cd6;">var</span><span> theirInfo = </span><span style="color:#d69d85;">&#39;${</span><span>request.userId</span><span style="color:#d69d85;">}|${</span><span>request.deviceId</span><span style="color:#d69d85;">}|${</span><span>theirPublicKey</span><span style="color:#d69d85;">}|&#39;</span><span>;
+</span><span style="color:#569cd6;">var</span><span> sasInfo = </span><span style="color:#d69d85;">&#39;MATRIX_KEY_VERIFICATION_SAS|&#39; </span><span>+
+</span><span>    (request.startedVerification
+</span><span>        </span><span style="color:#569cd6;">?</span><span> ourInfo + theirInfo
+</span><span>        </span><span style="color:#569cd6;">:</span><span> theirInfo + ourInfo) +
+</span><span>    request.transactionId;
+</span></code></pre>
+<p>The key agreement protocol <code>curve25519</code> is deprecated and should not be implemented. As such, it isn't
+outlined here.</p>
+<h5 id="generate-bytes">Generate bytes</h5>
+<p>Once you have that SAS info, you use it to generate bytes through <code>sas.generate_bytes(sasInfo, bytes)</code>.
+For emoji verification, 6 bytes are needed, for number verification 5 are needed. You could, however,
+always generate 6 bytes and, for number verification, only use the first 5.</p>
+<p>If both parties said they can display emoji, display those! If one party only supports numbers, then
+display numbers. It might be a good idea to have a button to switch back and forth between emoji and
+numbers, just in case.</p>
+<h5 id="numbers">Numbers</h5>
+<p>To get the numbers you compare, you need to generate 5 bytes using the above method. Split these into
+three chunks of 13 bits each, discarding the last bit. Then add 1000 to each number, meaning they can
+be in the range of 1000 to 9191. It is expected to to display the numbers with some separator in between,
+e.g. <code>1337-4242-9001</code>.</p>
+<h5 id="emoji">Emoji</h5>
+<p>To get the emoji to compare, you need to generate 6 bytes using the method above. Split these into 7
+chunks of 6 bits each, discarding the last 6 bits. Then use the appropriate table
+<a href="https://matrix.org/docs/spec/client_server/latest#sas-method-emoji">in the client-server spec</a> to
+display the emoji, along with their name.</p>
+<h4 id="emojis-numbers-match-calculating-the-mac">Emojis / Numbers match: Calculating the MAC</h4>
+<p>Once the user says that their emojis / numbers match, that means that they have a secure channel! A
+MAC is then calculated out of the device IDs and the public keys you want the other party to verify.
+For now, only send your own public key using that method. Later on in this guide, you will also send your
+master cross-signing key. For that, a base information is created, which is the concatenated string of
+<code>MATRIX_KEY_VERIFICATION_MAC</code>, your own user ID, your own device ID, the other user's ID, the other
+device's ID, and the transaction ID. Note how, unlike SAS, no <code>|</code> delimiter is used and the order
+does <em>not</em> depend on who started the verification:</p>
+<pre data-lang="dart" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-dart "><code class="language-dart" data-lang="dart"><span style="color:#569cd6;">var</span><span> baseInfo = </span><span style="color:#d69d85;">&#39;MATRIX_KEY_VERIFICATION_MAC&#39; </span><span>+
+</span><span>    client.userID +
+</span><span>    client.deviceID +
+</span><span>    request.userId +
+</span><span>    request.deviceId +
+</span><span>    request.transactionId;
+</span></code></pre>
+<p>Next calculate the MAC of your device IDs and the fingerprints that you want to send:</p>
+<pre data-lang="dart" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-dart "><code class="language-dart" data-lang="dart"><span>String _calculateMac(String input, String info) {
+</span><span>  </span><span style="color:#569cd6;">if</span><span> (messageAuthenticationCode == </span><span style="color:#d69d85;">&quot;hkdf-hmac-sha256&quot;</span><span>) { </span><span style="color:#608b4e;">// this is from the m.key.verification.accept call
+</span><span>    </span><span style="color:#569cd6;">return</span><span> sas.calculate_mac(input, info); </span><span style="color:#608b4e;">// the same sas object we used previously, from libolm
+</span><span>  } </span><span style="color:#569cd6;">else</span><span> {
+</span><span>    </span><span style="color:#569cd6;">throw </span><span style="color:#d69d85;">&quot;Unknown message authentication code&quot;</span><span>;
+</span><span>  }
+</span><span>}
+</span><span>
+</span><span>Map&lt;String, String&gt; mac = {}; </span><span style="color:#608b4e;">// create the map for the MACs
+</span><span>List&lt;String&gt; keyList = []; </span><span style="color:#608b4e;">// the list / array holding all the key Ids to verify
+</span><span>
+</span><span style="color:#608b4e;">// now add all the keys we want to verify
+</span><span style="color:#569cd6;">var</span><span> deviceKeyId = </span><span style="color:#d69d85;">&quot;ed25519:${</span><span>client.deviceID</span><span style="color:#d69d85;">}&quot;</span><span>;
+</span><span>mac[deviceKeyId] = _calculateMac(client.fingerprintKey, baseInfo + deviceKeyId); </span><span style="color:#608b4e;">// client.fingerprintKey is here the public key string for our device
+</span><span>keyList.add(deviceKeyId);
+</span><span>
+</span><span style="color:#608b4e;">// now we still need to sort the key list
+</span><span>keyList.sort();
+</span><span style="color:#569cd6;">var</span><span> keys = _calculateMac(keyList.join(</span><span style="color:#d69d85;">&quot;,&quot;</span><span>), baseInfo + </span><span style="color:#d69d85;">&quot;KEY_IDS&quot;</span><span>);
+</span><span>
+</span><span style="color:#608b4e;">// send off the stuff!
+</span></code></pre>
+<h4 id="m-key-verification-mac"><code>m.key.verification.mac</code></h4>
+<p>Sends the MAC of the keys to verify off to the other party.</p>
+<pre data-lang="json" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-json "><code class="language-json" data-lang="json"><span>{
+</span><span>  </span><span style="color:#d69d85;">&quot;mac&quot;</span><span>: { </span><span style="color:#608b4e;">// is the &quot;mac&quot; object calculated above
+</span><span>    </span><span style="color:#d69d85;">&quot;ed25519:CCKDF&quot;</span><span>: </span><span style="color:#d69d85;">&quot;&lt;calculated MAC here&gt;&quot;
+</span><span>  },
+</span><span>  </span><span style="color:#d69d85;">&quot;keys&quot;</span><span>: </span><span style="color:#d69d85;">&quot;&lt;MAC for keys here&gt;&quot; </span><span style="color:#608b4e;">// is the calculated &quot;keys&quot; string above
+</span><span>}
+</span></code></pre>
+<h4 id="receiving-verifying-the-mac">Receiving / verifying the MAC</h4>
+<p>After receiving the MAC and having the user verify that the emoji match (and thus also sending
+your own MAC), you have to verify that the received MACs are valid, and only verify the keys if the
+MACs are valid. For that, generate the base info from the perspective of the other party; essentially
+placing other person's information before your own:</p>
+<pre data-lang="dart" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-dart "><code class="language-dart" data-lang="dart"><span style="color:#569cd6;">final</span><span> baseInfo = </span><span style="color:#d69d85;">&#39;MATRIX_KEY_VERIFICATION_MAC&#39; </span><span>+
+</span><span>    request.userId +
+</span><span>    request.deviceId +
+</span><span>    client.userID +
+</span><span>    client.deviceID +
+</span><span>    request.transactionId;
+</span></code></pre>
+<p>Then generate the key list out of the dictionary keys of the <code>mac</code> object received and verify that
+the MAC matches up:</p>
+<pre data-lang="dart" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-dart "><code class="language-dart" data-lang="dart"><span style="color:#569cd6;">final</span><span> keyList = payload[</span><span style="color:#d69d85;">&quot;mac&quot;</span><span>].keys.toList();
+</span><span>keyList.sort();
+</span><span style="color:#569cd6;">if</span><span> (payload[</span><span style="color:#d69d85;">&quot;keys&quot;</span><span>] != _calculateMac(keyList.join(</span><span style="color:#d69d85;">&quot;,&quot;</span><span>), baseInfo + </span><span style="color:#d69d85;">&quot;KEY_IDS&quot;</span><span>)) {
+</span><span>  </span><span style="color:#569cd6;">await</span><span> request.cancel(</span><span style="color:#d69d85;">&quot;m.key_mismatch&quot;</span><span>);
+</span><span>  </span><span style="color:#569cd6;">return</span><span>;
+</span><span>}
+</span></code></pre>
+<p>Then verify the MACs of the keys themselves by iterating over the objects, and calculating the MACs
+of the keys again as above. You should have the public key yourself already, as you are just verifying
+if the key matches. If you received the MAC of a key you don't know, just ignore it. It is likely to
+be a cross-signing key that you don't know how to handle yet. If only <em>one</em> of the MACs mismatch,
+however, don't verify <em>any</em> devices and cancel the entire request.</p>
+<p>Finally send a <code>m.key.verification.done</code>, and you are done!</p>
+<h4 id="recap-1">Recap</h4>
+<p>So, the entire SAS verification flow in short is as follows:</p>
+<ol>
+<li>(Optional) Alice sends Bob a <code>m.key.verification.request</code> along with the methods she supports, including
+<code>m.sas.v1</code>.</li>
+<li>(Optional) Bob receives that request. His device asks him if he wants to verify with Alice. He hits accept.</li>
+<li>(Optional) Bob sends a <code>m.key.verification.ready</code> along with the methods he supports, including <code>m.sas.v1</code>.</li>
+<li>Alice receives Bob's methods, and based on that, and the ones she knows how to do herself, she sends
+a <code>m.key.verification.start</code> for <code>m.sas.v1</code>. This will contain a bunch of parameters for how the
+SAS will specifically work. Alice's device notes down the canonical json of the request for later
+commitment verification.</li>
+<li>Bob could also send an <code>m.key.verification.start</code> for <code>m.sas.v1</code>. As Alice user ID is lexicographically
+smaller it is discarded, though.</li>
+<li>Bob received the <code>m.key.verification.start</code>, and generates his own ephemeral keypair with <code>var sas = olm.SAS();</code>. He then
+calculates the commitment using the canonical json of the <code>m.key.verification.start</code> request, before sending a
+<code>m.key.verification.accept</code> back to Alice, along with specific parameters to use for this SAS
+verificaton.</li>
+<li>Alice receives the <code>m.key.verification.accept</code> and stores the commitment to verify it later. She now creates her own
+ephemeral key pair with <code>var sas = olm.SAS();</code> and sends Bob the public key, via <code>m.key.verification.key</code>.</li>
+<li>Bob receives the public key from Alice and sends his own public key. Bob's device displays
+the emoji / numbers for verification now.</li>
+<li>Alice receives Bob's public key, and can finally verify the commitment she saved earlier. If all
+matches, Alice's device will now display the emoji / numbers for verification.</li>
+<li>If the emoji / numbers both match up, they will send each other an <code>m.key.verification.mac</code> with
+the MAC'd information of the keys that should be verified.</li>
+<li>Finally, if all checks out, they send each other a <code>m.key.verification.done</code> and
+the verification process is concluded.</li>
+</ol>
+<h3 id="things-to-look-out-for">Things to look out for</h3>
+<ol>
+<li><em>Always</em> verify that an incoming message has a valid, known transaction ID.</li>
+<li><em>Always</em> verify that an incoming message is no more than 10 minutes in the past.</li>
+<li><em>Always</em> stop the verification process as soon as you receive a <code>m.key.verification.cancel</code>, be
+it for whatever reason.</li>
+<li><em>Don't</em> just blindly assume that methods, <code>message_authentication_code</code>, etc. are as outlined here.
+More might be added in the future (e.g. to fix a discovered security flaw), as such <em>always</em> verify
+which ones you actually support and act accordingly.</li>
+<li>Don't forget to <code>sas.free();</code> your generated SAS object all at the end of verification or when timing
+out or when it is being canceled.</li>
+<li>Don't forget to calculate <em>and verify</em> the commitment!</li>
+<li>It might be a good idea to generalize the code handling the verification flow so that you can easily
+add other methods than <code>m.sas.v1</code> later on.</li>
+</ol>
+<h2 id="2-display-verification-status-based-on-signatures">2. Display verification status based on signatures</h2>
+<p>Don't worry, after having implemented SAS this should be a breeze, it's way simpler and way less of a
+hassle to implement!</p>
+<h3 id="general-ideas-of-cross-signing">General ideas of Cross-Signing</h3>
+<p>The general idea of cross-signing is that instead of every device having to verify every other device,
+people will only have to verify other people, and you will have to verify each of your own new sessions
+(logins) only once. For this, each <em>user</em> has three keys: A master key, a self-signing key and a
+user-signing key. The master key will sign both the self-signing and the user-signing key. The
+self-signing key will then sign your own device keys, and the user-signing key will sign other people's
+master keys. The purpose of splitting this up into three keys is that in the case of either the
+self-signing key or the user-signing key getting compromised, you can easily exchange them, while
+still keeping the master key. As the master key is <em>only</em> used for signing your <em>own</em> user-signing and
+self-signing key, it is rarely used, so the attack surface to obtain it is minimal. Optionally, device
+keys themselves can sign their own master key.</p>
+<p><img src="/docs/guides/img/matrix-cross-signing-key-diagram.svg" alt="" />
+Graph from <a href="https://jcg.re/blog/quick-overview-matrix-cross-signing/">jcgruenhage's blog</a>, licensed as <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC-BY-SA-4.0</a>.</p>
+<p>So, in addition to the device keys of others, we also need to fetch their cross-signing
+keys. We can then verify their signatures!</p>
+<h3 id="cross-signing-keys">Cross-Signing keys</h3>
+<p>In addition to device keys, cross-signing keys are introduced. Instead of being identified by a
+key ID, they are identified via their public key. In order to prevent collisions, homeservers
+<em>must</em> make sure that no user has a key ID that is the same as a cross-signing key's public key. That
+is handy, as it means that as clients, we don't have to care about that part!</p>
+<h3 id="keeping-track-of-cross-signing-keys">Keeping track of cross-signing keys</h3>
+<p>Keeping track of cross-signing keys should be simple if you already do so for device keys. When a
+user is flagged as out-of-date, you should already query their keys again with <code>POST /_matrix/client/r0/keys/query</code>
+and update your <code>device_keys</code> dictionary accordingly, just as before. This endpoint should now also
+return the <code>master_keys</code>, <code>self_signing_keys</code> and <code>user_signing_keys</code> of a user, given they are using
+cross-signing. Simply update and store this information locally as well. The format of these are
+pretty similar to the <code>device_keys</code> dictionary:</p>
+<pre data-lang="json" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-json "><code class="language-json" data-lang="json"><span>{
+</span><span>  </span><span style="color:#d69d85;">&quot;self_signing_keys&quot;</span><span>: {
+</span><span>    </span><span style="color:#d69d85;">&quot;@bob:example.org&quot;</span><span>: {
+</span><span>      </span><span style="color:#d69d85;">&quot;user_id&quot;</span><span>: </span><span style="color:#d69d85;">&quot;@bob:example.org&quot;</span><span>,
+</span><span>      </span><span style="color:#d69d85;">&quot;usage&quot;</span><span>: [</span><span style="color:#d69d85;">&quot;self_signing&quot;</span><span>],
+</span><span>      </span><span style="color:#d69d85;">&quot;keys&quot;</span><span>: {
+</span><span>        </span><span style="color:#d69d85;">&quot;ed25519:base64+self+signing+public+key&quot;</span><span>: </span><span style="color:#d69d85;">&quot;base64+self+signing+public+key&quot;
+</span><span>      },
+</span><span>      </span><span style="color:#d69d85;">&quot;signatures&quot;</span><span>: {
+</span><span>        </span><span style="color:#d69d85;">&quot;@bob:example.org&quot;</span><span>: {
+</span><span>          </span><span style="color:#d69d85;">&quot;ed25519:base64+master+public+key&quot;</span><span>: </span><span style="color:#d69d85;">&quot;signature+of+self+signing+key&quot;
+</span><span>        }
+</span><span>      }
+</span><span>    }
+</span><span>  }
+</span><span>}
+</span></code></pre>
+<p>In this example we have Bob's self-signing key which has a signature of Bob's master key. The <code>usage</code>
+array additionally indicates the usage of the key, which is <code>master</code>, <code>self_signing</code> or <code>user_signing</code>.
+While for cross-signing there should only be one item in <code>usage</code>, in the future some other keys might be added
+that could have multiple uses. As such, an array is used here to future-proof things.</p>
+<p>The <code>master_keys</code> and <code>user_signing_keys</code> sections look the same.</p>
+<h3 id="changes-to-key-verification">Changes to key verification</h3>
+<p>Now, there is a slight change you need to perform to the key verification, specifically SAS, that we previously
+implemented: In the <code>m.key.verification.mac</code> reply, there will be a dictionary of MACs to verify certain
+keys. These don't only contain device keys, but also contain cross-signing keys, identified by
+<code>ed25519:base64+master+public+key</code>, etc. Be sure to flag those cross-signing keys as verified, too.</p>
+<h3 id="getting-the-verification-level-based-on-cross-signing-status">Getting the verification level based on cross-signing status</h3>
+<p>If you want to know if a device key is verified, just recursively check all of the <em>valid</em> signatures
+of the keys, until you hit a key that is already verified! This means that given a signature chain as
+follows (assuming you are Alice):</p>
+<p>Alice' Master Key --&gt; Alice' User-Signing Key --&gt; Bob's Master Key --&gt; Bob's Self-Signing Key --&gt; Bob's Tablet</p>
+<p>And you have previously (via e.g. emoji verification) verified Alice's (your own) master key, and want
+to know if Bob's Tablet is verified, you propagate that chain backwards, provided all the signatures
+are valid, until you hit your verified master Key.</p>
+<h3 id="verifying-a-signature">Verifying a signature</h3>
+<p>Libolm to the rescue! It has a method which makes verifying signatures easy! If you have key A and want
+to verify the signature that key B added, you will have to do the following:</p>
+<ol>
+<li>In the key A <code>signatures</code> dict, find the entry for key B and note down the signature.</li>
+<li>Create the string for verification: take key A's complete dictionary, strip off of the <code>unsigned</code>
+and <code>signature</code> dictionaries and convert it into canonical json.</li>
+<li>Use <code>olmutil.ed25519_verify(key_b_pub_key, canonical_json, signature);</code> to verify the signature:
+note that this will throw an error if invalid, and none if valid.</li>
+<li>That's it, you have verified the signature!</li>
+</ol>
+<h3 id="check-if-a-user-is-verified">Check if a <em>user</em> is verified</h3>
+<p>To see if a user is verified, simply check if their master key is verified! You can find the master
+key of a user by looking for a cross-signing key which has <code>master</code> within their <code>usage</code> array.</p>
+<p>If a user is verified but all of their devices are not, it is a good idea to display a warning.</p>
+<h3 id="things-to-look-out-for-1">Things to look out for</h3>
+<ol>
+<li><em>Never</em> trust invalid signatures. Just treat them as if there was no signature at all.</li>
+<li>Signature loops <em>will</em> exist. Add infinite recursion protection to your signature loop checking.</li>
+<li>While signature checking doesn't seem to be expensive, it might be a good idea to cache the results
+in-memory while the program is running.</li>
+<li>Be sure to query the keys for a user if you are told in the sync loop they need updating (if you
+implemented this correctly previously, nothing changes here).</li>
+<li>Instead of recursing until you have found a valid key, you could also recurse until you find your own,
+verified master key. This in practice, however, does not allow easy migration between device-device verification and
+cross-signing verification. Recursing until you hit a verified device is thus preferred.</li>
+</ol>
+<h2 id="3-implementing-ssss">3. Implementing SSSS</h2>
+<p>SSSS is short for Secure Secret Storage and Sharing, which provides a method of storing secret data
+on the server, without the server administrator or anyone else having access to that data. As such,
+this is optimal for storing the private keys for cross-signing on the server so that all your devices
+can use them later on to generate signatures, and thus verify other people.</p>
+<p>Unfortunately there doesn't seem to be any help from libolm for implementing SSSS so this will
+become rather cryptographic-y to implement. You will mainly need to find libraries for the following
+functions:</p>
+<ol>
+<li>AES-CTR encryption and decryption</li>
+<li>SHA256 HMAC calculation</li>
+<li>Base58 encoding and decoding</li>
+<li>PBKDF2</li>
+</ol>
+<p>As the &quot;sharing&quot; aspect is simpler to implement, here it will be implemented first. It can later on
+also be easily used to debug &amp; verify the functionality of the &quot;secure secret storage&quot; part. It is,
+however, still crucial to look at the general structure of the SSSS first.</p>
+<p>TODO: This section doesn't list yet how to <em>create</em> keys, add this later on.</p>
+<h3 id="general-structure-of-ssss-storage">General Structure of SSSS storage</h3>
+<p>SSSS depends on keys with which the actual secrets are being encrypted to be stored. These keys need
+to be provided by the client. There is, however, metadata information on the keys in a users account_data.
+For that, there are entries <code>m.secret_storage.key.&lt;keyId&gt;</code>, where the keyId is the unique ID of said
+key. In addition, there is an <code>m.secret_storage.default_key</code> which denotes the default key to use.</p>
+<p>The <code>m.secret_storage.&lt;keyId&gt;</code> objects contain a MAC and an IV to easily verify if you have the correct
+key, and, in case if there is also a password associated with it, some information on how to generate
+the key out of the password. More specific on that later.</p>
+<p>Secrets, such as the private keys for cross-signing, can only be strings (not binary data) and are
+stored encrypted in the account data of your account. For example, the <code>m.cross_signing.master</code> entry
+in account data is the private key of your master cross-signing key. Each secret can be encrypted by
+multiple SSS keys. Inside the <code>encrypted</code> object there is a mapping of key ID to the ciphertext, iv
+and MAC of the secret. A content could look as following:</p>
+<pre data-lang="json" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-json "><code class="language-json" data-lang="json"><span>{
+</span><span>  </span><span style="color:#d69d85;">&quot;encrypted&quot;</span><span>: {
+</span><span>    </span><span style="color:#d69d85;">&quot;awesomeKeyId&quot;</span><span>: {
+</span><span>      </span><span style="color:#d69d85;">&quot;iv&quot;</span><span>: </span><span style="color:#d69d85;">&quot;supercooliv&quot;</span><span>,
+</span><span>      </span><span style="color:#d69d85;">&quot;ciphertext&quot;</span><span>: </span><span style="color:#d69d85;">&quot;secretciphertext&quot;</span><span>,
+</span><span>      </span><span style="color:#d69d85;">&quot;mac&quot;</span><span>: </span><span style="color:#d69d85;">&quot;macthingy&quot;
+</span><span>    }
+</span><span>  }
+</span><span>}
+</span></code></pre>
+<h3 id="caching-of-secrets">Caching of secrets</h3>
+<p>You have to access some secrets comparatively often. As fetching from the store requires to get a key
+for said secret, that requires user interaction. As such, if a client can store a secret reasonably
+securely client-sided, the client could cache some secrets locally. As this introduces an attack surface
+of a third party manually reading out the clients cache, but also improves user experience to not have
+to ask the user for their secret store passphrase, each client will have to decide which secrets to
+cache and which not, based on what kind of security it can offer. For cross-signing the needed secrets
+would be <code>m.cross_signing.self_signing</code>, <code>m.cross_signing.user_signing</code> and for online key backup that
+would be <code>m.megolm_backup.v1</code>. Blindly caching all secrets is a security risk, as some secrets such
+as <code>m.cross_signing.master</code> are highly sensitive and shouldn't be stored in plaintext on any disk, ever.</p>
+<p>You should always keep a whitelist of what secrets to cache, never a blacklist, as in the future some
+new highly-sensitive secret may be added.</p>
+<p>As a secret might change in the future, it might be a good idea to store in the secret cache some more
+information along with the secret - perhaps its ciphertext with key id? So that if either key id or
+ciphertext changes, you know that you'll have to fetch the secret from the store again, and your cache
+is out-of-date.</p>
+<h3 id="sharing">Sharing</h3>
+<p>The same limitations of caching apply to sharing: It only makes sense to request secrets or share
+secrets that are cacheable, as else potentially sensitive data is leaked, or it requires user interaction
+to load those secrets in the first place anyways.</p>
+<p>Secrets can only be requested from other devices of your account that you already have verified, be
+it via cross-signing or directly. As such, it might be a good idea to request all cacheable secrets
+after successfully completing verification with yourself, as far as that also verifies your own master
+key (else the other client likely doesn't have cross signing and thus requesting secrets doesn't make
+much sense). For that you would also want to add a short delay prior requesting secrets, just to be
+sure that the other device has already finished processing the verification.</p>
+<p>You request a secret by sending an <code>m.secret.request</code>, and you receive it back via an <code>m.secret.send</code>
+to_device event. Please keep in mind that <code>m.secret.send</code> has to be encrypted! To do your part in the sharing
+of secrets, you should also appropriately reply to a sharing request of another of your verified devices,
+provided you have that secret cached.</p>
+<h4 id="m-secret-request"><code>m.secret.request</code></h4>
+<p>This requests a secret from another device, or cancels a pending request.</p>
+<pre data-lang="json" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-json "><code class="language-json" data-lang="json"><span>{
+</span><span>  </span><span style="color:#d69d85;">&quot;action&quot;</span><span>: </span><span style="color:#d69d85;">&quot;request&quot;</span><span>, </span><span style="color:#608b4e;">// or request_cancellation
+</span><span>  </span><span style="color:#d69d85;">&quot;name&quot;</span><span>: </span><span style="color:#d69d85;">&quot;m.cross_signing.self_signing&quot;</span><span>, </span><span style="color:#608b4e;">// the name of the secret you are trying to receive
+</span><span>  </span><span style="color:#d69d85;">&quot;requesting_device_id&quot;</span><span>: </span><span style="color:#d69d85;">&quot;&lt;your own device id&gt;&quot;</span><span>,
+</span><span>  </span><span style="color:#d69d85;">&quot;request_id&quot;</span><span>: </span><span style="color:#d69d85;">&quot;&lt;unique string to identify this request&gt;&quot;
+</span><span>}
+</span></code></pre>
+<h4 id="m-secret-send"><code>m.secret.send</code></h4>
+<p>This sends / shares a secret with another device</p>
+<pre data-lang="json" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-json "><code class="language-json" data-lang="json"><span>{
+</span><span>  </span><span style="color:#d69d85;">&quot;request_id&quot;</span><span>: </span><span style="color:#d69d85;">&quot;&lt;same request id as received in m.secret.request&gt;&quot;</span><span>,
+</span><span>  </span><span style="color:#d69d85;">&quot;secret&quot;</span><span>: </span><span style="color:#d69d85;">&quot;&lt;contents of the secret&gt;&quot;
+</span><span>}
+</span></code></pre>
+<h4 id="asking-for-a-secret">Asking for a secret</h4>
+<ol>
+<li>Only ask your own, verified devices for a secret. Be reasonably sure that they might have it (e.g.
+the other device sent you your master key to verify).</li>
+<li>When receiving a secret, verify that it was encrypted</li>
+<li>When receiving a secret, verify that it was from one of the devices you sent the request to (possible
+via <code>sender_key</code> of the encrypted to_device content).</li>
+<li>Optionally, validate the secrets you received: In the case of the cross-signing and the online key
+backup secrets, calculate the public key out of the received private key and compare them with the
+advertised values.</li>
+<li>Send a request cancellation to all other devices you sent the request to but haven't heard back from
+yet.</li>
+</ol>
+<h4 id="sharing-a-secret">Sharing a secret</h4>
+<ol>
+<li>Make sure the request is coming from ourself</li>
+<li>Make sure that that particular device is verified</li>
+<li>Make sure we have the secret cached</li>
+<li>Make sure the request hasn't been canceled yet</li>
+<li>Make sure that the shared secret is verified</li>
+</ol>
+<h3 id="opening-keys">Opening keys</h3>
+<p>To be able to access stored secrets, or store some yourself, you need to be able to access the SSSS
+keys. This is done either by passphrase or by keyfile, afterwards the <code>m.secret_storage.key.&lt;keyId&gt;</code> is
+used to verify the validity of the key.</p>
+<h4 id="keyfile">Keyfile</h4>
+<p>The contents of the keyfile is just base58-encoded data. They consist of two prefix bytes, <code>0x8B</code> and
+<code>0x01</code>. Additionally they contain a parity byte all at the end, which is all other bytes XOR'd onto
+each other. The key itself is base58-encoded chunked into characters of four. As such, the key can
+easily be decoded like the following:</p>
+<pre data-lang="dart" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-dart "><code class="language-dart" data-lang="dart"><span>Uint8List decodeRecoveryKey(String recoveryKey) {
+</span><span>  </span><span style="color:#608b4e;">// don&#39;t forget to strip all spaces before base58 decoding!
+</span><span>  </span><span style="color:#569cd6;">final</span><span> result = base58.decode(recoveryKey.replaceAll(</span><span style="color:#d69d85;">&#39; &#39;</span><span>, </span><span style="color:#d69d85;">&#39;&#39;</span><span>));
+</span><span>
+</span><span>  </span><span style="color:#608b4e;">// check the parity byte
+</span><span>  </span><span style="color:#569cd6;">var</span><span> parity = </span><span style="color:#b5cea8;">0</span><span>;
+</span><span>  </span><span style="color:#569cd6;">for</span><span> (</span><span style="color:#569cd6;">final</span><span> b </span><span style="color:#569cd6;">in</span><span> result) {
+</span><span>    parity </span><span style="color:#569cd6;">^</span><span>= b;
+</span><span>  }
+</span><span>  </span><span style="color:#608b4e;">// as we xor&#39;d ALL the bytes, including the parity byte, the result should be zero!
+</span><span>  </span><span style="color:#569cd6;">if</span><span> (parity != </span><span style="color:#b5cea8;">0</span><span>) {
+</span><span>    </span><span style="color:#569cd6;">throw </span><span style="color:#d69d85;">&#39;Incorrect parity&#39;</span><span>;
+</span><span>  }
+</span><span>
+</span><span>  </span><span style="color:#608b4e;">// check if we have the correct header prefix
+</span><span>  </span><span style="color:#569cd6;">var </span><span>OLM_RECOVERY_KEY_PREFIX = [</span><span style="color:#b5cea8;">0x8B</span><span>, </span><span style="color:#b5cea8;">0x01</span><span>];
+</span><span>  </span><span style="color:#569cd6;">for</span><span> (</span><span style="color:#569cd6;">var</span><span> i = </span><span style="color:#b5cea8;">0</span><span>; i &lt; OLM_RECOVERY_KEY_PREFIX.length; i</span><span style="color:#569cd6;">++</span><span>) {
+</span><span>    </span><span style="color:#569cd6;">if</span><span> (result[i] != OLM_RECOVERY_KEY_PREFIX[i]) {
+</span><span>      </span><span style="color:#569cd6;">throw </span><span style="color:#d69d85;">&#39;Incorrect prefix&#39;</span><span>;
+</span><span>    }
+</span><span>  }
+</span><span>
+</span><span>  </span><span style="color:#608b4e;">// verify that the length of the key is correct
+</span><span>  </span><span style="color:#569cd6;">var </span><span>OLM_PRIVATE_KEY_LENGTH = </span><span style="color:#b5cea8;">32</span><span>; </span><span style="color:#608b4e;">// can also be fetched from olm somehow...
+</span><span>  </span><span style="color:#569cd6;">if</span><span> (result.length !=
+</span><span>      OLM_RECOVERY_KEY_PREFIX.length + OLM_PRIVATE_KEY_LENGTH + </span><span style="color:#b5cea8;">1</span><span>) {
+</span><span>    </span><span style="color:#569cd6;">throw </span><span style="color:#d69d85;">&#39;Incorrect length&#39;</span><span>;
+</span><span>  }
+</span><span>
+</span><span>  </span><span style="color:#608b4e;">// and finally, strip the prefix and the parity byte to return the raw key
+</span><span>  </span><span style="color:#569cd6;">return </span><span>Uint8List.fromList(result.sublist(OLM_RECOVERY_KEY_PREFIX.length,
+</span><span>      OLM_RECOVERY_KEY_PREFIX.length + OLM_PRIVATE_KEY_LENGTH));
+</span><span>  }
+</span><span>}
+</span></code></pre>
+<h4 id="passphrase">Passphrase</h4>
+<p>The <code>passphrase</code> block of the key information in the account data specifies information on how to
+generate the key off of the password. It an look as follows:</p>
+<pre data-lang="json" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-json "><code class="language-json" data-lang="json"><span style="color:#d69d85;">&quot;passphrase&quot;</span><span>: {
+</span><span>  </span><span style="color:#d69d85;">&quot;algorithm&quot;</span><span>: </span><span style="color:#d69d85;">&quot;m.pbkdf2&quot;</span><span>, </span><span style="color:#608b4e;">// currently only this one is supported
+</span><span>  </span><span style="color:#d69d85;">&quot;iterations&quot;</span><span>: </span><span style="color:#b5cea8;">500000</span><span>,
+</span><span>  </span><span style="color:#d69d85;">&quot;salt&quot;</span><span>: </span><span style="color:#d69d85;">&quot;&lt;some-random-string&gt;&quot;</span><span>,
+</span><span>  </span><span style="color:#d69d85;">&quot;bits&quot;</span><span>: </span><span style="color:#b5cea8;">256 </span><span style="color:#608b4e;">// optional, defaults to 256
+</span><span>}
+</span></code></pre>
+<p>Out of this information we need the iteration, the salt and the number of bits for PBKDF2. Simply use
+these parameters with the hash algorithm SHA-512 to generate a key:</p>
+<pre data-lang="dart" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-dart "><code class="language-dart" data-lang="dart"><span>Uint8List keyFromPassphrase(String passphrase, _PassphraseInfo info) {
+</span><span>  </span><span style="color:#569cd6;">if</span><span> (info.algorithm != </span><span style="color:#d69d85;">&#39;m.pbkdf2&#39;</span><span>) {
+</span><span>    </span><span style="color:#569cd6;">throw </span><span style="color:#d69d85;">&#39;Unknown algorithm&#39;</span><span>;
+</span><span>  }
+</span><span>  </span><span style="color:#569cd6;">var</span><span> generator = PBKDF2(hashAlgorithm</span><span style="color:#569cd6;">:</span><span> sha512);
+</span><span>  </span><span style="color:#569cd6;">return </span><span>Uint8List.fromList(generator.generateKey(passphrase, info.salt,
+</span><span>      info.iterations, info.bits != </span><span style="color:#569cd6;">null ?</span><span> info.bits / </span><span style="color:#b5cea8;">8 </span><span style="color:#569cd6;">: </span><span style="color:#b5cea8;">32</span><span>));
+</span><span>}
+</span></code></pre>
+<p>Important: Some PBKDF2 implementations take the length in bytes (like here), while others take
+the length in bits. Divide by 8 appropriately, and only when needed.</p>
+<h4 id="validating-the-generated-key">Validating the generated key</h4>
+<p>To know if the right keyfile was supplied or if the user entered the right password, we need to verify
+the resulting keys validity. For that, the other information of the keys object in account data is
+relevant:</p>
+<pre data-lang="json" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-json "><code class="language-json" data-lang="json"><span>{
+</span><span>  </span><span style="color:#d69d85;">&quot;algorithm&quot;</span><span>: </span><span style="color:#d69d85;">&quot;m.secret_storage.v1.aes-hmac-sha2&quot;</span><span>, </span><span style="color:#608b4e;">// some old accounts might use a different algorithm, which is not covered in this guide
+</span><span>  </span><span style="color:#d69d85;">&quot;iv&quot;</span><span>: </span><span style="color:#d69d85;">&quot;&lt;base64 encoded iv&gt;&quot;</span><span>,
+</span><span>  </span><span style="color:#d69d85;">&quot;mac&quot;</span><span>: </span><span style="color:#d69d85;">&quot;&lt;bae64 encoded MAC&gt;&quot;
+</span><span>}
+</span></code></pre>
+<p>To verify the key, encrypt 32 bytes of 0 with a blank name and the IV of the key information. Compare
+the resulting MACs with each other. Be sure to compare the <em>unpadded</em> Base64-encoded MACs, so strip
+all the trailing <code>=</code>'s! The encryption itself will be outlined below.</p>
+<pre data-lang="dart" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-dart "><code class="language-dart" data-lang="dart"><span>bool checkKey(Uint8List key, AccountData keyData) {
+</span><span>  </span><span style="color:#569cd6;">var</span><span> info = keyData.content;
+</span><span>  </span><span style="color:#569cd6;">if</span><span> (info[</span><span style="color:#d69d85;">&#39;algorithm&#39;</span><span>] == </span><span style="color:#d69d85;">&#39;m.secret_storage.v1.aes-hmac-sha2&#39;</span><span>) {
+</span><span>    </span><span style="color:#569cd6;">if</span><span> ((info[</span><span style="color:#d69d85;">&#39;mac&#39;</span><span>] </span><span style="color:#569cd6;">is </span><span>String) </span><span style="color:#569cd6;">&amp;&amp;</span><span> (info[</span><span style="color:#d69d85;">&#39;iv&#39;</span><span>] </span><span style="color:#569cd6;">is </span><span>String)) {
+</span><span>      </span><span style="color:#608b4e;">// ZERO_STR are 32 bytes of zero. We encrypt with our generated key, a blank name and the iv of the event
+</span><span>      </span><span style="color:#569cd6;">var</span><span> encrypted = encryptAes(ZERO_STR, key, </span><span style="color:#d69d85;">&#39;&#39;</span><span>, info[</span><span style="color:#d69d85;">&#39;iv&#39;</span><span>]);
+</span><span>      </span><span style="color:#608b4e;">// stripping all the trailing = of the MACs prior comparing
+</span><span>      </span><span style="color:#569cd6;">return</span><span> info[</span><span style="color:#d69d85;">&#39;mac&#39;</span><span>].replaceAll(RegExp(</span><span style="color:#d69d85;">r&#39;=+$&#39;</span><span>), </span><span style="color:#d69d85;">&#39;&#39;</span><span>) ==
+</span><span>          encrypted.mac.replaceAll(RegExp(</span><span style="color:#d69d85;">r&#39;=+$&#39;</span><span>), </span><span style="color:#d69d85;">&#39;&#39;</span><span>);
+</span><span>    } </span><span style="color:#569cd6;">else</span><span> {
+</span><span>      </span><span style="color:#608b4e;">// no real information about the key, assume it is valid
+</span><span>      </span><span style="color:#569cd6;">return true</span><span>;
+</span><span>    }
+</span><span>  } </span><span style="color:#569cd6;">else</span><span> {
+</span><span>    </span><span style="color:#569cd6;">throw </span><span style="color:#d69d85;">&#39;Unknown Algorithm&#39;</span><span>;
+</span><span>  }
+</span><span>}
+</span></code></pre>
+<h3 id="encrypting-and-decrypting">Encrypting and decrypting</h3>
+<p>Both encrypting and decrypting is done with AES-CTR. Out of the secret key and the name of the secret
+using <a href="https://en.wikipedia.org/wiki/HKDF">HKDF</a> with SHA-256 both the actual AES key and the key for
+the MAC integrity is generated. IVs are randomly generated 16 bytes, with bit 63 set to 0. In the
+account data events of the secrets, the MAC, the IV and the ciphertext are all base64 encoded.</p>
+<p>Note: AES-CTR is a stream cipher, not a block cipher. As such, the input data is <em>unpadded</em>. If your
+library (incorrectly) does not properly handle that due to an invalid block, simply append prior
+en/decryption 0's to your data to fill up the input to a full number of blocks. One block here is
+typically 16 bytes in size. After en/decrypting, strip the extra bytes again. Please note that this
+method will <em>not</em> work with block ciphers (e.g. XTS), it is something specific to stream ciphers, such
+as CTR.</p>
+<h4 id="deriving-the-keys-using-hkdf">Deriving the keys using HKDF</h4>
+<p>As key deriving is needed for both encrypting and decrypting it makes sense to implement this first.
+If you have a working HKDF implementation, you can use that. If not, you can implement it yourself.
+HKDF is a series of specific HMAC-SHA256 MACs, as following:</p>
+<pre data-lang="dart" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-dart "><code class="language-dart" data-lang="dart"><span>_DerivedKeys deriveKeys(Uint8List key, String name) {
+</span><span>  </span><span style="color:#569cd6;">var</span><span> zerosalt = Uint8List(</span><span style="color:#b5cea8;">32</span><span>); </span><span style="color:#608b4e;">// generate 32 bytes of zero
+</span><span>  </span><span style="color:#608b4e;">// hash the key with the zeros as secret
+</span><span>  </span><span style="color:#569cd6;">var</span><span> prk = Hmac(sha256, zerosalt).convert(key);
+</span><span>
+</span><span>  </span><span style="color:#569cd6;">var</span><span> b = Uint8List(</span><span style="color:#b5cea8;">1</span><span>); </span><span style="color:#608b4e;">// generate one byte
+</span><span>  b[</span><span style="color:#b5cea8;">0</span><span>] = </span><span style="color:#b5cea8;">1</span><span>; </span><span style="color:#608b4e;">// and set it to one
+</span><span>  </span><span style="color:#608b4e;">// use the previously resulted MAC as key, and hash the name, with the one-byte added to the end
+</span><span>  </span><span style="color:#608b4e;">// the result is the aes key
+</span><span>  </span><span style="color:#569cd6;">final</span><span> aesKey = Hmac(sha256, prk.bytes).convert(utf8.encode(name) + b);
+</span><span>
+</span><span>  b[</span><span style="color:#b5cea8;">0</span><span>] = </span><span style="color:#b5cea8;">2</span><span>; </span><span style="color:#608b4e;">// set the byte to 2
+</span><span>  </span><span style="color:#608b4e;">// use the first computed MAC as a key, this time hashing the aes key plus the name plus the byte two
+</span><span>  </span><span style="color:#608b4e;">// the result is the HMAC key
+</span><span>  </span><span style="color:#569cd6;">var</span><span> hmacKey = Hmac(sha256, prk.bytes).convert(aesKey.bytes + utf8.encode(name) + b);
+</span><span>
+</span><span>  </span><span style="color:#608b4e;">// this just returns the raw, derived aes and HMAC keys in an object
+</span><span>  </span><span style="color:#569cd6;">return </span><span>_DerivedKeys(aesKey</span><span style="color:#569cd6;">:</span><span> aesKey.bytes, hmacKey</span><span style="color:#569cd6;">:</span><span> hmacKey.bytes);
+</span><span>}
+</span></code></pre>
+<h4 id="decrypting">Decrypting</h4>
+<p>Now, to decrypt, you just create a MAC with the HMAC key of the raw ciphertext, and compare it with
+the MAC stored in the account data secret. If it matches, you decrypt using AES-CTR. The name here
+is the name of the secret we want to decrypt. The resulting code could look as follows:</p>
+<pre data-lang="dart" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-dart "><code class="language-dart" data-lang="dart"><span>String decryptAes(_Encrypted data, Uint8List key, String name) {
+</span><span>  </span><span style="color:#608b4e;">// derive our keys using the before written function
+</span><span>  </span><span style="color:#569cd6;">var</span><span> keys = deriveKeys(key, name);
+</span><span>
+</span><span>  </span><span style="color:#608b4e;">// decode our ciphertext, as it is base64 encoded
+</span><span>  </span><span style="color:#569cd6;">var</span><span> cipher = base64.decode(data.ciphertext);
+</span><span>
+</span><span>  </span><span style="color:#608b4e;">// HMAC our cipher with the generated HMAC key, base64&#39;ing it afterwards
+</span><span>  </span><span style="color:#569cd6;">var</span><span> hmac = base64.encode(Hmac(sha256, keys.hmacKey).convert(cipher).bytes);
+</span><span>
+</span><span>  </span><span style="color:#608b4e;">// compare the resulted MAC with with the one stored, unpadding both encoded values
+</span><span>  </span><span style="color:#569cd6;">if</span><span> (hmac.replaceAll(RegExp(</span><span style="color:#d69d85;">r&#39;=+$&#39;</span><span>), </span><span style="color:#d69d85;">&#39;&#39;</span><span>) != data.mac.replaceAll(RegExp(</span><span style="color:#d69d85;">r&#39;=+$&#39;</span><span>), </span><span style="color:#d69d85;">&#39;&#39;</span><span>)) {
+</span><span>    </span><span style="color:#569cd6;">throw </span><span style="color:#d69d85;">&#39;Bad MAC&#39;</span><span>;
+</span><span>  }
+</span><span>
+</span><span>  </span><span style="color:#608b4e;">// decrypt the cipher with the generated aesKey, using AES-CTR and the supplied IV
+</span><span>  </span><span style="color:#569cd6;">var</span><span> decipher = AES(Key(keys.aesKey), mode</span><span style="color:#569cd6;">: </span><span>AESMode.ctr, padding</span><span style="color:#569cd6;">: null</span><span>)
+</span><span>      .decrypt(Encrypted(cipher), iv</span><span style="color:#569cd6;">: </span><span>IV(base64.decode(data.iv)));
+</span><span>
+</span><span>  </span><span style="color:#608b4e;">// and return the decrypted secret
+</span><span>  </span><span style="color:#569cd6;">return </span><span>String.fromCharCodes(decipher);
+</span><span>}
+</span></code></pre>
+<h4 id="encrypting">Encrypting</h4>
+<p>Encrypting is rather similar. If no IV is specified, you have to randomly generate 16 bytes and set
+bit 63 to 0, as mentioned above. Again, we derive our AES and HMAC keys off of the supplied key and
+the name. Then the ciphertext and the HMAC is computed, which is can be then stored later on. The name
+here is the name of the secret we want to encrypt. The resulting code could look as follows:</p>
+<pre data-lang="dart" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-dart "><code class="language-dart" data-lang="dart"><span>_Encrypted encryptAes(String data, Uint8List key, String name, [String ivStr]) {
+</span><span>  Uint8List iv;
+</span><span>  </span><span style="color:#569cd6;">if</span><span> (ivStr != </span><span style="color:#569cd6;">null</span><span>) {
+</span><span>    </span><span style="color:#608b4e;">// if we have an IV already, let&#39;s just use this
+</span><span>    iv = base64.decode(ivStr);
+</span><span>  } </span><span style="color:#569cd6;">else</span><span> {
+</span><span>    </span><span style="color:#608b4e;">// if we don&#39;t have one, generate a random 16-byte IV
+</span><span>    iv = Uint8List.fromList(SecureRandom(</span><span style="color:#b5cea8;">16</span><span>).bytes);
+</span><span>  }
+</span><span>  </span><span style="color:#608b4e;">// And don&#39;t forget to set bit 63 of the IV to zero
+</span><span>  iv[</span><span style="color:#b5cea8;">8</span><span>] </span><span style="color:#569cd6;">&amp;</span><span>= </span><span style="color:#b5cea8;">0x7f</span><span>;
+</span><span>
+</span><span>  </span><span style="color:#608b4e;">// derive our AES and HMAC keys using the before written function
+</span><span>  </span><span style="color:#569cd6;">var</span><span> keys = deriveKeys(key, name);
+</span><span>
+</span><span>  </span><span style="color:#608b4e;">// get our plain string (utf8) into bytes
+</span><span>  </span><span style="color:#569cd6;">var</span><span> plain = Uint8List.fromList(utf8.encode(data));
+</span><span>
+</span><span>  </span><span style="color:#608b4e;">// encrypt our plain text, using unpadded AES-CTR, with our aesKey and our (possibly generated) IV
+</span><span>  </span><span style="color:#569cd6;">var</span><span> cipher = AES(Key(keys.aesKey), mode</span><span style="color:#569cd6;">: </span><span>AESMode.ctr, padding</span><span style="color:#569cd6;">: null</span><span>).encrypt(plain, iv</span><span style="color:#569cd6;">: </span><span>IV(iv)).bytes;
+</span><span>
+</span><span>  </span><span style="color:#608b4e;">// calculate the HMAC of the resulting cipher, using the hmacKey
+</span><span>  </span><span style="color:#569cd6;">var</span><span> hmac = Hmac(sha256, keys.hmacKey).convert(cipher);
+</span><span>
+</span><span>  </span><span style="color:#608b4e;">// base64 the iv, the cipher and the MAC, returning it all
+</span><span>  </span><span style="color:#569cd6;">return </span><span>_Encrypted(
+</span><span>    iv</span><span style="color:#569cd6;">:</span><span> base64.encode(iv),
+</span><span>    ciphertext</span><span style="color:#569cd6;">:</span><span> base64.encode(cipher),
+</span><span>    mac</span><span style="color:#569cd6;">:</span><span> base64.encode(hmac.bytes),
+</span><span>  );
+</span><span>}
+</span></code></pre>
+<h4 id="storing-a-secret">Storing a secret</h4>
+<p>To store a secret, just encrypt it and save the outcome to the account data, using the format mentioned
+above.</p>
+<h4 id="debugging-hints">Debugging hints</h4>
+<p>Debugging can be hard. If you successfully encrypt and decrypt a secret using your methods, how do
+you know that you followed through implementation correctly and didn't just e.g. derive the keys wrong?
+To mitigate that, you could receive a secret (e.g. <code>m.cross_signing.self_signing</code>) via sharing from
+another device, and then compare that received value with what is stored in SSSS. If your decryption
+works properly, they should match up. If you <em>then</em> can successfully encrypt and decrypt something,
+that means your encryption is working, too.</p>
+<p>As using a keyfile is simpler in implementation than using password, you could also test with keyfile
+first, and only after that is working fine, debug any errors you might have in deriving the key from
+the password.</p>
+<h3 id="things-to-look-out-for-2">Things to look out for</h3>
+<ul>
+<li><em>Only</em> cache a whitelisted set of secrets, that is <code>m.cross_signing.self_signing</code>,
+<code>m.cross_signing.user_signing</code> and <code>m.megolm_backup.v1</code>.</li>
+<li>When fetching a secret from the store that is cacheable - cache it!</li>
+<li>Only share secrets with own devices you trust.</li>
+<li>Only request secrets from own devices you trust.</li>
+</ul>
+<h2 id="4-signing-of-other-keys">4. Signing of other keys</h2>
+<p>At this point you already display the verification status of others based on cross signing and are
+able to access your own private keys - either cached in some way, or you decrypt them from SSSS, or
+you request them from other devices via SSSS as outlined above.</p>
+<p>This means that now you have the ability to sign other peoples keys! This is an important step - that
+way when you verify other people, you can also sign their master key, so that other of your own devices
+will see all of their other devices verified.</p>
+<h3 id="which-keys-to-sign">Which keys to sign</h3>
+<p>This step is rather simple: When successfully verifying either another of your own devices or another
+person via interactive verification, you take all the devices you verify and (potentially) all the
+devices you receive, be it device keys or cross signing keys, and sign them with one of your own keys:</p>
+<ol>
+<li>If you receive your own master key, you sign it with your own device key</li>
+<li>If you receive a device key of your own account, you sign it with your own self-signing key</li>
+<li>If you receive another persons master key, you sign it with your own user-signing key</li>
+</ol>
+<p>All other keys received, that is device keys of other people, are <em>not</em> signed.</p>
+<h3 id="how-to-sign-a-key">How to sign a key</h3>
+<p>To sign a key, you take the device key object, or the cross signing key object, remove the <code>unsigned</code>
+and <code>signature</code> keys and sign the canonical json encoded object. Afterwards you upload them to the
+server.</p>
+<p>For example, you want to sign the following device key:</p>
+<pre data-lang="json" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-json "><code class="language-json" data-lang="json"><span>{
+</span><span>  </span><span style="color:#d69d85;">&quot;user_id&quot;</span><span>: </span><span style="color:#d69d85;">&quot;@alice:example.com&quot;</span><span>,
+</span><span>  </span><span style="color:#d69d85;">&quot;device_id&quot;</span><span>: </span><span style="color:#d69d85;">&quot;JLAFKJWSCS&quot;</span><span>,
+</span><span>  </span><span style="color:#d69d85;">&quot;algorithms&quot;</span><span>: [
+</span><span>    </span><span style="color:#d69d85;">&quot;m.olm.v1.curve25519-aes-sha2&quot;</span><span>,
+</span><span>    </span><span style="color:#d69d85;">&quot;m.megolm.v1.aes-sha2&quot;
+</span><span>  ],
+</span><span>  </span><span style="color:#d69d85;">&quot;keys&quot;</span><span>: {
+</span><span>    </span><span style="color:#d69d85;">&quot;curve25519:JLAFKJWSCS&quot;</span><span>:
+</span><span>        </span><span style="color:#d69d85;">&quot;3C5BFWi2Y8MaVvjM8M22DBmh24PmgR0nPvJOIArzgyI&quot;</span><span>,
+</span><span>    </span><span style="color:#d69d85;">&quot;ed25519:JLAFKJWSCS&quot;</span><span>:
+</span><span>        </span><span style="color:#d69d85;">&quot;lEuiRJBit0IG6nUf5pUzWTUEsRVVe/HJkoKuEww9ULI&quot;
+</span><span>  },
+</span><span>  </span><span style="color:#d69d85;">&quot;signatures&quot;</span><span>: {
+</span><span>    </span><span style="color:#d69d85;">&quot;@alice:example.com&quot;</span><span>: {
+</span><span>      </span><span style="color:#d69d85;">&quot;ed25519:JLAFKJWSCS&quot;</span><span>:
+</span><span>          </span><span style="color:#d69d85;">&quot;dSO80A01XiigH3uBiDVx/EjzaoycHcjq9lfQX0uWsqxl2giMIiSPR8a4d291W1ihKJL/a+myXS367WT6NAIcBA&quot;
+</span><span>    }
+</span><span>  },
+</span><span>  </span><span style="color:#d69d85;">&quot;unsigned&quot;</span><span>: {</span><span style="color:#d69d85;">&quot;device_display_name&quot;</span><span>: </span><span style="color:#d69d85;">&quot;Alices mobile phone&quot;</span><span>}
+</span><span>}
+</span></code></pre>
+<p>Then you strip the <code>signatures</code> and <code>unsigned</code> keys:</p>
+<pre data-lang="json" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-json "><code class="language-json" data-lang="json"><span>{
+</span><span>  </span><span style="color:#d69d85;">&quot;user_id&quot;</span><span>: </span><span style="color:#d69d85;">&quot;@alice:example.com&quot;</span><span>,
+</span><span>  </span><span style="color:#d69d85;">&quot;device_id&quot;</span><span>: </span><span style="color:#d69d85;">&quot;JLAFKJWSCS&quot;</span><span>,
+</span><span>  </span><span style="color:#d69d85;">&quot;algorithms&quot;</span><span>: [
+</span><span>    </span><span style="color:#d69d85;">&quot;m.olm.v1.curve25519-aes-sha2&quot;</span><span>,
+</span><span>    </span><span style="color:#d69d85;">&quot;m.megolm.v1.aes-sha2&quot;
+</span><span>  ],
+</span><span>  </span><span style="color:#d69d85;">&quot;keys&quot;</span><span>: {
+</span><span>    </span><span style="color:#d69d85;">&quot;curve25519:JLAFKJWSCS&quot;</span><span>:
+</span><span>        </span><span style="color:#d69d85;">&quot;3C5BFWi2Y8MaVvjM8M22DBmh24PmgR0nPvJOIArzgyI&quot;</span><span>,
+</span><span>    </span><span style="color:#d69d85;">&quot;ed25519:JLAFKJWSCS&quot;</span><span>:
+</span><span>        </span><span style="color:#d69d85;">&quot;lEuiRJBit0IG6nUf5pUzWTUEsRVVe/HJkoKuEww9ULI&quot;
+</span><span>  }
+</span><span>}
+</span></code></pre>
+<p>And then the canonical json you need to sign is:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>{&quot;algorithms&quot;:[&quot;m.olm.v1.curve25519-aes-sha2&quot;,&quot;m.megolm.v1.aes-sha2&quot;],&quot;device_id&quot;:&quot;JLAFKJWSCS&quot;,&quot;keys&quot;:{&quot;curve25519:JLAFKJWSCS&quot;:&quot;3C5BFWi2Y8MaVvjM8M22DBmh24PmgR0nPvJOIArzgyI&quot;,&quot;ed25519:JLAFKJWSCS&quot;:&quot;lEuiRJBit0IG6nUf5pUzWTUEsRVVe/HJkoKuEww9ULI&quot;},&quot;user_id&quot;:&quot;@alice:example.com&quot;}
+</span></code></pre>
+<p>You can easily sign a key with libolm:</p>
+<pre data-lang="dart" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-dart "><code class="language-dart" data-lang="dart"><span>String sign(String canonicalJson, Uint8List key) {
+</span><span>  </span><span style="color:#569cd6;">final</span><span> keyObj = olm.PkSigning();
+</span><span>  </span><span style="color:#569cd6;">try</span><span> {
+</span><span>    keyObj.init_with_seed(key);
+</span><span>    </span><span style="color:#569cd6;">return</span><span> keyObj.sign(canonicalJson);
+</span><span>  } </span><span style="color:#569cd6;">finally</span><span> {
+</span><span>    keyObj.free();
+</span><span>  }
+</span><span>}
+</span></code></pre>
+<p>Keep in mind that the keys coming from SSSS are base64 encoded and olm needs a raw byte array, so you
+will have to base64 decode that!</p>
+<h3 id="uploading-signatures">Uploading signatures</h3>
+<p>After creating the signatures, you need to upload them! For that you bundle all the key objects with
+only your <em>new</em> signatures together and POST them to <code>/_matrix/client/unstable/keys/signatures/upload</code>.
+The payload is bundled by user ID, mapped to device ID or cross signing public key, which then contains
+the key objects with the new signatures. An example payload could thus look as following (taken from
+the spec):</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>POST /_matrix/client/unstable/keys/signatures/upload HTTP/1.1
+</span><span>Content-Type: application/json
+</span><span>
+</span><span>{
+</span><span>  &quot;@alice:example.com&quot;: {
+</span><span>    &quot;HIJKLMN&quot;: {
+</span><span>      &quot;user_id&quot;: &quot;@alice:example.com&quot;,
+</span><span>      &quot;device_id&quot;: &quot;HIJKLMN&quot;,
+</span><span>      &quot;algorithms&quot;: [
+</span><span>        &quot;m.olm.curve25519-aes-sha256&quot;,
+</span><span>        &quot;m.megolm.v1.aes-sha&quot;
+</span><span>      ],
+</span><span>      &quot;keys&quot;: {
+</span><span>        &quot;curve25519:HIJKLMN&quot;: &quot;base64+curve25519+key&quot;,
+</span><span>        &quot;ed25519:HIJKLMN&quot;: &quot;base64+ed25519+key&quot;
+</span><span>      },
+</span><span>      &quot;signatures&quot;: {
+</span><span>        &quot;@alice:example.com&quot;: {
+</span><span>          &quot;ed25519:base64+self+signing+public+key&quot;: &quot;base64+signature+of+HIJKLMN&quot;
+</span><span>        }
+</span><span>      }
+</span><span>    },
+</span><span>    &quot;base64+master+public+key&quot;: {
+</span><span>      &quot;user_id&quot;: &quot;@alice:example.com&quot;,
+</span><span>      &quot;usage&quot;: [
+</span><span>        &quot;master&quot;
+</span><span>      ],
+</span><span>      &quot;keys&quot;: {
+</span><span>        &quot;ed25519:base64+master+public+key&quot;: &quot;base64+master+public+key&quot;
+</span><span>      },
+</span><span>      &quot;signatures&quot;: {
+</span><span>        &quot;@alice:example.com&quot;: {
+</span><span>          &quot;ed25519:HIJKLMN&quot;: &quot;base64+signature+of+master+key&quot;
+</span><span>        }
+</span><span>      }
+</span><span>    }
+</span><span>  },
+</span><span>  &quot;@bob:example.com&quot;: {
+</span><span>    &quot;bobs+base64+master+public+key&quot;: {
+</span><span>      &quot;user_id&quot;: &quot;@bob:example.com&quot;,
+</span><span>      &quot;keys&quot;: {
+</span><span>        &quot;ed25519:bobs+base64+master+public+key&quot;: &quot;bobs+base64+master+public+key&quot;
+</span><span>      },
+</span><span>      &quot;usage&quot;: [
+</span><span>        &quot;master&quot;
+</span><span>      ],
+</span><span>      &quot;signatures&quot;: {
+</span><span>        &quot;@alice:example.com&quot;: {
+</span><span>          &quot;ed25519:base64+user+signing+public+key&quot;: &quot;base64+signature+of+bobs+master+key&quot;
+</span><span>        }
+</span><span>      }
+</span><span>    }
+</span><span>  }
+</span><span>}
+</span></code></pre>
+<h3 id="things-to-look-out-for-3">Things to look out for</h3>
+<ol>
+<li><em>Only</em> sign the keys mentioned above, do <em>not</em> sign any other keys.</li>
+<li>Use the correct key to sign the correct key type - self_signing for your own things, user_signing
+for other users and your own device key for your own master key.</li>
+<li>If you don't have the self_signing or user_signing keys cached, you might have to propmpt the user
+to open their SSSS with their recovery passphrase / key.</li>
+<li>If you are doing the first verification with an own device you don't have any cross-signing keys
+yet. Signing the other persons device key doesn't make much sense, as it is likely already signed.
+Instead, only sign your own master key in that specific case. In a following section will be discussed
+how you can detect whether you should do this behaviour - for now you could only sign other own
+device keys if you have your own self_signing key cached.</li>
+<li>Don't forget to request SSSS secrets over share requests when verifying an own device and you don't
+have them yet.</li>
+</ol>
+<h2 id="5-in-room-verification">5. In-room verification</h2>
+<p>The idea of cross-signing is that users verify other users. So far we only talked about devices
+verifying devices, though. For that, in-room verification is introduced. In-room verification is
+typically used when verifying <em>other</em> users. To not confused the user it should be considered to
+hide device verification for other users all-together, and to only show device verification for
+verification with yourself.</p>
+<h3 id="starting-in-room-verification">Starting in-room verification</h3>
+<p>In-room verification happens in a direct message room between two users. So, when Alice wants to verify
+Bob she has to find an existing direct message room she has with Bob, and, if there is none, create
+it and invite him.</p>
+<p>Afterwards, as with the to_device verification flow, messages are sent in the room specific to the
+verification flow chosen. There are, however, a few changes.</p>
+<h3 id="sending-a-verification-request">Sending a verification request</h3>
+<p>Instead of sending an event with type <code>m.verification.key.request</code>, a normal message event with the
+msgtype of <code>m.verification.key.request</code> is sent. As normal room messages already have an <code>origin_server_ts</code>
+the <code>timestamp</code> field is omitted. As transaction ID the event of this message sent is used. Additionally,
+a <code>from_device</code> and <code>to</code> field are added. A <code>body</code> is present as fallback for clients that do not
+support in-room verification.</p>
+<p>As the content of such an <code>m.room.message</code> for Alice to start an in-room verification request with Bob
+could look as follows:</p>
+<pre data-lang="json" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-json "><code class="language-json" data-lang="json"><span>{
+</span><span>  </span><span style="color:#d69d85;">&quot;methods&quot;</span><span>: [
+</span><span>    </span><span style="color:#d69d85;">&quot;m.sas.v1&quot;
+</span><span>  ],
+</span><span>  </span><span style="color:#d69d85;">&quot;from_device&quot;</span><span>: </span><span style="color:#d69d85;">&quot;MPLIJIXIIF&quot;</span><span>, </span><span style="color:#608b4e;">// The device ID of Alice device starting the request
+</span><span>  </span><span style="color:#d69d85;">&quot;msgtype&quot;</span><span>: </span><span style="color:#d69d85;">&quot;m.key.verification.request&quot;</span><span>,
+</span><span>  </span><span style="color:#d69d85;">&quot;to&quot;</span><span>: </span><span style="color:#d69d85;">&quot;@bob:example.org&quot;</span><span>, </span><span style="color:#608b4e;">// Bobs mxid
+</span><span>  </span><span style="color:#d69d85;">&quot;body&quot;</span><span>: </span><span style="color:#d69d85;">&quot;Attempting verification request. (m.key.verification.request) Apparently your client doesn&#39;t support this&quot;
+</span><span>}
+</span></code></pre>
+<h3 id="sending-other-payloads">Sending other payloads</h3>
+<p>Next messages are sent with the type being the type of that specific step, e.g. instead of sending
+a message as <code>m.room.message</code> as above, you send it as <code>m.key.verification.accept</code>. The <code>from_device</code>
+property is still added as usual.</p>
+<p>As transaction ID the event ID of the original request is used. That, however, is added in an <code>m.relates_to</code>
+block as follows:</p>
+<pre data-lang="json" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-json "><code class="language-json" data-lang="json"><span>{
+</span><span>  </span><span style="color:#608b4e;">// other content of that specific type
+</span><span>  </span><span style="color:#d69d85;">&quot;from_device&quot;</span><span>: </span><span style="color:#d69d85;">&quot;DEVICE_ID&quot;</span><span>,
+</span><span>  </span><span style="color:#d69d85;">&quot;m.relates_to&quot;</span><span>: {
+</span><span>    </span><span style="color:#d69d85;">&quot;rel_type&quot;</span><span>: </span><span style="color:#d69d85;">&quot;m.reference&quot;</span><span>,
+</span><span>    </span><span style="color:#d69d85;">&quot;event_id&quot;</span><span>: </span><span style="color:#d69d85;">&quot;$event_id_of_the_original_request&quot;
+</span><span>  }
+</span><span>}
+</span></code></pre>
+<h3 id="things-to-look-out-for-4">Things to look out for</h3>
+<ol>
+<li>Don't allow to directly verify other users devices</li>
+<li>Use in-room verification to verify other users, not specific devices</li>
+<li>Don't use in-room verification for self-verification, use device verification for that</li>
+<li>If Alice starts an in-room verification with Bob and Bob has two devices, only one of the devices,
+probably the one Bob uses to accept the verification, should send verification messages.</li>
+</ol>
+<h2 id="6-miscellaneous-cross-signing-things">6. Miscellaneous cross-signing things</h2>
+<p>Apart from bootstrapping cross-signing there are a few miscellaneous things that you can optionally
+implement to smoothen out the cross-signing experience for the user, things that don't justify their
+own section. As such, they are listed here.</p>
+<h3 id="detect-if-you-are-verified-for-others">Detect if you are verified for others</h3>
+<p>Your client might want to introduce a popup or something saying &quot;This session isn't verified for others.
+Please verify it with one of your devices.&quot;. For that, you need to detect if that is the case.</p>
+<p>To do so, you have to check the valid signature of your own device to your own master key. It should
+look as following, where <code>-&gt;</code> denotes &quot;is signed by&quot;:
+<code>Own device -&gt; Own self-signing key -&gt; Own master key</code></p>
+<p>You could re-use the same recursive method to determine if a device is verified as previously implemented,
+but only cut off if it reaches at your own verified master key, not at any verified key.</p>
+<h3 id="migration-of-previous-verifications">Migration of previous verifications</h3>
+<p>Let's say Alice and Bob previously met, before cross-signing and had manually verified their devices
+specifically. And now, both have enabled cross signing. Alice could detect Bobs master key as verified
+with the following signature chain, where <code>-&gt;</code> denotes &quot;is signed by&quot;:
+<code>Bobs master key -&gt; Bobs device key, previously verified</code></p>
+<p>Alice could then, based on this trust establishment, sign bobs master key with her own user-signing
+key, thus bootstrapping a cross-signing relationship from Alice to Bob.</p>
+<h3 id="self-verification">Self-Verification</h3>
+<p>Let's say you log into a new device but don't have any other device to verify with around. Don't worry,
+this is where self-verification comes in: You prompt the user their SSSS passphrase / recovery key
+and use that to verify and sign yourself:</p>
+<ol>
+<li>Ask for SSSS credentials</li>
+<li>Decrypt your master key (<code>m.cross_signing.master</code>), generate the public key out of it and compare
+it with your own advertised master ed25519 key. You can do this with libolms <code>olm.PkSigning()</code>,
+property <code>init_with_seed</code>. Keep in mind that you have to base64-decode the secret of SSSS!</li>
+<li>Decrypt your own self-signing key, and sign your own device key with it.</li>
+<li>Sign your own master key with your own device key.</li>
+<li>Upload the signatures.</li>
+<li>Fetch all entries from SSSS that you want to cache and cache them.</li>
+</ol>
+<h2 id="7-bootstrapping-ssss-and-cross-signing">7. Bootstrapping SSSS and cross-signing</h2>
+<p>By now your client should be able to cross-sign other devices, use SSSS if it is set up and sign other
+people via verification. To set up all the things that means to <em>bootstrap</em> them, you still rely on
+other clients, such as element.</p>
+<p>Bootstrapping is actually pretty straight-forward: You create all the keys, encrypt the cross-signing
+keys and set the events. So, a rough roadmap of what to do can look as following:</p>
+<ol>
+<li>Create a new SSSS key, be it via a randomly generated key or from a passphrase</li>
+<li>Generate a new, random, key ID for that key</li>
+<li>Set the information for that key in your account data</li>
+<li>Set the new key as default key</li>
+<li>Do other things (generate cross-signing keys, etc.) with that new key</li>
+</ol>
+<h3 id="creating-the-ssss-key-information">Creating the SSSS key information</h3>
+<p>Creating the key information for the new <code>m.secret_storage.key.&lt;keyid&gt;</code> event is basically just doing
+what you did before to verify if an entered key is correct, but now using the data to set the account
+data event. In the case of a passphrase you will have to generate a salt and iteration times yourself.
+All keys have 256 bits.</p>
+<p><strong>Important</strong>: Make sure that all random things generated here, be it keys or salts, are as securely
+random as possible. Many languages have libraries for creating more securely random data than the
+default pseudo random number generator.</p>
+<h4 id="key-from-passphrase">Key from passphrase</h4>
+<p>A reasonably-secure iteration number for PBKDF2 is <code>500000</code> (That is five-hundred thousand). The salt
+needs as much random data as our hash function. While PBKDF2 uses sha512 as hash, the generated key
+is only 256 bits long, so 256 bits should be reasonably secure. To make sure that the salt is usable,
+you can just base64 the randomly generated salt.</p>
+<p>After that, you use PBKDF2 to get the key from the passphrase, and calculate the MAC and IV.</p>
+<p>Code for generating the key could look as follows:</p>
+<pre data-lang="dart" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-dart "><code class="language-dart" data-lang="dart"><span style="color:#608b4e;">// &quot;passphrase&quot; is the passphrase by the user
+</span><span>
+</span><span style="color:#569cd6;">var</span><span> passphraseInfo = {
+</span><span>  </span><span style="color:#d69d85;">&quot;algorithm&quot;</span><span style="color:#569cd6;">: </span><span style="color:#d69d85;">&quot;m.pbkdf2&quot;</span><span>,
+</span><span>  </span><span style="color:#d69d85;">&quot;iterations&quot;</span><span style="color:#569cd6;">: </span><span style="color:#b5cea8;">500000</span><span>,
+</span><span>  </span><span style="color:#d69d85;">&quot;salt&quot;</span><span style="color:#569cd6;">:</span><span> base64.encode(SecureRandom(</span><span style="color:#b5cea8;">32</span><span>).bytes), </span><span style="color:#608b4e;">// we use secure random! 32 bytes = 256 bits
+</span><span>  </span><span style="color:#d69d85;">&quot;bits&quot;</span><span style="color:#569cd6;">: </span><span style="color:#b5cea8;">256</span><span>,
+</span><span>};
+</span><span style="color:#569cd6;">var</span><span> generator = PBKDF2(hashAlgorithm</span><span style="color:#569cd6;">:</span><span> sha512);
+</span><span style="color:#569cd6;">var</span><span> key = Uint8List.fromList(generator.generateKey(passphrase, passphraseInfo[</span><span style="color:#d69d85;">&quot;salt&quot;</span><span>],
+</span><span>      passphraseInfo[</span><span style="color:#d69d85;">&quot;iterations&quot;</span><span>], passphraseInfo[</span><span style="color:#d69d85;">&quot;bits&quot;</span><span>] / </span><span style="color:#b5cea8;">8</span><span>));
+</span></code></pre>
+<h4 id="generating-a-random-key-without-a-passphrase">Generating a random key without a passphrase</h4>
+<p>Just generate a 256-bit long key.</p>
+<pre data-lang="dart" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-dart "><code class="language-dart" data-lang="dart"><span style="color:#569cd6;">var</span><span> key = SecureRandom(</span><span style="color:#b5cea8;">32</span><span>).bytes; </span><span style="color:#608b4e;">// 32 bytes = 256 bits
+</span></code></pre>
+<h4 id="calculating-the-key-information">Calculating the key information</h4>
+<p>You still need an IV to be able to calculate the MAC you later on use to verify the key. For that,
+generate 16 bytes and base64-encode them. Afterwards you just generate the MAC like you would for
+verifying the key, and then store the account data event.</p>
+<pre data-lang="dart" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-dart "><code class="language-dart" data-lang="dart"><span style="color:#608b4e;">// &quot;key&quot; is the key
+</span><span style="color:#569cd6;">var</span><span> iv = base64.encode(SecureRandom(</span><span style="color:#b5cea8;">16</span><span>).bytes);
+</span><span style="color:#608b4e;">// ZERO_STR are 32 bytes of zero. We encrypt with our generated key, a blank name and the iv of the event
+</span><span style="color:#569cd6;">var</span><span> encrypted = encryptAes(ZERO_STR, key, </span><span style="color:#d69d85;">&#39;&#39;</span><span>, iv);
+</span><span style="color:#569cd6;">var</span><span> info = {
+</span><span>  </span><span style="color:#d69d85;">&quot;algorithm&quot;</span><span style="color:#569cd6;">: </span><span style="color:#d69d85;">&quot;m.secret_storage.v1.aes-hmac-sha2&quot;</span><span>,
+</span><span>  </span><span style="color:#d69d85;">&quot;iv&quot;</span><span style="color:#569cd6;">:</span><span> iv,
+</span><span>  </span><span style="color:#d69d85;">&quot;mac&quot;</span><span style="color:#569cd6;">:</span><span> encrypted.mac,
+</span><span>  </span><span style="color:#d69d85;">&quot;passphrase&quot;</span><span style="color:#569cd6;">:</span><span> passphraseInfo,
+</span><span>};
+</span></code></pre>
+<h4 id="generating-the-key-id">Generating the key ID</h4>
+<p>The key ID is just a short, random string which doesn't contain a dot. For that, you can e.g. generate
+a few random bytes and base64 encode them. Make sure no key with such an ID exists yet! After you have
+the key ID, set your key information object to account data <code>m.secret_storage.key.&lt;keyId&gt;</code>.</p>
+<p>To set the newly generated key as default key, simply set the <code>m.secret_storage.default_key</code> account
+data to the key ID (<em>NOT</em> the full account data type):</p>
+<pre data-lang="json" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-json "><code class="language-json" data-lang="json"><span>{
+</span><span>  </span><span style="color:#d69d85;">&quot;key&quot;</span><span>: </span><span style="color:#d69d85;">&quot;&lt;keyId&gt;&quot;
+</span><span>}
+</span></code></pre>
+<h3 id="bootstrapping-cross-signing">Bootstrapping cross-signing</h3>
+<p>Now that you bootstrapped SSSS, it is time to bootstrap cross-signing! For that, you generate an
+ed25519 keypair for master key, self-signing key and user-signing key. Afterwards you store the
+base64-encoded private keys in SSSS, generate the key objects with the public keys for uploading,
+sign the self-signing and user-signing key with the master key, and upload them. While you are at it,
+you can also sign your own device with the newly generated self-signing key and sign the newly
+generated master key with your own device key. Don't forget to mark the master key you just generated
+as verified!</p>
+<p>Fortunately libolm gives us methods for creating an ed25519 keypair. We already showed how to sign
+key objects with libolm above, when creating new signatures after verifying.</p>
+<pre data-lang="dart" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-dart "><code class="language-dart" data-lang="dart"><span style="color:#569cd6;">var</span><span> master = olm.PkSigning();
+</span><span style="color:#569cd6;">try</span><span> {
+</span><span>  </span><span style="color:#569cd6;">var</span><span> masterPrivateKey = master.generate_seed();
+</span><span>  </span><span style="color:#569cd6;">var</span><span> masterPublicKey = master.init_with_seed(masterPrivateKey);
+</span><span>  </span><span style="color:#608b4e;">// generate key object (and save for later)
+</span><span>  </span><span style="color:#569cd6;">var</span><span> json = {
+</span><span>    </span><span style="color:#d69d85;">&quot;user_id&quot;</span><span style="color:#569cd6;">: </span><span style="color:#d69d85;">&quot;@alice:example.com&quot;</span><span>,
+</span><span>    </span><span style="color:#d69d85;">&quot;user&quot;</span><span style="color:#569cd6;">:</span><span> [</span><span style="color:#d69d85;">&quot;master&quot;</span><span>], </span><span style="color:#608b4e;">// adjust to &quot;self_signing&quot; and &quot;user_signing&quot; for the other keys
+</span><span>    </span><span style="color:#d69d85;">&quot;keys&quot;</span><span style="color:#569cd6;">:</span><span> {
+</span><span>      </span><span style="color:#d69d85;">&quot;ed25519:$</span><span>masterPublicKey</span><span style="color:#d69d85;">&quot;</span><span style="color:#569cd6;">:</span><span> masterPublicKey,
+</span><span>    },
+</span><span>  };
+</span><span>
+</span><span>  </span><span style="color:#608b4e;">// self_signing and user_signing ONLY! Generate signature:
+</span><span>  </span><span style="color:#569cd6;">var</span><span> signature = signWithMasterKey(json);
+</span><span>  json[</span><span style="color:#d69d85;">&quot;signatures&quot;</span><span>] = {
+</span><span>    </span><span style="color:#d69d85;">&quot;@alice:example.com&quot;</span><span style="color:#569cd6;">:</span><span> {
+</span><span>      </span><span style="color:#608b4e;">// as it was the *master* key that made the signature, we always need to put the master key
+</span><span>      </span><span style="color:#608b4e;">// here
+</span><span>      </span><span style="color:#d69d85;">&quot;ed25519:&lt;base64-of-master-public-key&gt;&quot;</span><span style="color:#569cd6;">:</span><span> signature,
+</span><span>    },
+</span><span>  };
+</span><span>
+</span><span>  </span><span style="color:#608b4e;">// store in SSSS
+</span><span>  </span><span style="color:#569cd6;">var</span><span> secret = base64.encode(masterPrivateKey);
+</span><span>  storeInSsss(</span><span style="color:#d69d85;">&quot;m.cross_signing.master&quot;</span><span>, secret); </span><span style="color:#608b4e;">// adjust to &quot;m.cross_signing.self_signing&quot; and &quot;m.cross_signing.user_signing&quot; for the other keys.
+</span><span>} </span><span style="color:#569cd6;">finally</span><span> {
+</span><span>  master.free();
+</span><span>}
+</span></code></pre>
+<p>After you generated all the json key objects you can POST them to <code>/_matrix/client/unstable/keys/device_signing/upload</code>.
+Keep in mind that this endpoint uses user-interactive authentication, so you will also have to send
+an additional <code>auth</code> array with the needed information to complete stages. Hereby <code>master_key</code> holds
+the master key object, <code>self_signing_key</code> the self-signing key and <code>user_signing_key</code> the user-signing
+key. An example request could look as following (taken from the spec):</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>POST /_matrix/client/unstable/keys/device_signing/upload HTTP/1.1
+</span><span>Content-Type: application/json
+</span><span>
+</span><span>{
+</span><span>  &quot;master_key&quot;: {
+</span><span>    &quot;user_id&quot;: &quot;@alice:example.com&quot;,
+</span><span>    &quot;usage&quot;: [
+</span><span>      &quot;master&quot;
+</span><span>    ],
+</span><span>    &quot;keys&quot;: {
+</span><span>      &quot;ed25519:base64+master+public+key&quot;: &quot;base64+master+public+key&quot;
+</span><span>    }
+</span><span>  },
+</span><span>  &quot;self_signing_key&quot;: {
+</span><span>    &quot;user_id&quot;: &quot;@alice:example.com&quot;,
+</span><span>    &quot;usage&quot;: [
+</span><span>      &quot;self_signing&quot;
+</span><span>    ],
+</span><span>    &quot;keys&quot;: {
+</span><span>      &quot;ed25519:base64+self+signing+public+key&quot;: &quot;base64+self+signing+master+public+key&quot;
+</span><span>    },
+</span><span>    &quot;signatures&quot;: {
+</span><span>      &quot;@alice:example.com&quot;: {
+</span><span>        &quot;ed25519:base64+master+public+key&quot;: &quot;signature+of+self+signing+key&quot;
+</span><span>      }
+</span><span>    }
+</span><span>  },
+</span><span>  &quot;user_signing_key&quot;: {
+</span><span>    &quot;user_id&quot;: &quot;@alice:example.com&quot;,
+</span><span>    &quot;usage&quot;: [
+</span><span>      &quot;user_signing&quot;
+</span><span>    ],
+</span><span>    &quot;keys&quot;: {
+</span><span>      &quot;ed25519:base64+user+signing+public+key&quot;: &quot;base64+user+signing+master+public+key&quot;
+</span><span>    },
+</span><span>    &quot;signatures&quot;: {
+</span><span>      &quot;@alice:example.com&quot;: {
+</span><span>        &quot;ed25519:base64+master+public+key&quot;: &quot;signature+of+user+signing+key&quot;
+</span><span>      }
+</span><span>    }
+</span><span>  }
+</span><span>}
+</span></code></pre>
+<h3 id="changing-ssss-passphrase-key">Changing SSSS passphrase / key</h3>
+<p>Along with bootstrapping you can implement other things, such as the ability to change the SSSS passphrase.
+When doing so, keep in mind that keeping an in-tact SSSS is crucial for having a functional account,
+as such an algorithm is needed where any single step can fail and no data at all is lost. For this,
+it is helpful to utilize that an encrypted SSSS secret in account data can be encrypted by <em>multiple</em>
+keys at once, by setting multiple ciphertexts:</p>
+<pre data-lang="json" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-json "><code class="language-json" data-lang="json"><span>{
+</span><span>  </span><span style="color:#d69d85;">&quot;encrypted&quot;</span><span>: {
+</span><span>    </span><span style="color:#d69d85;">&quot;firstKeyId&quot;</span><span>: {
+</span><span>      </span><span style="color:#d69d85;">&quot;iv&quot;</span><span>: </span><span style="color:#d69d85;">&quot;supercooliv&quot;</span><span>,
+</span><span>      </span><span style="color:#d69d85;">&quot;ciphertext&quot;</span><span>: </span><span style="color:#d69d85;">&quot;secretciphertext&quot;</span><span>,
+</span><span>      </span><span style="color:#d69d85;">&quot;mac&quot;</span><span>: </span><span style="color:#d69d85;">&quot;macthingy&quot;
+</span><span>    },
+</span><span>    </span><span style="color:#d69d85;">&quot;secondKeyId&quot;</span><span>: {
+</span><span>      </span><span style="color:#d69d85;">&quot;iv&quot;</span><span>: </span><span style="color:#d69d85;">&quot;othersupercooliv&quot;</span><span>,
+</span><span>      </span><span style="color:#d69d85;">&quot;ciphertext&quot;</span><span>: </span><span style="color:#d69d85;">&quot;othersecretciphertext&quot;</span><span>,
+</span><span>      </span><span style="color:#d69d85;">&quot;mac&quot;</span><span>: </span><span style="color:#d69d85;">&quot;othermacthingy&quot;
+</span><span>    }
+</span><span>  }
+</span><span>}
+</span></code></pre>
+<p>Now, the following algorithm could be used to change the SSSS passphrase:</p>
+<ol>
+<li>Scan all account data for things that look like they could be stored SSSS secrets</li>
+<li>Gather all needed SSSS keys needed to decrypt them (typically only one - the current default)</li>
+<li>Prompt the user to unlock all of those keys</li>
+<li>Decrypt and cache all secrets</li>
+<li>Prompt the user for a new passphrase / key</li>
+<li>Generate the new SSSS key</li>
+<li>Re-encrypt all cached secrets with the new SSSS key, putting the new ciphertext there <em>in addition</em>
+to the old ciphertext</li>
+<li>(Optional) Re-verify that all account data events have been set correctly, e.g. by attempting to
+decrypt with the new key and comparing with the cached secrets</li>
+<li>Set the new key as default key</li>
+<li>Remove from the account data events the old ciphertext, as only the new one is needed anymore</li>
+</ol>
+
+</article>
+
+    </main>
+
+    <footer class="site-footer">
+    <div class="internal-links">
+        
+        <a href="&#x2F;faq">FAQs</a>
+        
+        <a href="&#x2F;security-disclosure-policy">Security Disclosure Policy</a>
+        
+        <a href="&#x2F;hall-of-fame">Security Hall of Fame</a>
+        
+        <a href="&#x2F;legal&#x2F;code-of-conduct">Code of Conduct for Matrix.org</a>
+        
+        <a href="&#x2F;legal">Legal</a>
+        
+        <a href="&#x2F;contact">Contact</a>
+        
+        <a href="https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;">Site Source</a>
+        
+    </div>
+    <div class="external-links">
+        <div>
+            
+            <a href="&#x2F;code"><img src="/assets/github.svg" alt="GitHub"></a>
+            
+            <a href="https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;"><img src="/assets/gitlab.svg" alt="GitLab"></a>
+            
+            <a href="https:&#x2F;&#x2F;mastodon.matrix.org&#x2F;@matrix"><img src="/assets/mastodon.svg" alt="Mastodon"></a>
+            
+            <a href="https:&#x2F;&#x2F;twitter.com&#x2F;matrixdotorg"><img src="/assets/twitter.svg" alt="Twitter"></a>
+            
+            <a href="https:&#x2F;&#x2F;www.youtube.com&#x2F;channel&#x2F;UCVFkW-chclhuyYRbmmfwt6w"><img src="/assets/youtube.svg" alt="YouTube"></a>
+            
+        </div>
+    </div>
+    <p>© 2022 The Matrix.org Foundation C.I.C.</p>
+</footer>
+
+</body>
+
+</html>

@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="twitter:widgets:csp" content="on" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta name="twitter:site" content="@matrixdotorg" />
+    <meta name="twitter:creator" content="@matrixdotorg" />
+
+    <title>Matrix.org - Migrating from Client Server API v1</title>
+    <link rel="shortcut icon" href="/assets/favicon.ico" />
+    <link rel="icon" type="image/png" href="/assets/favicon.png" />
+    <link rel="stylesheet" href="/style.css" />
+
+    </head>
+
+<body>
+    
+    
+
+
+<header class="site-header">
+    <a href="/" class="brand">
+        <img src="/images/matrix-logo.svg" alt="Matrix logo">
+    </a>
+    <input id="site-header-dropdown-checkbox" type="checkbox" class="dropdown-checkbox" aria-hidden="true">
+    <label for="site-header-dropdown-checkbox" class="dropdown-button">&#xe602;</label>
+    <label for="site-header-dropdown-checkbox" class="page-overlay"></label>
+    <nav>
+        
+        
+        <a href="&#x2F;about&#x2F;" class="
+            ">
+            About
+        </a>
+        
+        
+        
+        <a href="&#x2F;blog&#x2F;" class="
+            ">
+            Blog
+        </a>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;docs&#x2F;" class="section current">
+                Documentation
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;ecosystem&#x2F;" class="section ">
+                Ecosystem
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                    <a href="&#x2F;ecosystem&#x2F;clients&#x2F;">Clients</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;servers&#x2F;">Servers</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bots&#x2F;">Bots</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bridges&#x2F;">Bridges</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;sdks&#x2F;">SDKs</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;hosting&#x2F;">Hosting</a>
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        <a href="&#x2F;podcasts&#x2F;" class="
+            ">
+            Podcasts
+        </a>
+        
+        
+        
+        <a href="https:&#x2F;&#x2F;shop.matrix.org" class="
+            ">
+            Shop
+        </a>
+        
+        
+        
+        <a href="&#x2F;try-matrix&#x2F;" class="primary
+            ">
+            Try Matrix
+        </a>
+        
+        
+    </nav>
+</header>
+
+
+    <main>
+        
+<article class="content">
+    <header>
+        <div class="legacy-doc-warning">
+            <h2>Outdated documentation</h2>
+            <p>This documentation has been kept for posterity but might be or
+               will be outdated. It should not be used anymore. Please head to
+               <a href="/docs">the documentation section</a> for up to date
+               documentation and guides.
+            </p>
+        </div>
+        <h1>Migrating from Client Server API v1</h1>
+    </header>
+    <p>This guide assists developers of API clients that target the <code>v1</code> version of the
+API to migrate their code to the later <code>r0</code>. It does not aim to introduce new
+concepts that were added in <code>r0</code> except where these replace things that were
+removed since <code>v1</code>.</p>
+<h2 id="updated-version-in-path">Updated Version In Path</h2>
+<p>The new version of the API is <code>r0</code>; this should be used in paths where <code>v1</code> used
+to appear. Additionally, the <code>/api</code> path component has now been removed. API
+endpoint paths are now:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>POST /_matrix/client/r0/register
+</span><span>GET /_matrix/client/r0/login
+</span></code></pre>
+<p>etc...</p>
+<h2 id="new-registration-and-login-endpoints">New Registration and Login Endpoints</h2>
+<p>The <code>r0</code> version of the <code>/register</code> and <code>/login</code> endpoints is different to the
+<code>v1</code> version. See the updated API documentation for details on how the new API
+works. In brief, the changes are that the new version returns extra information
+in the form of the <code>params</code> object, and that a sequence of multiple calls may
+be statefully chained together by the <code>session</code> parameter.</p>
+<p>Additionally, whereas in <code>v1</code> the client performed a <code>GET</code> request to discover
+the list of supported flows for <code>/register</code>, in <code>r0</code> this is done by sending a
+<code>POST</code> request with an empty data body. The <code>/login</code> endpoint continues to use
+the <code>GET</code> method as before.</p>
+<h2 id="deprecated-endpoints">Deprecated Endpoints</h2>
+<p>The following endpoints are now deprecated and replaced by the <code>/sync</code> API:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>/initialSync
+</span><span>/events
+</span><span>/rooms/:roomId/initialSync
+</span></code></pre>
+<p>The new <code>/sync</code> API takes an optional <code>since</code> parameter to distinguish the
+initial sync from subsequent updates for more events.</p>
+<p>The return value takes a different structure to that from the previous
+<code>/initialSync</code> API. For full details see the API documentation, but the
+following summary may be useful to compare with <code>v1</code>:</p>
+<blockquote>
+<ul>
+<li><code>/initialSync</code> returned a <code>state</code> key containing the most recent
+state in the room, whereas the new <code>/sync</code> API's <code>state</code>
+corresponds to the room state at the start of the returned
+timeline. This makes it easier for clients to represent state
+changes that occur within the region of returned timeline.</li>
+<li>In <code>/events</code>, if more events occurred since the <code>since</code> token than
+the <code>limit</code> parameter allowed, then events from the start of this
+range were returned and the client had to perform another fetch to
+incrementally obtain more of them. In the <code>/sync</code> API the result
+always contains the most recent events, creating a gap if this
+would be more events than the requested limit. If this occurs then
+the client can use the <code>prev_batch</code> token as a reference to
+obtaining more.</li>
+<li>The <code>state</code> contained in the response to a <code>/sync</code> request that
+has a <code>since</code> parameter will contain only keys that have changed
+since the basis given in the <code>since</code> parameter, rather than
+containing a full set values.</li>
+</ul>
+</blockquote>
+<p>The <code>/initialSync</code> API allowed a parameter called <code>limit</code> to limit the number of
+events returned. To apply this limit to the new <code>/sync</code> API, you can supply an
+ad-hoc filter:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>GET .../sync?filter={&quot;room&quot;:{&quot;timeline&quot;:{&quot;limit:$limit}}}
+</span></code></pre>
+<p>There is no direct replacement for the per-room <code>/rooms/:roomId/initialSync</code>
+endpoint, but the behaviour can be recreated by applying an ad-hoc filter using
+the <code>filter</code> parameter to <code>/sync</code> that selects only the required room ID:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>GET .../sync?filter={&quot;room&quot;:{&quot;rooms&quot;:[$room_id]}}
+</span></code></pre>
+<p>However, the way that the new <code>/sync</code> API works should remove any need to do
+this kind of query, in the situations where the <code>v1</code> API needed it.
+Specifically, on joining a new room the initial information about that room is
+sent in the next <code>/sync</code> batch, so it should not be necessary to query that one
+room specially.</p>
+<p>The following endpoint is deprecated and has no direct replacement:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>/events/:eventId
+</span></code></pre>
+<p>However, if the client knows the room ID of the room that the event is in, it
+can use the <code>/rooms/:roomId/context/:eventId</code> request to fetch the event
+itself. By giving the <code>limit</code> parameter of <code>0</code> the client can save using extra
+bandwidth by actually returning additional context events around the requested
+one.</p>
+<h2 id="removed-post-endpoint">Removed POST Endpoint</h2>
+<p>The room message sending API endpoint in <code>v1</code> accepted both <code>PUT</code> and <code>POST</code>
+methods, where the client could specify a message ID in the <code>PUT</code> path for
+de-duplication purposes, or have the server allocate one during <code>POST</code>. In <code>r0</code>
+this latter form no longer exists. Clients will now have to generate these IDs
+locally.</p>
+<p>The following URLs have therefore been removed:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>POST .../rooms/:roomId/send/:messageType
+</span></code></pre>
+
+</article>
+
+    </main>
+
+    <footer class="site-footer">
+    <div class="internal-links">
+        
+        <a href="&#x2F;faq">FAQs</a>
+        
+        <a href="&#x2F;security-disclosure-policy">Security Disclosure Policy</a>
+        
+        <a href="&#x2F;hall-of-fame">Security Hall of Fame</a>
+        
+        <a href="&#x2F;legal&#x2F;code-of-conduct">Code of Conduct for Matrix.org</a>
+        
+        <a href="&#x2F;legal">Legal</a>
+        
+        <a href="&#x2F;contact">Contact</a>
+        
+        <a href="https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;">Site Source</a>
+        
+    </div>
+    <div class="external-links">
+        <div>
+            
+            <a href="&#x2F;code"><img src="/assets/github.svg" alt="GitHub"></a>
+            
+            <a href="https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;"><img src="/assets/gitlab.svg" alt="GitLab"></a>
+            
+            <a href="https:&#x2F;&#x2F;mastodon.matrix.org&#x2F;@matrix"><img src="/assets/mastodon.svg" alt="Mastodon"></a>
+            
+            <a href="https:&#x2F;&#x2F;twitter.com&#x2F;matrixdotorg"><img src="/assets/twitter.svg" alt="Twitter"></a>
+            
+            <a href="https:&#x2F;&#x2F;www.youtube.com&#x2F;channel&#x2F;UCVFkW-chclhuyYRbmmfwt6w"><img src="/assets/youtube.svg" alt="YouTube"></a>
+            
+        </div>
+    </div>
+    <p>© 2022 The Matrix.org Foundation C.I.C.</p>
+</footer>
+
+</body>
+
+</html>

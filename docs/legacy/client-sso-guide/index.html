@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="twitter:widgets:csp" content="on" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta name="twitter:site" content="@matrixdotorg" />
+    <meta name="twitter:creator" content="@matrixdotorg" />
+
+    <title>Matrix.org - Client Developers&#x27; Guide to Supporting SSO</title>
+    <link rel="shortcut icon" href="/assets/favicon.ico" />
+    <link rel="icon" type="image/png" href="/assets/favicon.png" />
+    <link rel="stylesheet" href="/style.css" />
+
+    </head>
+
+<body>
+    
+    
+
+
+<header class="site-header">
+    <a href="/" class="brand">
+        <img src="/images/matrix-logo.svg" alt="Matrix logo">
+    </a>
+    <input id="site-header-dropdown-checkbox" type="checkbox" class="dropdown-checkbox" aria-hidden="true">
+    <label for="site-header-dropdown-checkbox" class="dropdown-button">&#xe602;</label>
+    <label for="site-header-dropdown-checkbox" class="page-overlay"></label>
+    <nav>
+        
+        
+        <a href="&#x2F;about&#x2F;" class="
+            ">
+            About
+        </a>
+        
+        
+        
+        <a href="&#x2F;blog&#x2F;" class="
+            ">
+            Blog
+        </a>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;docs&#x2F;" class="section current">
+                Documentation
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;ecosystem&#x2F;" class="section ">
+                Ecosystem
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                    <a href="&#x2F;ecosystem&#x2F;clients&#x2F;">Clients</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;servers&#x2F;">Servers</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bots&#x2F;">Bots</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bridges&#x2F;">Bridges</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;sdks&#x2F;">SDKs</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;hosting&#x2F;">Hosting</a>
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        <a href="&#x2F;podcasts&#x2F;" class="
+            ">
+            Podcasts
+        </a>
+        
+        
+        
+        <a href="https:&#x2F;&#x2F;shop.matrix.org" class="
+            ">
+            Shop
+        </a>
+        
+        
+        
+        <a href="&#x2F;try-matrix&#x2F;" class="primary
+            ">
+            Try Matrix
+        </a>
+        
+        
+    </nav>
+</header>
+
+
+    <main>
+        
+<article class="content">
+    <header>
+        <div class="legacy-doc-warning">
+            <h2>Outdated documentation</h2>
+            <p>This documentation has been kept for posterity but might be or
+               will be outdated. It should not be used anymore. Please head to
+               <a href="/docs">the documentation section</a> for up to date
+               documentation and guides.
+            </p>
+        </div>
+        <h1>Client Developers&#x27; Guide to Supporting SSO</h1>
+    </header>
+    <h2 id="what-is-single-sign-on">What is Single Sign-On?</h2>
+<p>Single Sign-On allows users to easily connect to services if they’re already
+signed into another umbrella account. This document describes how to use the
+<a href="https://matrix.org/docs/spec/client_server/latest#sso-client-login">SSO client login flow</a>
+to enable SSO in a Matrix Client you are developing.</p>
+<h2 id="when-to-use-it">When to use it</h2>
+<p>The first thing to do, as soon as you have the homeserver for the user, is to
+make a <code>GET</code> query to <code>/_matrix/client/r0/login</code> on the homeserver. Most
+commonly, the response will be:</p>
+<pre data-lang="json" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-json "><code class="language-json" data-lang="json"><span>{
+</span><span>  </span><span style="color:#d69d85;">&quot;flows&quot;</span><span>: [
+</span><span>    {
+</span><span>      </span><span style="color:#d69d85;">&quot;type&quot;</span><span>: </span><span style="color:#d69d85;">&quot;m.login.password&quot;
+</span><span>    }
+</span><span>  ]
+</span><span>}
+</span></code></pre>
+<p>In which case you proceed with password authentication as normal. If the
+response is:</p>
+<pre data-lang="json" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-json "><code class="language-json" data-lang="json"><span>{
+</span><span>  </span><span style="color:#d69d85;">&quot;flows&quot;</span><span>: [
+</span><span>    {
+</span><span>      </span><span style="color:#d69d85;">&quot;type&quot;</span><span>: </span><span style="color:#d69d85;">&quot;m.login.sso&quot;
+</span><span>    },
+</span><span>    {
+</span><span>      </span><span style="color:#d69d85;">&quot;type&quot;</span><span>: </span><span style="color:#d69d85;">&quot;m.login.token&quot;
+</span><span>    }
+</span><span>  ]
+</span><span>}
+</span></code></pre>
+<p>Then you know you will begin the
+<a href="https://matrix.org/docs/spec/client_server/latest#sso-client-login">SSO client login flow</a>.</p>
+<h2 id="handling-sso">Handling SSO</h2>
+<p>In this case, you should render some UI to tell the user to start SSO login. For
+example, on <a href="https://chat.mozilla.org">https://chat.mozilla.org</a> the screen looks like:</p>
+<p><img src="/docs/legacy/mozilla-sso.png" alt="Mozilla login screen" /></p>
+<p>When the user clicks/taps to start, open a browser or in-app browser with the
+url <code>&lt;homeserver&gt;/_matrix/client/r0/login/sso/redirect?redirectUrl=&lt;your app url&gt;</code>.</p>
+<p>Now, the login process is out of your hands.</p>
+<p><code>/_matrix/client/r0/login/sso/redirect</code> will trigger a 302 redirect chain
+through whatever SSO login mechanism the server offers the user. When they pass
+through this successfully, they will be eventually redirected to <code>&lt;your app url&gt;/?loginToken=&lt;some login token&gt;</code>. If the user does not auth successfully,
+they will be informed in the browser.</p>
+<p>You will read the <code>loginToken</code> parameter from this response, and use it to login
+with the <a href="https://matrix.org/docs/spec/client_server/latest#token-based">token-based login flow
+</a>, thus obtaining
+a mxid, access_token and device ID.</p>
+
+</article>
+
+    </main>
+
+    <footer class="site-footer">
+    <div class="internal-links">
+        
+        <a href="&#x2F;faq">FAQs</a>
+        
+        <a href="&#x2F;security-disclosure-policy">Security Disclosure Policy</a>
+        
+        <a href="&#x2F;hall-of-fame">Security Hall of Fame</a>
+        
+        <a href="&#x2F;legal&#x2F;code-of-conduct">Code of Conduct for Matrix.org</a>
+        
+        <a href="&#x2F;legal">Legal</a>
+        
+        <a href="&#x2F;contact">Contact</a>
+        
+        <a href="https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;">Site Source</a>
+        
+    </div>
+    <div class="external-links">
+        <div>
+            
+            <a href="&#x2F;code"><img src="/assets/github.svg" alt="GitHub"></a>
+            
+            <a href="https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;"><img src="/assets/gitlab.svg" alt="GitLab"></a>
+            
+            <a href="https:&#x2F;&#x2F;mastodon.matrix.org&#x2F;@matrix"><img src="/assets/mastodon.svg" alt="Mastodon"></a>
+            
+            <a href="https:&#x2F;&#x2F;twitter.com&#x2F;matrixdotorg"><img src="/assets/twitter.svg" alt="Twitter"></a>
+            
+            <a href="https:&#x2F;&#x2F;www.youtube.com&#x2F;channel&#x2F;UCVFkW-chclhuyYRbmmfwt6w"><img src="/assets/youtube.svg" alt="YouTube"></a>
+            
+        </div>
+    </div>
+    <p>© 2022 The Matrix.org Foundation C.I.C.</p>
+</footer>
+
+</body>
+
+</html>

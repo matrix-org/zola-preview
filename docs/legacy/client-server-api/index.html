@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="twitter:widgets:csp" content="on" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta name="twitter:site" content="@matrixdotorg" />
+    <meta name="twitter:creator" content="@matrixdotorg" />
+
+    <title>Matrix.org - Client Server API</title>
+    <link rel="shortcut icon" href="/assets/favicon.ico" />
+    <link rel="icon" type="image/png" href="/assets/favicon.png" />
+    <link rel="stylesheet" href="/style.css" />
+
+    </head>
+
+<body>
+    
+    
+
+
+<header class="site-header">
+    <a href="/" class="brand">
+        <img src="/images/matrix-logo.svg" alt="Matrix logo">
+    </a>
+    <input id="site-header-dropdown-checkbox" type="checkbox" class="dropdown-checkbox" aria-hidden="true">
+    <label for="site-header-dropdown-checkbox" class="dropdown-button">&#xe602;</label>
+    <label for="site-header-dropdown-checkbox" class="page-overlay"></label>
+    <nav>
+        
+        
+        <a href="&#x2F;about&#x2F;" class="
+            ">
+            About
+        </a>
+        
+        
+        
+        <a href="&#x2F;blog&#x2F;" class="
+            ">
+            Blog
+        </a>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;docs&#x2F;" class="section current">
+                Documentation
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;ecosystem&#x2F;" class="section ">
+                Ecosystem
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                    <a href="&#x2F;ecosystem&#x2F;clients&#x2F;">Clients</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;servers&#x2F;">Servers</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bots&#x2F;">Bots</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bridges&#x2F;">Bridges</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;sdks&#x2F;">SDKs</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;hosting&#x2F;">Hosting</a>
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        <a href="&#x2F;podcasts&#x2F;" class="
+            ">
+            Podcasts
+        </a>
+        
+        
+        
+        <a href="https:&#x2F;&#x2F;shop.matrix.org" class="
+            ">
+            Shop
+        </a>
+        
+        
+        
+        <a href="&#x2F;try-matrix&#x2F;" class="primary
+            ">
+            Try Matrix
+        </a>
+        
+        
+    </nav>
+</header>
+
+
+    <main>
+        
+<article class="content">
+    <header>
+        <div class="legacy-doc-warning">
+            <h2>Outdated documentation</h2>
+            <p>This documentation has been kept for posterity but might be or
+               will be outdated. It should not be used anymore. Please head to
+               <a href="/docs">the documentation section</a> for up to date
+               documentation and guides.
+            </p>
+        </div>
+        <h1>Client Server API</h1>
+    </header>
+    <h2 id="how-to-use-the-client-server-api">How to use the client-server API</h2>
+<p>If you haven't already, get a homeserver up and running on
+<code>https://localhost:8448</code> - e.g. by following the instructions at
+https://github.com/matrix-org/synapse/blob/master/INSTALL.md</p>
+<h2 id="accounts">Accounts</h2>
+<p>Before you can send and receive messages, you must <strong>register</strong> for an account.
+If you already have an account, you must <strong>login</strong> into it.</p>
+<p><a href="https://jsfiddle.net/gh/get/jquery/1.8.3/matrix-org/matrix.org/tree/master/jekyll/_posts/howtos/jsfiddles/register_login">https://jsfiddle.net/gh/get/jquery/1.8.3/matrix-org/matrix.org/tree/master/jekyll/_posts/howtos/jsfiddles/register_login</a></p>
+<h3 id="registration">Registration</h3>
+<p>The aim of registration is to get a user ID and access token which you will need
+when accessing other APIs:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>curl -XPOST -d &#39;{&quot;username&quot;:&quot;example&quot;, &quot;password&quot;:&quot;wordpass&quot;, &quot;auth&quot;: {&quot;type&quot;:&quot;m.login.dummy&quot;}}&#39; &quot;https://localhost:8448/_matrix/client/r0/register&quot;
+</span><span>
+</span><span>{
+</span><span>    &quot;access_token&quot;: &quot;QGV4YW1wbGU6bG9jYWxob3N0.AqdSzFmFYrLrTmteXc&quot;,
+</span><span>    &quot;home_server&quot;: &quot;localhost&quot;,
+</span><span>    &quot;user_id&quot;: &quot;@example:localhost&quot;
+</span><span>}
+</span></code></pre>
+<p>NB: If a <code>user</code> is not specified, one will be randomly generated for you. If you
+do not specify a <code>password</code>, you will be unable to login to the account if you
+forget the <code>access_token</code>.</p>
+<p>Implementation note: The matrix specification does not enforce how users
+register with a server. It just specifies the URL path and absolute minimum
+keys. The reference homeserver uses a username/password to authenticate user,
+but other homeservers may use different methods. This is why you need to
+specify the <code>type</code> of method.</p>
+<h3 id="login">Login</h3>
+<p>The aim when logging in is to get an access token for your existing user ID:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>curl -XGET &quot;https://localhost:8448/_matrix/client/r0/login&quot;
+</span><span>
+</span><span>{
+</span><span>    &quot;flows&quot;: [
+</span><span>        {
+</span><span>            &quot;type&quot;: &quot;m.login.password&quot;
+</span><span>        }
+</span><span>    ]
+</span><span>}
+</span><span>
+</span><span>curl -XPOST -d &#39;{&quot;type&quot;:&quot;m.login.password&quot;, &quot;user&quot;:&quot;example&quot;, &quot;password&quot;:&quot;wordpass&quot;}&#39; &quot;https://localhost:8448/_matrix/client/r0/login&quot;
+</span><span>
+</span><span>{
+</span><span>    &quot;access_token&quot;: &quot;QGV4YW1wbGU6bG9jYWxob3N0.vRDLTgxefmKWQEtgGd&quot;,
+</span><span>    &quot;home_server&quot;: &quot;localhost&quot;,
+</span><span>    &quot;user_id&quot;: &quot;@example:localhost&quot;
+</span><span>}
+</span></code></pre>
+<p>Implementation note: Different homeservers may implement different methods for
+logging in to an existing account. In order to check that you know how to login
+to this homeserver, you must perform a <code>GET</code> first and make sure you recognise
+the login type. If you do not know how to login, you can <code>GET /login/fallback</code>
+which will return a basic webpage which you can use to login. The reference
+homeserver implementation support username/password login, but other
+homeservers may support different login methods (e.g. OAuth2).</p>
+<h2 id="communicating">Communicating</h2>
+<p>In order to communicate with another user, you must <strong>create a room</strong> with that
+user and <strong>send a message</strong> to that room.</p>
+<p><a href="https://jsfiddle.net/gh/get/jquery/1.8.3/matrix-org/matrix.org/tree/master/jekyll/_posts/howtos/jsfiddles/create_room_send_msg">https://jsfiddle.net/gh/get/jquery/1.8.3/matrix-org/matrix.org/tree/master/jekyll/_posts/howtos/jsfiddles/create_room_send_msg</a></p>
+<h3 id="creating-a-room">Creating a room</h3>
+<p>If you want to send a message to someone, you have to be in a room with them. To
+create a room:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>    curl -XPOST -d &#39;{&quot;room_alias_name&quot;:&quot;tutorial&quot;}&#39; &quot;https://localhost:8448/_matrix/client/r0/createRoom?access_token=YOUR_ACCESS_TOKEN&quot;
+</span><span>
+</span><span>    {
+</span><span>        &quot;room_alias&quot;: &quot;#tutorial:localhost&quot;,
+</span><span>        &quot;room_id&quot;: &quot;!asfLdzLnOdGRkdPZWu:localhost&quot;
+</span><span>    }
+</span></code></pre>
+<p>The &quot;room alias&quot; is a human-readable string which can be shared with other users
+so they can join a room, rather than the room ID which is a randomly generated
+string. You can have multiple room aliases per room.</p>
+<h3 id="sending-messages">Sending messages</h3>
+<p>You can now send messages to this room:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>curl -XPOST -d &#39;{&quot;msgtype&quot;:&quot;m.text&quot;, &quot;body&quot;:&quot;hello&quot;}&#39; &quot;https://localhost:8448/_matrix/client/r0/rooms/%21asfLdzLnOdGRkdPZWu:localhost/send/m.room.message?access_token=YOUR_ACCESS_TOKEN&quot;
+</span><span>
+</span><span>{
+</span><span>    &quot;event_id&quot;: &quot;YUwRidLecu&quot;
+</span><span>}
+</span></code></pre>
+<p>The event ID returned is a unique ID which identifies this message.</p>
+<p>NB: There are no limitations to the types of messages which can be exchanged.
+The only requirement is that <code>&quot;msgtype&quot;</code> is specified. The Matrix specification
+outlines the following standard types: <code>m.text</code>, <code>m.image</code>, <code>m.audio</code>,
+<code>m.video</code>, <code>m.location</code>, <code>m.emote</code>. See the specification for more information
+on these types.</p>
+<h2 id="users-and-rooms">Users and rooms</h2>
+<p>Each room can be configured to allow or disallow certain rules. In particular,
+these rules may specify if you require an <strong>invitation</strong> from someone already
+in the room in order to <strong>join the room</strong>. In addition, you may also be able to
+join a room <strong>via a room alias</strong> if one was set up.</p>
+<p><a href="https://jsfiddle.net/gh/get/jquery/1.8.3/matrix-org/matrix.org/tree/master/jekyll/_posts/howtos/jsfiddles/room_memberships">https://jsfiddle.net/gh/get/jquery/1.8.3/matrix-org/matrix.org/tree/master/jekyll/_posts/howtos/jsfiddles/room_memberships</a></p>
+<h3 id="inviting-a-user-to-a-room">Inviting a user to a room</h3>
+<p>You can directly invite a user to a room like so:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>curl -XPOST -d &#39;{&quot;user_id&quot;:&quot;@myfriend:localhost&quot;}&#39; &quot;https://localhost:8448/_matrix/client/r0/rooms/%21asfLdzLnOdGRkdPZWu:localhost/invite?access_token=YOUR_ACCESS_TOKEN&quot;
+</span></code></pre>
+<p>This informs <code>@myfriend:localhost</code> of the room ID
+<code>!CvcvRuDYDzTOzfKKgh:localhost</code> and allows them to join the room.</p>
+<h3 id="joining-a-room-via-an-invite">Joining a room via an invite</h3>
+<p>If you receive an invite, you can join the room:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>curl -XPOST -d &#39;{}&#39; &quot;https://localhost:8448/_matrix/client/r0/rooms/%21asfLdzLnOdGRkdPZWu:localhost/join?access_token=YOUR_ACCESS_TOKEN&quot;
+</span></code></pre>
+<p>NB: Only the person invited (<code>@myfriend:localhost</code>) can change the membership
+state to <code>&quot;join&quot;</code>. Repeatedly joining a room does nothing.</p>
+<h3 id="joining-a-room-via-an-alias">Joining a room via an alias</h3>
+<p>Alternatively, if you know the room alias for this room and the room config
+allows it, you can directly join a room via the alias:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>curl -XPOST -d &#39;{}&#39; &quot;https://localhost:8448/_matrix/client/r0/join/%21asfLdzLnOdGRkdPZWu:localhost?access_token=YOUR_ACCESS_TOKEN&quot;
+</span><span>
+</span><span>{
+</span><span>    &quot;room_id&quot;: &quot;!CvcvRuDYDzTOzfKKgh:localhost&quot;
+</span><span>}
+</span></code></pre>
+<p>You will need to use the room ID when sending messages, not the room alias.</p>
+<p>NB: If the room is configured to be an invite-only room, you will still require
+an invite in order to join the room even though you know the room alias. As a
+result, it is more common to see a room alias in relation to a public room,
+which do not require invitations.</p>
+<h2 id="getting-events">Getting events</h2>
+<p>An event is some interesting piece of data that a client may be interested in.
+It can be a message in a room, a room invite, etc. There are many different
+ways of getting events, depending on what the client already knows.</p>
+<p>https://jsfiddle.net/gh/get/jquery/1.8.3/matrix-org/matrix.org/tree/master/jekyll/_posts/howtos/jsfiddles/event_stream</p>
+<h3 id="getting-all-state">Getting all state</h3>
+<p>If the client doesn't know any information on the rooms the user is
+invited/joined on, they can get all the user's state for all rooms:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>curl -XGET &quot;https://localhost:8448/_matrix/client/r0/sync?access_token=YOUR_ACCESS_TOKEN&quot;
+</span><span>
+</span><span>{
+</span><span>    &quot;account_data&quot;: {
+</span><span>        &quot;events&quot;: [
+</span><span>            {
+</span><span>                ...
+</span><span>            }
+</span><span>        ]
+</span><span>    },
+</span><span>    &quot;next_batch&quot;: &quot;s9_3_0_1_1_1&quot;,
+</span><span>    &quot;presence&quot;: {
+</span><span>        &quot;events&quot;: [
+</span><span>            {
+</span><span>                &quot;content&quot;: {
+</span><span>                    &quot;currently_active&quot;: true,
+</span><span>                    &quot;last_active_ago&quot;: 19,
+</span><span>                    &quot;presence&quot;: &quot;online&quot;
+</span><span>                },
+</span><span>                &quot;sender&quot;: &quot;@example:localhost&quot;,
+</span><span>                &quot;type&quot;: &quot;m.presence&quot;
+</span><span>            }
+</span><span>        ]
+</span><span>    },
+</span><span>    &quot;rooms&quot;: {
+</span><span>        &quot;invite&quot;: {},
+</span><span>        &quot;join&quot;: {
+</span><span>            &quot;!asfLdzLnOdGRkdPZWu:localhost&quot;: {
+</span><span>                &quot;account_data&quot;: {
+</span><span>                    &quot;events&quot;: []
+</span><span>                },
+</span><span>                &quot;ephemeral&quot;: {
+</span><span>                    &quot;events&quot;: []
+</span><span>                },
+</span><span>                &quot;state&quot;: {
+</span><span>                    &quot;events&quot;: []
+</span><span>                },
+</span><span>                &quot;timeline&quot;: {
+</span><span>                    &quot;events&quot;: [
+</span><span>                        {
+</span><span>                            &quot;content&quot;: {
+</span><span>                                &quot;creator&quot;: &quot;@example:localhost&quot;
+</span><span>                            },
+</span><span>                            &quot;event_id&quot;: &quot;$14606534990LhqHt:localhost&quot;,
+</span><span>                            &quot;origin_server_ts&quot;: 1460653499699,
+</span><span>                            &quot;sender&quot;: &quot;@example:localhost&quot;,
+</span><span>                            &quot;state_key&quot;: &quot;&quot;,
+</span><span>                            &quot;type&quot;: &quot;m.room.create&quot;,
+</span><span>                            &quot;unsigned&quot;: {
+</span><span>                                &quot;age&quot;: 239192
+</span><span>                            }
+</span><span>                        },
+</span><span>                        {
+</span><span>                            &quot;content&quot;: {
+</span><span>                                &quot;avatar_url&quot;: null,
+</span><span>                                &quot;displayname&quot;: null,
+</span><span>                                &quot;membership&quot;: &quot;join&quot;
+</span><span>                            },
+</span><span>                            &quot;event_id&quot;: &quot;$14606534991nsZKk:localhost&quot;,
+</span><span>                            &quot;membership&quot;: &quot;join&quot;,
+</span><span>                            &quot;origin_server_ts&quot;: 1460653499727,
+</span><span>                            &quot;sender&quot;: &quot;@example:localhost&quot;,
+</span><span>                            &quot;state_key&quot;: &quot;@example:localhost&quot;,
+</span><span>                            &quot;type&quot;: &quot;m.room.member&quot;,
+</span><span>                            &quot;unsigned&quot;: {
+</span><span>                                &quot;age&quot;: 239164
+</span><span>                            }
+</span><span>                        },
+</span><span>                        ...
+</span><span>                    ],
+</span><span>                    &quot;limited&quot;: false,
+</span><span>                    &quot;prev_batch&quot;: &quot;s9_3_0_1_1_1&quot;
+</span><span>                },
+</span><span>                &quot;unread_notifications&quot;: {}
+</span><span>            }
+</span><span>        },
+</span><span>        &quot;leave&quot;: {}
+</span><span>    }
+</span><span>}
+</span></code></pre>
+<p>This returns all the room information the user is invited/joined on, as well as
+all of the presences relevant for these rooms. This can be a LOT of data. You
+may just want the most recent event for each room. This can be achieved by
+applying a filter that asks for a limit of 1 timeline event per room:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>curl --globoff -XGET &#39;https://localhost:8448/_matrix/client/r0/sync?filter={&quot;room&quot;:{&quot;timeline&quot;:{&quot;limit&quot;:1}}}&amp;access_token=YOUR_ACCESS_TOKEN&#39;
+</span><span>
+</span><span>{
+</span><span>    ...
+</span><span>    &quot;rooms&quot;: {
+</span><span>        &quot;invite&quot;: {},
+</span><span>        &quot;join&quot;: {
+</span><span>            &quot;!asfLdzLnOdGRkdPZWu:localhost&quot;: {
+</span><span>                ...
+</span><span>                &quot;timeline&quot;: {
+</span><span>                    &quot;events&quot;: [
+</span><span>                        {
+</span><span>                            &quot;content&quot;: {
+</span><span>                                &quot;body&quot;: &quot;hello&quot;,
+</span><span>                                &quot;msgtype&quot;: &quot;m.text&quot;
+</span><span>                            },
+</span><span>                            &quot;event_id&quot;: &quot;$14606535757KCGXo:localhost&quot;,
+</span><span>                            &quot;origin_server_ts&quot;: 1460653575105,
+</span><span>                            &quot;sender&quot;: &quot;@example:localhost&quot;,
+</span><span>                            &quot;type&quot;: &quot;m.room.message&quot;,
+</span><span>                            &quot;unsigned&quot;: {
+</span><span>                                &quot;age&quot;: 800348
+</span><span>                            }
+</span><span>                        }
+</span><span>                    ],
+</span><span>                    &quot;limited&quot;: true,
+</span><span>                    &quot;prev_batch&quot;: &quot;t8-8_7_0_1_1_1&quot;
+</span><span>                },
+</span><span>                &quot;unread_notifications&quot;: {}
+</span><span>            }
+</span><span>        },
+</span><span>        &quot;leave&quot;: {}
+</span><span>    }
+</span><span>}
+</span></code></pre>
+<p>(additionally we have to ask <code>curl</code> not to try to interpret any <code>{}</code> characters
+in the URL, which is what the <code>--globoff</code> option is for)</p>
+<h3 id="getting-live-state">Getting live state</h3>
+<p>In the response to this <code>sync</code> request the server includes a token that can be
+used to obtain updates since this point under the object key <code>next_batch</code>. To
+use this token, specify its value as the <code>since</code> parameter to another <code>/sync</code>
+request.:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>curl -XGET &quot;https://localhost:8448/_matrix/client/r0/sync?since=s9_7_0_1_1_1&amp;access_token=YOUR_ACCESS_TOKEN&quot;
+</span><span>
+</span><span>{
+</span><span>    &quot;account_data&quot;: {
+</span><span>        &quot;events&quot;: []
+</span><span>    },
+</span><span>    &quot;next_batch&quot;: &quot;s9_9_0_1_1_1&quot;,
+</span><span>    &quot;presence&quot;: {
+</span><span>        &quot;events&quot;: [
+</span><span>            {
+</span><span>                &quot;content&quot;: {
+</span><span>                    &quot;currently_active&quot;: true,
+</span><span>                    &quot;last_active_ago&quot;: 12,
+</span><span>                    &quot;presence&quot;: &quot;online&quot;
+</span><span>                },
+</span><span>                &quot;sender&quot;: &quot;@example:localhost&quot;,
+</span><span>                &quot;type&quot;: &quot;m.presence&quot;
+</span><span>            }
+</span><span>        ]
+</span><span>    },
+</span><span>    &quot;rooms&quot;: {
+</span><span>        &quot;invite&quot;: {},
+</span><span>        &quot;join&quot;: {},
+</span><span>        &quot;leave&quot;: {}
+</span><span>    }
+</span><span>}
+</span></code></pre>
+<p>By default this request will not wait in the server, always returning a value
+even if nothing interesting happened. However, by applying the <code>timeout</code> query
+parameter, which gives a duration in milliseconds, we can ask the server to
+wait for up to that amount of time before it returns. If no interesting events
+have happened since then, the response will be relatively empty.:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>curl -XGET &quot;https://localhost:8448/_matrix/client/r0/sync?since=s9_13_0_1_1_1&amp;access_token=YOUR_ACCESS_TOKEN&quot;
+</span><span>{
+</span><span>    &quot;account_data&quot;: {
+</span><span>        &quot;events&quot;: []
+</span><span>    },
+</span><span>    &quot;next_batch&quot;: &quot;s9_13_0_1_1_1&quot;,
+</span><span>    &quot;presence&quot;: {
+</span><span>        &quot;events&quot;: []
+</span><span>    },
+</span><span>    &quot;rooms&quot;: {
+</span><span>        &quot;invite&quot;: {},
+</span><span>        &quot;join&quot;: {},
+</span><span>        &quot;leave&quot;: {}
+</span><span>    }
+</span><span>}
+</span></code></pre>
+<h3 id="example-application">Example application</h3>
+<p>The following example demonstrates registration and login, live event streaming,
+creating and joining rooms, sending messages, getting member lists and getting
+historical messages for a room. This covers most functionality of a messaging
+application.</p>
+<p><a href="https://jsfiddle.net/gh/get/jquery/1.8.3/matrix-org/matrix.org/tree/master/jekyll/_posts/howtos/jsfiddles/example_app">https://jsfiddle.net/gh/get/jquery/1.8.3/matrix-org/matrix.org/tree/master/jekyll/_posts/howtos/jsfiddles/example_app</a></p>
+
+</article>
+
+    </main>
+
+    <footer class="site-footer">
+    <div class="internal-links">
+        
+        <a href="&#x2F;faq">FAQs</a>
+        
+        <a href="&#x2F;security-disclosure-policy">Security Disclosure Policy</a>
+        
+        <a href="&#x2F;hall-of-fame">Security Hall of Fame</a>
+        
+        <a href="&#x2F;legal&#x2F;code-of-conduct">Code of Conduct for Matrix.org</a>
+        
+        <a href="&#x2F;legal">Legal</a>
+        
+        <a href="&#x2F;contact">Contact</a>
+        
+        <a href="https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;">Site Source</a>
+        
+    </div>
+    <div class="external-links">
+        <div>
+            
+            <a href="&#x2F;code"><img src="/assets/github.svg" alt="GitHub"></a>
+            
+            <a href="https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;"><img src="/assets/gitlab.svg" alt="GitLab"></a>
+            
+            <a href="https:&#x2F;&#x2F;mastodon.matrix.org&#x2F;@matrix"><img src="/assets/mastodon.svg" alt="Mastodon"></a>
+            
+            <a href="https:&#x2F;&#x2F;twitter.com&#x2F;matrixdotorg"><img src="/assets/twitter.svg" alt="Twitter"></a>
+            
+            <a href="https:&#x2F;&#x2F;www.youtube.com&#x2F;channel&#x2F;UCVFkW-chclhuyYRbmmfwt6w"><img src="/assets/youtube.svg" alt="YouTube"></a>
+            
+        </div>
+    </div>
+    <p>© 2022 The Matrix.org Foundation C.I.C.</p>
+</footer>
+
+</body>
+
+</html>

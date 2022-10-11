@@ -1,0 +1,709 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="twitter:widgets:csp" content="on" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta name="twitter:site" content="@matrixdotorg" />
+    <meta name="twitter:creator" content="@matrixdotorg" />
+
+    <title>Matrix.org - Understanding Synapse Hosting</title>
+    <link rel="shortcut icon" href="/assets/favicon.ico" />
+    <link rel="icon" type="image/png" href="/assets/favicon.png" />
+    <link rel="stylesheet" href="/style.css" />
+
+    </head>
+
+<body>
+    
+    
+
+
+<header class="site-header">
+    <a href="/" class="brand">
+        <img src="/images/matrix-logo.svg" alt="Matrix logo">
+    </a>
+    <input id="site-header-dropdown-checkbox" type="checkbox" class="dropdown-checkbox" aria-hidden="true">
+    <label for="site-header-dropdown-checkbox" class="dropdown-button">&#xe602;</label>
+    <label for="site-header-dropdown-checkbox" class="page-overlay"></label>
+    <nav>
+        
+        
+        <a href="&#x2F;about&#x2F;" class="
+            ">
+            About
+        </a>
+        
+        
+        
+        <a href="&#x2F;blog&#x2F;" class="
+            ">
+            Blog
+        </a>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;docs&#x2F;" class="section current">
+                Documentation
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;ecosystem&#x2F;" class="section ">
+                Ecosystem
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                    <a href="&#x2F;ecosystem&#x2F;clients&#x2F;">Clients</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;servers&#x2F;">Servers</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bots&#x2F;">Bots</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bridges&#x2F;">Bridges</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;sdks&#x2F;">SDKs</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;hosting&#x2F;">Hosting</a>
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        <a href="&#x2F;podcasts&#x2F;" class="
+            ">
+            Podcasts
+        </a>
+        
+        
+        
+        <a href="https:&#x2F;&#x2F;shop.matrix.org" class="
+            ">
+            Shop
+        </a>
+        
+        
+        
+        <a href="&#x2F;try-matrix&#x2F;" class="primary
+            ">
+            Try Matrix
+        </a>
+        
+        
+    </nav>
+</header>
+
+
+    <main>
+        
+<article class="content">
+    <header>
+        <div class="legacy-doc-warning">
+            <h2>Outdated documentation</h2>
+            <p>This documentation has been kept for posterity but might be or
+               will be outdated. It should not be used anymore. Please head to
+               <a href="/docs">the documentation section</a> for up to date
+               documentation and guides.
+            </p>
+        </div>
+        <h1>Understanding Synapse Hosting</h1>
+    </header>
+    <p>In this tutorial we’re going to deploy a synapse instance with docker-compose.
+This tutorial is about getting a first hands-on experience with Synapse, but it
+is <strong>NOT</strong> a guide to deploying Synapse in production. Some best practices are
+missing for a production server. If you want to deploy Synapse to production,
+you most probably want at least:</p>
+<ul>
+<li>Monitoring</li>
+<li>Backups</li>
+<li>Joining the Matrix rooms or subscribing to the mailing-lists/RSS feeds to know
+when one of the components you use has a new release</li>
+</ul>
+<p>For production setups, please see the relevant doc on
+<a href="https://matrix-org.github.io/synapse/latest/">https://matrix-org.github.io/synapse/latest/</a></p>
+<h2 id="defining-what-we-want">Defining What We Want</h2>
+<p>When deploying our own instance, we need to define what domain we want for our
+user IDs and room aliases, and take care about not leaving the door open to
+abusers, even in small experimental deployments.</p>
+<h3 id="how-our-matrixid-will-look-like">How Our MatrixID Will Look Like</h3>
+<p>Two very important concepts for the end-user in matrix are user IDs and room
+IDs.</p>
+<ul>
+<li>A typical user ID would be <code>@john:example.org</code>. It’s made of a username
+(john) and a provider domain (example.org).</li>
+<li>A typical room address would be <code>#myroom:example.org</code></li>
+</ul>
+<p>Instead of example.org, we will want our own domain. In many cases, the root
+domain is already used to serve a website or another service. Some people
+decide to use a subdomain, like <code>matrix.example.org</code>, resulting in Matrix IDs
+following the format <code>@john:matrix.example.org</code>.</p>
+<p>While this works in practice, the <code>matrix.</code> subdomain looks redundant: we’re
+already chatting on Matrix, no need to tell me the person is on Matrix. It’s
+possible to keep serving Synapse on <code>matrix.example.org</code> but to still have
+<code>@john:example.org</code> Matrix ID, thanks to <a href="https://github.com/matrix-org/synapse/blob/develop/docs/delegate.md">delegation of incoming traffic</a>.</p>
+<p>Let’s be careful nonetheless: it’s not possible to change the domain of an
+instance! Once you deploy it with a domain, it’s forever. This is why we are
+going to set-up delegation of incoming traffic from the beginning, even if we
+don’t have anything else served on the root domain at the moment.</p>
+<h3 id="not-leaving-the-door-open">Not Leaving the Door Open</h3>
+<p>When setting up a Synapse instance, leaving registrations completely open
+without any sort of verification is a good way to get our server abused as a
+spam vector and added to many other servers’ blocklist.</p>
+<p>You probably either want to close registrations entirely, add email or captcha
+verification, or even better: only allow registrations for email addresses
+matching a certain pattern (e.g. to restrict registrations to everyone in your
+organisation as long as they have a @example.org email address).</p>
+<p>In any case, by default Synapse won’t start if you leave registrations
+completely open without verification and without bypassing that security
+setting. In our example we’ll close registrations entirely, and create accounts
+manually.</p>
+<h3 id="general-concepts">General Concepts</h3>
+<p>On the infrastructure level, we will need to have a machine exposed to the
+Internet, and a domain name. The simplest way to get these is to rent a VPS at
+a provider and buy a domain at a registrar. Renting the VPS and buying the
+domain will not be covered in this tutorial. For the sake of transparency, we
+used a VPS from the German provider <a href="https://www.netcup.eu">Netcup</a>, and bought
+a domain from <a href="https://www.gandi.net">Gandi</a>.</p>
+<p>We’re also going to deploy Synapse using docker containers: one for Synapse
+itself, one for the database Synapse relies on, one for a web server required
+to set-up delegation of incoming traffic, and one for the reverse proxy.</p>
+<p>The reverse proxy we’re going to use is traefik. It’s the entry door for
+incoming traffic on our server. We will use it to secure connections by
+retrieving a certificate automatically, and to route the calls to the proper
+containers.</p>
+<p>Finally, given containers are stateless, we will need to rely on volumes to
+persist the data. This is where the data and configuration files are stored.</p>
+<h2 id="the-bare-minimum-we-need">The Bare Minimum We Need</h2>
+<h3 id="a-vps-with-a-public-ip">A VPS with a public IP</h3>
+<p>Capacity planning is a notably difficult task when hosting a service. In the
+case of Matrix, the CPU, RAM and disk space usage grows essentially with the
+number of high traffic rooms your users are in.</p>
+<p>A 100 users deployment in a closed federation can still be considered a fairly
+small deployment. A five users deployment in open federation and with users in
+large traffic rooms such as Matrix HQ can be more resource intensive.</p>
+<p>We’re not going to cover how to monitor resources usage and how to scale a
+deployment in this tutorial: the goal is to get a first hands-on deployment for
+fun, so we’re going to deploy it on a reasonably small VPS.</p>
+<h3 id="docker-and-docker-compose">Docker and docker-compose</h3>
+<p>We assume you know what docker and docker-compose are, and that they are
+installed on a fresh server. You can find the documentation for docker and
+docker compose <a href="https://docs.docker.com/compose/">on docker’s documentation centre</a>.</p>
+<h3 id="a-domain-name">A domain name</h3>
+<p>In this particular example we chose Gandi, but any registrar will do. Synapse
+needs a domain name to be able to build Matrix IDs and room aliases, and you
+need to be able to at least add A records (and ideally AAAA, which we’re not
+going to cover in this tutorial for the sake of simplicity).</p>
+<h2 id="let-s-get-our-hands-dirty">Let’s Get Our Hands Dirty!</h2>
+<h3 id="the-global-architecture">The Global Architecture</h3>
+<p><img src="/docs/legacy/understanding-synapse-hosting-architecture.png" alt="Basic architecture of Synapse deployment with docker compose" title="Basic architecture of Synapse deployment with docker compose" /></p>
+<h3 id="adding-dns-records">Adding DNS records</h3>
+<p>Assuming your domain name is example.org, you need to add A records to your VPS
+for the following domains:</p>
+<ul>
+<li>example.org</li>
+<li>matrix.example.org</li>
+</ul>
+<h3 id="docker-compose-structure">docker-compose structure</h3>
+<p>A docker-compose file is used to describe what containers we want to set-up,
+what volumes they are going to rely on, and how to reach each container from
+the outside world.</p>
+<p>Here is a dummy docker-compose file that only starts a nginx instance, for
+reference:</p>
+<pre data-lang="yaml" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="background-color:#282828;color:#569cd6;">version</span><span>: </span><span style="color:#d69d85;">&#39;3&#39;
+</span><span>
+</span><span style="background-color:#282828;color:#569cd6;">services</span><span>:
+</span><span>
+</span><span>  </span><span style="background-color:#282828;color:#569cd6;">nginx</span><span>:
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">image</span><span>: </span><span style="color:#d69d85;">&quot;nginx:1.23.1&quot;
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">restart</span><span>: </span><span style="color:#d69d85;">&quot;always&quot;
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">volumes</span><span>:
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">nginx_conf:/etc/nginx/conf.d</span><span>
+</span><span>
+</span><span style="background-color:#282828;color:#569cd6;">volumes</span><span>:
+</span><span>  </span><span style="background-color:#282828;color:#569cd6;">nginx_conf</span><span>:
+</span></code></pre>
+<h3 id="setting-up-a-database">Setting up a database</h3>
+<p>Let’s start by going to our home directory, and create a directory called
+<code>infra</code>. In that directory, we are going to create a docker-compose.yaml file
+with the following content. This will create a PostgreSQL database for our
+Synapse instance.</p>
+<pre data-lang="yaml" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="background-color:#282828;color:#569cd6;">version</span><span>: </span><span style="color:#d69d85;">&#39;3&#39;
+</span><span>
+</span><span style="background-color:#282828;color:#569cd6;">services</span><span>:
+</span><span>
+</span><span>  </span><span style="background-color:#282828;color:#569cd6;">synapse_db</span><span>:
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">image</span><span>: </span><span style="background-color:#282828;color:#d69d85;">docker.io/postgres:14-alpine</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">restart</span><span>: </span><span style="background-color:#282828;color:#d69d85;">unless-stopped</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">environment</span><span>:
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">POSTGRES_USER=synapse</span><span>
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">POSTGRES_PASSWORD=aComplexPassphraseNobodyCanGuess</span><span>
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">volumes</span><span>:
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">synapse_db_data:/var/lib/postgresql/data</span><span>
+</span><span>
+</span><span style="background-color:#282828;color:#569cd6;">volumes</span><span>:
+</span><span>  </span><span style="background-color:#282828;color:#569cd6;">synapse_db_data</span><span>:
+</span></code></pre>
+<p>An important note here: storing credentials in plain text in the docker-compose
+file is a bad practice. If you want to use this set-up in the longer run,
+please check <a href="https://docs.docker.com/compose/compose-file/compose-file-v3/#secrets">docker compose and secrets</a>.</p>
+<p>We can now start the container by running <code>docker-compose up -d</code>. We can check
+the container is running with docker ps:</p>
+<pre data-lang="yaml" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span>[</span><span style="background-color:#282828;color:#d69d85;">root@v2202112135873173933 infra</span><span>]# </span><span style="background-color:#282828;color:#d69d85;">docker ps</span><span>
+</span><span style="background-color:#282828;color:#d69d85;">CONTAINER ID   IMAGE                COMMAND                  CREATED          STATUS          PORTS      NAMES</span><span>
+</span><span style="background-color:#282828;color:#d69d85;">8abcc08fa546   postgres:14-alpine   &quot;docker-entrypoint.s…&quot;   14 seconds ago   Up 13 seconds   5432/tcp   infra-synapse_db-1</span><span>
+</span></code></pre>
+<p>It may look like the database is open on the Internet… but it’s actually not.
+The container is listening on port 5432 on docker’s internal network. You can
+verify it’s not actually open by running <code>ss -tunlp</code></p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>[root@v2202112135873173933 infra]# ss -tunlp
+</span><span>Netid     State      Recv-Q     Send-Q         Local Address:Port         Peer Address:Port     Process                               
+</span><span>udp       UNCONN     0          0                  127.0.0.1:323               0.0.0.0:*         users:((&quot;chronyd&quot;,pid=735,fd=5))     
+</span><span>udp       UNCONN     0          0                      [::1]:323                  [::]:*         users:((&quot;chronyd&quot;,pid=735,fd=6))     
+</span><span>tcp       LISTEN     0          128                  0.0.0.0:22                0.0.0.0:*         users:((&quot;sshd&quot;,pid=14338,fd=3))      
+</span><span>tcp       LISTEN     0          128                     [::]:22                   [::]:*         users:((&quot;sshd&quot;,pid=14338,fd=4))
+</span></code></pre>
+<p>And now let’s check the logs by running <code>docker logs infra-synapse_db-1</code>. The
+output should look like below:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>[root@v2202112135873173933 infra]# docker logs -f infra-synapse_db-1
+</span><span>[…]
+</span><span>PostgreSQL init process complete; ready for start up.
+</span><span>
+</span><span>2022-07-26 14:27:31.860 UTC [1] LOG:  starting PostgreSQL 14.4 on x86_64-pc-linux-musl, compiled by gcc (Alpine 11.2.1_git20220219) 11.2.1 20220219, 64-bit
+</span><span>2022-07-26 14:27:31.860 UTC [1] LOG:  listening on IPv4 address &quot;0.0.0.0&quot;, port 5432
+</span><span>2022-07-26 14:27:31.860 UTC [1] LOG:  listening on IPv6 address &quot;::&quot;, port 5432
+</span><span>2022-07-26 14:27:31.861 UTC [1] LOG:  listening on Unix socket &quot;/var/run/postgresql/.s.PGSQL.5432&quot;
+</span><span>2022-07-26 14:27:31.863 UTC [50] LOG:  database system was shut down at 2022-07-26 14:27:31 UTC
+</span><span>2022-07-26 14:27:31.866 UTC [1] LOG:  database system is ready to accept connections
+</span></code></pre>
+<p>We can check if the user synapse was created by trying to connect to the database. To do so, let’s get the shell inside the postgresql container by running <code>docker exec -it infra_synapse_db_1 /bin/bash</code>. We should now be able to use the built-in SQL client by running <code>psql -U synapse -W</code>. We will be prompted for our password. We need to use the <code>POSTGRES_PASSWORD</code> declared in the docker-compose file. The output should look like as follows</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>bash-5.1# psql -U synapse -W Password: psql (14.4) Type &quot;help&quot; for help.
+</span><span>
+</span><span>synapse=#
+</span></code></pre>
+<p>We can close the sql client by simultaneously pressing the Ctrl and D keys,
+which will get us back to the postgresql docker container prompt. We can exit
+it too by pressing Ctrl and D once again.</p>
+<h3 id="setting-up-synapse">Setting up Synapse</h3>
+<p>It’s now time to set up Synapse itself! First of all, we need to generate a
+sample configuration file for our homeserver. To do so, let’s ask a disposable
+synapse container to generate the sample configuration file for us. You only
+need to edit the value of the SYNAPSE_SERVER_NAME to the value you want for the
+server part of your Matrix IDs, and SYNAPSE_REPORT_STATS depending on whether
+you want to report anonymous stats or not.</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>[root@v2202112135873173933 infra]# docker run -it --rm --mount type=volume,src=infra_synapse_data,dst=/data -e SYNAPSE_SERVER_NAME=example.org -e SYNAPSE_REPORT_STATS=yes matrixdotorg/synapse:v1.63.0 generate
+</span><span>Setting ownership on /data to 991:991
+</span><span>Creating log config /data/example.org.log.config
+</span><span>Generating config file /data/homeserver.yaml
+</span><span>Generating signing key file /data/example.org.signing.key
+</span><span>A config file has been generated in &#39;/data/homeserver.yaml&#39; for server name &#39;example.org&#39;. Please review this file and customise it to your needs.
+</span></code></pre>
+<p>The container generated several files. The first one we’re going to have a look
+at is the homeserver.yaml file, which contains all the basic information to
+allow our server to run. Docker volumes data is located in
+<code>/var/lib/docker/volumes/your_volume_name/_data</code>. We asked this container to
+generate the files in the <code>infra_synapse_data</code> volumes. Let’s have a look at
+<code>/var/lib/docker/volumes/infra_synapse_data/_data/homeserver.yaml </code>and see what
+it contains:</p>
+<pre data-lang="yaml" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="background-color:#282828;color:#569cd6;">server_name</span><span>: </span><span style="color:#d69d85;">&quot;example.org&quot;
+</span><span style="background-color:#282828;color:#569cd6;">pid_file</span><span>: </span><span style="background-color:#282828;color:#d69d85;">/data/homeserver.pid</span><span>
+</span><span style="background-color:#282828;color:#569cd6;">listeners</span><span>:
+</span><span>  - </span><span style="background-color:#282828;color:#569cd6;">port</span><span>: </span><span style="color:#b5cea8;">8008
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">tls</span><span>: </span><span style="color:#569cd6;">false
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">type</span><span>: </span><span style="background-color:#282828;color:#d69d85;">http</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">x_forwarded</span><span>: </span><span style="color:#569cd6;">true
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">resources</span><span>:
+</span><span>      - </span><span style="background-color:#282828;color:#569cd6;">names</span><span>: [</span><span style="background-color:#282828;color:#d69d85;">client</span><span>, </span><span style="background-color:#282828;color:#d69d85;">federation</span><span>]
+</span><span>        </span><span style="background-color:#282828;color:#569cd6;">compress</span><span>: </span><span style="color:#569cd6;">false
+</span><span style="background-color:#282828;color:#569cd6;">database</span><span>:
+</span><span>  </span><span style="background-color:#282828;color:#569cd6;">name</span><span>: </span><span style="background-color:#282828;color:#d69d85;">sqlite3</span><span>
+</span><span>  </span><span style="background-color:#282828;color:#569cd6;">args</span><span>:
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">database</span><span>: </span><span style="background-color:#282828;color:#d69d85;">/data/homeserver.db</span><span>
+</span><span style="background-color:#282828;color:#569cd6;">log_config</span><span>: </span><span style="color:#d69d85;">&quot;/data/example.org.log.config&quot;
+</span><span style="background-color:#282828;color:#569cd6;">media_store_path</span><span>: </span><span style="background-color:#282828;color:#d69d85;">/data/media_store</span><span>
+</span><span style="background-color:#282828;color:#569cd6;">registration_shared_secret</span><span>: </span><span style="color:#d69d85;">&quot;REDACTED&quot;
+</span><span style="background-color:#282828;color:#569cd6;">report_stats</span><span>: </span><span style="color:#569cd6;">true
+</span><span style="background-color:#282828;color:#569cd6;">macaroon_secret_key</span><span>: </span><span style="color:#d69d85;">&quot;REDACTED&quot;
+</span><span style="background-color:#282828;color:#569cd6;">form_secret</span><span>: </span><span style="color:#d69d85;">&quot;REDACTED&quot;
+</span><span style="background-color:#282828;color:#569cd6;">signing_key_path</span><span>: </span><span style="color:#d69d85;">&quot;/data/example.org.signing.key&quot;
+</span><span style="background-color:#282828;color:#569cd6;">trusted_key_servers</span><span>:
+</span><span>  - </span><span style="background-color:#282828;color:#569cd6;">server_name</span><span>: </span><span style="color:#d69d85;">&quot;matrix.org&quot;
+</span></code></pre>
+<p>What a pleasant surprise, it’s fairly short! Synapse indeed tries to have safe
+and sane defaults, and allows administrators to add options to tweak their
+configuration if they needed. The complete reference of every single option and
+what they do can be found at
+<a href="https://matrix-org.github.io/synapse/latest/usage/configuration/index.html">https://matrix-org.github.io/synapse/latest/usage/configuration/index.html</a></p>
+<p>And the good news is that we are just going to edit the database section: we’re
+going to make Synapse connect to the PostgreSQL database we have set up
+earlier. <a href="https://matrix-org.github.io/synapse/latest/usage/configuration/config_documentation.html#database">According to Synapse’s documentation</a>,
+we need to edit the database section so it looks like the following instead of
+the sql3 default:</p>
+<pre data-lang="yaml" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="background-color:#282828;color:#569cd6;">database</span><span>:
+</span><span>  </span><span style="background-color:#282828;color:#569cd6;">name</span><span>: </span><span style="background-color:#282828;color:#d69d85;">psycopg2</span><span>
+</span><span>  </span><span style="background-color:#282828;color:#569cd6;">txn_limit</span><span>: </span><span style="color:#b5cea8;">10000
+</span><span>  </span><span style="background-color:#282828;color:#569cd6;">args</span><span>:
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">user</span><span>: </span><span style="background-color:#282828;color:#d69d85;">synapse</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">password</span><span>: </span><span style="background-color:#282828;color:#d69d85;">aComplexPassphraseNobodyCanGuess</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">database</span><span>: </span><span style="background-color:#282828;color:#d69d85;">synapse</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">host</span><span>: </span><span style="background-color:#282828;color:#d69d85;">infra-synapse_db-1</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">port</span><span>: </span><span style="color:#b5cea8;">5432
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">cp_min</span><span>: </span><span style="color:#b5cea8;">5
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">cp_max</span><span>: </span><span style="color:#b5cea8;">10
+</span></code></pre>
+<p>We can save the file. Let’s edit out docker-compose.yaml file to add Synapse,
+and give it the volumes it needs to persist data:</p>
+<pre data-lang="yaml" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="background-color:#282828;color:#569cd6;">version</span><span>: </span><span style="color:#d69d85;">&#39;3&#39;
+</span><span>
+</span><span style="background-color:#282828;color:#569cd6;">services</span><span>:
+</span><span>
+</span><span>  </span><span style="background-color:#282828;color:#569cd6;">synapse</span><span>:
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">image</span><span>: </span><span style="background-color:#282828;color:#d69d85;">docker.io/matrixdotorg/synapse:v1.63.0</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">restart</span><span>: </span><span style="background-color:#282828;color:#d69d85;">unless-stopped</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">environment</span><span>:
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">SYNAPSE_CONFIG_PATH=/data/homeserver.yaml</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">volumes</span><span>:
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">synapse_data:/data</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">depends_on</span><span>:
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">synapse_db</span><span>
+</span><span>
+</span><span>  </span><span style="background-color:#282828;color:#569cd6;">synapse_db</span><span>:
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">image</span><span>: </span><span style="background-color:#282828;color:#d69d85;">docker.io/postgres:14-alpine</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">restart</span><span>: </span><span style="background-color:#282828;color:#d69d85;">unless-stopped</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">environment</span><span>:
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">POSTGRES_USER=synapse</span><span>
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">POSTGRES_PASSWORD=aComplexPassphraseNobodyCanGuess</span><span>
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">volumes</span><span>:
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">synapse_db_data:/var/lib/postgresql/data</span><span>
+</span><span>
+</span><span style="background-color:#282828;color:#569cd6;">volumes</span><span>:
+</span><span>  </span><span style="background-color:#282828;color:#569cd6;">synapse_data</span><span>:
+</span><span>  </span><span style="background-color:#282828;color:#569cd6;">synapse_db_data</span><span>:
+</span></code></pre>
+<p>We can now start Synapse by entering <code>docker compose up -d</code> and monitor what is
+happening with <code>docker logs -f infra-synapse-1</code>. It should give us pretty
+verbose output, as follows:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>[root@v2202112135873173933 infra]# docker logs -f infra-synapse-1
+</span><span>Starting synapse with args -m synapse.app.homeserver --config-path /data/homeserver.yaml
+</span><span>This server is configured to use &#39;matrix.org&#39; as its trusted key server via the
+</span><span>&#39;trusted_key_servers&#39; config option. &#39;matrix.org&#39; is a good choice for a key
+</span><span>server since it is long-lived, stable and trusted. However, some admins may
+</span><span>wish to use another server for this purpose.
+</span><span>
+</span><span>To suppress this warning and continue using &#39;matrix.org&#39;, admins should set
+</span><span>&#39;suppress_key_server_warning&#39; to &#39;true&#39; in homeserver.yaml.
+</span><span>--------------------------------------------------------------------------------
+</span><span>2022-07-26 15:35:47,966 - root - 343 - WARNING - main - ***** STARTING SERVER *****
+</span><span>2022-07-26 15:35:47,966 - root - 344 - WARNING - main - Server /usr/local/lib/python3.9/site-packages/synapse/app/homeserver.py version 1.63.0
+</span><span>2022-07-26 15:35:47,966 - root - 349 - INFO - main - Server hostname: chipchop.org
+</span><span>2022-07-26 15:35:47,966 - root - 350 - INFO - main - Instance name: master
+</span><span>2022-07-26 15:35:47,966 - synapse.app.homeserver - 377 - INFO - main - Setting up server
+</span><span>2022-07-26 15:35:47,966 - synapse.server - 306 - INFO - main - Setting up.
+</span><span>2022-07-26 15:35:47,967 - synapse.storage.databases - 66 - INFO - main - [database config &#39;master&#39;]: Checking database server
+</span><span>2022-07-26 15:35:47,967 - synapse.storage.databases - 69 - INFO - main - [database config &#39;master&#39;]: Preparing for databases [&#39;main&#39;, &#39;state&#39;]
+</span><span>2022-07-26 15:35:47,967 - synapse.storage.prepare_database - 115 - INFO - main - [&#39;main&#39;, &#39;state&#39;]: Checking existing schema version
+</span><span>2022-07-26 15:35:47,968 - synapse.storage.prepare_database - 145 - INFO - main - [&#39;main&#39;, &#39;state&#39;]: Initialising new database
+</span><span>2022-07-26 15:35:48,009 - synapse.storage.prepare_database - 411 - INFO - main - Applying schema deltas for v55
+</span><span>2022-07-26 15:35:48,010 - synapse.storage.prepare_database - 519 - INFO - main - Applying schema 55/access_token_expiry.sql
+</span><span>2022-07-26 15:35:48,012 - synapse.storage.prepare_database - 519 - INFO - main - Applying schema 55/track_threepid_validations.sql
+</span><span>2022-07-26 15:35:48,012 - synapse.storage.prepare_database - 519 - INFO - main - Applying schema 55/users_alter_deactivated.sql
+</span><span>[…]
+</span></code></pre>
+<p>We can quit watching the logs by pressing the Ctrl and C keys simultaneously.
+Voilà! We have a Synapse instance using our PostgreSQL database. Now we need to
+expose it properly on the internet, and set-up the delegation of incoming
+traffic.</p>
+<h3 id="serving-the-well-known-files">Serving the .well-known files</h3>
+<p>So far, we have configured our Synapse instance, but it’s not exposed on the
+Internet at all. It can only be accessed from within the docker network. While
+we specified the Synapse instance is going to generate Matrix IDs
+with “example.org” as a server part, we won’t expose the Synapse instance on
+the root domain itself. If the domain was exclusively used for Matrix that
+could work. But if we want to host a website on example.org, then we need to
+expose our Matrix instance somewhere else.</p>
+<p>We are going to expose our instance on matrix.example.org. We need a way to tell
+other members of the federation that even if our Matrix IDs are on example.org,
+the actual technical server is on matrix.example.org: this is what delegation
+of incoming traffic is for.</p>
+<p>This can be done by serving two static files:</p>
+<ul>
+<li>example.org/.well-known/matrix/server and</li>
+<li>example.org/.well-known/matrix/client</li>
+</ul>
+<p>One simple way to do it is to set-up a nginx homeserver and to instruct it to
+serve those files directly in its configuration file. Let’s add the nginx
+server in our docker-compose file:</p>
+<pre data-lang="yaml" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="background-color:#282828;color:#569cd6;">version</span><span>: </span><span style="color:#d69d85;">&#39;3&#39;
+</span><span>
+</span><span style="background-color:#282828;color:#569cd6;">services</span><span>:
+</span><span>
+</span><span>  </span><span style="background-color:#282828;color:#569cd6;">nginx</span><span>:
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">image</span><span>: </span><span style="color:#d69d85;">&quot;nginx:1.22.0&quot;
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">restart</span><span>: </span><span style="color:#d69d85;">&quot;always&quot;
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">volumes</span><span>:
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">nginx_conf:/etc/nginx/conf.d</span><span>
+</span><span>
+</span><span>  </span><span style="background-color:#282828;color:#569cd6;">synapse</span><span>:
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">image</span><span>: </span><span style="background-color:#282828;color:#d69d85;">docker.io/matrixdotorg/synapse:v1.63.0</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">restart</span><span>: </span><span style="background-color:#282828;color:#d69d85;">unless-stopped</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">environment</span><span>:
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">SYNAPSE_CONFIG_PATH=/data/homeserver.yaml</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">volumes</span><span>:
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">synapse_data:/data</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">depends_on</span><span>:
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">synapse_db</span><span>
+</span><span>
+</span><span>  </span><span style="background-color:#282828;color:#569cd6;">synapse_db</span><span>:
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">image</span><span>: </span><span style="background-color:#282828;color:#d69d85;">docker.io/postgres:14-alpine</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">restart</span><span>: </span><span style="background-color:#282828;color:#d69d85;">unless-stopped</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">environment</span><span>:
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">POSTGRES_USER=synapse</span><span>
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">POSTGRES_PASSWORD=aComplexPassphraseNobodyCanGuess</span><span>
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">volumes</span><span>:
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">synapse_db_data:/var/lib/postgresql/data</span><span>
+</span><span>
+</span><span style="background-color:#282828;color:#569cd6;">volumes</span><span>:
+</span><span>  </span><span style="background-color:#282828;color:#569cd6;">nginx_conf</span><span>:
+</span><span>  </span><span style="background-color:#282828;color:#569cd6;">synapse_data</span><span>:
+</span><span>  </span><span style="background-color:#282828;color:#569cd6;">synapse_db_data</span><span>:
+</span></code></pre>
+<p>We can then start the container for it to populate the <code>nginx_conf</code> volume with
+<code>docker compose up -d</code></p>
+<p>Let’s now edit the /var/lib/docker/volumes/infra_nginx_conf/_data/default.conf
+file, to add the following at the bottom of the file right before the closing
+<code>}</code>:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>    location /.well-known/matrix/server {
+</span><span>        access_log off;
+</span><span>        add_header Access-Control-Allow-Origin *;
+</span><span>        default_type application/json;
+</span><span>        return 200 &#39;{&quot;m.server&quot;: &quot;matrix.example.org:443&quot;}&#39;;
+</span><span>    }
+</span><span>
+</span><span>    location /.well-known/matrix/client {
+</span><span>        access_log off;
+</span><span>        add_header Access-Control-Allow-Origin *;
+</span><span>        default_type application/json;
+</span><span>        return 200 &#39;{&quot;m.homeserver&quot;: {&quot;base_url&quot;: &quot;https://matrix.example.org&quot;}}&#39;;
+</span><span>    }
+</span></code></pre>
+<p>We can now restart the nginx container with docker restart infra-nginx-1. Given
+the server is not exposed outside of the docker network, we need to get a
+prompt inside the container to check the files are properly served. We can get
+it with <code>docker exec -it infra-nginx-1 /bin/bash</code></p>
+<p>Once inside the container, we can use curl to ask for these files:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>root@66a61467b9ba:/# curl -X GET &quot;http://localhost/.well-known/matrix/server&quot;
+</span><span>{&quot;m.server&quot;: &quot;matrix.example.org:443&quot;}
+</span><span>root@66a61467b9ba:/# curl -X GET &quot;http://localhost/.well-known/matrix/client&quot;
+</span><span>{&quot;m.homeserver&quot;:{&quot;base_url&quot;: &quot;https://matrix.example.org&quot;}}
+</span></code></pre>
+<p>We can now exit the container prompt by pressing the Ctrl and D keys
+simultaneously.</p>
+<h3 id="exposing-on-the-internet-with-a-reverse-proxy">Exposing on the Internet with a Reverse Proxy</h3>
+<p>Everything is in place, now we only have to expose the relevant bits of our
+infrastructure on the Internet! This mainly means the nginx server, and the
+Synapse instance. Of course, we want to keep our database private and only
+accessible by containers within the docker network.</p>
+<p>To do so we’re going to rely on traefik, which adds a lot of sugar when it comes
+to routing external calls to the right containers. Traefik also handles the
+Let’s Encrypt certificates management to make sure the traffic remains
+encrypted and that our certificates never expire.</p>
+<p>The first thing we need to do is to add a traefik container in our
+docker-compose file, to map the docker socket to the traefik container so it
+can do its magic, and to give it a volume so it can store the certificates and
+associated keypairs. Our docker-compose file should look like below. Make sure
+to update the <code>certificatesresolvers.letls.acme.email</code> label to an email
+address where you can be reached out to.</p>
+<pre data-lang="yaml" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="background-color:#282828;color:#569cd6;">version</span><span>: </span><span style="color:#d69d85;">&#39;3&#39;
+</span><span>
+</span><span style="background-color:#282828;color:#569cd6;">services</span><span>:
+</span><span>
+</span><span>  </span><span style="background-color:#282828;color:#569cd6;">traefik</span><span>:
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">image</span><span>: </span><span style="color:#d69d85;">&quot;traefik&quot;
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">restart</span><span>: </span><span style="color:#d69d85;">&quot;always&quot;
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">command</span><span>:
+</span><span>      - </span><span style="color:#d69d85;">&quot;--api=true&quot;
+</span><span>      - </span><span style="color:#d69d85;">&quot;--providers.docker=true&quot;
+</span><span>      - </span><span style="color:#d69d85;">&quot;--providers.docker.exposedbydefault=false&quot;
+</span><span>      - </span><span style="color:#d69d85;">&quot;--entrypoints.web.address=:80&quot;
+</span><span>      - </span><span style="color:#d69d85;">&quot;--entrypoints.websecure.address=:443&quot;
+</span><span>      - </span><span style="color:#d69d85;">&quot;--certificatesresolvers.letls.acme.email=admin@example.org&quot;
+</span><span>      - </span><span style="color:#d69d85;">&quot;--certificatesresolvers.letls.acme.storage=/certs/acme.json&quot;
+</span><span>      - </span><span style="color:#d69d85;">&quot;--certificatesresolvers.letls.acme.httpchallenge=true&quot;
+</span><span>      - </span><span style="color:#d69d85;">&quot;--certificatesresolvers.letls.acme.httpchallenge.entrypoint=web&quot;
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">ports</span><span>:
+</span><span>      - </span><span style="color:#d69d85;">&quot;443:443&quot;
+</span><span>      - </span><span style="color:#d69d85;">&quot;80:80&quot;
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">volumes</span><span>:
+</span><span>      - </span><span style="color:#d69d85;">&quot;/var/run/docker.sock:/var/run/docker.sock:ro&quot;
+</span><span>      - </span><span style="color:#d69d85;">&quot;traefik_certs:/certs&quot;
+</span><span>
+</span><span>  </span><span style="background-color:#282828;color:#569cd6;">nginx</span><span>:
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">image</span><span>: </span><span style="color:#d69d85;">&quot;nginx:1.22.0&quot;
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">restart</span><span>: </span><span style="color:#d69d85;">&quot;always&quot;
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">volumes</span><span>:
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">nginx_conf:/etc/nginx/conf.d</span><span>
+</span><span>
+</span><span>  </span><span style="background-color:#282828;color:#569cd6;">synapse</span><span>:
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">image</span><span>: </span><span style="background-color:#282828;color:#d69d85;">docker.io/matrixdotorg/synapse:v1.63.0</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">restart</span><span>: </span><span style="background-color:#282828;color:#d69d85;">unless-stopped</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">environment</span><span>:
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">SYNAPSE_CONFIG_PATH=/data/homeserver.yaml</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">volumes</span><span>:
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">synapse_data:/data</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">depends_on</span><span>:
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">synapse_db</span><span>
+</span><span>
+</span><span>  </span><span style="background-color:#282828;color:#569cd6;">synapse_db</span><span>:
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">image</span><span>: </span><span style="background-color:#282828;color:#d69d85;">docker.io/postgres:14-alpine</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">restart</span><span>: </span><span style="background-color:#282828;color:#d69d85;">unless-stopped</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">environment</span><span>:
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">POSTGRES_USER=synapse</span><span>
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">POSTGRES_PASSWORD=aComplexPassphraseNobodyCanGuess</span><span>
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">volumes</span><span>:
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">synapse_db_data:/var/lib/postgresql/data</span><span>
+</span><span>
+</span><span style="background-color:#282828;color:#569cd6;">volumes</span><span>:
+</span><span>  </span><span style="background-color:#282828;color:#569cd6;">traefik_certs</span><span>:
+</span><span>  </span><span style="background-color:#282828;color:#569cd6;">nginx_conf</span><span>:
+</span><span>  </span><span style="background-color:#282828;color:#569cd6;">synapse_data</span><span>:
+</span><span>  </span><span style="background-color:#282828;color:#569cd6;">synapse_db_data</span><span>:
+</span></code></pre>
+<p>Now let’s check traefik is actually listening to the outside world with
+<code>ss -tunlp</code>:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>[root@v2202112135873173933 infra]# ss -tunlp
+</span><span>Netid         State          Recv-Q         Send-Q                 Local Address:Port                  Peer Address:Port         Process                                           
+</span><span>udp           UNCONN         0              0                          127.0.0.1:323                        0.0.0.0:*             users:((&quot;chronyd&quot;,pid=735,fd=5))                 
+</span><span>udp           UNCONN         0              0                              [::1]:323                           [::]:*             users:((&quot;chronyd&quot;,pid=735,fd=6))                 
+</span><span>tcp           LISTEN         0              4096                         0.0.0.0:443                        0.0.0.0:*             users:((&quot;docker-proxy&quot;,pid=110990,fd=4))         
+</span><span>tcp           LISTEN         0              4096                         0.0.0.0:80                         0.0.0.0:*             users:((&quot;docker-proxy&quot;,pid=111025,fd=4))         
+</span><span>tcp           LISTEN         0              128                          0.0.0.0:22                         0.0.0.0:*             users:((&quot;sshd&quot;,pid=14338,fd=3))                  
+</span><span>tcp           LISTEN         0              4096                            [::]:443                           [::]:*             users:((&quot;docker-proxy&quot;,pid=110997,fd=4))         
+</span><span>tcp           LISTEN         0              4096                            [::]:80                            [::]:*             users:((&quot;docker-proxy&quot;,pid=111032,fd=4))         
+</span><span>tcp           LISTEN         0              128                             [::]:22                            [::]:*             users:((&quot;sshd&quot;,pid=14338,fd=4))
+</span></code></pre>
+<p>Fantastic! But that’s only the first step: traefik does listen to the outside
+world, but it doesn’t know where to route calls yet. For that we’re going to
+rely on labels. Let’s start with something straightforward: we’re going to
+route all the calls to our root domain example.org to the nginx container
+serving the <code>.well-known</code> files.</p>
+<p>The nginx section of our docker-compose file should look like below. Of course,
+adapt the labels to your own domain.</p>
+<pre data-lang="yaml" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span>  </span><span style="background-color:#282828;color:#569cd6;">nginx</span><span>:
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">image</span><span>: </span><span style="color:#d69d85;">&quot;nginx:1.22.0&quot;
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">restart</span><span>: </span><span style="color:#d69d85;">&quot;always&quot;
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">volumes</span><span>:
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">nginx_conf:/etc/nginx/conf.d</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">labels</span><span>:
+</span><span>      - </span><span style="color:#d69d85;">&quot;traefik.enable=true&quot;
+</span><span>      - </span><span style="color:#d69d85;">&quot;traefik.http.routers.nginx.entrypoints=websecure&quot;
+</span><span>      - </span><span style="color:#d69d85;">&quot;traefik.http.routers.nginx.rule=Host(`example.org`)&quot;
+</span><span>      - </span><span style="color:#d69d85;">&quot;traefik.http.routers.nginx.tls=true&quot;
+</span><span>      - </span><span style="color:#d69d85;">&quot;traefik.http.routers.nginx.tls.certresolver=letls&quot;
+</span></code></pre>
+<p>We can then restart containers with <code>docker compose up -d</code>. Traefik might need a
+few minutes to retrieve the certificates, but you should now be able to reach
+<a href="https://example.org/.well-known/matrix/server">https://example.org/.well-known/matrix/server</a> and
+<a href="https://example.org/.well-known/matrix/client">https://example.org/.well-known/matrix/client</a> from your browser! Wee!</p>
+<p>Let’s now expose Synapse on its technical URL as well by adding some labels in
+the docker-compose file. The synapse section should look like below. Of course,
+here again adapt the labels to your own domain.</p>
+<pre data-lang="yaml" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span>  </span><span style="background-color:#282828;color:#569cd6;">synapse</span><span>:
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">image</span><span>: </span><span style="background-color:#282828;color:#d69d85;">docker.io/matrixdotorg/synapse:v1.63.0</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">restart</span><span>: </span><span style="background-color:#282828;color:#d69d85;">unless-stopped</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">environment</span><span>:
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">SYNAPSE_CONFIG_PATH=/data/homeserver.yaml</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">volumes</span><span>:
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">synapse_data:/data</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">depends_on</span><span>:
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">synapse_db</span><span>
+</span><span>    </span><span style="background-color:#282828;color:#569cd6;">labels</span><span>:
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">traefik.enable=true</span><span>
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">traefik.http.routers.synapse.entrypoints=websecure</span><span>
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">traefik.http.routers.synapse.rule=Host(`matrix.example.org`)</span><span>
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">traefik.http.routers.synapse.tls=true</span><span>
+</span><span>      - </span><span style="background-color:#282828;color:#d69d85;">traefik.http.routers.synapse.tls.certresolver=letls</span><span>
+</span></code></pre>
+<p>We can try to reach https://matrix.example.org… and it should answer!</p>
+<p><img src="/docs/legacy/understanding-synapse-hosting-nginx.png" alt="Synapse serving its static page, behind nginx" title="Synapse serving its static page, behind nginx" /></p>
+<h3 id="creating-an-account-and-logging-in">Creating an account, and logging in</h3>
+<p>It looks like our server is online, that’s fantastic! Let’s connect to our new
+Matrix account then! But wait… registrations are closed by default on Synapse.
+We can’t register using a web client. Let’s get a prompt in the Synapse
+container with <code>docker exec -it infra-synapse-1 /bin/bash</code> to manually register
+a new user using the <code>register_new_matrix_user -c /data/homeserver.yaml http://localhost:8008</code> command:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>root@e752d46bc5f2:/# register_new_matrix_user -c /data/homeserver.yaml http://localhost:8008
+</span><span>New user localpart [root]: myuserid 
+</span><span>Password: 
+</span><span>Confirm password: 
+</span><span>Make admin [no]: 
+</span><span>Sending registration request...
+</span><span>Success!
+</span></code></pre>
+<p>Voilà! We can now head to <a href="https://app.element.io">https://app.element.io</a>, select our example.org domain instead of matrix.org,
+and log in with this new account! Congratulations, you set-up your own
+homeserver the hard way!</p>
+
+</article>
+
+    </main>
+
+    <footer class="site-footer">
+    <div class="internal-links">
+        
+        <a href="&#x2F;faq">FAQs</a>
+        
+        <a href="&#x2F;security-disclosure-policy">Security Disclosure Policy</a>
+        
+        <a href="&#x2F;hall-of-fame">Security Hall of Fame</a>
+        
+        <a href="&#x2F;legal&#x2F;code-of-conduct">Code of Conduct for Matrix.org</a>
+        
+        <a href="&#x2F;legal">Legal</a>
+        
+        <a href="&#x2F;contact">Contact</a>
+        
+        <a href="https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;">Site Source</a>
+        
+    </div>
+    <div class="external-links">
+        <div>
+            
+            <a href="&#x2F;code"><img src="/assets/github.svg" alt="GitHub"></a>
+            
+            <a href="https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;"><img src="/assets/gitlab.svg" alt="GitLab"></a>
+            
+            <a href="https:&#x2F;&#x2F;mastodon.matrix.org&#x2F;@matrix"><img src="/assets/mastodon.svg" alt="Mastodon"></a>
+            
+            <a href="https:&#x2F;&#x2F;twitter.com&#x2F;matrixdotorg"><img src="/assets/twitter.svg" alt="Twitter"></a>
+            
+            <a href="https:&#x2F;&#x2F;www.youtube.com&#x2F;channel&#x2F;UCVFkW-chclhuyYRbmmfwt6w"><img src="/assets/youtube.svg" alt="YouTube"></a>
+            
+        </div>
+    </div>
+    <p>© 2022 The Matrix.org Foundation C.I.C.</p>
+</footer>
+
+</body>
+
+</html>

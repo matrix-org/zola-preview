@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="twitter:widgets:csp" content="on" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta name="twitter:site" content="@matrixdotorg" />
+    <meta name="twitter:creator" content="@matrixdotorg" />
+
+    <title>Matrix.org - Usage of matrix-bot-sdk</title>
+    <link rel="shortcut icon" href="/assets/favicon.ico" />
+    <link rel="icon" type="image/png" href="/assets/favicon.png" />
+    <link rel="stylesheet" href="/style.css" />
+
+    </head>
+
+<body>
+    
+    
+
+
+<header class="site-header">
+    <a href="/" class="brand">
+        <img src="/images/matrix-logo.svg" alt="Matrix logo">
+    </a>
+    <input id="site-header-dropdown-checkbox" type="checkbox" class="dropdown-checkbox" aria-hidden="true">
+    <label for="site-header-dropdown-checkbox" class="dropdown-button">&#xe602;</label>
+    <label for="site-header-dropdown-checkbox" class="page-overlay"></label>
+    <nav>
+        
+        
+        <a href="&#x2F;about&#x2F;" class="
+            ">
+            About
+        </a>
+        
+        
+        
+        <a href="&#x2F;blog&#x2F;" class="
+            ">
+            Blog
+        </a>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;docs&#x2F;" class="section current">
+                Documentation
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;ecosystem&#x2F;" class="section ">
+                Ecosystem
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                    <a href="&#x2F;ecosystem&#x2F;clients&#x2F;">Clients</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;servers&#x2F;">Servers</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bots&#x2F;">Bots</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bridges&#x2F;">Bridges</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;sdks&#x2F;">SDKs</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;hosting&#x2F;">Hosting</a>
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        <a href="&#x2F;podcasts&#x2F;" class="
+            ">
+            Podcasts
+        </a>
+        
+        
+        
+        <a href="https:&#x2F;&#x2F;shop.matrix.org" class="
+            ">
+            Shop
+        </a>
+        
+        
+        
+        <a href="&#x2F;try-matrix&#x2F;" class="primary
+            ">
+            Try Matrix
+        </a>
+        
+        
+    </nav>
+</header>
+
+
+    <main>
+        
+<article class="content">
+    <header>
+        <div class="legacy-doc-warning">
+            <h2>Outdated documentation</h2>
+            <p>This documentation has been kept for posterity but might be or
+               will be outdated. It should not be used anymore. Please head to
+               <a href="/docs">the documentation section</a> for up to date
+               documentation and guides.
+            </p>
+        </div>
+        <h1>Usage of matrix-bot-sdk</h1>
+    </header>
+    <p>This article concerns <a href="https://github.com/turt2live/matrix-bot-sdk">matrix-bot-sdk</a>, a TypeScript client SDK for Matrix.
+We'll build a simple &quot;echo bot&quot;, meaning a bot which replies to messages with
+the text it has just read.</p>
+<p>Note that although the SDK is written in TypeScript, we'll use JavaScript in our
+examples. If you'd prefer to use TypeScript, then do!</p>
+<h2 id="setup">Setup</h2>
+<p>Let's make a new folder, and import our only npm dependency. The following
+examples are all meant to be run in a bash terminal.</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>mkdir matrix-js-echo-bot
+</span><span>cd matrix-js-echo-bot
+</span><span>npm install matrix-bot-sdk
+</span></code></pre>
+<p>Create a new file named &quot;index.js&quot;, and let's get started.</p>
+<h2 id="instantiation">Instantiation</h2>
+<p>In our js file, start by importing the minimum we'll need for this example:</p>
+<pre data-lang="javascript" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-javascript "><code class="language-javascript" data-lang="javascript"><span style="color:#569cd6;">const </span><span>sdk = require(</span><span style="color:#d69d85;">&quot;matrix-bot-sdk&quot;</span><span>);
+</span><span style="color:#569cd6;">const </span><span>MatrixClient = sdk.MatrixClient;
+</span><span style="color:#569cd6;">const </span><span>SimpleFsStorageProvider = sdk.SimpleFsStorageProvider;
+</span><span style="color:#569cd6;">const </span><span>AutojoinRoomsMixin = sdk.AutojoinRoomsMixin;
+</span></code></pre>
+<p>Create a new account for your bot on a homeserver, then get the <code>access_token</code>.
+The simplest way to do this is using Element, <a href="https://t2bot.io/docs/access_tokens/">take a look at these
+instructions</a>. Set some variables to
+store the homeserver and <code>access_token</code>. This is all the authentication you
+need!</p>
+<pre data-lang="javascript" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-javascript "><code class="language-javascript" data-lang="javascript"><span style="color:#569cd6;">const </span><span>homeserverUrl = </span><span style="color:#d69d85;">&quot;https://matrix.org&quot;</span><span>; </span><span style="color:#608b4e;">// make sure to update this with your url
+</span><span style="color:#569cd6;">const </span><span>accessToken = </span><span style="color:#d69d85;">&quot;YourSecretAccessToken&quot;</span><span>;
+</span></code></pre>
+<p>Now we'll configure a storage provider - matrix-bot-sdk provides the
+<code>SimpleFsStorageProvider</code>, which is ideal for most cases:</p>
+<pre data-lang="javascript" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-javascript "><code class="language-javascript" data-lang="javascript"><span style="color:#569cd6;">const </span><span>storage = </span><span style="color:#569cd6;">new </span><span style="color:#4ec9b0;">SimpleFsStorageProvider</span><span>(</span><span style="color:#d69d85;">&quot;bot.json&quot;</span><span>);
+</span></code></pre>
+<p>When the bot starts, the SDK will create a a new file called &quot;bot.json&quot; to store
+the data it needs.</p>
+<p>Finally we're ready to start the client! As you'd expect, we'll use the
+variables we've already specified.</p>
+<pre data-lang="javascript" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-javascript "><code class="language-javascript" data-lang="javascript"><span style="color:#569cd6;">const </span><span>client = </span><span style="color:#569cd6;">new </span><span style="color:#4ec9b0;">MatrixClient</span><span>(homeserverUrl, accessToken, storage);
+</span></code></pre>
+<p>There is one more thing we need to do. We'll include a mixin which instructs the
+bot to auto-accept any room invite it receives. This makes testing much more
+convenient.</p>
+<pre data-lang="javascript" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-javascript "><code class="language-javascript" data-lang="javascript"><span>AutojoinRoomsMixin.setupOnClient(client);
+</span></code></pre>
+<p>Finally, let's start the Client:</p>
+<pre data-lang="javascript" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-javascript "><code class="language-javascript" data-lang="javascript"><span>client.start().then(() </span><span style="color:#569cd6;">=&gt; </span><span>console.log(</span><span style="color:#d69d85;">&quot;Client started!&quot;</span><span>));
+</span></code></pre>
+<p>If you're keeping up, your code should look something like:</p>
+<pre data-lang="javascript" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-javascript "><code class="language-javascript" data-lang="javascript"><span style="color:#9b9b9b;">import </span><span>{
+</span><span>    MatrixClient,
+</span><span>    SimpleFsStorageProvider,
+</span><span>    AutojoinRoomsMixin
+</span><span>} </span><span style="color:#569cd6;">from </span><span style="color:#d69d85;">&quot;matrix-bot-sdk&quot;</span><span>;
+</span><span>
+</span><span style="color:#569cd6;">const </span><span>homeserverUrl = </span><span style="color:#d69d85;">&quot;https://matrix.org&quot;</span><span>; </span><span style="color:#608b4e;">// make sure to update this with your url
+</span><span style="color:#569cd6;">const </span><span>accessToken = </span><span style="color:#d69d85;">&quot;YourSecretAccessToken&quot;</span><span>;
+</span><span style="color:#569cd6;">const </span><span>storage = </span><span style="color:#569cd6;">new </span><span style="color:#4ec9b0;">SimpleFsStorageProvider</span><span>(</span><span style="color:#d69d85;">&quot;bot.json&quot;</span><span>);
+</span><span>
+</span><span style="color:#569cd6;">const </span><span>client = </span><span style="color:#569cd6;">new </span><span style="color:#4ec9b0;">MatrixClient</span><span>(homeserverUrl, accessToken, storage);
+</span><span>AutojoinRoomsMixin.setupOnClient(client);
+</span><span>
+</span><span>client.start().then(() </span><span style="color:#569cd6;">=&gt; </span><span>console.log(</span><span style="color:#d69d85;">&quot;Client started!&quot;</span><span>));
+</span></code></pre>
+<p>Let's run it:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>node index.js
+</span></code></pre>
+<p>This should now join and sit idle, but join any room you invite the bot to.</p>
+<h2 id="sync-loop">/sync loop</h2>
+<p>Right now, while it's just listening to invites and nothing else, what is the
+bot actually doing? It's calling the <code>/sync</code> endpoint in a loop. Calling this
+endpoint returns all new events since some previous point.</p>
+<p>Leave the script running and open <code>bot.json</code>, which is the file we specified for
+storage. This file contains a field <code>syncToken</code>, which is being occasionally
+updated - the SDK uses this field to give a token to the homeserver, which uses
+it to know which events to send back.</p>
+<h2 id="receiving-and-sending-events">Receiving and Sending events</h2>
+<p>In order to echo messages, our bot must first be able to read them. The
+<code>client.on()</code> method of our MatrixClient takes two arguments: one for the event
+type, one for a callback to handle the event:</p>
+<pre data-lang="javascript" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-javascript "><code class="language-javascript" data-lang="javascript"><span>client.on(</span><span style="color:#d69d85;">&quot;room.message&quot;</span><span>, (roomId, event) </span><span style="color:#569cd6;">=&gt; </span><span>{
+</span><span>    </span><span style="color:#569cd6;">if </span><span>(</span><span style="color:#569cd6;">! </span><span>event[</span><span style="color:#d69d85;">&quot;content&quot;</span><span>]) </span><span style="color:#569cd6;">return</span><span>;
+</span><span>    </span><span style="color:#569cd6;">const </span><span>sender = event[</span><span style="color:#d69d85;">&quot;sender&quot;</span><span>];
+</span><span>    </span><span style="color:#569cd6;">const </span><span>body = event[</span><span style="color:#d69d85;">&quot;content&quot;</span><span>][</span><span style="color:#d69d85;">&quot;body&quot;</span><span>];
+</span><span>    console.log(</span><span style="color:#d69d85;">`${</span><span>roomId</span><span style="color:#d69d85;">}: ${</span><span>sender</span><span style="color:#d69d85;">} says &#39;${</span><span>body</span><span style="color:#d69d85;">}`</span><span>);
+</span><span>});
+</span></code></pre>
+<p>In this way we can inspect an the contents of an event and render them. We
+choose to exit early in the case that <code>event[&quot;content&quot;]</code> is empty because this
+will usually mean the message was redacted.</p>
+<p>To send a message, we use the <code>client.sendMessage()</code> method. This takes two
+arguments: the roomId, and a JSON object containing the contents of the message
+to send, for example:</p>
+<pre data-lang="javascript" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-javascript "><code class="language-javascript" data-lang="javascript"><span>client.sendMessage(roomId, {
+</span><span>    </span><span style="color:#d69d85;">&quot;msgtype&quot;</span><span>: </span><span style="color:#d69d85;">&quot;m.text&quot;</span><span>,
+</span><span>    </span><span style="color:#d69d85;">&quot;body&quot;</span><span>: </span><span style="color:#d69d85;">&quot;This is message text.&quot;</span><span>,
+</span><span>});
+</span></code></pre>
+<p>Note, it's also possible to use <code>client.sendText()</code> to achieve the same result,
+as in</p>
+<pre data-lang="javascript" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-javascript "><code class="language-javascript" data-lang="javascript"><span>client.sendText(roomId, </span><span style="color:#d69d85;">&quot;This is message text.&quot;</span><span>)
+</span></code></pre>
+<p>The reason for showing <code>client.sendMessage()</code> is to make it clear that the
+message format is <a href="https://matrix.org/docs/spec/client_server/latest#put-matrix-client-r0-rooms-roomid-send-eventtype-txnid">just the same as you'd find in the spec
+</a>.</p>
+<h2 id="implementing-echobot-functionality">Implementing echobot functionality</h2>
+<p>To work, an echobot needs only to listen for incoming messages, read the message
+text, and use it to reply. Let's demonstrate that now.</p>
+<ul>
+<li>Read the message as in the example above</li>
+<li>Inspect the body text, if it starts with &quot;!echo&quot;, send back the remaining
+text</li>
+<li>Strip out the &quot;!echo&quot; tag</li>
+<li>Send a message containing the result</li>
+</ul>
+<pre data-lang="javascript" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-javascript "><code class="language-javascript" data-lang="javascript"><span>client.on(</span><span style="color:#d69d85;">&quot;room.message&quot;</span><span>, (roomId, event) </span><span style="color:#569cd6;">=&gt; </span><span>{
+</span><span>    </span><span style="color:#569cd6;">if </span><span>(</span><span style="color:#569cd6;">! </span><span>event[</span><span style="color:#d69d85;">&quot;content&quot;</span><span>]) </span><span style="color:#569cd6;">return</span><span>;
+</span><span>    </span><span style="color:#569cd6;">const </span><span>sender = event[</span><span style="color:#d69d85;">&quot;sender&quot;</span><span>];
+</span><span>    </span><span style="color:#569cd6;">const </span><span>body = event[</span><span style="color:#d69d85;">&quot;content&quot;</span><span>][</span><span style="color:#d69d85;">&quot;body&quot;</span><span>];
+</span><span>    console.log(</span><span style="color:#d69d85;">`${</span><span>roomId</span><span style="color:#d69d85;">}: ${</span><span>sender</span><span style="color:#d69d85;">} says &#39;${</span><span>body</span><span style="color:#d69d85;">}`</span><span>);
+</span><span>
+</span><span>    </span><span style="color:#569cd6;">if </span><span>(body.startsWith(</span><span style="color:#d69d85;">&quot;!echo&quot;</span><span>)) {
+</span><span>        </span><span style="color:#569cd6;">const </span><span>replyText = body.substring(</span><span style="color:#d69d85;">&quot;!echo&quot;</span><span>.length).trim();
+</span><span>        client.sendMessage(roomId, {
+</span><span>            </span><span style="color:#d69d85;">&quot;msgtype&quot;</span><span>: </span><span style="color:#d69d85;">&quot;m.notice&quot;</span><span>,
+</span><span>            </span><span style="color:#d69d85;">&quot;body&quot;</span><span>: replyText,
+</span><span>        });
+</span><span>    }
+</span><span>});
+</span></code></pre>
+<h2 id="conclusion">Conclusion</h2>
+<p>It's extremely simple to listen to messages with <a href="https://github.com/turt2live/matrix-bot-sdk">matrix-bot-sdk</a> create an
+echobot! There are many more features, you can see the MatrixClient class is
+<a href="https://github.com/turt2live/matrix-bot-sdk/blob/master/src/MatrixClient.ts">very well documented
+</a>.
+Next in this series, we'll explore Rich Replies, and take a look at the kick
+and ban functions for room administration.</p>
+<h2 id="ps-use-typescript">PS, use TypeScript</h2>
+<p>This SDK uses TypeScript, which provides a lot of benefits. In this example, we
+used JavaScript, but it's just as easy to use TypeScript and maybe preferable,
+since it is the language <a href="https://github.com/turt2live/matrix-bot-sdk">matrix-bot-sdk</a> is written in.</p>
+<p>First let's install <code>tsc</code>, which compiles from TypeScript to JavaScript:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>npm install typescript
+</span></code></pre>
+<p>Now, start tsc in watch-mode (<code>-w</code>), and leave it to compile our code:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>npx tsc --watch *.ts
+</span></code></pre>
+<p>Now, whenever we create a new TypeScript (<code>.ts</code>) file, it will be automatically
+watched and compiled to JavaScript.</p>
+<p>When you have your .js file(s), you can run them with <code>node &lt;filename&gt;</code> as
+normal.</p>
+
+</article>
+
+    </main>
+
+    <footer class="site-footer">
+    <div class="internal-links">
+        
+        <a href="&#x2F;faq">FAQs</a>
+        
+        <a href="&#x2F;security-disclosure-policy">Security Disclosure Policy</a>
+        
+        <a href="&#x2F;hall-of-fame">Security Hall of Fame</a>
+        
+        <a href="&#x2F;legal&#x2F;code-of-conduct">Code of Conduct for Matrix.org</a>
+        
+        <a href="&#x2F;legal">Legal</a>
+        
+        <a href="&#x2F;contact">Contact</a>
+        
+        <a href="https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;">Site Source</a>
+        
+    </div>
+    <div class="external-links">
+        <div>
+            
+            <a href="&#x2F;code"><img src="/assets/github.svg" alt="GitHub"></a>
+            
+            <a href="https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;"><img src="/assets/gitlab.svg" alt="GitLab"></a>
+            
+            <a href="https:&#x2F;&#x2F;mastodon.matrix.org&#x2F;@matrix"><img src="/assets/mastodon.svg" alt="Mastodon"></a>
+            
+            <a href="https:&#x2F;&#x2F;twitter.com&#x2F;matrixdotorg"><img src="/assets/twitter.svg" alt="Twitter"></a>
+            
+            <a href="https:&#x2F;&#x2F;www.youtube.com&#x2F;channel&#x2F;UCVFkW-chclhuyYRbmmfwt6w"><img src="/assets/youtube.svg" alt="YouTube"></a>
+            
+        </div>
+    </div>
+    <p>© 2022 The Matrix.org Foundation C.I.C.</p>
+</footer>
+
+</body>
+
+</html>

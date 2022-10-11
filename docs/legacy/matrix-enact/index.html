@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="twitter:widgets:csp" content="on" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta name="twitter:site" content="@matrixdotorg" />
+    <meta name="twitter:creator" content="@matrixdotorg" />
+
+    <title>Matrix.org - Creating a simple read-only Matrix client</title>
+    <link rel="shortcut icon" href="/assets/favicon.ico" />
+    <link rel="icon" type="image/png" href="/assets/favicon.png" />
+    <link rel="stylesheet" href="/style.css" />
+
+    </head>
+
+<body>
+    
+    
+
+
+<header class="site-header">
+    <a href="/" class="brand">
+        <img src="/images/matrix-logo.svg" alt="Matrix logo">
+    </a>
+    <input id="site-header-dropdown-checkbox" type="checkbox" class="dropdown-checkbox" aria-hidden="true">
+    <label for="site-header-dropdown-checkbox" class="dropdown-button">&#xe602;</label>
+    <label for="site-header-dropdown-checkbox" class="page-overlay"></label>
+    <nav>
+        
+        
+        <a href="&#x2F;about&#x2F;" class="
+            ">
+            About
+        </a>
+        
+        
+        
+        <a href="&#x2F;blog&#x2F;" class="
+            ">
+            Blog
+        </a>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;docs&#x2F;" class="section current">
+                Documentation
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;ecosystem&#x2F;" class="section ">
+                Ecosystem
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                    <a href="&#x2F;ecosystem&#x2F;clients&#x2F;">Clients</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;servers&#x2F;">Servers</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bots&#x2F;">Bots</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bridges&#x2F;">Bridges</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;sdks&#x2F;">SDKs</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;hosting&#x2F;">Hosting</a>
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        <a href="&#x2F;podcasts&#x2F;" class="
+            ">
+            Podcasts
+        </a>
+        
+        
+        
+        <a href="https:&#x2F;&#x2F;shop.matrix.org" class="
+            ">
+            Shop
+        </a>
+        
+        
+        
+        <a href="&#x2F;try-matrix&#x2F;" class="primary
+            ">
+            Try Matrix
+        </a>
+        
+        
+    </nav>
+</header>
+
+
+    <main>
+        
+<article class="content">
+    <header>
+        <div class="legacy-doc-warning">
+            <h2>Outdated documentation</h2>
+            <p>This documentation has been kept for posterity but might be or
+               will be outdated. It should not be used anymore. Please head to
+               <a href="/docs">the documentation section</a> for up to date
+               documentation and guides.
+            </p>
+        </div>
+        <h1>Creating a simple read-only Matrix client</h1>
+    </header>
+    <p>I created <a href="https://github.com/benparsons/matrix-enact">matrix-enact</a> as a fun way to render Matrix rooms - it
+essentially &quot;performs&quot; the room history by progressively speaking each message
+event in chronological order. In this way, <a href="https://github.com/benparsons/matrix-enact">matrix-enact</a> is effectively a
+simple, read-only Matrix client. Let's see how it was built.</p>
+<p>This article will introduce two important concepts in Matrix, specifically in
+the <a href="https://matrix.org/docs/spec/client_server/latest.html">Matrix Client-Server API</a>:</p>
+<ul>
+<li>guest access</li>
+<li>the <code>/context</code> endpoint, which gets messages before and after a given event</li>
+</ul>
+<h2 id="not-using-the-matrix-js-sdk">Not using the matrix-js-sdk</h2>
+<p>Although written in JavaScript (and Reactjs), this project does not use the
+<a href="https://github.com/matrix-org/matrix-js-sdk">matrix-js-sdk</a>, it makes direct HTTP calls to the <a href="https://matrix.org/docs/spec/client_server/latest.html">Matrix Client-Server API</a>.
+Because there are only three endpoints we need to hit, we can keep the project
+very light by not including an SDK.</p>
+<h2 id="get-guest-access-token">Get Guest access_token</h2>
+<p>Matrix allows for <a href="https://matrix.org/docs/spec/client_server/latest.html#guest-access">guest access
+</a> by
+providing an interface to register a new guest user and be immediately given an
+access token. To do this we call the <code>/register</code> endpoint with a query param
+<code>kind</code> set to <code>guest</code>. In matrix-enact, this looks like:</p>
+<pre data-lang="javascript" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-javascript "><code class="language-javascript" data-lang="javascript"><span style="color:#9b9b9b;">import </span><span>axios </span><span style="color:#569cd6;">from </span><span style="color:#d69d85;">&#39;axios&#39;</span><span>;
+</span><span style="color:#569cd6;">var </span><span>url = </span><span style="color:#d69d85;">&quot;https://matrix.org/_matrix/client/r0/register?kind=guest&quot;</span><span>;
+</span><span style="color:#569cd6;">const </span><span>res = </span><span style="color:#569cd6;">await </span><span>axios.post(url, {});
+</span><span style="color:#569cd6;">const </span><span>{ data } = </span><span style="color:#569cd6;">await </span><span>res;
+</span><span style="color:#608b4e;">// data.access_token will contain the access token, we must store it
+</span></code></pre>
+<p>Once we have the access token, we use it in the same way as if logged in with a
+normal user.</p>
+<h2 id="translate-a-room-alias-to-a-room-id">Translate a Room Alias to a Room ID</h2>
+<p>In the UI, the user can enter either a room alias or a room ID. Whichever they
+enter, to get message content from a room we need the ID. This means we need to
+detect if an alias has been entered, and if so get the correct room ID for that
+alias:</p>
+<pre data-lang="javascript" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-javascript "><code class="language-javascript" data-lang="javascript"><span style="color:#608b4e;">// we know that if the first character is a &#39;#&#39;, we have an alias not an id
+</span><span style="color:#569cd6;">if </span><span>(this.state.roomEntry[</span><span style="color:#b5cea8;">0</span><span>] === </span><span style="color:#d69d85;">&quot;#&quot;</span><span>) {
+</span><span>    </span><span style="color:#569cd6;">var </span><span>getIdUrl = </span><span style="color:#d69d85;">&quot;https://matrix.org/_matrix/client/r0/directory/room/&quot;</span><span>;
+</span><span>    getIdUrl += encodeURIComponent(this.state.roomEntry);
+</span><span>    </span><span style="color:#569cd6;">const </span><span>res = </span><span style="color:#569cd6;">await </span><span>axios.get(getIdUrl);
+</span><span>    </span><span style="color:#569cd6;">const </span><span>{ data } = </span><span style="color:#569cd6;">await </span><span>res;
+</span><span>    </span><span style="color:#608b4e;">// data.room_id contains the room id for the alias
+</span><span>}
+</span></code></pre>
+<h2 id="context-endpoint"><code>/context</code> endpoint</h2>
+<p>We use the <code>/context</code> endpoint to get chronological history of a room timeline.</p>
+<p>Looking at <a href="https://matrix.org/docs/spec/client_server/latest#get-matrix-client-r0-rooms-roomid-context-eventid">this section of the Client-Server API</a> we see:</p>
+<blockquote>
+<p>This API returns a number of events that happened just before and after the
+specified event. This allows clients to get the context surrounding an
+event.</p>
+</blockquote>
+<p>To get messages from this endpoint we need to provide a room id and the event id
+we want context for. Check out the comments in the code below to follow along.</p>
+<pre data-lang="javascript" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-javascript "><code class="language-javascript" data-lang="javascript"><span>async loadScriptFromEventId(startEventId) {
+</span><span>    </span><span style="color:#608b4e;">// first we construct the url as per the CS API
+</span><span>    </span><span style="color:#569cd6;">const </span><span>url = </span><span style="color:#d69d85;">`https://matrix.org/_matrix/client/r0/rooms/${</span><span>encodeURIComponent</span><span style="color:#d69d85;">(</span><span>roomId</span><span style="color:#d69d85;">)}/context/${</span><span>encodeURIComponent</span><span style="color:#d69d85;">(</span><span>startEventId</span><span style="color:#d69d85;">)}?limit=100&amp;access_token=${</span><span>this</span><span style="color:#d69d85;">.</span><span>state</span><span style="color:#d69d85;">.</span><span>accessToken</span><span style="color:#d69d85;">}`</span><span>;
+</span><span>
+</span><span>    axios.get(url).then(res </span><span style="color:#569cd6;">=&gt; </span><span>{
+</span><span>        </span><span style="color:#608b4e;">// make an array to store the events from the response
+</span><span>        </span><span style="color:#569cd6;">var </span><span>newEvents = [];
+</span><span>
+</span><span>        </span><span style="color:#608b4e;">// we only want the events that follow our start events
+</span><span>        newEvents = newEvents.concat(res.data.events_after);
+</span><span>
+</span><span>        </span><span style="color:#608b4e;">// and we only want events that contain a body field, i.e. that are messages
+</span><span>        newEvents = newEvents.filter(e </span><span style="color:#569cd6;">=&gt; </span><span>e.content.body);
+</span><span>
+</span><span>        </span><span style="color:#608b4e;">// finally, since we&#39;re using React for this app,
+</span><span>        </span><span style="color:#608b4e;">// we store these messages in the state object
+</span><span>        this.setState({events: this.state.events.concat(newEvents)});
+</span><span>    });
+</span><span>}
+</span></code></pre>
+<h2 id="loop-until-we-have-enough-messages">Loop until we have enough messages</h2>
+<p>Notice the previous URL we hit when calling <code>/context</code>. We specified a <code>limit</code>
+value of <code>100</code>. In fact, <code>100</code> is usually the limit enforced by the homeserver.
+This limit refers to the number of events, not the number of messages -
+remember that we are filtering them in the code above.</p>
+<p>If we say that we want our script to be 50 lines long, but after filtering we
+are left with only 30 messages, what should we do? Get more events after the
+latest one, and append the new events to our script. Knowing that we have taken
+a value from the form to be stored in <code>state.messageCount</code>, and in the previous
+section we inserted message events into <code>state.events</code>, we can compare these
+two variables, and if needed, call <code>loadScriptFromEventId()</code> again with the
+last known event.</p>
+<pre data-lang="javascript" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-javascript "><code class="language-javascript" data-lang="javascript"><span style="color:#569cd6;">if </span><span>(this.state.messageCount </span><span style="color:#569cd6;">&gt; </span><span>this.state.events.length) {
+</span><span>    </span><span style="color:#608b4e;">// get last known event
+</span><span>    </span><span style="color:#569cd6;">var </span><span>lastEvent = res.data.events_after[res.data.events_after.length - </span><span style="color:#b5cea8;">1</span><span>];
+</span><span>    this.loadScriptFromEventId(lastEvent.event_id);
+</span><span>} </span><span style="color:#569cd6;">else </span><span>{
+</span><span>    this.setState({events: this.state.events.slice(</span><span style="color:#b5cea8;">0</span><span>, this.state.messageCount), statusMessage: </span><span style="color:#d69d85;">&quot;Done&quot;</span><span>});
+</span><span>}
+</span></code></pre>
+<h2 id="using-the-web-audio-api">Using the Web Audio API</h2>
+<p>The <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API">Web Audio API</a> is a massive topic, out of the scope of this article. We'll
+cover just enough to be able to show the &quot;happy path&quot; of performing
+Text-to-Speech (TTS) sequentially.</p>
+<p>To deliver a line as audio, the fundamental code is as follows:</p>
+<pre data-lang="javascript" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-javascript "><code class="language-javascript" data-lang="javascript"><span style="color:#569cd6;">var </span><span>utterance = </span><span style="color:#569cd6;">new </span><span style="color:#4ec9b0;">SpeechSynthesisUtterance</span><span>();
+</span><span>utterance.text = </span><span style="color:#d69d85;">&quot;some string&quot;</span><span>;
+</span><span style="color:#569cd6;">var </span><span>someVoice = window.speechSynthesis.getVoices()[</span><span style="color:#b5cea8;">0</span><span>];
+</span><span>utterance.voice = someVoice;
+</span><span>window.speechSynthesis.speak(utterance);
+</span></code></pre>
+<p>To find out when an utterance ends, attach a function to the onend event:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>utterance.onend = function() {
+</span><span>    // do something when the line ends
+</span><span>};
+</span></code></pre>
+<p>Knowing that we can perform TTS on strings we provide, and that we can call a
+function when a line ends, from here it's easy to see how we can use the list
+of messages to &quot;enact&quot; the message history.</p>
+<h2 id="using-the-web-audio-api-with-react">Using the Web Audio API with React</h2>
+<p>We will:</p>
+<ul>
+<li>assign each user a random voice from TTS voices available in the current
+browser</li>
+<li>trigger each line sequentially and with the correct voice, thus giving the
+impression of a script being performed</li>
+</ul>
+<p>Let's create a <code>nextLine()</code> function in our <code>App</code> component, and use this to
+insert lines associated with &quot;Parts&quot;, meaning that each part is a separate user
+with an assigned voice.</p>
+<pre data-lang="javascript" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-javascript "><code class="language-javascript" data-lang="javascript"><span>nextLine() {
+</span><span>    </span><span style="color:#569cd6;">var </span><span>line = this.state.line;
+</span><span>    </span><span style="color:#569cd6;">if </span><span>(</span><span style="color:#569cd6;">! </span><span>this.state.events[line]) </span><span style="color:#569cd6;">return</span><span>;
+</span><span>    </span><span style="color:#569cd6;">var </span><span>newPart = this.state.events[line].sender;
+</span><span>    </span><span style="color:#569cd6;">if </span><span>(</span><span style="color:#569cd6;">! </span><span>this.state.parts.find(p </span><span style="color:#569cd6;">=&gt;</span><span>{</span><span style="color:#569cd6;">return </span><span>p.name === newPart;})) {
+</span><span>        this.setState({
+</span><span>        parts: this.state.parts.concat([{
+</span><span>            name: newPart,
+</span><span>            voice: voices[getRandomInt(</span><span style="color:#b5cea8;">0</span><span>, voices.length)]
+</span><span>        }])
+</span><span>        })
+</span><span>    }
+</span><span>    this.setState({
+</span><span>        script: this.state.script.concat(this.state.events[line]),
+</span><span>        line: this.state.line + </span><span style="color:#b5cea8;">1</span><span>,
+</span><span>        nextText: </span><span style="color:#d69d85;">&quot;Continue&quot;
+</span><span>    });
+</span><span>}
+</span></code></pre>
+<p>By incrementing the <code>line</code> counter, we progress through the script, adding a
+line at a time to the correct <code>Part</code>.</p>
+<p>During rendering, the App renders an array of <code>Part</code> Components, which in turn
+render an array of lines, filtered for that particular Part:</p>
+<pre data-lang="javascript" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-javascript "><code class="language-javascript" data-lang="javascript"><span style="color:#569cd6;">const </span><span>lines = this.props.script.map((line, lineNumber) </span><span style="color:#569cd6;">=&gt; </span><span>{
+</span><span>    line.lineNumber = lineNumber;
+</span><span>    </span><span style="color:#569cd6;">return </span><span>line; 
+</span><span>}).filter(l </span><span style="color:#569cd6;">=&gt; </span><span>l.sender === part.name);
+</span></code></pre>
+<p>Knowing that in React, the <code>constructor</code> for a Component is called only once, we
+perform the TTS process itself inside the constructor method:</p>
+<pre data-lang="javascript" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-javascript "><code class="language-javascript" data-lang="javascript"><span style="color:#569cd6;">class </span><span style="color:#4ec9b0;">Line </span><span style="color:#569cd6;">extends </span><span style="color:#4ec9b0;">Component </span><span>{
+</span><span>  </span><span style="color:#569cd6;">constructor</span><span>(props) {
+</span><span>    super(props);
+</span><span>    </span><span style="color:#569cd6;">var </span><span>utterance = </span><span style="color:#569cd6;">new </span><span style="color:#4ec9b0;">SpeechSynthesisUtterance</span><span>();
+</span><span>    </span><span style="color:#569cd6;">var </span><span>nextLine = this.props.nextLine;
+</span><span>    utterance.text = this.props.lineText;
+</span><span>    utterance.voice = this.props.part.voice;
+</span><span>    synth.speak(utterance);
+</span><span>  }
+</span><span>}
+</span></code></pre>
+<p>Finally, we'll use what we already learned about the <code>onend</code> event to insert the
+next line:</p>
+<pre data-lang="javascript" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-javascript "><code class="language-javascript" data-lang="javascript"><span style="color:#569cd6;">class </span><span style="color:#4ec9b0;">Line </span><span style="color:#569cd6;">extends </span><span style="color:#4ec9b0;">Component </span><span>{
+</span><span>  </span><span style="color:#569cd6;">constructor</span><span>(props) {
+</span><span>    super(props);
+</span><span>    </span><span style="color:#569cd6;">var </span><span>utterance = </span><span style="color:#569cd6;">new </span><span style="color:#4ec9b0;">SpeechSynthesisUtterance</span><span>();
+</span><span>    </span><span style="color:#569cd6;">var </span><span>nextLine = this.props.nextLine;
+</span><span>    utterance.onend = </span><span style="color:#569cd6;">function</span><span>(a) {
+</span><span>      nextLine();
+</span><span>    };
+</span><span>    utterance.text = this.props.lineText;
+</span><span>    utterance.voice = this.props.part.voice;
+</span><span>    synth.speak(utterance);
+</span><span>  }
+</span><span>}
+</span></code></pre>
+<p>In this way, nextLine() is called in a loop, meaning that the lines are added to
+React sequentially, and spoken aloud as they are added.</p>
+<h2 id="conclusion">Conclusion</h2>
+<p>This article covered a lot of ground:</p>
+<ul>
+<li>Matrix Guess access</li>
+<li>the <a href="https://matrix.org/docs/spec/client_server/latest#get-matrix-client-r0-rooms-roomid-context-eventid"><code>/context/</code> API endpoint</a></li>
+<li>filtering content from Matrix events</li>
+<li>passing these strings to the <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API">Web Audio API</a></li>
+</ul>
+<p>To learn more about Matrix development, check out the
+<a href="https://matrix.org/docs/">Matrix Documentation</a>.</p>
+
+</article>
+
+    </main>
+
+    <footer class="site-footer">
+    <div class="internal-links">
+        
+        <a href="&#x2F;faq">FAQs</a>
+        
+        <a href="&#x2F;security-disclosure-policy">Security Disclosure Policy</a>
+        
+        <a href="&#x2F;hall-of-fame">Security Hall of Fame</a>
+        
+        <a href="&#x2F;legal&#x2F;code-of-conduct">Code of Conduct for Matrix.org</a>
+        
+        <a href="&#x2F;legal">Legal</a>
+        
+        <a href="&#x2F;contact">Contact</a>
+        
+        <a href="https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;">Site Source</a>
+        
+    </div>
+    <div class="external-links">
+        <div>
+            
+            <a href="&#x2F;code"><img src="/assets/github.svg" alt="GitHub"></a>
+            
+            <a href="https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;"><img src="/assets/gitlab.svg" alt="GitLab"></a>
+            
+            <a href="https:&#x2F;&#x2F;mastodon.matrix.org&#x2F;@matrix"><img src="/assets/mastodon.svg" alt="Mastodon"></a>
+            
+            <a href="https:&#x2F;&#x2F;twitter.com&#x2F;matrixdotorg"><img src="/assets/twitter.svg" alt="Twitter"></a>
+            
+            <a href="https:&#x2F;&#x2F;www.youtube.com&#x2F;channel&#x2F;UCVFkW-chclhuyYRbmmfwt6w"><img src="/assets/youtube.svg" alt="YouTube"></a>
+            
+        </div>
+    </div>
+    <p>© 2022 The Matrix.org Foundation C.I.C.</p>
+</footer>
+
+</body>
+
+</html>

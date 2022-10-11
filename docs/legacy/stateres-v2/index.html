@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="twitter:widgets:csp" content="on" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta name="twitter:site" content="@matrixdotorg" />
+    <meta name="twitter:creator" content="@matrixdotorg" />
+
+    <title>Matrix.org - State Resolution v2 for the Hopelessly Unmathematical</title>
+    <link rel="shortcut icon" href="/assets/favicon.ico" />
+    <link rel="icon" type="image/png" href="/assets/favicon.png" />
+    <link rel="stylesheet" href="/style.css" />
+
+    </head>
+
+<body>
+    
+    
+
+
+<header class="site-header">
+    <a href="/" class="brand">
+        <img src="/images/matrix-logo.svg" alt="Matrix logo">
+    </a>
+    <input id="site-header-dropdown-checkbox" type="checkbox" class="dropdown-checkbox" aria-hidden="true">
+    <label for="site-header-dropdown-checkbox" class="dropdown-button">&#xe602;</label>
+    <label for="site-header-dropdown-checkbox" class="page-overlay"></label>
+    <nav>
+        
+        
+        <a href="&#x2F;about&#x2F;" class="
+            ">
+            About
+        </a>
+        
+        
+        
+        <a href="&#x2F;blog&#x2F;" class="
+            ">
+            Blog
+        </a>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;docs&#x2F;" class="section current">
+                Documentation
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;ecosystem&#x2F;" class="section ">
+                Ecosystem
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                    <a href="&#x2F;ecosystem&#x2F;clients&#x2F;">Clients</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;servers&#x2F;">Servers</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bots&#x2F;">Bots</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bridges&#x2F;">Bridges</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;sdks&#x2F;">SDKs</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;hosting&#x2F;">Hosting</a>
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        <a href="&#x2F;podcasts&#x2F;" class="
+            ">
+            Podcasts
+        </a>
+        
+        
+        
+        <a href="https:&#x2F;&#x2F;shop.matrix.org" class="
+            ">
+            Shop
+        </a>
+        
+        
+        
+        <a href="&#x2F;try-matrix&#x2F;" class="primary
+            ">
+            Try Matrix
+        </a>
+        
+        
+    </nav>
+</header>
+
+
+    <main>
+        
+<article class="content">
+    <header>
+        <div class="legacy-doc-warning">
+            <h2>Outdated documentation</h2>
+            <p>This documentation has been kept for posterity but might be or
+               will be outdated. It should not be used anymore. Please head to
+               <a href="/docs">the documentation section</a> for up to date
+               documentation and guides.
+            </p>
+        </div>
+        <h1>State Resolution v2 for the Hopelessly Unmathematical</h1>
+    </header>
+    <p>So you don't have a PhD in Mathematics and you want to implement <a href="https://matrix.org/docs/spec/rooms/v2">State
+Resolution v2</a>! This document aims to
+demystify not just the <em>how</em> but also the <em>why</em> of resolving state conflicts in
+Matrix room versions 2 and later, along with a bit of pseudocode to demonstrate
+the implementation.</p>
+<p>In Matrix, rooms don't belong to a specific server, but instead are replicated
+across all servers that are participating in a given room. As a result, each
+server in a room needs to be able to work out the room state independently and
+all servers in a room need to be able to arrive, as far as possible, at the same
+state when doing so. Doing this is what allows a room to &quot;appear&quot; the same for
+all users, regardless of the homeserver they are joining from.</p>
+<p>State resolution is the act of taking two or more different sets of state and
+working out the final consistent state that we deem truthful. The idea is that
+all homeservers will agree on what state looks like for a given room by
+following the same state resolution algorithms.</p>
+<p>When resolving state, we adhere to the following guidelines:</p>
+<ol>
+<li>Higher power levels should take precedence over lower ones, e.g. the actions
+of an administrator should overrule those of a moderator</li>
+<li>Earlier events should be processed before later ones where possible</li>
+</ol>
+<p>It's worth mentioning that concepts such as &quot;earlier&quot; and &quot;later&quot; are difficult
+to define in Matrix and this is a significant part of what makes state
+resolution difficult to do. In State Res v2, we have a couple of new concepts
+for defining when an event is &quot;earlier&quot; or &quot;later&quot; than another event - these
+are covered in the sections below on ordering events.</p>
+<h3 id="defining-state">Defining state</h3>
+<p>First of all, a state event is a Matrix event which contains a <code>state_key</code>. The
+state key defines <em>what</em> the state applies to (or is often an empty string if
+the state should apply to the entire room). Examples of state events are
+<code>m.room.create</code>, <code>m.room.join_rules</code>, <code>m.room.power_level</code>, <code>m.room.member</code> etc.</p>
+<p>Given that state events are also a part of the room history, state can be
+different at different points in time. Therefore, the state at a specific event
+contains a snapshot of all state events that apply to the room at the time of
+that given event and won't include state events that came after it. In the case
+of state events, the state at the time of that given event includes the changes
+in state as provided by the event.</p>
+<p>A state tuple is a <code>(event type, state key)</code> tuple. For example:</p>
+<ul>
+<li><code>(&quot;m.room.power_levels&quot;, &quot;&quot;)</code> for room power levels</li>
+<li><code>(&quot;m.room.join_rules&quot;, &quot;&quot;)</code> for room join rules</li>
+<li><code>(&quot;m.room.member&quot;, &quot;@neilalexander:matrix.org&quot;)</code> for <code>neilalexander</code>'s room
+membership</li>
+</ul>
+<p>Each state event attempts to update a <code>(event type, state key)-&gt;event</code> key-value
+mapping in a given room, thus allowing for key-value data to be stored per room.</p>
+<h3 id="defining-control-events-and-normal-state-events">Defining control events and normal state events</h3>
+<p>In addition to the above, we also define <em>control events</em> as being a subset of
+state events which specifically have the power to add or remove abilities from
+another user. These are:</p>
+<ul>
+<li><strong>Setting room power levels:</strong> <code>m.room.power_levels</code> where the <code>state_key</code>
+equals <code>&quot;&quot;</code></li>
+<li><strong>Setting room join rules:</strong> <code>m.room.join_rules</code> where the <code>state_key</code>
+equals <code>&quot;&quot;</code></li>
+<li><strong>Kicking a user:</strong> <code>m.room.member</code> with <code>&quot;leave&quot;</code> content but where the
+<code>sender</code> (the admin/mod) does not match the <code>state_key</code> (the kicked user)</li>
+<li><strong>Banning a user:</strong> <code>m.room.member</code> with <code>&quot;ban&quot;</code> content but where the
+<code>sender</code> (the admin/mod) does not match the <code>state_key</code> (the banned user)</li>
+</ul>
+<p>Any <em>state event</em> that does not match the above definition is, instead, classed
+as a normal state event. These include, for example:</p>
+<ul>
+<li><strong>Setting room topic:</strong> <code>m.room.topic</code> where the <code>state_key</code> equals <code>&quot;&quot;</code></li>
+<li><strong>Setting room avatar:</strong> <code>m.room.display_avatar</code> where the <code>state_key</code>
+equals <code>&quot;&quot;</code></li>
+<li><strong>Users joining or leaving:</strong> <code>m.room.member</code> with <code>&quot;join&quot;</code> or <code>&quot;leave&quot;</code>
+content where the <code>sender</code> is equal to the <code>state_key</code></li>
+</ul>
+<h3 id="conflicted-and-unconflicted-state-sets">Conflicted and unconflicted state sets</h3>
+<p>The ultimate goal of state resolution is to take some <em>conflicted</em> inputs and
+give <em>unconflicted</em> output, and to do so in a consistent way such that all
+servers will agree on the same state. In effect, we may have been given multiple
+sets of state due to forks in the room and, when we combine them together, we
+can end up with multiple different values for one or more given state tuples.
+The goal is to ensure that our final state only contains a single value for each
+state tuple.</p>
+<p>Forks typically happen when servers that are participating in a room are no
+longer able to keep each other up-to-date over federation. It's possible that
+users on different servers will continue to send any number of events into the
+room, including state events, resulting in state drifting across those servers.
+When the servers are able to federate again, i.e. after network connectivity is
+restored, then we can work out the conflicted and unconflicted state by merging
+the forks.</p>
+<p>Conflicted state happens when:</p>
+<ul>
+<li>We have <em>more than one</em> different value for a given state tuple in each fork</li>
+<li>We have <em>only one</em> value for a given state tuple but it happened in only one
+fork and not the other</li>
+</ul>
+<p>Unconflicted state happens when:</p>
+<ul>
+<li>We have <em>only one</em> value for a given state tuple because it is the same in all
+forks</li>
+<li>We have <em>only one</em> value for a given state tuple because it happened before
+the fork</li>
+</ul>
+<p>Events in the input set that are <em>unconflicted</em> are considered to be truthful,
+therefore apart from expecting that they pass auth, we don't do any further
+state resolution on them. An <em>unconflicted</em> event will <em>always</em> appear in the
+final resolved state.</p>
+<p>Events in the input set that are <em>conflicted</em> are the opposite - to begin with,
+we have multiple events claiming different values and don't know which to
+believe. We perform state resolution on them to decide which of those values we
+wish to select, and <em>only</em> the selected values appear in the final resolved
+state.</p>
+<p>Since we only want to perform state resolution on the <em>conflicted</em> set, start by
+working through the set of input events, including their auth events and sorting
+them into <em>conflicted</em> and <em>unconflicted</em> buckets:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>var conflicted_events:   list(event)
+</span><span>var unconflicted_events: list(event)
+</span></code></pre>
+<h3 id="partial-state">Partial state</h3>
+<p>We refer to the state as <em>partial</em> when we have not yet completed the state
+resolution algorithm, therefore the result is incomplete. In the first stage,
+the partial state is equal to the unconflicted state:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>var partial_state: map(event_type -&gt; map(state_key -&gt; event))
+</span><span>
+</span><span>for each unconflicted_events as e:
+</span><span>    partial_state[e.event_type()][e.state_key()] = e
+</span></code></pre>
+<p>Later, the resolved state blocks from the <em>conflicted state</em> will be layered
+onto the partial state, eventually bringing us to a complete <em>resolved state</em>.</p>
+<h3 id="resolved-state">Resolved state</h3>
+<p>The final resolved state of a room is worked out from doing these things:</p>
+<ol>
+<li>Starting with the <em>unconflicted</em> state as our &quot;base layer&quot;</li>
+<li>Working out the sequence of <em>control events</em> using reverse topological
+ordering and then layering those on</li>
+<li>Working out the sequence of <em>normal state events</em> using mainline ordering and
+then layering those on</li>
+<li>Reapplying any <em>unconflicted</em> state keys which may have been overwritten in
+the previous steps</li>
+</ol>
+<h3 id="auth-differences">Auth differences</h3>
+<p>Now that we have a set of <em>conflicted</em> events, we also need to make sure that we
+have enough information to satisfy the auth checks, regardless of which event we
+eventually resolve to.</p>
+<p>For example, imagine the case that Alice gives some power to Bob (in event <code>A</code>),
+Bob gives some power to Charlie (in event <code>B</code>) and then Charlie changes the ban
+level (in event <code>C</code>):</p>
+<p><img src="/docs/legacy/2020-04-14-stateresv2-1.svg" alt="drawing showing an example flow of power level changes" /></p>
+<p>However, in another fork, event <code>A</code> is known (so Bob has received power from
+Alice) but <code>B</code> was not, therefore in the fork, Charlie never received power and
+therefore was not authorised to change the ban level. When the two forks
+converge, we would need to know about <code>B</code> in order to successfully authorise
+<code>C</code>.</p>
+<p>The <em>auth difference</em> therefore contains all auth events that were not common to
+both forks - if an auth event appears in only one fork but not the other then
+that auth event must appear in the <em>auth difference</em>:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>var auth_difference:     list(event)
+</span><span>var auth_sets:           map(fork_id -&gt; list(event))
+</span><span>
+</span><span>for each conflicted_events as e:
+</span><span>    found = true
+</span><span>    for each auth_sets as auth_set:
+</span><span>        if e not in auth_set:
+</span><span>            found = false
+</span><span>
+</span><span>    if not found:
+</span><span>        auth_difference.append(e)
+</span></code></pre>
+<p>The <em>full conflicted set</em> is effectively the conflicted events combined with the
+auth difference:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>var full_conflicted_set: list(event)
+</span><span>
+</span><span>full_conflicted_set = conflicted_events + auth_difference
+</span></code></pre>
+<h3 id="reverse-topological-ordering-of-control-events">Reverse topological ordering of control events</h3>
+<p>Now that we have calculated the <em>full conflicted set</em>, which also includes the
+<em>auth difference</em>, we now can start to work out the order in which power was
+given or taken away from specific users.</p>
+<p>When resolving state conflicts, it's important to work out who really had power
+to do certain things at a given point in time. Working this out for control
+events takes priority over working out the order of normal state events - those
+will be sorted based on the power levels from this step.</p>
+<p>To work out the timeline of control events, we implement reverse topological
+ordering, which results in a list of events in which the order guarantees that
+auth events <em>always</em> come before the events that refer to them. This is done
+using an adaptation of Kahn's algorithm.</p>
+<h4 id="kahn-s-algorithm"><strong>Kahn's algorithm</strong></h4>
+<p>Since an event's auth chain forms a directed acyclic graph (DAG), we can say
+that each auth event is a &quot;node&quot; in the graph and each relationship between two
+events is an &quot;edge&quot;. In our case, two nodes in the auth DAG have a relationship
+when one event refers to another event as an auth event.</p>
+<p>More precisely, we would say that an event that <em>refers to</em> other auth events
+has one or more <em>outgoing edges</em> and that an event that is relied on by other
+events has one or more <em>incoming edges</em>.</p>
+<p>This allows us to make a couple of assertions: that an event that has no
+incoming edges happened most recently, and an event that has no outgoing edges
+happened least recently.</p>
+<p>In our case, Kahn's algorithm works on three main components:</p>
+<ol>
+<li>The unsorted input list of events, including the auth events</li>
+<li>A map, where we count how many incoming edges each node has</li>
+<li>The sorted output list of events, effectively the result of the algorithm</li>
+</ol>
+<p>Assuming the following data structures, we can populate the event map and
+incoming edges with initial values:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>var output_events:  list(event)
+</span><span>var event_map:      map(event_id -&gt; event)
+</span><span>var incoming_edges: map(event_id -&gt; integer)
+</span><span>
+</span><span>for each full_conflicted_set as e:
+</span><span>    event_map[e.event_id] = e
+</span><span>    incoming_edges[e.event_id] = 0
+</span></code></pre>
+<p>The Matrix-specific details of our implementation of Kahn's algorithm lie in the
+tie-break between events. The tie-break ensures that we get a deterministic
+ordering and that we also meet our two guidelines from the beginning: that we
+will always try to prefer events from the more powerful, and we will always try
+to process older events first. When sorting, you can assert that <strong>x &lt; y</strong> by
+running the following tests in order:</p>
+<ol>
+<li>The effective power level at <strong>x</strong> is greater than the effective power level
+at <strong>y</strong></li>
+<li>The event origin server timestamp of <strong>x</strong> is less than the event origin
+server timestamp of **y **(that is, event <strong>x</strong> is older than <strong>y</strong>)</li>
+<li>The event ID of <strong>x</strong> is less than the event ID of <strong>y</strong>, as computed by a
+lexicographical comparison, as a fallback</li>
+</ol>
+<p>To ensure that the algorithm is deterministic (that is, running in the same
+order) for a given set of inputs, we must ensure that the map of incoming edges
+has been sorted using the above rules before we do anything with it:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>func sorted_incoming_edges() returns list(event):
+</span><span>    sort incoming_edges where x &lt; y when:
+</span><span>        x.power_level &gt; y.power_level or
+</span><span>        x.origin_server_ts &lt; y.origin_server_ts or
+</span><span>        lexographic_compare(x.event_id, y.event_id) &lt; 0
+</span><span>    return incoming_edges
+</span></code></pre>
+<p>Once the incoming edges have been sorted, iterate through the input list to
+count how many incoming edges each event has and update the incoming edges map
+with those values:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>for each input_events as e:
+</span><span>    for each e.auth_events as a:
+</span><span>        incoming_edges[a.event_id] += 1
+</span></code></pre>
+<p>Then look for events that have no incoming edges and insert them into the
+beginning of the output list—note that we differ from a pure implementation of
+Kahn's algorithm here as we specifically require the incoming edges map to be
+sorted (as above):</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>while len(incoming_edges) &gt; 0:
+</span><span>    for each sorted_incoming_edges() as id, count:
+</span><span>        if count == 0:
+</span><span>            output_event.prepend(event_map[id])
+</span><span>
+</span><span>            for each event_map[id].auth_events as auth_event:
+</span><span>                incoming_edges[auth_event.event_id] -= 1
+</span><span>
+</span><span>            remove(incoming_edges, id)
+</span></code></pre>
+<p>Each time we add a node into the output list, we can &quot;remove&quot; its outgoing
+edges. This means that every auth event referred to by this event has one less
+incoming edge. Once it has been exhausted, we also remove the event from the
+incoming edge map, so that we won't try to process it again.</p>
+<p>Now we repeat the process, continuously, until the algorithm eventually exhausts
+the entire incoming edges map. Once the map is empty, all edges have been
+removed and the earliest events will appear at the beginning of the output list.</p>
+<p>The output list is now sorted such that all referred events now appear before
+the events that refer to them. It is sorted in <em>reverse topological order</em>.</p>
+<h3 id="iteratively-apply-resolved-control-events">Iteratively apply resolved control events</h3>
+<p>Now that our control events have been sorted into reverse topological order,
+where the first events in the list are the &quot;oldest&quot;, we can now start to layer
+these resolved control events in order to build the partial state.</p>
+<p>To build up the partial state, start at the oldest event and loop through the
+list, <a href="https://matrix.org/docs/spec/rooms/v1#authorization-rules">performing auth checks on each
+event</a> by using the
+current <code>partial_state</code> as an allowed set of auth events. We define this process
+as the function <code>auth_against_partial_state</code>.</p>
+<p>It is expected that <code>partial_state</code> is an empty list for the first iteration, as
+the oldest event (which is the room create event) does not require auth events.
+The partial state (and, by extension, the selection of allowed auth events) will
+grow with each iteration.</p>
+<p>If the event passes auth checks then update the partial state to include the
+newly authed event before moving onto the next iteration:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>for each output_event as e:
+</span><span>    if auth_against_partial_state(e):
+</span><span>        partial_state[e.event_type][e.state_key] = e
+</span></code></pre>
+<p>Events that fail the auth check should be ignored and should not find their way
+into the partial state.</p>
+<h3 id="creating-the-power-level-mainline">Creating the power level mainline</h3>
+<p>Once the control events have been applied to the partial state, the remainder of
+the normal state events should be ordered and processed based on the ordering of
+their power level auth events. This is done using a technique called <em>mainline
+ordering</em>.</p>
+<p>The <em>power level</em> <em>mainline</em> is created by following the path of power level
+events, starting from the resolved <code>m.room.power_level</code> event from the partial
+state, back to the point that the room was created:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>var resolved_power_level_event: partial_state[&quot;m.room.power_level&quot;][&quot;&quot;] as event
+</span><span>var power_level_mainline:       list(event)
+</span><span>
+</span><span>func mainline_iterate(e as event):
+</span><span>    power_level_mainline += e
+</span><span>    for each e.auth_events as auth_event:
+</span><span>        if auth_event.event_type == &quot;m.room.power_level&quot;:
+</span><span>            mainline_iterate(auth_event)
+</span></code></pre>
+<p>We refer to the time period between any two given power level events as an
+<em>epoch</em>.</p>
+<p>In the below illustration, the &quot;resolved&quot; event is the event that appears in the
+partial state from the previous section.</p>
+<p><img src="/docs/legacy/2020-04-14-stateresv2-2.svg" alt="drawing showing partial state example" /></p>
+<h3 id="mainline-ordering-of-normal-state-events">Mainline ordering of normal state events</h3>
+<p>Since the mainline will be ordered based on when the power level changes
+happened, and other state events use power level events as auth events, it is
+possible to sort the order of normal state events based on which mainline power
+level event they most closely refer to, or by definition, which epoch the event
+happened in.</p>
+<p>Note that events may appear that refer to power level events which don't appear
+in the mainline, in which case it is necessary to step through the power level
+events iteratively until you encounter one that is on the mainline. It is
+referred to as the <em>closest mainline event</em>:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>func get_closest_mainline_event(e as event) returns event:
+</span><span>    var closest_mainline_event: event
+</span><span>
+</span><span>    func closest_iterate(e as event):
+</span><span>        if e in power_level_mainline:
+</span><span>            closest_mainline_event = e
+</span><span>        else:
+</span><span>            for each e.auth_events as auth_event:
+</span><span>                if auth_event.event_type == &quot;m.room.power_level&quot;:
+</span><span>                    closest_iterate(auth_event)
+</span><span>
+</span><span>    closest_iterate(e)
+</span><span>    return closest_mainline_event
+</span></code></pre>
+<p>In the following illustration, <em>Event B</em> happens in a more recent epoch than
+<em>Event A</em> as the closest mainline event referred to by <em>Event A</em> is older
+(closer to the room's create event) than the closest mainline event referred to
+by <em>Event B</em>:</p>
+<p><img src="/docs/legacy/2020-04-14-stateresv2-3.svg" alt="drawing showing an example of mainline ordering" /></p>
+<p>To sort the events, we use a method very similar to that used in the reverse
+topological ordering of control events, only instead of initially sorting by
+power level, we use the position of the nearest mainline power level event on
+the mainline. When sorting, you can assert that <strong>x &lt; y</strong> by running the
+following tests in order:</p>
+<ol>
+<li>The closest mainline event to <strong>x</strong> is later in the mainline then the closest
+mainline event to <strong>y</strong> (for example, in the above diagram, <strong>A</strong> is less
+than <strong>B</strong> as <strong>B</strong> refers to a more recent mainline power level event)</li>
+<li>The event origin server timestamp of <strong>x</strong> is less than the event origin
+server timestamp of <strong>y</strong></li>
+<li>The event ID of <strong>x</strong> is less than the event ID of <strong>y</strong>, as computed by a
+lexicographical comparison</li>
+</ol>
+<p>To ensure that the algorithm is deterministic (that is, running in the same
+order) for a given set of inputs, we ensure that the normal state events have
+been sorted using the above criteria:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>func sorted_normal_state_events() as list(event):
+</span><span>    sort normal_events where x &lt; y when:
+</span><span>        x.position_on_mainline &lt; y.position_on_mainline or
+</span><span>        x.origin_server_ts &lt; y.origin_server_ts or
+</span><span>        lexographic_compare(x.event_id, y.event_id) &lt; 0
+</span><span>    return normal_events
+</span></code></pre>
+<p>In the event that multiple candidate events refer to the same mainline power
+level event, the remaining two tests will allow the sorting to be deterministic.</p>
+<h3 id="iteratively-apply-resolved-normal-state-events">Iteratively apply resolved normal state events</h3>
+<p>Now that our normal state events have been sorted into mainline order, where the
+first events in the list are the &quot;oldest&quot;, we can now start to layer these
+resolved normal state events on top of the <em>partial state</em>.</p>
+<p>Just as with the control events, each normal state event should be authed
+against the partial state, before applying the valid events to the partial
+state:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>for each sorted_normal_state_events() as e:
+</span><span>    if auth_against_partial_state(e):
+</span><span>        partial_state[e.event_type][e.state_key] = e
+</span></code></pre>
+<p>Any event that fails to auth against the current partial state should be ignored
+and should not be applied to the partial state.</p>
+<h3 id="re-apply-unconflicted-state">Re-apply unconflicted state</h3>
+<p>Now that all of the events from the original conflicted set have been resolved
+and applied, we complete one final pass over the partial state by re-applying
+the original unconflicted set. Ordinarily, nothing from the conflicted set
+should overwrite anything from the unconflicted set, but pulling in auth events
+may bring in additional state.</p>
+<p>Reapply the unconflicted state events onto the partial state to complete the
+state:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>for each unconflicted_events as e:
+</span><span>    partial_state[e.event_type][e.state_key] = e
+</span></code></pre>
+<p>At this point, the partial state is now effectively <em>complete</em>, therefore it now
+represents the final resolved state.</p>
+<h3 id="finishing-up">Finishing up</h3>
+<p>Now that you have completed all of the above steps, you have successfully
+implemented State Resolution v2! If you have any questions, please feel free to
+join us in the <a href="https://matrix.to/#/#homeservers-dev:matrix.org">Homeserver
+Developers</a> channel.</p>
+<p>Further reading:</p>
+<ul>
+<li><a href="https://matrix.org/docs/spec/rooms/v2">Matrix Specification - Room Version 2</a></li>
+<li><a href="https://matrix.uhoreg.ca/stateres/reloaded.html">State Resolution: Reloaded (in Haskell)</a></li>
+<li><a href="https://github.com/matrix-org/matrix-doc/blob/erikj/state_res_msc/proposals/1442-state-resolution.md">MSC1442 - State Resolution: Reloaded</a></li>
+</ul>
+
+</article>
+
+    </main>
+
+    <footer class="site-footer">
+    <div class="internal-links">
+        
+        <a href="&#x2F;faq">FAQs</a>
+        
+        <a href="&#x2F;security-disclosure-policy">Security Disclosure Policy</a>
+        
+        <a href="&#x2F;hall-of-fame">Security Hall of Fame</a>
+        
+        <a href="&#x2F;legal&#x2F;code-of-conduct">Code of Conduct for Matrix.org</a>
+        
+        <a href="&#x2F;legal">Legal</a>
+        
+        <a href="&#x2F;contact">Contact</a>
+        
+        <a href="https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;">Site Source</a>
+        
+    </div>
+    <div class="external-links">
+        <div>
+            
+            <a href="&#x2F;code"><img src="/assets/github.svg" alt="GitHub"></a>
+            
+            <a href="https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;"><img src="/assets/gitlab.svg" alt="GitLab"></a>
+            
+            <a href="https:&#x2F;&#x2F;mastodon.matrix.org&#x2F;@matrix"><img src="/assets/mastodon.svg" alt="Mastodon"></a>
+            
+            <a href="https:&#x2F;&#x2F;twitter.com&#x2F;matrixdotorg"><img src="/assets/twitter.svg" alt="Twitter"></a>
+            
+            <a href="https:&#x2F;&#x2F;www.youtube.com&#x2F;channel&#x2F;UCVFkW-chclhuyYRbmmfwt6w"><img src="/assets/youtube.svg" alt="YouTube"></a>
+            
+        </div>
+    </div>
+    <p>© 2022 The Matrix.org Foundation C.I.C.</p>
+</footer>
+
+</body>
+
+</html>
