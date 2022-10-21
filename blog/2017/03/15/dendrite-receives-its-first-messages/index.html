@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="twitter:widgets:csp" content="on" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta name="twitter:site" content="@matrixdotorg" />
+    <meta name="twitter:creator" content="@matrixdotorg" />
+
+    <title>Matrix.org - Dendrite receives its first messages!!!</title>
+    <link rel="shortcut icon" href="/assets/favicon.ico" />
+    <link rel="icon" type="image/png" href="/assets/favicon.png" />
+    <link rel="stylesheet" href="/style.css" />
+
+    
+
+
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    "headline": "Dendrite receives its first messages!!!",
+    "datePublished": "2017-03-15T00:00+00:00",
+    
+    "author": [
+    
+    {
+        "@type": "Person",
+        "name": "Matthew Hodgson",
+        "url": "//authors/matthew-hodgson"
+    }
+    
+    ]
+}
+</script>
+</head>
+
+<body>
+    
+    <header class="site-header">
+    <a href="/" class="brand">
+        <img src="/images/matrix-logo.svg" alt="Matrix logo">
+    </a>
+    <input id="site-header-dropdown-checkbox" type="checkbox" class="dropdown-checkbox" aria-hidden="true">
+    <label for="site-header-dropdown-checkbox" class="dropdown-button">&#xe602;</label>
+    <label for="site-header-dropdown-checkbox" class="page-overlay"></label>
+    <nav>
+        
+        
+        <a href="&#x2F;about&#x2F;" class="
+            ">
+            About
+        </a>
+        
+        
+        
+        <a href="&#x2F;blog&#x2F;" class="
+            current">
+            Blog
+        </a>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;docs&#x2F;" class="section ">
+                Documentation
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;ecosystem&#x2F;" class="section ">
+                Ecosystem
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                    <a href="&#x2F;ecosystem&#x2F;clients&#x2F;">Clients</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;servers&#x2F;">Servers</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bots&#x2F;">Bots</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bridges&#x2F;">Bridges</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;sdks&#x2F;">SDKs</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;hosting&#x2F;">Hosting</a>
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        <a href="&#x2F;podcasts&#x2F;" class="
+            ">
+            Podcasts
+        </a>
+        
+        
+        
+        <a href="https:&#x2F;&#x2F;shop.matrix.org" class="
+            ">
+            Shop
+        </a>
+        
+        
+        
+        <a href="&#x2F;try-matrix&#x2F;" class="primary
+            ">
+            Try Matrix
+        </a>
+        
+        
+    </nav>
+</header>
+
+
+    <main>
+        
+<article class="content post">
+    <header>
+        <h1>Dendrite receives its first messages!!!</h1>
+        <span>15.03.2017 00:00 — <a
+                href="/category/tech">Tech</a>
+             — <a href="/author/matthew-hodgson">Matthew Hodgson</a>
+        </span>
+        
+    </header>
+    <div class="post-main">
+        <div class="post-content">
+            <p>Hi all,</p>
+<p>We hit a major milestone today on <a href="https://github.com/matrix-org/dendrite">Dendrite</a>, our next-generation golang homeserver: <b>Dendrite received its first messages!!</b></p>
+<p>Before you get too excited, please understand that Dendrite is still a pre-alpha work in progress - whilst we successfully created some rooms on an instance and sent a bunch of messages into them via the Client-Server API, most other functionality (e.g. receiving messages via /sync, logging in, registering, federation etc) is yet to exist. <b>It cannot yet be used as a homeserver</b>.  However, this is still a huge step in the right direction, as it demonstrates the core DAG functionality of Matrix is intact, and the beginnings of a usable Client-Server API are hooked up.</p>
+<p>The architecture of Dendrite is genuinely interesting - please check out the <a href="https://github.com/matrix-org/dendrite/blob/master/WIRING.md">wiring diagram</a> if you haven't already.  The idea is that the server is broken down into a series of components which process streams of data stored in Kafka-style append-only logs.  Each component scales horizontally (you can have as many as required to handle load), which is an enormous win over Synapse's monolithic design.  Each component is also decoupled from each other by the logs, letting them run on entirely different machines as required.  Please note that whilst the initial implementation is using Kafka for convenience, the actual append-only log mechanism is abstracted away - in future we expect to see configurations of Dendrite which operate entirely from within a single go executable (using go channels as the log mechanism), as well as alternatives to Kafka for distributed solutions.</p>
+<p>The components which have taken form so far are the central <a href="https://github.com/matrix-org/dendrite/tree/master/src/github.com/matrix-org/dendrite/roomserver">roomserver</a> service, which is responsible (as the name suggests) for maintaining the state and integrity of one or more rooms - authorizing events into the room DAG; storing them in postgres, tracking the auth chain of events where needed; etc.  Much of the core matrix DAG logic of the roomserver is provided by <a href="https://github.com/matrix-org/gomatrixserverlib">gomatrixserverlib</a>.  The roomserver receives events sent by users via the 'client room send' component (and 'federation backfill' component, when that exists).  The 'client room send' component (and in future also 'client sync') is provided by the <a href="https://github.com/matrix-org/dendrite/tree/master/src/github.com/matrix-org/dendrite/clientapi">clientapi</a> service - which is what as of today is successfully creating rooms and events and relaying them to the roomserver!</p>
+<p>The actual events we've been testing with are the history of the Matrix Core room: around 10k events.  Right now the roomserver (and the postgres DB that backs it) are the main bottleneck in the pipeline rather than clientapi, so it's been interesting to see how rapidly the roomserver can consume its log of events.  As of today's benchmark, on a generic dev workstation and an entirely unoptimised roomserver (i.e. no caching whatsoever) running on a single core, we're seeing it ingest the room history at over <b>350 events per second</b>.  The vast majority of this work is going into encoding/decoding JSON or waiting for postgres: with a simple event cache to avoid repeatedly hitting the DB for every auth and state event, we expect this to increase significantly.  And then as we increase the number of cores, kafka partitions and roomserver instances it should scale fairly arbitrarily(!)</p>
+<p>For context, the main synapse process for Matrix.org currently maxes out persisting events at around 15 and 20 per second (although it is also spending a bunch of time relaying events to the various worker processes, and other miscellanies).  As such, an initial benchmark for Dendrite of 350 msgs/s really does look incredibly promising.</p>
+<p>You may be wondering where this leaves Synapse?  Well, a major driver for implementing Dendrite has been to support the growth of the main matrix.org server, which currently persists around 10 events/s (whilst emitting around 1500 events/s).  We have exhausted most of the low-hanging fruit for optimising Synapse, and have got to point where the architectural fixes required are of similar shape and size to the work going into Dendrite.  So, whilst Synapse is going to be around for a while yet, we're putting the majority of our long-term plans into Dendrite, with a distinct degree of urgency as we race against the ever-increasing traffic levels on the Matrix.org server!</p>
+<p>Finally, you may be wondering what happened to <a href="https://github.com/matrix-org/dendron">Dendron</a>, our original experiment in Golang servers.  Well: Dendron was an attempt at a <a href="https://www.martinfowler.com/bliki/StranglerApplication.html">strangler pattern</a> rewrite of Synapse, acting as an shim in front of Synapse which could gradually swap out endpoints with their golang implementations.  In practice, the operational complexity it introduced, as well as the amount of room for improvement (at the time) we had in Synapse, and the relatively tight coupling to Synapse's existing architecture, storage &amp; schema, meant that it was far from a clear win - and effectively served as an excuse to learn Go.  As such, we've finally formally killed it off as of last week - Matrix.org is now running behind a normal haproxy, and Dendron is dead.  Meanwhile, Dendrite (aka Dendron done Right ;) is very much alive, progressing fast, free from the shackles of Synapse.</p>
+<p>We'll try to keep the blog updated with progress on Dendrite as it continues to grow!</p>
+
+        </div>
+        
+    </div>
+</article>
+
+    </main>
+
+    <footer class="site-footer">
+    <div class="internal-links">
+        
+        <a href="&#x2F;faq">FAQs</a>
+        
+        <a href="&#x2F;security-disclosure-policy">Security Disclosure Policy</a>
+        
+        <a href="&#x2F;hall-of-fame">Security Hall of Fame</a>
+        
+        <a href="&#x2F;legal&#x2F;code-of-conduct">Code of Conduct for Matrix.org</a>
+        
+        <a href="&#x2F;legal">Legal</a>
+        
+        <a href="&#x2F;contact">Contact</a>
+        
+        <a href="https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;">Site Source</a>
+        
+    </div>
+    <div class="external-links">
+        <div>
+            
+            <a href="&#x2F;code"><img src="/assets/github.svg" alt="GitHub"></a>
+            
+            <a href="https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;"><img src="/assets/gitlab.svg" alt="GitLab"></a>
+            
+            <a href="https:&#x2F;&#x2F;mastodon.matrix.org&#x2F;@matrix"><img src="/assets/mastodon.svg" alt="Mastodon"></a>
+            
+            <a href="https:&#x2F;&#x2F;twitter.com&#x2F;matrixdotorg"><img src="/assets/twitter.svg" alt="Twitter"></a>
+            
+            <a href="https:&#x2F;&#x2F;www.youtube.com&#x2F;channel&#x2F;UCVFkW-chclhuyYRbmmfwt6w"><img src="/assets/youtube.svg" alt="YouTube"></a>
+            
+        </div>
+    </div>
+    <p>© 2022 The Matrix.org Foundation C.I.C.</p>
+</footer>
+
+</body>
+
+</html>
