@@ -117,7 +117,7 @@
     <div class="content">
         <header>
             <h1>Tech</h1>
-            41 posts tagged with "Tech" <a href="/category">(See all Category)</a>
+            52 posts tagged with "Tech" <a href="/category">(See all Category)</a>
             
             <h2>
                 <small><a href="/category/tech/atom.xml">Atom Feed</a></small>
@@ -128,9 +128,313 @@
         
         <article class="post">
             <header>
-                <h2><a href="&#x2F;blog&#x2F;2017&#x2F;11&#x2F;15&#x2F;synapse-0-25-is-out-as-is-matrix-specification-0-3&#x2F;" title="Synapse 0.25 is out... as is Matrix Specification 0.3(!!!)">Synapse 0.25 is out... as is Matrix Specification 0.3(!!!)</a></h2>
+                <h2><a href="&#x2F;blog&#x2F;2018&#x2F;12&#x2F;21&#x2F;porting-synapse-to-python-3&#x2F;" title="Porting Synapse to Python 3">Porting Synapse to Python 3</a></h2>
                 <span>
-                    15.11.2017 00:00
+                    21.12.2018 00:00
+                    —
+                    <a href="/category/tech">
+                        Tech
+                    </a>
+                    —
+                    <a
+                        href="/author/neil-johnson">
+                        Neil Johnson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Matrix's reference homeserver, Synapse, is written in Python and uses the Twisted networking framework to power its bitslinging across the Internet. The Python version used has been strictly Python 2.7, the last supported version of Python 2, but as of this week that changes! Since Twisted and our other upstream dependencies now support the newest version of Python, Python 3, we are now able to finish the jump and port Synapse to use it by default. The port has been done in a backwards compatible way, written in a subset of Python that is usable in both Python 2 and Python 3, meaning your existing Synapse installs still work on Python 2, while preparing us for a Python 3 future.</p>
+<h2>Why port?
+</h2>
+Porting Synapse to Python 3 prepares Synapse for a post-Python 2 world, currently scheduled for 2020. After the 1st of January in 2020, Python 2 will no longer be supported by the core Python developers and no bugfixes (even critical security ones) will be issued. As the security of software depends very much on the runtime and libraries it is running on top of, this means that by then all Python 2 software in use should have moved to Python 3 or other runtimes.
+<p>The Python 3 port has benefits other than just preparing for the End of Life of Python 2.7. Successive versions of Python 3 have improved the standard library, provided newer and clearer syntax for asynchronous code, added opt-in static typing to reduce bugs, and contained incremental performance and memory management improvements. These features, once Synapse stops supporting Python 2, can then be fully utilised to make Synapse's codebase clearer and more performant. One bonus that we get immediately, though, is Python 3's memory compaction of Unicode strings. Rather than storing as UCS-2/UTF-16 or UCS-4/UTF-32, it will instead store it in the smallest possible representation giving a 50%-75% memory improvement for strings only containing Latin-1 characters, such as nearly all dictionary keys, hashes, IDs, and a large proportion of messages being processed from English speaking countries. Non-English text will also see a memory improvement, as it can be commonly stored in only two bytes instead of the four in a UCS-4 “wide” Python 2 build.</p>
+<p><i>Editor's note: If you were wondering how this fits in with Dendrite (the next-gen golang homeserver): our plan is to use Synapse as the reference homeserver for all the current work going on with landing a 1.0 release of the Matrix spec: it makes no sense to try to iterate and converge on 1.0 on both Synapse and Dendrite in parallel. In order to prove that the 1.0 spec is indeed fit for purpose we then also need Synapse to exit beta and hit a 1.0 too, hence the investment to get it there. It's worth noting that over the last year we've been plugging away solidly improving Synapse in general (especially given the increasing number of high-profile deployments out there), so we're committed to getting Synapse to a formal production grade release and supporting it in the long term. Meanwhile, Dendrite development is still progressing - currently acting as a place to experiment with more radical blue-sky architectural changes, especially in low-footprint or even clientside homeservers. We expect it to catch up with Synapse once 1.0 is out the door; and meanwhile Synapse is increasingly benefiting from performance work inspired by Dendrite.
+</i></p>
+<h2>When will the port be released?
+</h2>
+The port is has been released in a “production ready” form in <a href="/blog/2018/12/20/synapse-0-34-0-released/">Synapse 0.34.0</a>, supporting Python 3.5, 3.6, and 3.7. This will work on installations with and without workers.
+<h2>What's it like in the real world?
+</h2>
+Beta testers of the Python 3 port have reported lower memory usage, including lower memory “spikes” and slower memory growth. You can see this demonstrated on matrix.org:
+<p><a href="/blog/wp-content/uploads/2018/12/image3.png"><img class="alignnone size-large wp-image-3830" src="/blog/wp-content/uploads/2018/12/image3-1024x223.png" alt="" width="1024" height="223" /></a></p>
+<p>See 10/15, ~20:00 for the Python 3 migration. This is on some of the Synchrotrons on matrix.org.</p>
+<p><a href="/blog/wp-content/uploads/2018/12/image1.png"><img class="alignnone size-large wp-image-3824" src="/blog/wp-content/uploads/2018/12/image1-1024x237.png" alt="" width="1024" height="237" /></a></p>
+<p>See ~11/8 for the Python 3 migration. This is on the Synapse master on matrix.org.</p>
+<p>We have also noticed some better CPU utilisation:</p>
+<p><span style="font-weight: 400;"><a href="/blog/wp-content/uploads/2018/12/image2.png"><img class="alignnone size-large wp-image-3822" src="/blog/wp-content/uploads/2018/12/image2-1024x296.png" alt="" width="1024" height="296" /></a>
+</span>
+See 21:30 for the migration of federation reader 1, and 21:55 for the others. The federation reader is a particular pathological case, where the replacement of lists with iterators internally on Python 3 has given us some big boosts.</p>
+<p><a href="/blog/wp-content/uploads/2018/12/image4.png"><img class="alignnone size-large wp-image-3829" src="/blog/wp-content/uploads/2018/12/image4-1024x296.png" alt="" width="1024" height="296" /></a></p>
+<p>See 10/15, 4:00.The CPU utilisation has gone down on synchrotron 1 after the Python 3 migration, but not as dramatically as the federation reader. Synchrotron 3 was migrated a few days later.</p>
+<p>As some extra data-points, my personal HS consumes about 300MB now at initial start, and grows to approximately 800MB -- under Python 2 the growth would be near-immediate to roughly 1.4GB.</p>
+<h2>Where to from here?
+</h2>
+Python 2 is still a supported platform for running Synapse for the time being. We plan on ending mainstream support on 1st April 2019, where upon Python 3.5+ will be the only officially supported platform. Additionally, we will give notice ahead of time once we are ready to remove Python 2.7 compatibility from the codebase (which will be no sooner than 1st April). Although slightly inconvenient, we hope that this gives our users and integrators adequate time to migrate, whilst giving us the flexibility to use modern Python features and make Synapse a better piece of software to help power the Matrix community.
+<h2>How can I try it?
+</h2>
+The port is compatible with existing homeservers and configurations, so if you install Synapse inside a Python 3 virtualenv, you can run it from there. Of course, this differs based on your installation method, operating system, and what version of Python 3 you wish to use. Full upgrade notes live <a href="https://github.com/matrix-org/synapse/blob/release-v0.34.0/UPGRADE.rst#upgrading-to-v0340">here</a> but if you're having problems or want to discuss specific packagings of Synapse please come ask in <a href="https://matrix.to/#/#synapse:matrix.org">#synapse:matrix.org</a>.
+<h2>Thanks
+</h2>
+Many thanks go to fellow Synapse developers Erik and Rich for code review, as well as community contributors such as notafile and krombel for laying the foundations many months ago allowing this port to happen. Without them, this wouldn't have happened.
+<p>Happy Matrixing,</p>
+<p>Amber Brown (hawkowl)</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2018&#x2F;10&#x2F;25&#x2F;olm-3-0-0-released&#x2F;" title="Olm 3.0.0 released!">Olm 3.0.0 released!</a></h2>
+                <span>
+                    25.10.2018 00:00
+                    —
+                    <a href="/category/tech">
+                        Tech
+                    </a>
+                    —
+                    <a
+                        href="/author/hubert-chathi">
+                        Hubert Chathi
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Olm 3.0.0 has been released, which features several big changes. It can be downloaded from <a href="https://git.matrix.org/git/olm/">https://git.matrix.org/git/olm/</a>. The npm package for JavaScript can be downloaded from <a href="/packages/npm/olm/olm-3.0.0.tgz">https://matrix.org/packages/npm/olm/olm-3.0.0.tgz</a></p>
+<h1 id="python">Python</h1>
+The biggest change is the merge of <a href="https://github.com/poljar/">poljar's</a> improved Python bindings. These bindings should be much easier to use for Python programmers, and are used by <a href="https://github.com/Zil0/">Zil0's</a> <a href="https://github.com/Zil0/matrix-python-sdk/tree/e2e_sample">E2E support in the Matrix Python SDK</a>.
+<p>Since the binding API has changed, existing Python code will need to be rewritten in order to work with this release.</p>
+<p>poljar has also included <a href="https://poljar.github.io/python-olm/html/index.html">comprehensive documentation</a> for the new API.</p>
+<h1 id="cmake">CMake</h1>
+<a href="https://github.com/mujx/">mujx</a> contributed support for building olm using CMake. This should allow for easier building on different platforms. Currently the library can be built using either make or CMake. In the future, make support may be removed.
+<h1 id="javascript">JavaScript</h1>
+The JavaScript bindings now use <a href="https://webassembly.org/">WebAssembly</a> by default. WebAssembly is much faster than the previous <a href="http://asmjs.org/">asm.js</a> build, and is supported by recent versions of the most popular browsers. For compatibility with browsers that do not support WebAssembly, the asm.js version is still provided.
+<p>Due to adding support for WebAssembly, the API had to be changed slightly.
+There is now an <code>init</code> function that must be called before the library can be used. This function will return a promise that will resolve once the library is ready to be used. The <a href="https://github.com/matrix-org/matrix-js-sdk">matrix-js-sdk</a> has not yet been updated to do this, so users of matrix-js-sdk should continue using olm 2.x until it has been updated.</p>
+<h1 id="keybackups">Key backups</h1>
+The public key API has been updated to support the <a href="https://github.com/matrix-org/matrix-doc/pull/1538">proposal for server-side key backups</a>. More details on how to use these functions will be published in the future.
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2018&#x2F;09&#x2F;03&#x2F;matrix-spec-update-august-2018&#x2F;" title="Matrix Spec Update August 2018">Matrix Spec Update August 2018</a></h2>
+                <span>
+                    03.09.2018 00:00
+                    —
+                    <a href="/category/tech">
+                        Tech
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <h2>Introducing Client Server API 0.4, and the first ever stable IS, AS and Push APIs spec releases!
+</h2>
+Hi folks,
+<p>As many know, we've been on a massive sprint to improve the spec - both fixing omissions where features have been implemented in the reference servers but were never formalised in the spec, and fixing bugs where the spec has thinkos which stop us from being able to ratify it as stable and thus fit for purpose .</p>
+<p>In practice, our target has been to cut stable releases of all the primary Matrix APIs by the end of August - effectively declaring Matrix out of beta, at least at the specification level.  For context: historically only one API has ever been released as stable - the Client Server API, which was the result of a similar sprint back in Jan 2016. This means that the Server Server (SS) API, Identity Service (IS) API, Application Service (AS) API and Push Gateway API have never had an official stable release - which has obviously been problematic for those implementing them.</p>
+<p>However, as of the end of Friday Aug 31, we're proud to announce the first ever stable releases of the <a href="/docs/spec">IS, AS and Push APIs</a>!</p>
+<p><a href="/docs/spec"><img src="/_matrix/media/v1/download/t2l.io/587a1a86905b1e0e8f9342d76e57ffbe" /></a>
+To the best of our knowledge, these API specs are now complete and accurately describe all the current behaviour implemented in the reference implementations (sydent, synapse and sygnal) and are fit for purpose. Any deviation from the spec in the reference implementations should probably be considered a bug in the impl. All changes take the form of filling in spec omissions and adding clarifications to the existing behaviour in order to get things to the point that an independent party can implement these APIs without having to refer to anything other than the spec.</p>
+<p>This is the result of a lot of work which spans the whole Spec Core Team, but has been particularly driven by TravisR, who has taken the lead on this whole mission to improve the spec.  Huge thanks are due to Travis for his work here, and also massive thanks to everyone who has 
+<del>suffered
+</del> <del>endured
+</del> reviewed his PRs and contributed to the releases.  The spec is looking unrecognisably better for it - and Matrix 1.0 is feeling closer than ever!</p>
+<p>Alongside the work on the IS/AS/Push APIs, there has also been a massive attempt to plug all the spec omissions in the Client Server API.  Historically the CS API releases have missed some of the newer APIs (and of course always miss the ones which postdate a given release), but we've released the APIs which /have/ been specified as stable in order to declare them stable.  However, in this release we've tried to go through and fill in as many remaining gaps as possible.</p>
+<p>The result is the release of <a href="/docs/spec/client_server/r0.4.0.html">Client Server API version 0.4</a>. This is a huge update - increasing the size of the CS API by ~40%. The biggest new stuff includes fully formalising support for end-to-end encryption (thanks to Zil0!), versioning for rooms (so we can upgrade rooms to new versions of the protocol), synchronised read markers, user directories, server ACLs, MSISDN 3rd party ids, and .well-known server discovery (not that it's widely used yet), but for the full picture, best bet is to look at <a href="/docs/spec/client_server/r0.4.0.html#changelog">the changelog</a> (now managed by <a href="https://pypi.org/project/towncrier/">towncrier</a>!).  It's probably fair to say that the CS API is growing alarmingly large at this point - Chrome says that it'd be 223 A4 pages if printed. Our solution to this will be to refactor it somehow (and perhaps switch to a more compact representation of the contents).</p>
+<p>Some things got deliberately missed from the CS 0.4 release: particularly membership Lazy Loading (because we're still testing it out and haven't released it properly in the wild yet), the various GDPR-specific APIs (because they may evolve a bit as we refine them since the original launch), finalising ID grammars in the overall spec (because this is surprisingly hard and subtle and we don't want to rush it) and finally Communities (aka Groups), as they are still somewhat in flux.</p>
+<p>Meanwhile, on the Server to Server API, there has also been a massive amount of work.  Since the beginning of July it's 
+<b>tripled</b> in size as we've filled in the gaps, over the course of &gt;200 commits (&gt;150 of which from Travis).  If you take a look at the <a href="/docs/spec/server_server/unstable.html">current snapshot</a> it's pretty unrecognisable from the historical draft; with the main changes being:</p>
+<ul>
+ 	<li style="font-weight: 400;">Adding the new State Resolution algorithm to address flaws in the original one.  This has been where much of our time has gone - see <a href="https://github.com/matrix-org/matrix-doc/pull/1441">MSC1442</a> for full details.  Adopting the new algorithm requires rooms to be recreated; we'll write more about this in the near future when we actually roll it out.
+</li>
+ 	<li style="font-weight: 400;">Adding room versioning so we can upgrade to the new State Resolution algorithm.
+</li>
+ 	<li style="font-weight: 400;">Everything is now properly expressed as Swagger (OpenAPI), just like the CS API
+</li>
+ 	<li style="font-weight: 400;">Adding all the details for E2E encryption (including dependencies like to-device messaging and device-list synchronisation)
+</li>
+ 	<li style="font-weight: 400;">Improvements in specifying how to authorize inbound events over federation
+</li>
+ 	<li style="font-weight: 400;">Document federation APIs such as /event_auth and /query_auth and /get_missing_events
+</li>
+ 	<li style="font-weight: 400;">Document 3rd party invites over federation
+</li>
+ 	<li style="font-weight: 400;">Document the /user/* federation endpoints
+</li>
+ 	<li style="font-weight: 400;">Document Server ACLs
+</li>
+ 	<li style="font-weight: 400;">Document read receipts over federation
+</li>
+ 	<li style="font-weight: 400;">Document presence over federation
+</li>
+ 	<li style="font-weight: 400;">Document typing notifications over federation
+</li>
+ 	<li style="font-weight: 400;">Document content repository over federation
+</li>
+ 	<li style="font-weight: 400;">Document room directory over federation
+</li>
+ 	<li style="font-weight: 400;">...and many many other minor bug fixes, omission fixes, and restructuring for coherency - see <a href="https://github.com/matrix-org/matrix-doc/issues/1464">https://github.com/matrix-org/matrix-doc/issues/1464</a> for an even longer list :)
+</li>
+</ul>
+However, we haven't finished it all: despite our best efforts we're running slightly past the original target of Aug 31.  The current state of play for the r0 release overall (in terms of pending issues) is:
+<a href="/blog/wp-content/uploads/2018/09/Screen-Shot-2018-09-03-at-16.56.18.png"><img class="aligncenter size-full wp-image-3525" src="/blog/wp-content/uploads/2018/09/Screen-Shot-2018-09-03-at-16.56.18.png" alt="" width="576" height="214" /></a>...and you can see the full breakdown over at the <a href="https://github.com/matrix-org/matrix-doc/projects/1">public Github project dashboard</a>.
+<p>The main stuff we still have remaining on the Server/Server API at this point is:</p>
+<ul>
+ 	<li style="font-weight: 400;">Better specifying how we validate inbound events. See <a href="https://github.com/matrix-org/matrix-doc/issues/1646">MSC1646</a> for details &amp; progress.
+</li>
+ 	<li style="font-weight: 400;">Switching event IDs to be hashes. See <a href="https://github.com/matrix-org/matrix-doc/issues/1640">MSC1640</a> for details and progress.
+</li>
+ 	<li style="font-weight: 400;">Various other remaining security considerations (e.g. how to handle malicious auth events in the DAG; how to better handle DoS situations).
+</li>
+ 	<li style="font-weight: 400;">Merging in the changes to authoring m.room.power_levels (as per <a href="https://github.com/matrix-org/matrix-doc/issues/1304">MSC1304</a>)
+</li>
+ 	<li style="font-weight: 400;">Formally specifying the remaining identifiers which lack a formal grammar - <a href="https://github.com/matrix-org/matrix-doc/pull/1598">MSC1597</a> and particularly room aliases (
+<a href="https://github.com/matrix-org/matrix-doc/pull/1607">MSC1608</a>)
+</li>
+</ul>
+The plan here is to continue speccing and implementing these at top priority (with Travis continuing to work fulltime on spec work), and we'll obviously keep you up-to-date on progress.  Some of the changes here (e.g. event IDs) are quite major and we definitely want to implement them before speccing them, so we're just going to have to keep going as fast as we can. Needless to say we want to cut an r0 of the S2S API alongside the others asap and declare Matrix out of beta (at least at the spec level :)
+<p>In terms of visualising progress on this spec mission it's interesting to look at the rate at which we've been closing PRs: this graph shows the total number of PRs which are in state ‘open' or ‘closed' on any given day:</p>
+<p><a href="/blog/wp-content/uploads/2018/09/Screen-Shot-2018-09-03-at-00.56.38.png"><img class="aligncenter size-large wp-image-3526" src="/blog/wp-content/uploads/2018/09/Screen-Shot-2018-09-03-at-00.56.38-1024x722.png" alt="" width="1024" height="722" /></a></p>
+<p>...which clearly shows the original sprint to get the r0 of the CS API out the door at the end 2015, and then a more leisurely pace until the beginning of July 2018 since which the pace has picked up massively.  Other ways of looking at include the number of open issues...</p>
+<p><a href="/blog/wp-content/uploads/2018/09/image-1.png"><img class="aligncenter size-large wp-image-3527" src="/blog/wp-content/uploads/2018/09/image-1-1024x691.png" alt="" width="1024" height="691" /></a>
+...or indeed the number of commits per week…</p>
+<p><a href="/blog/wp-content/uploads/2018/09/Screen-Shot-2018-09-03-at-01.02.27.png"><img class="aligncenter wp-image-3528" src="/blog/wp-content/uploads/2018/09/Screen-Shot-2018-09-03-at-01.02.27-1024x195.png" alt="" width="710" height="135" /></a>
+...or the overall Github Project activity for August.  (It's impressive to see Zil0 sneaking in there on second place on the commit count, thanks to all his GSoC work documenting E2E encryption in the spec as part of implementing it in matrix-python-sdk!)</p>
+<p><a href="/blog/wp-content/uploads/2018/09/Screen-Shot-2018-09-03-at-01.03.57.png"><img class="aligncenter wp-image-3529" src="/blog/wp-content/uploads/2018/09/Screen-Shot-2018-09-03-at-01.03.57-1024x925.png" alt="" width="744" height="672" /></a>
+Anyway, enough numerology.  It's worth noting that all of the dev for r0 has generally followed the proposed <a href="/blog/2018/06/20/towards-open-governance-for-matrix-org/">Open Governance Model for Matrix</a>, with the core spec team made up of both historical core team folk (erik, richvdh, dave &amp; matthew), new core team folk (uhoreg &amp; travis) and community folk (kitsune, anoa &amp; mujx) working together to review and approve the changes - and we've been doing MSCs (albeit with an accelerated pace) for anything which we feel requires input from the wider community.  Once the Server/Server r0 release is out the door we'll be finalising the open governance model and switching to a slightly more measured (but productive!) model of spec development as outlined there.</p>
+<p>Meanwhile, Matrix 1.0 gets ever closer.  With (almost) all this spec mission done, our plan is to focus more on improving the reference implementations - particularly performance in Synapse, 
+UX in matrix-{'{'}react,ios,android{'}'}-sdk as used by Riot (especially for E2E encryption), and then declare a 1.0 and get back to implementing new features (particularly Editable Messages and Reactions) at last.</p>
+<p>We'd like to thank everyone for your patience whilst we've been playing catch up on the spec, and hope you agree it's been worth the effort :)</p>
+<p>Matthew &amp; the core spec team.</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2018&#x2F;08&#x2F;01&#x2F;gsoc-implementing-end-to-end-encryption-in-the-matrix-python-sdk&#x2F;" title="GSOC: Implementing End-to-End Encryption in the Matrix Python SDK">GSOC: Implementing End-to-End Encryption in the Matrix Python SDK</a></h2>
+                <span>
+                    01.08.2018 00:00
+                    —
+                    <a href="/category/tech">
+                        Tech
+                    </a>
+                    —
+                    <a
+                        href="/author/ben-parsons">
+                        Ben Parsons
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Following on from the previous post, we have an update from zil0 on his <a href="https://summerofcode.withgoogle.com/organizations/6091058287476736/#5468043765874688">GSoC project</a>, which entailed implementing E2E support in the Matrix Python SDK.</p>
+<hr />
+<p>The goal of my project is to implement Matrix's end-to-end encryption protocol in Python, as part of <a href="https://github.com/matrix-org/matrix-python-sdk">matrix-python-sdk</a>. My mentors are Richard van der Hoff (richvdh) and Hubert Chathi (uhoreg).</p>
+<p>It was easy to get started on the project, since the simple parts came first (adding API calls), and then the whole process to follow is documented in an <a href="/docs/guides/e2e_implementation.html">implementation guide</a>, while there is also the reference implementation in JavaScript. And most importantly, the community is nice. :)</p>
+<p>Some parts of the work consist in wrapping around the cryptographic primitives implemented in <a href="https://git.matrix.org/git/olm/">libolm</a> (via <a href="https://github.com/poljar/python-olm">Python bindings</a>), in order to handle encrypted events. Others are less straightforward, such as tracking device lists of users, or finding the right way to persist keys and related data between startups.</p>
+<p>An interesting aspect of this project is that I am working on a new part of the Python SDK, while also having to integrate with existing code, which is a cool balance between freedom and guidelines.</p>
+<p>As the encryption documentation is a bit outdated and incomplete, one (fun) difficulty is to look for information across old issues, Gdocs and source code (and asking my mentor when in doubt). For anyone trying to implement E2E, it should be better by the end of the project, as I am currently working on documenting the missing bits.</p>
+<p>I have had a great experience so far. Working on an open source project differs from my previous coding experiences, as people are actually going to use what I write! I have learnt to think about the best design from a usability point of view, discuss different approaches, and I had to write tests and document my code, which sadly is not something I do on personal projects. I enjoyed reviews, and the discussions they led to. And of course I have learnt quite an interesting lot about the E2E voodoo, along with some new Python tricks.</p>
+<p>Currently, the implementation is in a working state. Some of the <a href="https://github.com/matrix-org/matrix-python-sdk/pulls?utf8=%E2%9C%93&amp;q=is%3Apr+author%3AZil0">code</a> is merged, and some is awaiting review. It is possible to try it <a href="https://github.com/matrix-org/matrix-python-sdk/issues/100#issuecomment-402508438">here</a> before everything is merged.
+The project will be finished in about one week, after some tidying up and when I release device verification and key sharing, which should be the last missing features compared to Riot.</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2018&#x2F;07&#x2F;30&#x2F;dendrite-progress-update&#x2F;" title="Dendrite Progress Update">Dendrite Progress Update</a></h2>
+                <span>
+                    30.07.2018 00:00
+                    —
+                    <a href="/category/tech">
+                        Tech
+                    </a>
+                    —
+                    <a
+                        href="/author/ben-parsons">
+                        Ben Parsons
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>As you may know, for the last few months anoa (Andrew) and APWhiteHat have been working on Dendrite, the next generation Matrix homeserver, written in Go. We asked for an update on their progress, and Andrew provided the blog post below. Serious progress has been made on Dendrite this summer!</p>
+<p> </p>
+<hr />
+<p>Hey everyone, my name is Andrew Morgan and I've been working full-time over the summer on Dendrite, our next-generation Matrix homeserver. Over the last two months, I've seen the project transform from a somewhat functioning toy server to a near-production-ready homeserver that is working towards complete feature support. I've appreciated the thought put into the project since day one, and enjoy the elegance of the multi-component design. Documentation is fairly decent at the moment, but comments are plentiful throughout the codebase, while the code itself tends towards simple and maintainable rather than complex and unmanageable.</p>
+<h2>Application Service Integration
+</h2>
+The main focus of my time here has been on the implementation of application service support for Dendrite. Application services are external programs that act as privileged extensions to a homeserver, allowing such functionality as bots in rooms and bridges to third-party networks. Supporting application services requires a few different bits and pieces to be set up. Currently all planned features have a PR for them, with the bold items already merged:
+<ul>
+ 	<li><strong>Sending events to application services</strong></li>
+ 	<li><strong>Support user masquerading for events</strong></li>
+ 	<li><strong>Support editing event timestamps</strong></li>
+ 	<li>Support room alias querying</li>
+ 	<li>Support user ID querying
+</li>
+ 	<li>Support third party lookup proxying
+</li>
+</ul>
+As you can see a decent portion of the functionality is already in master! The rest will hopefully follow after some further back and forth.
+<h2>Google Summer of Code
+</h2>
+I certainly haven't been going at this all on my own. Alongside extensive help from Erik, who's been mentoring me, our resident Google Summer of Code student, APWhiteHat, has been tackling feature after feature in Dendrite wherever he can find them. Application services received a good deal of help on client-server endpoint authentication side, however, APWhiteHat has mostly been focusing on federation and some other very useful pieces. While his GSoC period still has a week or so before its conclusion, he has so far implemented:
+<ul>
+ 	<li style="font-weight: 400;">Idempotency to roomserver event processing to prevent duplication
+</li>
+ 	<li style="font-weight: 400;">Username auto generation
+</li>
+ 	<li style="font-weight: 400;">Tokens library based on macaroons
+</li>
+ 	<li style="font-weight: 400;">Lots of left-over federation stuff: state API &amp; get missing events being the major ones
+</li>
+ 	<li style="font-weight: 400;">AS support to clientapi auth
+</li>
+ 	<li style="font-weight: 400;">Typing server: handling of PUT /typing by clientapi
+</li>
+ 	<li style="font-weight: 400;">More typing server stuff on its way
+</li>
+</ul>
+From my perspective, APWhiteHat was an excellent developer to work with. He asked good questions and was quick to answer any myself or the community had as well. His code reviews were also very comprehensive. I learned a lot from working with him and everyone else :)
+<h2>OpenTracing and Prometheus Monitoring
+</h2>
+Placing any large server into a production environment requires extensive monitoring capabilities in order to ensure operations are running smoothly. To that effect, Dendrite has been both the addition of OpenTracing and Prometheus support. Prometheus, also used heavily in Synapse, allows a homeserver operator to track a wide range of data including endpoint usage, resource management as well as user statistics over any given range of time.
+<p>In Dendrite, we are taking this one step further by introducing <a href="https://opentracing.io/">OpenTracing</a>, a language and platform-agnostic framework for tracking the journey of an endpoint call from incoming request to outgoing response, with every method, hierarchy change and database call in between. It will be immensely useful in tracking down performance issues, as well as providing insight into the most critical paths throughout the codebase and where we should focus most of our optimization efforts on. It also comes with a lovely dashboard courtesy of <a href="https://www.jaegertracing.io/">Jaeger</a>:</p>
+<p><a href="/blog/wp-content/uploads/2018/07/image1.png"><img class="alignnone size-large wp-image-3432" src="/blog/wp-content/uploads/2018/07/image1-1024x527.png" alt="" width="1024" height="527" /></a></p>
+<h2>Community
+</h2>
+We've also seen some encouraging interest and development work from the community in the past couple months. While PR review from our own side is admittedly slow due to our focus on getting the foundational work in place, that hasn't stopped both old and new developers from sending in PRs and performing code reviews. A huge thank you to everyone involved! From this we've gotten API implementations and application service fixes from @turt2live, <a href="https://twitter.com/matrixdotorg/status/1022887733931520001">an end-to-end encryption implementation from @fadeAce</a>, filtering support from @CromFr, and some PRs and numerous helpful review comments from @krombel.
+<p>We've also started to see some people running Dendrite in live environments, which is incredibly exciting for us to see! While Dendrite is not considered production-ready yet (though it moves closer every day), if you are interested in giving it a go please consult the quickstart <a href="https://github.com/matrix-org/dendrite/blob/master/INSTALL.md">installation guide</a>. We look forward to any feedback you may have!</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2018&#x2F;07&#x2F;19&#x2F;synapse-0-33-0-is-here&#x2F;" title="Synapse 0.33.0 is here!!">Synapse 0.33.0 is here!!</a></h2>
+                <span>
+                    19.07.2018 00:00
                     —
                     <a href="/category/tech">
                         Tech
@@ -146,333 +450,36 @@
             <div>
                 
                 <p>Hi all,</p>
-<p>Today is a crazy release day here - not only do we have Synapse 0.25, but we've also made a formal release of the Matrix Specification (CS API) for the first time in 16 months!</p>
-<h3>Matrix CS API 0.3</h3>
-Talking first about the spec update: the workflow of the Matrix spec is that new experimental features get added to an /unstable API prefix, and then whenever we release the Matrix spec, these get moved over to being part of the /r0 prefix (or whatever version we happen to be on).  We've been <strong>very</strong> constrained on manpower to work on the spec over the last ~18 months, but we've been keeping it up-to-date on a best effort basis, with a bit of help from the wider community.  <b> </b>As such, this latest release does not contain all the latest APIs (and certainly not experimental ones like Groups/Communities which are still evolving), but it does release all of the unstable ones which we've managed to document and which are considered stable enough to become part of the 'r0' prefix.  Going forwards, we're hoping that the wider community will help us fill in the remaining gaps (i.e. propose PRs against the matrix-org/matrix-doc repository to formalise the various spec drafts flying around the place) - and we're also hoping (if/when funding crisis is abated) to locate full-time folk to work on the spec.
-<p>The full changelog for 0.3 of the spec is:</p>
-<ul class="simple">
- 	<li>Breaking changes:
+<p>We've just released <a href="https://github.com/matrix-org/synapse/releases/tag/v0.33.0">Synapse 0.33.0</a>!  This is a <strong>major performance upgrade</strong> which speeds up /sync (i.e. receiving messages) by a factor of almost 2x!  This has already made a massive difference to the CPU usage and snappiness of the matrix.org homeserver since we rolled it out a few days ago - you can see the drop in sync worker CPU just before midday on July 17th; previously we were regularly hitting the CPU ceiling (at which point everything grinds to a halt) - now we're back down hovering between 40% and 60% CPU (at the current load).  This is actually fixing a bug which crept in around Synapse 0.31, so please upgrade - especially if Synapse has been feeling slower than usual recently, and especially if you are still on Synapse 0.31.</p>
+<p><a href="/blog/wp-content/uploads/2018/07/Screen-Shot-2018-07-19-at-13.00.01-1.png"><img class="aligncenter wp-image-3406" src="/blog/wp-content/uploads/2018/07/Screen-Shot-2018-07-19-at-13.00.01-1-1024x639.png" alt="" width="813" height="507" /></a></p>
+<p>Meanwhile we have a <strong>lot</strong> of new stuff coming on the horizon - a whole new algorithm for state resolution (watch this space for details); incremental state resolution (at last!) to massively speed up state resolution and mitigate extremities build up (and speed up the synapse master process, which is now the bottleneck again on the matrix.org homeserver); better admin tools for managing resource usage, and all the Python3 porting work (with associated speedups and RAM &amp; GC improvements).  Fun times ahead!</p>
+<p>The full changelog follows below; as always you can grab Synapse from <a href="https://github.com/matrix-org/synapse">https://github.com/matrix-org/synapse</a>.   Thanks for flying Matrix!</p>
+<h3></h3>
+<h3>Synapse 0.33.0 (2018-07-19)</h3>
+<h4>Bugfixes</h4>
 <ul>
- 	<li>Change the rule kind of <cite>.m.rule.contains_display_name</cite> from <cite>underride</cite> to <cite>override</cite>. This works with all known clients which support push rules, but any other clients implementing the push rules API should be aware of this change. This makes it simple to mute rooms correctly in the API (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/373">#373</a>).</li>
- 	<li>Remove <tt class="docutils literal">/tokenrefresh</tt> from the API (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/395">#395</a>).</li>
- 	<li>Remove requirement that tokens used in token-based login be macaroons (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/395">#395</a>).</li>
+ 	<li>Disable a noisy warning about logcontexts. (<a href="https://github.com/matrix-org/synapse/issues/3561">#3561</a>)</li>
 </ul>
-</li>
- 	<li>Changes to the API which will be backwards-compatible for clients:
+<h3>Synapse 0.33.0rc1 (2018-07-18)</h3>
+<h4>Features</h4>
 <ul>
- 	<li>Add <tt class="docutils literal">filename</tt> parameter to <tt class="docutils literal">POST /_matrix/media/r0/upload</tt> (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/364">#364</a>).</li>
- 	<li>Document CAS-based client login and the use of <tt class="docutils literal">m.login.token</tt> in <tt class="docutils literal">/login</tt> (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/367">#367</a>).</li>
- 	<li>Make <tt class="docutils literal">origin_server_ts</tt> a mandatory field of room events (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/370">#379</a>).</li>
- 	<li>Add top-level <tt class="docutils literal">account_data</tt> key to the responses to <tt class="docutils literal">GET /sync</tt> and <tt class="docutils literal">GET /initialSync</tt> (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/380">#380</a>).</li>
- 	<li>Add <tt class="docutils literal">is_direct</tt> flag to <tt class="docutils literal">POST /createRoom</tt> and invite member event. Add 'Direct Messaging' module (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/389">#389</a>).</li>
- 	<li>Add <tt class="docutils literal">contains_url</tt> option to <tt class="docutils literal">RoomEventFilter</tt> (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/390">#390</a>).</li>
- 	<li>Add <tt class="docutils literal">filter</tt> optional query param to <tt class="docutils literal">/messages</tt> (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/390">#390</a>).</li>
- 	<li>Add 'Send-to-Device messaging' module (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/386">#386</a>).</li>
- 	<li>Add 'Device management' module (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/402">#402</a>).</li>
- 	<li>Require that User-Interactive auth fallback pages call <tt class="docutils literal">window.postMessage</tt> to notify apps of completion (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/398">#398</a>).</li>
- 	<li>Add pagination and filter support to <tt class="docutils literal">/publicRooms</tt>. Change response to omit fields rather than return <tt class="docutils literal">null</tt>. Add estimate of total number of rooms in list. (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/388">#388</a>).</li>
- 	<li>Allow guest accounts to use a number of endpoints which are required for end-to-end encryption. (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/751">#751</a>).</li>
- 	<li>Add key distribution APIs, for use with end-to-end encryption. (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/894">#894</a>).</li>
- 	<li>Add <tt class="docutils literal">m.room.pinned_events</tt> state event for rooms. (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/1007">#1007</a>).</li>
- 	<li>Add mention of ability to send Access Token via an Authorization Header.</li>
- 	<li>New endpoints:
+ 	<li>Enforce the specified API for report_event. (<a href="https://github.com/matrix-org/synapse/issues/3316">#3316</a>)</li>
+ 	<li>Include CPU time from database threads in request/block metrics. (<a href="https://github.com/matrix-org/synapse/issues/3496">#3496</a>, <a href="https://github.com/matrix-org/synapse/issues/3501">#3501</a>)</li>
+ 	<li>Add CPU metrics for _fetch_event_list. (<a href="https://github.com/matrix-org/synapse/issues/3497">#3497</a>)</li>
+ 	<li>Optimisation to make handling incoming federation requests more efficient. (<a href="https://github.com/matrix-org/synapse/issues/3541">#3541</a>)</li>
+</ul>
+<h4>Bugfixes</h4>
 <ul>
- 	<li><tt class="docutils literal">GET /joined_rooms</tt> (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/999">#999</a>).</li>
- 	<li><tt class="docutils literal">GET <span class="pre">/rooms/{'{'}roomId{'}'}/joined_members</span>
-</tt> (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/999">#999</a>).</li>
- 	<li><tt class="docutils literal">GET /account/whoami</tt> (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/1063">#1063</a>).</li>
- 	<li><tt class="docutils literal">GET <span class="pre">/media/{'{'}version{'}'}/preview_url</span>
-</tt> (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/1064">#1064</a>).</li>
+ 	<li>Fix a significant performance regression in /sync. (<a href="https://github.com/matrix-org/synapse/issues/3505">#3505</a>, <a href="https://github.com/matrix-org/synapse/issues/3521">#3521</a>, <a href="https://github.com/matrix-org/synapse/issues/3530">#3530</a>, <a href="https://github.com/matrix-org/synapse/issues/3544">#3544</a>)</li>
+ 	<li>Use more portable syntax in our use of the attrs package, widening the supported versions. (<a href="https://github.com/matrix-org/synapse/issues/3498">#3498</a>)</li>
+ 	<li>Fix queued federation requests being processed in the wrong order. (<a href="https://github.com/matrix-org/synapse/issues/3533">#3533</a>)</li>
+ 	<li>Ensure that erasure requests are correctly honoured for publicly accessible rooms when accessed over federation. (<a href="https://github.com/matrix-org/synapse/issues/3546">#3546</a>)</li>
 </ul>
-</li>
-</ul>
-</li>
- 	<li>Spec clarifications:
+<h4>Misc</h4>
 <ul>
- 	<li>Add endpoints and logic for invites and third-party invites to the federation spec and update the JSON of the request sent by the identity server upon 3PID binding (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/997">#997</a>)</li>
- 	<li>Fix "membership" property on third-party invite upgrade example (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/995">#995</a>)</li>
- 	<li>Fix response format and 404 example for room alias lookup (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/960">#960</a>)</li>
- 	<li>Fix examples of <tt class="docutils literal">m.room.member</tt> event and room state change, and added a clarification on the membership event sent upon profile update (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/950">#950</a>).</li>
- 	<li>Spell out the way that state is handled by <tt class="docutils literal">POST /createRoom</tt> (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/362">#362</a>).</li>
- 	<li>Clarify the fields which are applicable to different types of push rule (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/365">#365</a>).</li>
- 	<li>A number of clarifications to authentication (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/371">#371</a>).</li>
- 	<li>Correct references to <tt class="docutils literal">user_id</tt> which should have been <tt class="docutils literal">sender</tt> (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/376">#376</a>).</li>
- 	<li>Correct inconsistent specification of <tt class="docutils literal">redacted_because</tt> fields and their values (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/378">#378</a>).</li>
- 	<li>Mark required fields in response objects as such (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/394">#394</a>).</li>
- 	<li>Make <tt class="docutils literal">m.notice</tt> description a bit harder in its phrasing to try to dissuade the same issues that occurred with IRC (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/750">#750</a>).</li>
- 	<li><tt class="docutils literal">GET <span class="pre">/user/{'{'}userId{'}'}/filter/{'{'}filterId{'}'}</span>
-</tt> requires authentication (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/1003">#1003</a>).</li>
- 	<li>Add some clarifying notes on the behaviour of rooms with no <tt class="docutils literal">m.room.power_levels</tt> event (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/1026">#1026</a>).</li>
- 	<li>Clarify the relationship between <tt class="docutils literal">username</tt> and <tt class="docutils literal">user_id</tt> in the <tt class="docutils literal">/register</tt> API (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/1032">#1032</a>).</li>
- 	<li>Clarify rate limiting and security for content repository. (<a class="reference external" href="https://github.com/matrix-org/matrix-doc/pull/1064">#1064</a>).</li>
-</ul>
-</li>
-</ul>
-...and you can read the spec itself of course over at <a href="/docs/spec">https://matrix.org/docs/spec</a>.  It's worth noting that we have slightly bent the rules by including three very minor 'breaking changes' in 0.3, but all for features which to our knowledge nobody is depending on in the wild.  Technically this should mean bumping the major version prefix (i.e. moving to r1), but given how minor and nonimpacting these are we're turning a blind eye this time.
-<h3>Meanwhile, Synapse 0.25 is out!</h3>
-This is a medium-sized release; the main thing being to support configurable room visibility within groups (so that whenever you add a room to a group, you're not forced into sharing their existence with the general public, but can choose to just tell group members about them).  There's also a bunch of useful bug fixes and some performance improvements, including lots of contributions from the community this release (thank you!).  Full release notes are:
-<h5>Changes in synapse v0.25.0 (2017-11-15)</h5>
-Bug fixes:
-<ul>
- 	<li>Fix port script (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2673" data-error-text="Failed to load issue title" data-id="273841564" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2673">#2673</a>)</li>
-</ul>
-<h5>Changes in synapse v0.25.0-rc1 (2017-11-14)</h5>
-Features:
-<ul>
- 	<li>Add is_public to groups table to allow for private groups (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2582" data-error-text="Failed to load issue title" data-id="268816516" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2582">#2582</a>)</li>
- 	<li>Add a route for determining who you are (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2668" data-error-text="Failed to load issue title" data-id="273327989" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2668">#2668</a>) Thanks to <a class="user-mention" href="https://github.com/turt2live">@turt2live</a>!</li>
- 	<li>Add more features to the password providers (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2608" data-error-text="Failed to load issue title" data-id="269913170" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2608">#2608</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2610" data-error-text="Failed to load issue title" data-id="269969920" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2610">#2610</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2620" data-error-text="Failed to load issue title" data-id="270352778" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2620">#2620</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2622" data-error-text="Failed to load issue title" data-id="270373940" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2622">#2622</a>,
-<a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2623" data-error-text="Failed to load issue title" data-id="270374613" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2623">#2623</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2624" data-error-text="Failed to load issue title" data-id="270374846" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2624">#2624</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2626" data-error-text="Failed to load issue title" data-id="270676451" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2626">#2626</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2628" data-error-text="Failed to load issue title" data-id="270677175" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2628">#2628</a>, <a class="issue-link js-issue-link tooltipped tooltipped-ne" href="https://github.com/matrix-org/synapse/pull/2629" data-error-text="Failed to load issue title" data-id="270721791" data-permission-text="Issue title is private">#2629</a>)</li>
- 	<li>Add a hook for custom rest endpoints (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2627" data-error-text="Failed to load issue title" data-id="270676740" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2627">#2627</a>)</li>
- 	<li>Add API to update group room visibility (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2651" data-error-text="Failed to load issue title" data-id="272257429" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2651">#2651</a>)</li>
-</ul>
-Changes:
-<ul>
- 	<li>Ignore tags when generating URL preview descriptions (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2576" data-error-text="Failed to load issue title" data-id="268596188" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2576">#2576</a>)
-Thanks to <a class="user-mention" href="https://github.com/maximevaillancourt">@maximevaillancourt</a>!</li>
- 	<li>Register some /unstable endpoints in /r0 as well (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2579" data-error-text="Failed to load issue title" data-id="268761262" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2579">#2579</a>) Thanks to
-<a class="user-mention" href="https://github.com/krombel">@krombel</a>!</li>
- 	<li>Support /keys/upload on /r0 as well as /unstable (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2585" data-error-text="Failed to load issue title" data-id="268842938" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2585">#2585</a>)</li>
- 	<li>Front-end proxy: pass through auth header (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2586" data-error-text="Failed to load issue title" data-id="268843185" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2586">#2586</a>)</li>
- 	<li>Allow ASes to deactivate their own users (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2589" data-error-text="Failed to load issue title" data-id="268938259" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2589">#2589</a>)</li>
- 	<li>Remove refresh tokens (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2613" data-error-text="Failed to load issue title" data-id="270111173" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2613">#2613</a>)</li>
- 	<li>Automatically set default displayname on register (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2617" data-error-text="Failed to load issue title" data-id="270304979" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2617">#2617</a>)</li>
- 	<li>Log login requests (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2618" data-error-text="Failed to load issue title" data-id="270316951" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2618">#2618</a>)</li>
- 	<li>Always return <code>is_public</code> in the <code>/groups/:group_id/rooms</code> API (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2630" data-error-text="Failed to load issue title" data-id="270724819" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2630">#2630</a>)</li>
- 	<li>Avoid no-op media deletes (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2637" data-error-text="Failed to load issue title" data-id="271174567" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2637">#2637</a>) Thanks to <a class="user-mention" href="https://github.com/spantaleev">@spantaleev</a>!</li>
- 	<li>Fix various embarrassing typos around user_directory and add some doc. (PR
-<a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2643" data-error-text="Failed to load issue title" data-id="271218429" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2643">#2643</a>)</li>
- 	<li>Return whether a user is an admin within a group (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2647" data-error-text="Failed to load issue title" data-id="271795951" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2647">#2647</a>)</li>
- 	<li>Namespace visibility options for groups (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2657" data-error-text="Failed to load issue title" data-id="272604541" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2657">#2657</a>)</li>
- 	<li>Downcase UserIDs on registration (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2662" data-error-text="Failed to load issue title" data-id="272746677" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2662">#2662</a>)</li>
- 	<li>Cache failures when fetching URL previews (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2669" data-error-text="Failed to load issue title" data-id="273404602" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2669">#2669</a>)</li>
-</ul>
-Bug fixes:
-<ul>
- 	<li>Fix port script (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2577" data-error-text="Failed to load issue title" data-id="268680457" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2577">#2577</a>)</li>
- 	<li>Fix error when running synapse with no logfile (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2581" data-error-text="Failed to load issue title" data-id="268813288" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2581">#2581</a>)</li>
- 	<li>Fix UI auth when deleting devices (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2591" data-error-text="Failed to load issue title" data-id="268938993" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2591">#2591</a>)</li>
- 	<li>Fix typo when checking if user is invited to group (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2599" data-error-text="Failed to load issue title" data-id="269155496" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2599">#2599</a>)</li>
- 	<li>Fix the port script to drop NUL values in all tables (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2611" data-error-text="Failed to load issue title" data-id="270038737" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2611">#2611</a>)</li>
- 	<li>Fix appservices being backlogged and not receiving new events due to a bug in
-notify_interested_services (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2631" data-error-text="Failed to load issue title" data-id="270787064" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2631">#2631</a>) Thanks to <a class="user-mention" href="https://github.com/xyzz">@xyzz</a>!</li>
- 	<li>Fix updating rooms avatar/display name when modified by admin (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2636" data-error-text="Failed to load issue title" data-id="271057913" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2636">#2636</a>)
-Thanks to <a class="user-mention" href="https://github.com/farialima">@farialima</a>!</li>
- 	<li>Fix bug in state group storage (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2649" data-error-text="Failed to load issue title" data-id="271901224" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2649">#2649</a>)</li>
- 	<li>Fix 500 on invalid utf-8 in request (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2663" data-error-text="Failed to load issue title" data-id="272868148" data-permission-text="Issue title is private" data-url="https://github.com/matrix-org/synapse/issues/2663">#2663</a>)</li>
-</ul>
-<h2>Finally...</h2>
-If you haven't noticed already, Riot/Web 0.13 is out today, as is Riot/iOS 0.6.2 and Riot/Android 0.7.4.  These contain massive improvements across the board - particularly mainstream Communities support at last on Riot/Web; CallKit/PushKit on Riot/iOS thanks to Denis Morozov (GSoC 2017 student for Matrix) and Share Extension on iOS thanks to Aram Sargsyan (also GSoC 2017 student!); and End-to-end Key Sharing on Riot/Android and a full rewrite of the VoIP calling subsystem on Android.
-<p>Rather than going on about it here, though, there's a <a href="https://medium.com/@RiotChat/communities-aka-groups-are-here-announcing-riot-web-0-13-riot-ios-0-6-and-riot-android-0-7-4-933cb193a28e">full write-up over on the Riot Blog.</a></p>
-<p> </p>
-<p>And so there you go - new releases for eeeeeeeeveryone!  Enjoy! :)</p>
-<p>--Matthew, Amandine &amp; the team.</p>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2017&#x2F;07&#x2F;06&#x2F;synapse-0-22-0-released&#x2F;" title="Synapse 0.22.0 released!">Synapse 0.22.0 released!</a></h2>
-                <span>
-                    06.07.2017 00:00
-                    —
-                    <a href="/category/tech">
-                        Tech
-                    </a>
-                    —
-                    <a
-                        href="/author/tom-lant">
-                        Tom Lant
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Hi Synapsefans,</p>
-<p>Synapse 0.22.0 has just been released! This release lands a few interesting features:</p>
-<ul>
- 	<li>The new User directory API which supports Matrix clients' providing a much more intuitive and effective user search capability by exposing a list of:
-<ul>
- 	<li>Everybody your user shares a room with, and</li>
- 	<li>Everybody in a public room your homeserver knows about</li>
-</ul>
-</li>
- 	<li>New support for server admins, including a Shutdown Room API (to remove a room from a local server) and a Media Quarrantine API (to render a media item inaccessible without its actually being deleted)</li>
-</ul>
-As always there are lots of bug fixes and performance improvements, including increasing the default cache factor size from 0.1 to 0.5 (should improve performance for those running their own homeservers).
-<p>You can get Synapse 0.22.0 from <a href="https://github.com/matrix-org/synapse">https://github.com/matrix-org/synapse</a> or <a href="https://github.com/matrix-org/synapse/releases/tag/v0.22.0">https://github.com/matrix-org/synapse/releases/tag/v0.22.0</a> as normal.</p>
-<h1>Changes in synapse v0.22.0 (2017-07-06)</h1>
-No changes since v0.22.0-rc2
-<h1>Changes in synapse v0.22.0-rc2 (2017-07-04)</h1>
-Changes:
-<ul>
- 	<li>Improve performance of storing user IPs (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2307" data-url="https://github.com/matrix-org/synapse/issues/2307" data-id="238837177" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2307</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2308" data-url="https://github.com/matrix-org/synapse/issues/2308" data-id="238864014" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2308</a>)</li>
- 	<li>Slightly improve performance of verifying access tokens (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2320" data-url="https://github.com/matrix-org/synapse/issues/2320" data-id="239486219" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2320</a>)</li>
- 	<li>Slightly improve performance of event persistence (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2321" data-url="https://github.com/matrix-org/synapse/issues/2321" data-id="239502265" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2321</a>)</li>
- 	<li>Increase default cache factor size from 0.1 to 0.5 (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2330" data-url="https://github.com/matrix-org/synapse/issues/2330" data-id="240356521" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2330</a>)</li>
-</ul>
-Bug fixes:
-<ul>
- 	<li>Fix bug with storing registration sessions that caused frequent CPU churn
-(PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2319" data-url="https://github.com/matrix-org/synapse/issues/2319" data-id="239472982" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2319</a>)</li>
-</ul>
-<h1>Changes in synapse v0.22.0-rc1 (2017-06-26)</h1>
-Features:
-<ul>
- 	<li>Add a user directory API (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2252" data-url="https://github.com/matrix-org/synapse/issues/2252" data-id="232602331" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2252</a>, and many more)</li>
- 	<li>Add shutdown room API to remove room from local server (PR <a class="issue-link js-issue-link" title="Add shutdown room API" href="https://github.com/matrix-org/synapse/pull/2291" data-id="236863021" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2291</a>)</li>
- 	<li>Add API to quarantine media (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2292" data-url="https://github.com/matrix-org/synapse/issues/2292" data-id="236951215" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2292</a>)</li>
- 	<li>Add new config option to not send event contents to push servers (PR <a class="issue-link js-issue-link" title="Add configuration parameter to allow redaction of content from push m…" href="https://github.com/matrix-org/synapse/pull/2301" data-id="238111730" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2301</a>)
-Thanks to <a class="user-mention" href="https://github.com/cjdelisle">@cjdelisle</a>!</li>
-</ul>
-Changes:
-<ul>
- 	<li>Various performance fixes (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2177" data-url="https://github.com/matrix-org/synapse/issues/2177" data-id="225644418" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2177</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2233" data-url="https://github.com/matrix-org/synapse/issues/2233" data-id="229717425" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2233</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2230" data-url="https://github.com/matrix-org/synapse/issues/2230" data-id="229354438" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2230</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2238" data-url="https://github.com/matrix-org/synapse/issues/2238" data-id="230015890" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2238</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2248" data-url="https://github.com/matrix-org/synapse/issues/2248" data-id="231384660" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2248</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2256" data-url="https://github.com/matrix-org/synapse/issues/2256" data-id="234157222" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2256</a>,
-<a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2274" data-url="https://github.com/matrix-org/synapse/issues/2274" data-id="235482780" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2274</a>)</li>
- 	<li>Deduplicate sync filters (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2219" data-url="https://github.com/matrix-org/synapse/issues/2219" data-id="228004726" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2219</a>) Thanks to <a class="user-mention" href="https://github.com/krombel">@krombel</a>!</li>
- 	<li>Correct a typo in UPGRADE.rst (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2231" data-url="https://github.com/matrix-org/synapse/issues/2231" data-id="229539435" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2231</a>) Thanks to <a class="user-mention" href="https://github.com/aaronraimist">@aaronraimist</a>!</li>
- 	<li>Add count of one time keys to sync stream (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2237" data-url="https://github.com/matrix-org/synapse/issues/2237" data-id="229999204" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2237</a>)</li>
- 	<li>Only store event_auth for state events (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2247" data-url="https://github.com/matrix-org/synapse/issues/2247" data-id="231038843" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2247</a>)</li>
- 	<li>Store URL cache preview downloads separately (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2299" data-url="https://github.com/matrix-org/synapse/issues/2299" data-id="238100783" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2299</a>)</li>
-</ul>
-Bug fixes:
-<ul>
- 	<li>Fix users not getting notifications when AS listened to that user_id (PR
-<a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2216" data-url="https://github.com/matrix-org/synapse/issues/2216" data-id="227919645" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2216</a>) Thanks to <a class="user-mention" href="https://github.com/slipeer">@slipeer</a>!</li>
- 	<li>Fix users without push set up not getting notifications after joining rooms
-(PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2236" data-url="https://github.com/matrix-org/synapse/issues/2236" data-id="229977772" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2236</a>)</li>
- 	<li>Fix preview url API to trim long descriptions (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2243" data-url="https://github.com/matrix-org/synapse/issues/2243" data-id="230506502" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2243</a>)</li>
- 	<li>Fix bug where we used cached but unpersisted state group as prev group,
-resulting in broken state of restart (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2263" data-url="https://github.com/matrix-org/synapse/issues/2263" data-id="234489302" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2263</a>)</li>
- 	<li>Fix removing of pushers when using workers (PR <a class="issue-link js-issue-link" title="Fix removing of pushers when using workers" href="https://github.com/matrix-org/synapse/pull/2267" data-id="234785628" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2267</a>)</li>
- 	<li>Fix CORS headers to allow Authorization header (PR <a class="issue-link js-issue-link" title="allow Authorization header" href="https://github.com/matrix-org/synapse/pull/2285" data-id="236427727" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2285</a>) Thanks to <a class="user-mention" href="https://github.com/krombel">@krombel</a>!</li>
-</ul>
-&nbsp;
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2017&#x2F;06&#x2F;22&#x2F;synapse-0-21-1-released&#x2F;" title="Synapse 0.21.1 released!">Synapse 0.21.1 released!</a></h2>
-                <span>
-                    22.06.2017 00:00
-                    —
-                    <a href="/category/tech">
-                        Tech
-                    </a>
-                    —
-                    <a
-                        href="/author/matthew-hodgson">
-                        Matthew Hodgson
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Hi folks - we forgot to mention that Synapse 0.21.1 was released last week.  This contains a important fix to the <code>report-stats</code> option, which was otherwise failing to report any usage stats for folks who had the option turned on.</p>
-<p>This is a good opportunity to note that the <code>report-stats</code> option is <b>really really important</b> for the ongoing health of the Matrix ecosystem: when raising funding to continue working on Matrix we <b>have</b> to be able to demonstrate how the ecosystem is growing and why it's a good idea to support us to work on it.  In practice, the data we collect is: hostname, synapse version &amp; uptime, total_users, total_nonbridged users, total_room_count, daily_active_users, daily_active_rooms, daily_messages and daily_sent_messages.</p>
-<p>Folks: if you have turned off report-stats for whatever reason, <b>please</b> consider upgrading to 0.21.1 and turning it back on.</p>
-<p>In return, the plan is that we'll start to publish an official Grafana of the anonymised aggregate stats, probably embedded into the frontpage of Matrix.org, and then you and everyone else can have a view of the state of the Matrix universe.  And critically, it'll really help us continue to justify $ to spend on growing the project!</p>
-<p>You can get Synapse 0.21.1 from <a href="https://github.com/matrix-org/synapse">https://github.com/matrix-org/synapse</a> or <a href="https://github.com/matrix-org/synapse/releases/tag/v0.21.1">https://github.com/matrix-org/synapse/releases/tag/v0.21.1</a> as normal.</p>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2017&#x2F;05&#x2F;18&#x2F;synapse-0-21-0-is-released&#x2F;" title="Synapse 0.21.0 is released!">Synapse 0.21.0 is released!</a></h2>
-                <span>
-                    18.05.2017 00:00
-                    —
-                    <a href="/category/tech">
-                        Tech
-                    </a>
-                    —
-                    <a
-                        href="/author/tom-lant">
-                        Tom Lant
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Hi all,</p>
-<p>Synapse 0.21.0 was released a moment ago. This release lands a number of performance improvements and stability fixes, plus a couple of small features.</p>
-<p>For those of you upgrading <a href="https://github.com/matrix-org/synapse">https://github.com/matrix-org/synapse</a> has the details as usual.  Full changelog follows:</p>
-<h2>Changes in synapse v0.21.0 (2017-05-17)</h2>
-Features:
-<ul>
- 	<li>Add per user rate-limiting overrides (PR <a href="https://github.com/matrix-org/synapse/pull/2208">#2208</a>)</li>
- 	<li>Add config option to limit maximum number of events requested by <code>/sync</code> and <code>/messages</code> (PR <a href="https://github.com/matrix-org/synapse/pull/2221">#2221</a>) Thanks to @psaavedra!</li>
-</ul>
-Changes:
-<ul>
- 	<li>Various small performance fixes (PR <a href="https://github.com/matrix-org/synapse/pull/2201">#2201</a>, <a href="https://github.com/matrix-org/synapse/pull/2202">#2202</a>, <a href="https://github.com/matrix-org/synapse/pull/2224">#2224</a>, <a href="https://github.com/matrix-org/synapse/pull/2226">#2226</a>, <a href="https://github.com/matrix-org/synapse/pull/2227">#2227</a>, <a href="https://github.com/matrix-org/synapse/pull/2228">#2228</a>, <a href="https://github.com/matrix-org/synapse/pull/2229">#2229</a>)</li>
- 	<li>Update username availability checker API (PR <a href="https://github.com/matrix-org/synapse/pull/2209">#2209</a>, <a href="https://github.com/matrix-org/synapse/pull/2213">#2213</a>)</li>
- 	<li>When purging, don't de-delta state groups we're about to delete (PR <a href="https://github.com/matrix-org/synapse/pull/2214">#2214</a>)</li>
- 	<li>Documentation to check synapse version (PR <a href="https://github.com/matrix-org/synapse/pull/2215">#2215</a>) Thanks to @hamber-dick!</li>
- 	<li>Add an index to event_search to speed up purge history API (PR <a href="https://github.com/matrix-org/synapse/pull/2218">#2218</a>)</li>
-</ul>
-Bug fixes:
-<ul>
- 	<li>Fix API to allow clients to upload one-time-keys with new sigs (PR <a href="https://github.com/matrix-org/synapse/pull/2206">#2206</a>)</li>
-</ul>
-<a name="user-content-changes-in-synapse-v0-21-0-rc2-2017-05-08"></a>
-<h2><a id="user-content-changes-in-synapse-v0210-rc2-2017-05-08" class="anchor" href="https://github.com/matrix-org/synapse/blob/master/CHANGES.rst#changes-in-synapse-v0210-rc2-2017-05-08"></a>Changes in synapse v0.21.0-rc2 (2017-05-08)</h2>
-Changes:
-<ul>
- 	<li>Always mark remotes as up if we receive a signed request from them (PR <a href="https://github.com/matrix-org/synapse/pull/2190">#2190</a>)</li>
-</ul>
-Bug fixes:
-<ul>
- 	<li>Fix bug where users got pushed for rooms they had muted (PR <a href="https://github.com/matrix-org/synapse/pull/2200">#2200</a>)</li>
-</ul>
-<a name="user-content-changes-in-synapse-v0-21-0-rc1-2017-05-08"></a>
-<h2><a id="user-content-changes-in-synapse-v0210-rc1-2017-05-08" class="anchor" href="https://github.com/matrix-org/synapse/blob/master/CHANGES.rst#changes-in-synapse-v0210-rc1-2017-05-08"></a>Changes in synapse v0.21.0-rc1 (2017-05-08)</h2>
-Features:
-<ul>
- 	<li>Add username availability checker API (PR <a href="https://github.com/matrix-org/synapse/pull/2183">#2183</a>)</li>
- 	<li>Add read marker API (PR <a href="https://github.com/matrix-org/synapse/pull/2120">#2120</a>)</li>
-</ul>
-Changes:
-<ul>
- 	<li>Enable guest access for the 3pl/3pid APIs (PR <a href="https://github.com/matrix-org/synapse/pull/1983">#1986</a>)</li>
- 	<li>Add setting to support TURN for guests (PR <a href="https://github.com/matrix-org/synapse/pull/2011">#2011</a>)</li>
- 	<li>Various performance improvements (PR <a href="https://github.com/matrix-org/synapse/pull/2075">#2075</a>, <a href="https://github.com/matrix-org/synapse/pull/2076">#2076</a>, <a href="https://github.com/matrix-org/synapse/pull/2080">#2080</a>, <a href="https://github.com/matrix-org/synapse/pull/2083">#2083</a>, <a href="https://github.com/matrix-org/synapse/pull/2108">#2108</a>, <a href="https://github.com/matrix-org/synapse/pull/2158">#2158</a>, <a href="https://github.com/matrix-org/synapse/pull/2176">#2176</a>, <a href="https://github.com/matrix-org/synapse/pull/2185">#2185</a>)</li>
- 	<li>Make synctl a bit more user friendly (PR <a href="https://github.com/matrix-org/synapse/pull/2078">#2078</a>, <a href="https://github.com/matrix-org/synapse/pull/2127">#2127</a>) Thanks @APwhitehat!</li>
- 	<li>Replace HTTP replication with TCP replication (PR <a href="https://github.com/matrix-org/synapse/pull/2082">#2082</a>, <a href="https://github.com/matrix-org/synapse/pull/2097">#2097</a>, <a href="https://github.com/matrix-org/synapse/pull/2098">#2098</a>, <a href="https://github.com/matrix-org/synapse/pull/2099">#2099</a>, <a href="https://github.com/matrix-org/synapse/pull/2103">#2103</a>, <a href="https://github.com/matrix-org/synapse/pull/2014">#2014</a>, <a href="https://github.com/matrix-org/synapse/pull/2016">#2016</a>, <a href="https://github.com/matrix-org/synapse/pull/2115">#2115</a>, <a href="https://github.com/matrix-org/synapse/pull/2116">#2116</a>, <a href="https://github.com/matrix-org/synapse/pull/2117">#2117</a>)</li>
- 	<li>Support authenticated SMTP (PR <a href="https://github.com/matrix-org/synapse/pull/2102">#2102</a>) Thanks @DanielDent!</li>
- 	<li>Add a counter metric for successfully-sent transactions (PR <a href="https://github.com/matrix-org/synapse/pull/2121">#2121</a>)</li>
- 	<li>Propagate errors sensibly from proxied IS requests (PR <a href="https://github.com/matrix-org/synapse/pull/2147">#2147</a>)</li>
- 	<li>Add more granular event send metrics (PR <a href="https://github.com/matrix-org/synapse/pull/2178">#2178</a>)</li>
-</ul>
-Bug fixes:
-<ul>
- 	<li>Fix nuke-room script to work with current schema (PR <a href="https://github.com/matrix-org/synapse/pull/1927">#1927</a>) Thanks @zuckschwerdt!</li>
- 	<li>Fix db port script to not assume postgres tables are in the public schema (PR <a href="https://github.com/matrix-org/synapse/pull/2024">#2024</a>) Thanks @jerrykan!</li>
- 	<li>Fix getting latest device IP for user with no devices (PR <a href="https://github.com/matrix-org/synapse/pull/2118">#2118</a>)</li>
- 	<li>Fix rejection of invites to unreachable servers (PR <a href="https://github.com/matrix-org/synapse/pull/2145">#2145</a>)</li>
- 	<li>Fix code for reporting old verify keys in synapse (PR <a href="https://github.com/matrix-org/synapse/pull/2156">#2156</a>)</li>
- 	<li>Fix invite state to always include all events (PR <a href="https://github.com/matrix-org/synapse/pull/2163">#2163</a>)</li>
- 	<li>Fix bug where synapse would always fetch state for any missing event (PR <a href="https://github.com/matrix-org/synapse/pull/2170">#2170</a>)</li>
- 	<li>Fix a leak with timed out HTTP connections (PR <a href="https://github.com/matrix-org/synapse/pull/2180">#2180</a>)</li>
- 	<li>Fix bug where we didn't time out HTTP requests to ASes (PR <a href="https://github.com/matrix-org/synapse/pull/2192">#2192</a>)</li>
-</ul>
-Docs:
-<ul>
- 	<li>Clarify doc for SQLite to PostgreSQL port (PR <a href="https://github.com/matrix-org/synapse/pull/1961">#1961</a>) Thanks @benhylau!</li>
- 	<li>Fix typo in synctl help (PR <a href="https://github.com/matrix-org/synapse/pull/2107">#2107</a>) Thanks @HarHarLinks!</li>
- 	<li><code>web_client_location</code> documentation fix (PR <a href="https://github.com/matrix-org/synapse/pull/2131">#2131</a>) Thanks @matthewjwolff!</li>
- 	<li>Update README.rst with FreeBSD changes (PR <a href="https://github.com/matrix-org/synapse/pull/2132">#2132</a>) Thanks @feld!</li>
- 	<li>Clarify setting up metrics (PR <a href="https://github.com/matrix-org/synapse/pull/2149">#2149</a>) Thanks @encks!</li>
+ 	<li>Refactoring to improve testability. (<a href="https://github.com/matrix-org/synapse/issues/3351">#3351</a>, <a href="https://github.com/matrix-org/synapse/issues/3499">#3499</a>)</li>
+ 	<li>Use <code>isort</code> to sort imports. (<a href="https://github.com/matrix-org/synapse/issues/3463">#3463</a>, <a href="https://github.com/matrix-org/synapse/issues/3464">#3464</a>, <a href="https://github.com/matrix-org/synapse/issues/3540">#3540</a>)</li>
+ 	<li>Use parse and asserts from http.servlet. (<a href="https://github.com/matrix-org/synapse/issues/3534">#3534</a>, <a href="https://github.com/matrix-org/synapse/issues/3535">#3535</a>).</li>
 </ul>
 
                 
@@ -481,212 +488,9 @@ Docs:
         
         <article class="post">
             <header>
-                <h2><a href="&#x2F;blog&#x2F;2017&#x2F;05&#x2F;12&#x2F;update-on-matrix-org-homeserver-reliability&#x2F;" title="Update on Matrix.org homeserver reliability">Update on Matrix.org homeserver reliability</a></h2>
+                <h2><a href="&#x2F;blog&#x2F;2018&#x2F;06&#x2F;14&#x2F;security-update-synapse-0-31-2&#x2F;" title="Security update: Synapse 0.31.2">Security update: Synapse 0.31.2</a></h2>
                 <span>
-                    12.05.2017 00:00
-                    —
-                    <a href="/category/tech">
-                        Tech
-                    </a>
-                    —
-                    <a
-                        href="/author/matthew-hodgson">
-                        Matthew Hodgson
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Hi folks,</p>
-<p>We've had a few outages over the last week on the Matrix.org homeserver which have caused problems for folks using bridges or accounts hosted on matrix.org itself - we'd like to apologise to everyone who's been caught in the crossfire.  In the interests of giving everyone visibility on what's going on and what we're doing about it (and so folks can learn from our mistakes! :), here's a quick writeup (all times are UTC):</p>
-<ul>
- 	<li>2017-05-04 21:05: The datacenter where we host matrix.org performs an emergency unscheduled upgrade of the VM host where the main matrix.org HS &amp; DB master lives.  This means a live-migration of the VM onto another host, which freezes the (huge) VM for 9 minutes, during which service is (obviously) down.  Monitoring fires; we start investigating and try to get in on the console, but by the point we're considering failing over to the hot-spare, the box has come back and recovers fine other than a load spike as all the traffic catches up.  The clock however is off by 9 minutes due to its world having paused.</li>
- 	<li>2017-05-04 22:30: We step NTP on the host to fix the clock (maximum clock skew on ISC ntpd is 500ppm, meaning it would take weeks to reconverge naturally, during which time we're issuing messages with incorrect timestamps).</li>
- 	<li>2017-05-05 01:25: Network connectivity breaks between the matrix.org homeserver and the DC where all of our bridges/bots are hosted.</li>
- 	<li>2017-05-05 01:40: Monitoring alerts fire for bridge traffic activity and are picked up.  After trying to restart the VPN between the DC a few times, it turns out that the IP routes needed for the VPN have mysteriously disappeared.</li>
- 	<li>2017-05-05 02:23: Routes are manually readded and VPN recovers and traffic starts flowing again.  It turns out that the routes are meant to be maintained by a post-up script in /etc/network/interfaces, which assumes that /sbin/ip is on the path.  Historically this hasn't been a problem as the DHCP lease on the host has never expired (only been renewed every 6 hours) - but the time disruption caused by the live-migration earlier means that on this renewal cycle the lease actually expires and the routes are lost and not-readded.  Basic bridging traffic checks are done (e.g. Freenode-&gt;Matrix).</li>
- 	<li>2017-05-05 08:30: Turns out that whilst Freenode-&gt;Matrix traffic was working, Matrix-&gt;Freenode was wedged due to a missing HTTP timeout in the AS logic on Synapse.  Synapse is restarted and the bug fixed.</li>
- 	<li>...the week goes by...</li>
- 	<li>2017-05-11 18:00: (Unconnected to the rest of this outage, an IRC DDoS on GIMPnet cause intermittent load problems and delayed messages on matrix.org; we turn off the bridge for a few hours until it subsides).</li>
- 	<li>2017-05-12 02:50: The postgres partition on the matrix.org DB master diskfills and postgres halts.  Monitoring alerts fire (once, phone alerts), but the three folks on call manage to sleep through their phone ringing.</li>
- 	<li>2017-05-12 04:45: Folks get woken up and notice the outage; clear up diskspace; restart postgres. Meanwhile, synapse appears to recover, other than mysteriously refusing to send messages from local users.  Investigation commences in the guts of the database to try to see what corruption has happened.</li>
- 	<li>2017-05-12 06:00: We realise that nobody has actually restarted synapse since the DB outage begun, and the failure is probably a known issue where worker replication can get fail and cause the master synapse process to fail to process writes.  Synapse is restarted; everything recovers (including bridges).</li>
- 	<li>2017-05-12 06:20: Investigation into the cause of the diskfill reveals it to be due to postgres replication logs (WALs) stacking up on the DB master, due to replication having broken to a DB slave during the previous networking outage.  Monitoring alerts triggered but weren't escalated due to a problem in PagerDuty.</li>
-</ul>
-Lessons learned:
-<ul>
- 	<li>Test your networking scripts and always check your box self-recovers after a restart (let alone a DHCP renewal).</li>
- 	<li>Don't use DHCP in production datacenters unless you really have no choice; it just adds potential ways for everything to break.</li>
- 	<li>We need better end-to-end monitoring for bridged traffic.</li>
- 	<li>We need to ensure HS&lt;-&gt;Bridge traffic is more reliable (improved by fixing timeout logic in synapse).</li>
- 	<li>We need better monitoring and alerting of DB replication traffic.</li>
- 	<li>We need to escalate PagerDuty phone alerts more aggressively (done).</li>
- 	<li>We need better alerting for disk fill thresholds (especially "time until fill", remembering to take into account the emergency headroom reserved by the filesystem for the superuser).</li>
- 	<li>We should probably have scripts to rapidly (or even automatedly) switch between synapse master &amp; hot-spare, and to promote DB slaves in the event of a master failure.</li>
-</ul>
-Hopefully this is the last we've seen of this root cause; we'll be working through the todo list above.  Many apologies again for the instability - however please do remember that you can (and should!) run your own homeserver &amp; bridges to stay immune to whatever operational dramas we have with the matrix.org instance!
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2017&#x2F;04&#x2F;11&#x2F;synapse-0-20-0-is-released&#x2F;" title="Synapse 0.20.0 is released!">Synapse 0.20.0 is released!</a></h2>
-                <span>
-                    11.04.2017 00:00
-                    —
-                    <a href="/category/tech">
-                        Tech
-                    </a>
-                    —
-                    <a
-                        href="/author/matthew-hodgson">
-                        Matthew Hodgson
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Hi folks,</p>
-<p>Synapse 0.20.0 was released a few hours ago - this is a major new release with loads of stability and performance fixes and some new features too. The main headlines are:</p>
-<ul>
- 	<li>Support for using phone numbers as 3rd party identifiers as well as email addresses!  This is huge: letting you discover other users on Matrix based on whether they've linked their phone number to their matrix account, and letting you log in using your phone number as your identifier if you so desire.  Users of systems like WhatsApp should find this both familiar and useful ;)</li>
- 	<li>Fixes some very nasty failure modes where the state of a room could be reset if a homeserver received an event it couldn't verify.  Folks who have suffered rooms suddenly losing their name/icon/topic should particularly upgrade - this won't fix the rooms retrospectively (your server will need to rejoin the room), but it should fix the problem going forwards.</li>
- 	<li>Improves the retry schedule over federation significantly - previously there were scenarios where synapse could try to retry aggressively on servers which were offline.  This fixes that.</li>
- 	<li>Significant performance improvements to /publicRooms, /sync, and other endpoints.</li>
- 	<li>Lots of juicy bug fixes.</li>
-</ul>
-We highly recommend upgrading (or installing!) asap - <a href="https://github.com/matrix-org/synapse">https://github.com/matrix-org/synapse</a> has the details as usual.  Full changelog follows:
-<h3>Changes in synapse v0.20.0 (2017-04-11)</h3>
-Bug fixes:
-<ul>
- 	<li>Fix joining rooms over federation where not all servers in the room saw the
-new server had joined (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2094" data-url="https://github.com/matrix-org/synapse/issues/2094" data-id="218965094" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2094</a>)</li>
-</ul>
-<h3>Changes in synapse v0.20.0-rc1 (2017-03-30)</h3>
-Features:
-<ul>
- 	<li>Add delete_devices API (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1993" data-url="https://github.com/matrix-org/synapse/issues/1993" data-id="213824583" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1993</a>)</li>
- 	<li>Add phone number registration/login support (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1994" data-url="https://github.com/matrix-org/synapse/issues/1994" data-id="213848637" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1994</a>, <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2055" data-url="https://github.com/matrix-org/synapse/issues/2055" data-id="216534040" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2055</a>)</li>
-</ul>
-Changes:
-<ul>
- 	<li>Use JSONSchema for validation of filters. Thanks <a class="user-mention" href="https://github.com/pik"><span class="ghh-user-x tooltipstered" title="">@pik</span></a>! (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1783" data-url="https://github.com/matrix-org/synapse/issues/1783" data-id="199444033" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1783</a>)</li>
- 	<li>Reread log config on SIGHUP (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1982" data-url="https://github.com/matrix-org/synapse/issues/1982" data-id="213371227" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1982</a>)</li>
- 	<li>Speed up public room list (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1989" data-url="https://github.com/matrix-org/synapse/issues/1989" data-id="213745739" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1989</a>)</li>
- 	<li>Add helpful texts to logger config options (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1990" data-url="https://github.com/matrix-org/synapse/issues/1990" data-id="213753788" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1990</a>)</li>
- 	<li>Minor <code>/sync</code> performance improvements. (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2002" data-url="https://github.com/matrix-org/synapse/issues/2002" data-id="214132328" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2002</a>, <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2013" data-url="https://github.com/matrix-org/synapse/issues/2013" data-id="214406942" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2013</a>, <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2022" data-url="https://github.com/matrix-org/synapse/issues/2022" data-id="214680616" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2022</a>)</li>
- 	<li>Add some debug to help diagnose weird federation issue (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2035" data-url="https://github.com/matrix-org/synapse/issues/2035" data-id="215462812" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2035</a>)</li>
- 	<li>Correctly limit retries for all federation requests (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2050" data-url="https://github.com/matrix-org/synapse/issues/2050" data-id="216250274" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2050</a>, <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2061" data-url="https://github.com/matrix-org/synapse/issues/2061" data-id="216778245" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2061</a>)</li>
- 	<li>Don't lock table when persisting new one time keys (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2053" data-url="https://github.com/matrix-org/synapse/issues/2053" data-id="216424415" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2053</a>)</li>
- 	<li>Reduce some CPU work on DB threads (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2054" data-url="https://github.com/matrix-org/synapse/issues/2054" data-id="216518578" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2054</a>)</li>
- 	<li>Cache hosts in room (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2060" data-url="https://github.com/matrix-org/synapse/issues/2060" data-id="216759034" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2060</a>)</li>
- 	<li>Batch sending of device list pokes (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2063" data-url="https://github.com/matrix-org/synapse/issues/2063" data-id="216807144" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2063</a>)</li>
- 	<li>Speed up persist event path in certain edge cases (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2070" data-url="https://github.com/matrix-org/synapse/issues/2070" data-id="217311121" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2070</a>)</li>
-</ul>
-Bug fixes:
-<ul>
- 	<li>Fix bug where current_state_events renamed to current_state_ids (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1849" data-url="https://github.com/matrix-org/synapse/issues/1849" data-id="202563705" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1849</a>)</li>
- 	<li>Fix routing loop when fetching remote media (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1992" data-url="https://github.com/matrix-org/synapse/issues/1992" data-id="213822848" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1992</a>)</li>
- 	<li>Fix current_state_events table to not lie (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1996" data-url="https://github.com/matrix-org/synapse/issues/1996" data-id="214035508" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1996</a>)</li>
- 	<li>Fix CAS login to handle PartialDownloadError (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1997" data-url="https://github.com/matrix-org/synapse/issues/1997" data-id="214074229" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1997</a>)</li>
- 	<li>Fix assertion to stop transaction queue getting wedged (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2010" data-url="https://github.com/matrix-org/synapse/issues/2010" data-id="214372154" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2010</a>)</li>
- 	<li>Fix presence to fallback to last_active_ts if it beats the last sync time.
-Thanks <a class="user-mention" href="https://github.com/Half-Shot"><span class="ghh-user-x tooltipstered" title="">@Half-Shot</span></a>! (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="Add fallback to last_active_ts if it beats the last sync time on a presence timeout." href="https://github.com/matrix-org/synapse/pull/2014" data-id="214424439" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2014</a>)</li>
- 	<li>Fix bug when federation received a PDU while a room join is in progress (PR
-<a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2016" data-url="https://github.com/matrix-org/synapse/issues/2016" data-id="214476894" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2016</a>)</li>
- 	<li>Fix resetting state on rejected events (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2025" data-url="https://github.com/matrix-org/synapse/issues/2025" data-id="215024206" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2025</a>)</li>
- 	<li>Fix installation issues in readme. Thanks <a class="user-mention" href="https://github.com/ricco386"><span class="ghh-user-x tooltipstered" title="">@ricco386</span></a> (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2037" data-url="https://github.com/matrix-org/synapse/issues/2037" data-id="215522808" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2037</a>)</li>
- 	<li>Fix caching of remote servers' signature keys (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2042" data-url="https://github.com/matrix-org/synapse/issues/2042" data-id="216072789" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2042</a>)</li>
- 	<li>Fix some leaking log context (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2048" data-url="https://github.com/matrix-org/synapse/issues/2048" data-id="216246880" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2048</a>, <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="Fix a couple of logcontext leaks" href="https://github.com/matrix-org/synapse/pull/2049" data-id="216247053" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2049</a>, <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2057" data-url="https://github.com/matrix-org/synapse/issues/2057" data-id="216590150" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2057</a>, <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2058" data-url="https://github.com/matrix-org/synapse/issues/2058" data-id="216594461" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2058</a>)</li>
- 	<li>Fix rejection of invites not reaching sync (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2056" data-url="https://github.com/matrix-org/synapse/issues/2056" data-id="216535804" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2056</a>)</li>
-</ul>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2017&#x2F;04&#x2F;04&#x2F;opening-up-cyberspace-with-matrix-and-webvr&#x2F;" title="Opening up cyberspace with Matrix and WebVR!">Opening up cyberspace with Matrix and WebVR!</a></h2>
-                <span>
-                    04.04.2017 00:00
-                    —
-                    <a href="/category/tech">
-                        Tech
-                    </a>
-                    —
-                    <a
-                        href="/author/matthew-hodgson">
-                        Matthew Hodgson
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>TL;DR: <a href="/vrdemo">here's the demo</a>!</p>
-<p>Hi everyone,</p>
-<p>Today is a special day, the sort of day where you take a big step towards an ultimate dream. Starting Matrix and seeing it gaining momentum is already huge for us, a once in a lifetime opportunity. But one of the crazier things which drove us to create Matrix is the dream of creating cyberspace; the legendary promised land of the internet.</p>
-<p>Whether it's the Matrix of <a href="https://en.wikipedia.org/wiki/Neuromancer">Neuromancer</a>, the <a href="https://en.wikipedia.org/wiki/Metaverse">Metaverse</a> of <a href="https://en.wikipedia.org/wiki/Snow_Crash">Snow Crash</a> or the Other Plane of <a href="https://en.wikipedia.org/wiki/True_Names">True Names</a>, an immersive 3D environment where people can meet from around the world to communicate, create and share is the ultimate expression of the Internet's potential as a way to connect: the idea of an open, neutral, decentralised virtual reality within the 'net<b>.</b></p>
-<p>This is essentially the software developer equivalent of lying on your back at night, looking up at the stars, and wondering if you'll ever fly among them... and Matrix is not alone in dreaming of this!  There have been many walled-garden virtual worlds over the years - <a href="http://secondlife.com/">Second Life</a>, <a href="http://habbo.com">Habbo Hotel</a>, all of the <a href="http://www.mmorpg.com/games-list">MMORPGs</a>, <a href="https://www.sansar.com/">Project Sansar</a> etc.  And there have been decentralised worlds which lack the graphics but share the vision - whether it's <a href="https://en.wikipedia.org/wiki/FidoNet">FidoNet</a>, <a href="https://en.wikipedia.org/wiki/Usenet">Usenet</a>, <a href="https://en.wikipedia.org/wiki/Internet_Relay_Chat">IRC</a> servers, <a href="http://xmpp.org/">XMPP</a>, the <a href="https://en.wikipedia.org/wiki/Blogosphere">blogosphere</a> or Matrix as it's used today.  And there are a few ambitious projects like <a href="https://en.wikipedia.org/wiki/Croquet_Project">Croquet</a>/<a href="http://www.opencobalt.net/">OpenCobalt</a>, <a href="http://opensimulator.org/">Open Simulator</a>, <a href="http://www.janusvr.com">JanusVR</a> or <a href="http://highfidelity.com">High Fidelity</a> which aim for a decentralised cyberspace, albeit without defining an open standard.</p>
-<p>But despite all this activity, where is the open cyberspace? Where is the universal fabric which could weave these worlds together?  Where is the VR equivalent of The Web itself?  Where is the neutral communication layer that could connect the galaxies of different apps and users into a coherent reality?  How do you bridge between today's traditional web apps and their VR equivalents?</p>
-<p>Aside from cultural ones, we believe there are three missing ingredients which have been technically holding back the development of an open cyberspace so far:</p>
-<ol>
- 	<li> The hardware</li>
- 	<li> Client software support (i.e. apps)</li>
- 	<li> A universal real-time data layer to store the space</li>
-</ol>
-Nowadays the hardware problem is effectively solved: the <a href="https://www.vive.com">HTC Vive</a>, <a href="https://www.oculus.com/">Oculus Rift</a> and even <a href="https://vr.google.com/cardboard/">Google Cardboard</a> have brought VR displays to the general public.  Meanwhile, accelerometers and head-tracking turn normal screens into displays for immersive content without even needing goggles, giving <i>everyone</i> a window into a virtual world.
-<p>Client software is a more interesting story:  If there are many custom and proprietary VR apps that already exist out there, almost none of them can connect to other servers than the ones ran by their own vendors, or even other services and apps.   An open neutral cyberspace is just like the web: it needs the equivalent of web browsers, i.e. ubiquitous client apps which can connect to any servers and services written by any vendors and hosted by any providers, communicating together via an open common language.   And while web browsers of course exist, until very recently there was no way to link them into VR hardware.</p>
-<p>This has changed with the creation of <a href="https://en.wikipedia.org/wiki/WebVR">WebVR</a> by Mozilla - defining an API to let browsers render VR content, gracefully degrading across hardware and platforms such that you get the best possible experience all the way from a top-end gaming PC + Vive, down to tapping on a link on a simple smartphone.  WebVR is a genuine revolution: suddenly every webapp on the planet can create a virtual world! And frameworks like <a href="https://aframe.io/">A-Frame</a>, <a href="https://github.com/ngokevin/aframe-react">aframe-react</a> and <a href="https://facebookincubator.github.io/react-vr/">React VR</a> make it incredibly easy and fun to do.</p>
-<p>So looking back at our list, the final missing piece is nothing less than a backbone: some kind of data layer to link these apps together.  Right now, <b>all</b> the WebVR apps out there are little islands - each its own isolated walled garden and there is no standard way to provide shared experiences.  There is no standard way for users to communicate between these worlds (or between the VR and non-VR web) - be that by messaging, VoIP, Video or even VR interactions.  There is no standard way to define an avatar, its location and movement within a world, or how it might travel between worlds.  And finally, there is no standard way to describe the world's state in general: each webapp is free to manage its scene and its content any way it likes; there is nowhere to expose the realtime scene-graph of the world such that other avatars, bots, apps, services etc. can interact with it. The same way there is no standard way to exchange messages or reuse a user profile between messaging apps today: if the cyberspace is taking shape as we speak, it is definitely not taking the path of openness. At least not yet.</p>
-<p>Predictably enough, it's this last point of the 'missing data layer for cyberspace' which we've been thinking about with Matrix: an open, neutral, decentralised meta-network powering or connecting these worlds.  To start with, we've made Matrix available as a generic communications layer for VR, taking WebVR (via A-Frame) and combining it with <a href="https://github.com/matrix-org/matrix-js-sdk">matrix-js-sdk, </a>as an open, secure and decentralised way to place voip calls, video calls and instant messaging both within and between WebVR apps and the rest of the existing Matrix ecosystem (e.g. apps like Riot).</p>
-<p>In fact, the best way is to test it live: we've put together a quick demo at <a href="/vrdemo">https://matrix.org/vrdemo</a> to show it off, so please <a href="/vrdemo">give it a go!</a></p>
-<p> </p>
-<p><a href="/vrdemo"><img class="aligncenter size-large wp-image-2424" src="/blog/wp-content/uploads/2017/04/table-1024x333.jpg" alt="" width="1024" height="333" /></a></p>
-<p> </p>
-<p><a href="/vrdemo">In the demo</a> you get:</p>
-<ol>
- 	<li> a virtual lobby, providing a 1:1 WebRTC video call via Matrix through to a ‘guide' user of your choice anywhere else in Matrix (VR or not).  From the lobby you can jump into two other apps:</li>
- 	<li> a video conference, calling between all the participants of a given Matrix room in VR (no interop yet with other Matrix apps)</li>
- 	<li> a 'virtual tourism' example, featuring a 1:1 WebRTC video call with a guide, superimposed over the top of the user going skiing through 360 degree video footage.</li>
-</ol>
-Video calling requires a WebRTC-capable browser (Chrome or Firefox). Unfortunately no iOS browsers support it yet. If you have dedicated VR hardware (Vive or Rift), you'll have to configure your browser appropriately to use the demo - see <a href="https://webvr.rocks">https://webvr.rocks</a> for the latest details.
-<p>Needless to say, the demo's open sourced under the Apache License like all things Matrix - you can check out the code from <a href="https://github.com/matrix-org/matrix-vr-demo">https://github.com/matrix-org/matrix-vr-demo</a>.  Huge kudos to Richard Lewis, Rob Swain and Ben Lewis for building this out - and to Aidan Taub and Tom Elliott for providing the 360 degree video footage!</p>
-<p>The demo is quite high-bandwidth and hardware intensive, so here's a video of it in action, just in case:</p>
-<p> </p>
-<div style="text-align: center;"><div class="video-container"><iframe src="https://www.youtube.com/embed/nk0nMlVXkbk" width="560" height="315" frameBorder="0" allowFullScreen="allowfullscreen"></iframe></div></div>
-<p> </p>
-<p>Now, it's important to understand that here we're using Matrix as a standard communications API for VR, but we're not using Matrix to store any VR world data (yet).  The demo uses plain A-Frame via aframe-react to render its world: we are not providing an API which exposes the world itself onto the network for folks to interact with and extend.  This is because Matrix is currently optimised for storing and synchronising two types of data structure: decentralised timelines of conversation data, and arbitrary decentralised key-value data (e.g. room names, membership, topics).</p>
-<p>However, the job of storing arbitrary world data requires storing and flexibly querying it as an object graph of some kind - e.g. as a scene graph hierarchy.  Doing this efficiently whilst supporting Matrix's decentralised eventual consistency model is tantamount to evolving Matrix into being a generic decentralised object-graph database (whilst upholding the constraints of that virtual world).  This is tractable, but it's a bunch more work than just supporting the eventually-consistent timeline &amp; key-value store we have today.  It's something we're thinking about though. :)</p>
-<p>Also, Matrix is currently not super low-latency - on a typical busy Synapse deployment event transmission between clients has a latency of 50-200ms (ignoring network).  This is fine for instant messaging and setting up VoIP calls etc, but useless for publishing the realtime state of a virtual world: having to wait 200ms to be told that something happened in an interactive virtual world would be a terrible experience.  However, there are various fixes we can do here: Matrix itself is getting faster; Dendrite is expected to be one or two orders of magnitude faster than Synapse.  We could also use Matrix simply as a signalling layer in order to negotiate a lower latency realtime protocol to describe world data updates (much as we use Matrix as a signalling layer for setting up RTP streams for VoIP calls or MIDI sessions).</p>
-<p>Finally, you need somewhere to store the world assets themselves (textures, sounds, Collada or GLTF assets, etc).  This is no different to using attachments in Matrix today - this could be as plain HTTP, or via the Matrix decentralised content store (mxc:// URLs), or via something like IPFS.</p>
-<p>This said, it's only a matter of time before someone starts storing world data itself in Matrix.  We have more work to do before it's a tight fit, but this has always been one of the long-term goals of the project and we're going to do everything we can to support it well.</p>
-<p>So: this is the future we're thinking of.  Obviously work on today's Matrix servers, clients, spec &amp; bridges is our focus and priority right now and we lots of work left there - but the longer term plan is critical too.  Communication in VR is pretty much a blank canvas right now, and Matrix can be <em>the</em> connecting fabric for it - which is unbelievably exciting.  Right now our demo is just a PoC - we'd encourage all devs reading this to have a think about how to extend it, and how we all can build together the new frontier of cyberspace!</p>
-<p>Finally, if you're interested in chatting more about VR on Matrix, come hang out over at <a href="https://matrix.to/#/#vr:matrix.org">#vr:matrix.org</a>!</p>
-<ul>
-<li>Matthew, Amandine &amp; the Matrix team</li>
-</ul>
-<div style="text-align: center;">
-<div style="display: inline-block;">
-<blockquote class="twitter-tweet" data-lang="en"><p lang="en" dir="ltr">Amandine grins at the future in the newest skunkworks zone of the London <a href="https://t.co/y2YCHNIbgU">https://t.co/y2YCHNIbgU</a> HQ... :&gt; :D 😈 <a href="https://t.co/K5xBz7U9o2">pic.twitter.com/K5xBz7U9o2</a></p>&mdash; Matrix (@matrixdotorg) <a href="https://twitter.com/matrixdotorg/status/843181984448991232?ref_src=twsrc%5Etfw">March 18, 2017</a></blockquote>
-<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
-</div>
-</div>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2017&#x2F;03&#x2F;15&#x2F;dendrite-receives-its-first-messages&#x2F;" title="Dendrite receives its first messages!!!">Dendrite receives its first messages!!!</a></h2>
-                <span>
-                    15.03.2017 00:00
+                    14.06.2018 00:00
                     —
                     <a href="/category/tech">
                         Tech
@@ -702,15 +506,18 @@ Video calling requires a WebRTC-capable browser (Chrome or Firefox). Unfortunate
             <div>
                 
                 <p>Hi all,</p>
-<p>We hit a major milestone today on <a href="https://github.com/matrix-org/dendrite">Dendrite</a>, our next-generation golang homeserver: <b>Dendrite received its first messages!!</b></p>
-<p>Before you get too excited, please understand that Dendrite is still a pre-alpha work in progress - whilst we successfully created some rooms on an instance and sent a bunch of messages into them via the Client-Server API, most other functionality (e.g. receiving messages via /sync, logging in, registering, federation etc) is yet to exist. <b>It cannot yet be used as a homeserver</b>.  However, this is still a huge step in the right direction, as it demonstrates the core DAG functionality of Matrix is intact, and the beginnings of a usable Client-Server API are hooked up.</p>
-<p>The architecture of Dendrite is genuinely interesting - please check out the <a href="https://github.com/matrix-org/dendrite/blob/master/WIRING.md">wiring diagram</a> if you haven't already.  The idea is that the server is broken down into a series of components which process streams of data stored in Kafka-style append-only logs.  Each component scales horizontally (you can have as many as required to handle load), which is an enormous win over Synapse's monolithic design.  Each component is also decoupled from each other by the logs, letting them run on entirely different machines as required.  Please note that whilst the initial implementation is using Kafka for convenience, the actual append-only log mechanism is abstracted away - in future we expect to see configurations of Dendrite which operate entirely from within a single go executable (using go channels as the log mechanism), as well as alternatives to Kafka for distributed solutions.</p>
-<p>The components which have taken form so far are the central <a href="https://github.com/matrix-org/dendrite/tree/master/src/github.com/matrix-org/dendrite/roomserver">roomserver</a> service, which is responsible (as the name suggests) for maintaining the state and integrity of one or more rooms - authorizing events into the room DAG; storing them in postgres, tracking the auth chain of events where needed; etc.  Much of the core matrix DAG logic of the roomserver is provided by <a href="https://github.com/matrix-org/gomatrixserverlib">gomatrixserverlib</a>.  The roomserver receives events sent by users via the 'client room send' component (and 'federation backfill' component, when that exists).  The 'client room send' component (and in future also 'client sync') is provided by the <a href="https://github.com/matrix-org/dendrite/tree/master/src/github.com/matrix-org/dendrite/clientapi">clientapi</a> service - which is what as of today is successfully creating rooms and events and relaying them to the roomserver!</p>
-<p>The actual events we've been testing with are the history of the Matrix Core room: around 10k events.  Right now the roomserver (and the postgres DB that backs it) are the main bottleneck in the pipeline rather than clientapi, so it's been interesting to see how rapidly the roomserver can consume its log of events.  As of today's benchmark, on a generic dev workstation and an entirely unoptimised roomserver (i.e. no caching whatsoever) running on a single core, we're seeing it ingest the room history at over <b>350 events per second</b>.  The vast majority of this work is going into encoding/decoding JSON or waiting for postgres: with a simple event cache to avoid repeatedly hitting the DB for every auth and state event, we expect this to increase significantly.  And then as we increase the number of cores, kafka partitions and roomserver instances it should scale fairly arbitrarily(!)</p>
-<p>For context, the main synapse process for Matrix.org currently maxes out persisting events at around 15 and 20 per second (although it is also spending a bunch of time relaying events to the various worker processes, and other miscellanies).  As such, an initial benchmark for Dendrite of 350 msgs/s really does look incredibly promising.</p>
-<p>You may be wondering where this leaves Synapse?  Well, a major driver for implementing Dendrite has been to support the growth of the main matrix.org server, which currently persists around 10 events/s (whilst emitting around 1500 events/s).  We have exhausted most of the low-hanging fruit for optimising Synapse, and have got to point where the architectural fixes required are of similar shape and size to the work going into Dendrite.  So, whilst Synapse is going to be around for a while yet, we're putting the majority of our long-term plans into Dendrite, with a distinct degree of urgency as we race against the ever-increasing traffic levels on the Matrix.org server!</p>
-<p>Finally, you may be wondering what happened to <a href="https://github.com/matrix-org/dendron">Dendron</a>, our original experiment in Golang servers.  Well: Dendron was an attempt at a <a href="https://www.martinfowler.com/bliki/StranglerApplication.html">strangler pattern</a> rewrite of Synapse, acting as an shim in front of Synapse which could gradually swap out endpoints with their golang implementations.  In practice, the operational complexity it introduced, as well as the amount of room for improvement (at the time) we had in Synapse, and the relatively tight coupling to Synapse's existing architecture, storage &amp; schema, meant that it was far from a clear win - and effectively served as an excuse to learn Go.  As such, we've finally formally killed it off as of last week - Matrix.org is now running behind a normal haproxy, and Dendron is dead.  Meanwhile, Dendrite (aka Dendron done Right ;) is very much alive, progressing fast, free from the shackles of Synapse.</p>
-<p>We'll try to keep the blog updated with progress on Dendrite as it continues to grow!</p>
+<p>On Monday (2018-06-11) we had an incident where #matrix:matrix.org was hijacked by a malicious user pretending to join the room immediately after its creation in 2014 and then setting an m.room.power_levels event ‘before' the correct initial power_level for the room.</p>
+<p>Under normal circumstances this should be impossible because the initial m.room.power_levels for a room should be set before its m.room.join_rules event, meaning users who join the room are subject to its power levels. However, back before we'd even released Synapse, the first two rooms ever created in Matrix (#test:matrix.org and #matrix:matrix.org) were manually created and set the join_rules before the power_levels event, letting users join before the room's power_levels were defined, and so were vulnerable to this attack. We've since re-created #matrix:matrix.org - please re-/join the room if you haven't already!</p>
+<p>As a defensive measure, we are releasing a security update of Synapse (0.31.2) today which changes the rules used to authenticate power_level events, such that we fail-safe rather than fail-deadly if the existing auth mechanisms fail. In practice this means changing the default power level required to set state to be 50 rather than 0 if there is no power_levels event present, thus meaning that only the room creator can set the initial power_levels event.</p>
+<p>We are not aware of anyone abusing this (other than the old #matrix:matrix.org room) but we'd rather be safe than sorry, so would recommend that everyone upgrade as soon as possible.</p>
+<p>This of course constitutes a change to the spec, so full technical details and ongoing discussion around the Matrix Spec Change proposal can be followed over at <a href="https://github.com/matrix-org/matrix-doc/issues/1304">MSC1304</a>.</p>
+<p><strong>EDIT</strong>: if you are aware of your server participating in rooms whose first power_levels event is deliberately set by a different user to their creator, please let us know asap (and don't upgrade!)</p>
+<p>This work is all part of a general push to finalise and harden and fully specify the Server-Server API as we push towards a long-awaited stable release of Matrix!</p>
+<p>As always, you can get the new update from <a href="https://github.com/matrix-org/synapse/releases/tag/v0.31.2">https://github.com/matrix-org/synapse/releases/tag/v0.31.2</a> or from any of the sources mentioned at <a href="https://github.com/matrix-org/synapse">https://github.com/matrix-org/synapse</a>.</p>
+<p>thanks, and apologies for the inconvenience.</p>
+<h3>Changes in synapse v0.31.2 (2018-06-14)</h3>
+SECURITY UPDATE: Prevent unauthorised users from setting state events in a room when there is no <code>m.room.power_levels</code> event in force in the room. (PR <a href="https://github.com/matrix-org/synapse/pull/3397">#3397</a>)
+<p>Discussion around the Matrix Spec change proposal for this change can be followed at <a href="https://github.com/matrix-org/matrix-doc/issues/1304">https://github.com/matrix-org/matrix-doc/issues/1304</a>.</p>
 
                 
             </div>
@@ -718,63 +525,9 @@ Video calling requires a WebRTC-capable browser (Chrome or Firefox). Unfortunate
         
         <article class="post">
             <header>
-                <h2><a href="&#x2F;blog&#x2F;2017&#x2F;03&#x2F;11&#x2F;how-do-i-bridge-thee-let-me-count-the-ways&#x2F;" title="How do I bridge thee?  Let me count the ways...">How do I bridge thee?  Let me count the ways...</a></h2>
+                <h2><a href="&#x2F;blog&#x2F;2018&#x2F;05&#x2F;17&#x2F;introducing-matrix-specification-changes&#x2F;" title="Introducing Matrix Specification Changes">Introducing Matrix Specification Changes</a></h2>
                 <span>
-                    11.03.2017 00:00
-                    —
-                    <a href="/category/tech">
-                        Tech
-                    </a>
-                    —
-                    <a
-                        href="/author/matthew-hodgson">
-                        Matthew Hodgson
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p><a href="https://xkcd.com/1810"><img class="aligncenter wp-image-2297" src="/blog/wp-content/uploads/2017/03/xkcd1810-matrixified-v2-1024x842.png" width="753" height="619" /></a></p>
-<p id="types-of-bridging">Bridges come in many flavours, and we need consistent terminology within the Matrix community to ensure everyone (users, developers, core team) is on the same page. This post is primarily intended for bridge developers to refer to when building bridges.</p>
-<em>The most recent version of this document is <a href="/docs/guides/types-of-bridging.html">here</a> (<a href="https://github.com/matrix-org/matrix-doc/blob/master/supporting-docs/guides/2017-03-11-types-of-bridging.md">source</a>) but we're also posting it as a blog post for visibility.</em>
-<h3 id="types-of-rooms">Types of rooms</h3>
-<h4>Portal rooms</h4>
-Bridges can register themselves as controlling chunks of room aliases namespace, letting Matrix users join remote rooms transparently if they `/join #freenode_#wherever:matrix.org` or similar. The resulting Matrix room is typically automatically bridged to the single target remote room. Access control for Matrix users is typically managed by the remote network's side of the room. This is called a portal room, and is useful for jumping into remote rooms without any configuration needed whatsoever - using Matrix as a ‘bouncer' for the remote network.
-<h4 id="plumbed-rooms">Plumbed rooms</h4>
-Alternatively, an existing Matrix room can be can plumbed into one or more specific remote rooms by configuring a bridge (which can be run by anyone). For instance, #matrix:matrix.org is plumbed into #matrix on Freenode, matrixdotorg/#matrix on Slack, etc. Access control for Matrix users is necessarily managed by the Matrix side of the room. This is useful for using Matrix to link together different communities.
-<p>Migrating rooms between a portal &amp; plumbed room is currently a bit of a mess, as there's not yet a way for users to remove portal rooms once they're created, so you can end up with a mix of portal &amp; plumbed users bridged into a room, which looks weird from both the Matrix and non-Matrix viewpoints. https://github.com/matrix-org/matrix-appservice-irc/issues/387 tracks this.</p>
-<h3 id="types-of-bridges-simplest-first">Types of bridges (simplest first):</h3>
-<h4 id="bridgebot-based-bridges">Bridgebot-based bridges</h4>
-The simplest way to exchange messages with a remote network is to have the bridge log into the network using one or more predefined users called bridge bots - typically called MatrixBridge or MatrixBridge[123] etc. These relay traffic on behalf of the users on the other side, but it's a terrible experience as all the metadata about the messages and senders is lost. This is how the <a href="https://github.com/SijmenSchoon/telematrix">telematrix</a> matrix&lt;-&gt;telegram bridge currently works.
-<h4 id="bot-api-aka-virtual-user-based-bridges">Bot-API (aka Virtual user) based bridges</h4>
-Some remote systems support the idea of injecting messages from ‘fake' or ‘virtual' users, which can be used to represent the Matrix-side users as unique entities in the remote network. For instance, Slack's inbound webhooks lets remote bots be created on demand, letting Matrix users be shown cosmetically correctly in the timeline as virtual users. However, the resulting virtual users aren't real users on the remote system, so don't have presence/profile and can't be tab-completed or direct-messaged etc. They also have no way to receive typing notifs or other richer info which may not be available via bot APIs. This is how the current <a href="https://github.com/matrix-org/matrix-appservice-slack">matrix-appservice-slack</a> bridge works.
-<h4 id="one-way-puppeted-bridge">Simple puppeted bridge</h4>
-This is a richer form of bridging, where the bridge logs into the remote service as if it were a real 3rd party client for that service. As a result, the Matrix user has to already have a valid account on the remote system. In exchange, the Matrix user ‘puppets' their remote user, such that other users on the remote system aren't even aware they are speaking to a user via Matrix. The full semantics of the remote system are available to the bridge to expose into Matrix. However, the bridge has to handle the authentication process to log the user into the remote bridge.
-<p>This is essentially how the current <a href="https://github.com/matrix-org/matrix-appservice-irc">matrix-appservice-irc</a> bridge works (if you configure it to log into the remote IRC network as your ‘real' IRC nickname). <a href="https://github.com/matrix-org/matrix-appservice-gitter">matrix-appservice-gitter</a> is being extended to support both puppeted and bridgebot-based operation. It's how the experimental <a href="https://github.com/matrix-org/matrix-appservice-tg">matrix-appservice-tg</a> bridge works.</p>
-<p>Going forwards we're aiming for all bridges to be at least simple puppeted, if not double-puppeted.</p>
-<h4 id="two-way-puppeted-bridge">Double-puppeted bridge</h4>
-A simple ‘puppeted bridge' allows the Matrix user to control their account on their remote network. However, ideally this puppeting should work in both directions, so if the user logs into (say) their native telegram client and starts conversations, sends messages etc, these should be reflected back into Matrix as if the user had done them there. This requires the bridge to be able to puppet the Matrix side of the bridge on behalf of the user.
-<p>This is the holy-grail of bridging; <a href="https://github.com/matrix-hacks/matrix-puppet-bridge">matrix-puppet-bridge</a> is a community project that tries to facilitate development of double puppeted bridges, having done so for <a href="https://github.com/matrix-hacks/matrix-puppet-bridge#examples">several networks</a>. The main obstacle is working out an elegant way of having the bridge auth with Matrix as the matrix user (which requires some kind of scoped access_token delegation).</p>
-<h4 id="server-to-server-bridging">Server-to-server bridging</h4>
-Some remote protocols (IRC, XMPP, SIP, SMTP, NNTP, GnuSocial etc) support federation - either open or closed. The most elegant way of bridging to these protocols would be to have the bridge participate in the federation as a server, directly bridging the entire namespace into Matrix.
-<p>We're not aware of anyone who's done this yet.</p>
-<h4 id="sidecar-bridge">Sidecar bridge</h4>
-Finally: the types of bridging described above assume that you are synchronising the conversation history of the remote system into Matrix, so it may be decentralised and exposed to multiple users within the wider Matrix network.
-<p>This can cause problems where the remote system may have arbitrarily complicated permissions (ACLs) controlling access to the history, which will then need to be correctly synchronised with Matrix's ACL model, without introducing security issues such as races. We already see some problems with this on the IRC bridge, where history visibility for +i and +k channels have to be carefully synchronised with the Matrix rooms.</p>
-<p>You can also hit problems with other network-specific features not yet having equivalent representation in the Matrix protocol (e.g. ephemeral messages, or op-only messages - although arguably that's a type of ACL).</p>
-<p>One solution could be to support an entirely different architecture of bridging, where the Matrix client-server API is mapped directly to the remote service, meaning that ACL decisions are delegated to the remote service, and conversations are not exposed into the wider Matrix. This is effectively using the bridge purely as a 3rd party client for the network (similar to Bitlbee). The bridge is only available to a single user, and conversations cannot be shared with other Matrix users as they aren't actually Matrix rooms. (Another solution could be to use Active Policy Servers at last as a way of centralising and delegating ACLs for a room)</p>
-<p>This is essentially an entirely different product to the rest of Matrix, and whilst it could be a solution for some particularly painful ACL problems, we're focusing on non-sidecar bridges for now.</p>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2017&#x2F;02&#x2F;04&#x2F;synapse-0-19-is-here-just-in-time-for-fosdem&#x2F;" title="Synapse 0.19 is here, just in time for FOSDEM!">Synapse 0.19 is here, just in time for FOSDEM!</a></h2>
-                <span>
-                    04.02.2017 00:00
+                    17.05.2018 00:00
                     —
                     <a href="/category/tech">
                         Tech
@@ -790,76 +543,84 @@ Finally: the types of bridging described above assume that you are synchronising
             <div>
                 
                 <p>Hi all,</p>
-<p>We're happy to announce the release of Synapse 0.19.0 (same as 0.19.0-rc4) today, just in time for anyone discovering Matrix for the first time at FOSDEM 2017!  In fact, here's Erik doing the release right now (with moral support from Luke):</p>
-<img class="aligncenter size-large wp-image-1900" src="/blog/wp-content/uploads/2017/02/release-1024x768.jpg" alt="release" width="1024" height="768" />
-<p>This is a pretty big release, with a bunch of new features and lots and lots of debugging and optimisation work following on some of the dramas that we had with 0.18 over the Christmas break.  The biggest things are:</p>
+<p>We've been able to start investing more time in advancing the Matrix Specification itself over the last month or so thanks to <a href="https://matrix.to/#/@benpa:matrix.org">Ben</a> joining the core team (and should be able to accelerate even more with <a href="https://www.uhoreg.ca/blog/20180507-1019">uhoreg joining in a few weeks</a>!)  The first step in the new wave of work has been to provide much better infrastructure for the process of actually evolving the spec - whether that's from changes proposed by the core team or the wider Matrix Community.</p>
+<p>So, without further ado, we'd like to introduce <a href="/docs/spec/proposals">https://matrix.org/docs/spec/proposals</a> - a dashboard for all the spec change proposals we've accumulated so far (ignoring most of the ones which have already been merged), as well as a clearer workflow for how everyone can help improve the Matrix spec itself.  Part of this is introducing a formal numbering system - e.g. <a href="https://github.com/matrix-org/matrix-doc/issues/1228">MSC1228</a> stands for Matrix Spec Change 1228 (where 1228 is the ID of the Github issue on the <a href="http://github.com/matrix-org/matrix-doc/issues">github.com/matrix-org/matrix-doc/issues</a> repository that tracks the proposal).</p>
+<p>Please note that these are <em>NOT</em> like XEPs or RFCs - i.e. optional proposals or add-ons to the protocol; instead they are literally proposals for changes to the Matrix Spec itself.  Once merged into the spec, they are only of historical interest.</p>
+<p>We've also created a new room: <a href="https://matrix.to/#/#matrix-spec:matrix.org">#matrix-spec:matrix.org</a> to discuss specific spec proposal changes - please join if you want to track how proposals are evolving! (Conversation is likely to fork off into per-proposal rooms or overflow into <a href="https://matrix.to/#/#matrix-dev:matrix.org">#matrix-dev:matrix.org</a> or <a href="https://matrix.to/#/#matrix-architecture:matrix.org">#matrix-architecture:matrix.org</a> depending on traffic levels, however).</p>
+<p>Feedback would be much appreciated on this - so please head over to <a href="https://matrix.to/#/#matrix-spec:matrix.org">#matrix-spec:matrix.org</a> and let us know how it feels and how it could do better.</p>
+<p>This is also a major step towards properly formalising Matrix.org's governance model - hopefully the changes above are sufficient to improve the health of the evolution of the Spec as we work towards an initial stable release later this year, and then you should expect to see a spec proposal for formal governance once we've (at last!) exited beta :)</p>
+<p>Huge thanks to Ben for putting this together, and thanks to everyone who's contributed so far to the spec - we're looking forward to working through the backlog of proposals and turning them all into merged spec PRs!!</p>
+<p>Matthew</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2018&#x2F;05&#x2F;01&#x2F;security-update-synapse-0-28-1&#x2F;" title="SECURITY UPDATE: Synapse 0.28.1">SECURITY UPDATE: Synapse 0.28.1</a></h2>
+                <span>
+                    01.05.2018 00:00
+                    —
+                    <a href="/category/tech">
+                        Tech
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Hi all,</p>
+<p>Many people will have noticed disruption in #matrix:matrix.org and #matrix-dev:matrix.org on Sunday, when a validation bug in Synapse was exploited which allowed a malicious event to be inserted into the room with 'depth' value that made the rooms temporarily unusable. Whilst a transient workaround was found at the time (thanks to /dev/ponies, kythyria and Po Shamil for the workaround and to Half-Shot for working on a proposed fix), we're doing an urgent release of Synapse 0.28.1 to provide a temporary solution which will mitigate the attack across all rooms in upgraded servers and un-break affected ones.  Meanwhile we have a full long-term fix on the horizon (hopefully) later this week.</p>
+<p><strong>This vulnerability has already been exploited in the wild; please upgrade as soon as possible.</strong></p>
+<p>Synapse 0.28.1 is available from <a href="https://github.com/matrix-org/synapse/releases/tag/v0.28.1">https://github.com/matrix-org/synapse/releases/tag/v0.28.1</a> as normal.</p>
+<p>The 'depth' parameter is used primarily as a way for servers to signal the intended cosmetic order of their events within a room (particularly when the room's message graph has gaps in it due to the server being offline, or due to users backfilling old disconnected chunks of conversation). This means that affected rooms may experience message ordering problems until a full long-term fix is provided, which we're working on currently (and tentatively involves no longer trusting 'depth' information from servers).  For full details you can see the proposal documents for the <a href="https://docs.google.com/document/d/1I3fi2S-XnpO45qrpCsowZv8P8dHcNZ4fsBsbOW7KABI/edit#">temporary fix in 0.28.1</a> and the options for the<a href="https://docs.google.com/document/d/16ofbjluy8ZKYL6nt7WLHG4GqSodJUWLUxHhI6xPEjr4/edit#"> imminent long-term fix</a>.</p>
+<p>We'd like to acknowledge jzk for identifying the vulnerability, and Max Dor for providing feedback on the fixes.</p>
+<p>As a general reminder, Synapse is still beta (as is the Matrix spec) and the federation API particularly is still being debugged and refined and is pre-r0.0.0. For the benefit of the whole community, please disclose vulnerabilities and exploits responsibly by emailing security@ or DMing someone from +matrix:matrix.org. Thanks.</p>
+<h2>Changes in synapse v0.28.1 (2018-05-01)</h2>
+<strong>SECURITY UPDATE</strong>
 <ul>
- 	<li>IPv6 Support (unless you have an IPv6 only resolver), thanks to contributions from Glyph from Twisted and Kyrias!</li>
- 	<li>A new API for tracking the E2E devices present in a room (required for fixing many of the remaining E2E bugs...)</li>
- 	<li>Rewrite the 'state resolution' algorithm to be orders of magnitude more performant</li>
- 	<li>Lots of tuning to the caching logic.</li>
+ 	<li>Clamp the allowed values of event depth received over federation to be [0, 2^63 - 1]. This mitigates an attack where malicious events injected with depth = 2^63 - 1 render rooms unusable. Depth is used to determine the cosmetic ordering of events within a room, and so the ordering of events in such a room will default to using stream_ordering rather than depth (topological_ordering). This is a temporary solution to mitigate abuse in the wild, whilst a long solution is being implemented to improve how the depth parameter is used.Full details at <a href="https://docs.google.com/document/d/1I3fi2S-XnpO45qrpCsowZv8P8dHcNZ4fsBsbOW7KABI" rel="nofollow">https://docs.google.com/document/d/1I3fi2S-XnpO45qrpCsowZv8P8dHcNZ4fsBsbOW7KABI</a></li>
+ 	<li>Pin Twisted to &lt;18.4 until we stop using the private _OpenSSLECCurve API.</li>
 </ul>
-If you're already running a server, please upgrade!  And if you're not, go grab yourself a <a href="https://github.com/matrix-org/synapse">brand new Synapse</a> from Github. Debian packages will follow shortly (as soon as Erik can figure out the necessary backporting required for Twisted 16.6.0)
-<p>And here's the full changelog...</p>
-<p> </p>
-<div class="release-header">
-<h1 class="release-title">Changes in synapse v0.19.0 (2017-02-04)</h1>
-</div>
-<div class="markdown-body">
-<p>No changes since RC 4.</p>
-<h1>Changes in synapse v0.19.0-rc4 (2017-02-02)</h1>
-<ul>
- 	<li>Bump cache sizes for common membership queries (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1879" data-url="https://github.com/matrix-org/synapse/issues/1879" data-id="204961298" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1879</a>)</li>
-</ul>
-<h1>Changes in synapse v0.19.0-rc3 (2017-02-02)</h1>
-<ul>
- 	<li>Fix email push in pusher worker (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1875" data-url="https://github.com/matrix-org/synapse/issues/1875" data-id="204840617" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1875</a>)</li>
- 	<li>Make presence.get_new_events a bit faster (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1876" data-url="https://github.com/matrix-org/synapse/issues/1876" data-id="204868725" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1876</a>)</li>
- 	<li>Make /keys/changes a bit more performant (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1877" data-url="https://github.com/matrix-org/synapse/issues/1877" data-id="204905372" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1877</a>)</li>
-</ul>
-<h1>Changes in synapse v0.19.0-rc2 (2017-02-02)</h1>
-<ul>
- 	<li>Include newly joined users in /keys/changes API (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1872" data-url="https://github.com/matrix-org/synapse/issues/1872" data-id="204651600" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1872</a>)</li>
-</ul>
-<h1>Changes in synapse v0.19.0-rc1 (2017-02-02)</h1>
-Features:
-<ul>
- 	<li>Add support for specifying multiple bind addresses (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1709" data-url="https://github.com/matrix-org/synapse/issues/1709" data-id="196299310" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1709</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1712" data-url="https://github.com/matrix-org/synapse/issues/1712" data-id="196557084" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1712</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1795" data-url="https://github.com/matrix-org/synapse/issues/1795" data-id="199882750" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1795</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1835" data-url="https://github.com/matrix-org/synapse/issues/1835" data-id="202121261" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1835</a>). Thanks to <a class="user-mention" href="https://github.com/kyrias">@kyrias</a>!</li>
- 	<li>Add /account/3pid/delete endpoint (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1714" data-url="https://github.com/matrix-org/synapse/issues/1714" data-id="196744832" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1714</a>)</li>
- 	<li>Add config option to configure the Riot URL used in notification emails (PR <a class="issue-link js-issue-link" title="Allow configuring the Riot URL used in notification emails" href="https://github.com/matrix-org/synapse/pull/1811" data-id="200657367" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1811</a>). Thanks to <a class="user-mention" href="https://github.com/aperezdc">@aperezdc</a>!</li>
- 	<li>Add username and password config options for turn server (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1832" data-url="https://github.com/matrix-org/synapse/issues/1832" data-id="201858252" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1832</a>). Thanks to <a class="user-mention" href="https://github.com/xsteadfastx">@xsteadfastx</a>!</li>
- 	<li>Implement device lists updates over federation (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1857" data-url="https://github.com/matrix-org/synapse/issues/1857" data-id="203413361" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1857</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1861" data-url="https://github.com/matrix-org/synapse/issues/1861" data-id="204067531" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1861</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1864" data-url="https://github.com/matrix-org/synapse/issues/1864" data-id="204251726" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1864</a>)</li>
- 	<li>Implement /keys/changes (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1869" data-url="https://github.com/matrix-org/synapse/issues/1869" data-id="204547521" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1869</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1872" data-url="https://github.com/matrix-org/synapse/issues/1872" data-id="204651600" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1872</a>)</li>
-</ul>
-Changes:
-<ul>
- 	<li>Improve IPv6 support (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1696" data-url="https://github.com/matrix-org/synapse/issues/1696" data-id="195001361" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1696</a>). Thanks to <a class="user-mention" href="https://github.com/kyrias">@kyrias</a> and <a class="user-mention" href="https://github.com/glyph">@glyph</a>!</li>
- 	<li>Log which files we saved attachments to in the media_repository (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1791" data-url="https://github.com/matrix-org/synapse/issues/1791" data-id="199834508" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1791</a>)</li>
- 	<li>Linearize updates to membership via PUT /state/ to better handle multiple joins (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1787" data-url="https://github.com/matrix-org/synapse/issues/1787" data-id="199625078" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1787</a>)</li>
- 	<li>Limit number of entries to prefill from cache on startup (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1792" data-url="https://github.com/matrix-org/synapse/issues/1792" data-id="199837759" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1792</a>)</li>
- 	<li>Remove full_twisted_stacktraces option (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1802" data-url="https://github.com/matrix-org/synapse/issues/1802" data-id="200333064" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1802</a>)</li>
- 	<li>Measure size of some caches by sum of the size of cached values (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1815" data-url="https://github.com/matrix-org/synapse/issues/1815" data-id="201019660" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1815</a>)</li>
- 	<li>Measure metrics of string_cache (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1821" data-url="https://github.com/matrix-org/synapse/issues/1821" data-id="201347397" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1821</a>)</li>
- 	<li>Reduce logging verbosity (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1822" data-url="https://github.com/matrix-org/synapse/issues/1822" data-id="201347914" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1822</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1823" data-url="https://github.com/matrix-org/synapse/issues/1823" data-id="201350918" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1823</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1824" data-url="https://github.com/matrix-org/synapse/issues/1824" data-id="201351456" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1824</a>)</li>
- 	<li>Don't clobber a displayname or avatar_url if provided by an m.room.member event (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1852" data-url="https://github.com/matrix-org/synapse/issues/1852" data-id="202898869" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1852</a>)</li>
- 	<li>Better handle 401/404 response for federation /send/ (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1866" data-url="https://github.com/matrix-org/synapse/issues/1866" data-id="204298485" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1866</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1871" data-url="https://github.com/matrix-org/synapse/issues/1871" data-id="204619103" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1871</a>)</li>
-</ul>
-Fixes:
-<ul>
- 	<li>Fix ability to change password to a non-ascii one (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1711" data-url="https://github.com/matrix-org/synapse/issues/1711" data-id="196303488" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1711</a>)</li>
- 	<li>Fix push getting stuck due to looking at the wrong view of state (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1820" data-url="https://github.com/matrix-org/synapse/issues/1820" data-id="201302378" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1820</a>)</li>
- 	<li>Fix email address comparison to be case insensitive (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1827" data-url="https://github.com/matrix-org/synapse/issues/1827" data-id="201573837" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1827</a>)</li>
- 	<li>Fix occasional inconsistencies of room membership (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1836" data-url="https://github.com/matrix-org/synapse/issues/1836" data-id="202122666" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1836</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1840" data-url="https://github.com/matrix-org/synapse/issues/1840" data-id="202175956" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1840</a>)</li>
-</ul>
-Performance:
-<ul>
- 	<li>Don't block messages sending on bumping presence (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1789" data-url="https://github.com/matrix-org/synapse/issues/1789" data-id="199812171" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1789</a>)</li>
- 	<li>Change device_inbox stream index to include user (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1793" data-url="https://github.com/matrix-org/synapse/issues/1793" data-id="199845292" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1793</a>)</li>
- 	<li>Optimise state resolution (PR <a class="issue-link js-issue-link" title=" Optimise state resolution" href="https://github.com/matrix-org/synapse/pull/1818" data-id="201285644" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1818</a>)</li>
- 	<li>Use DB cache of joined users for presence (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1862" data-url="https://github.com/matrix-org/synapse/issues/1862" data-id="204068613" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1862</a>)</li>
- 	<li>Add an index to make membership queries faster (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1867" data-url="https://github.com/matrix-org/synapse/issues/1867" data-id="204327354" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1867</a>)</li>
-</ul>
-</div>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2018&#x2F;02&#x2F;09&#x2F;security-update-riotweb-0-13-5-released-fixing-xss-vulnerability&#x2F;" title="Security update: Riot&#x2F;Web 0.13.5 released - fixing XSS vulnerability">Security update: Riot&#x2F;Web 0.13.5 released - fixing XSS vulnerability</a></h2>
+                <span>
+                    09.02.2018 00:00
+                    —
+                    <a href="/category/tech">
+                        Tech
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Hi all,</p>
+<p>Heads up that we made an emergency release of Riot/Web 0.13.5 a few hours ago to fix a XSS vulnerability found and reported by walle303 - many thanks for disclosing it responsibly.</p>
+<p><strong>Please upgrade to Riot/Web 0.13.5 asap. If you're using <a href="https://riot.im/app">riot.im/app</a> or <a href="https://riot.im/develop">riot.im/develop</a> this simply means hitting Refresh; otherwise please upgrade your Riot deployment as soon as possible. </strong><a href="https://pkgs.alpinelinux.org/packages?name=riot-web&amp;branch=edge">Alpine</a>, <a href="https://riot.im/desktop">Debian</a> and <a href="https://github.com/taw00/riot-rpm">Fedora/RPM</a> packages are already updated - huge thanks to the maintainers for the fast turnaround.</p>
+<p>The issue lies in the relatively obscure external_url feature, which lets bridges specify a URL for bridged events, letting Riot/Web users link through to the 'original' event (e.g. a twitter URL on a bridged tweet).  The option is hidden in a context menu and labelled &quot;Source URL&quot;, and is only visible on events which have the external_url field set.  Unfortunately Riot/Web didn't sanitise the URL correctly, allowing a malicious URL to be injected - and this has been the case since the feature landed in Riot 0.9.0 (Nov 2016).</p>
+<p>If you're not able to upgrade to Riot/Web 0.13.5 for some reason, then please do not click on the 'Source URL' feature on the event context menu:</p>
+<p><a href="/blog/wp-content/uploads/2018/02/xss.png"><img class="aligncenter size-large wp-image-3001" src="/blog/wp-content/uploads/2018/02/xss-1024x352.png" alt="" width="1024" height="352" /></a></p>
+<p>Apologies for the inconvenience,</p>
+<p>thanks,</p>
+<p>Matthew</p>
 
                 
             </div>
@@ -869,7 +630,7 @@ Performance:
     <div class="prev">
         
     </div>
-    <span class="page-number">1 / 5</span>
+    <span class="page-number">1 / 6</span>
     <div class="prev">
         
         <a href="&#x2F;category&#x2F;tech&#x2F;page&#x2F;2&#x2F;">Next ›</a>
