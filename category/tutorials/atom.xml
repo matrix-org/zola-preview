@@ -4,8 +4,169 @@
 	<link href="/category/tutorials/atom.xml" rel="self" type="application/atom+xml"/>
   <link href="/"/>
 	<generator uri="https://www.getzola.org/">Zola</generator>
-	<updated>2019-07-03T00:00:00+00:00</updated>
+	<updated>2021-06-10T17:08:54+00:00</updated>
 	<id>/category/tutorials/atom.xml</id>
+	<entry xml:lang="en">
+		<title>Low Bandwidth Matrix: An implementation guide</title>
+		<published>2021-06-10T17:08:54+00:00</published>
+		<updated>2021-06-10T11:28:12+00:00</updated>
+		<link rel="alternate" href="/blog/2021/06/10/low-bandwidth-matrix-an-implementation-guide/" type="text/html"/>
+		<id>/blog/2021/06/10/low-bandwidth-matrix-an-implementation-guide/</id>
+		<content type="html">&lt;p&gt;&lt;em&gt;Disclaimer: Low bandwidth Matrix is experimental, not yet standardised, and subject to change without notice.&lt;&#x2F;em&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;This guide is for Matrix developers who want to support
+&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-doc&#x2F;pull&#x2F;3079&quot;&gt;MSC3079: Low Bandwidth CS API&lt;&#x2F;a&gt; in their
+clients&#x2F;servers. Please read the experimental MSC if you want to learn more about what is happening
+at a protocol level. If you want a high level overview of low bandwidth Matrix and why you should
+care, watch the &lt;a href=&quot;http:&#x2F;&#x2F;www.youtube.com&#x2F;watch?v=_E-J6Hk2dYs&amp;amp;t=14m14s&quot;&gt;12 minute demo on Matrix Live&lt;&#x2F;a&gt;.&lt;&#x2F;p&gt;
+&lt;p&gt;Matrix currently uses HTTP APIs with JSON data to communicate from the client to the server. This is
+widely supported but is not very bandwidth efficient. This means that the protocol is slower, more
+costly and less able to be used on low bandwidth links (e.g 2G networks) which are common in certain
+parts of the world. MSC3079 defines a low bandwidth protocol using CoAP and CBOR instead of HTTP and
+JSON respectively. In the future homeservers will natively support some form of low bandwidth
+protocol. However, at present, no homeserver natively supports MSC3079. Therefore, this guide will
+set up a low bandwidth proxy server which can be put in front of any Matrix homeserver
+(Synapse, Dendrite, Conduit, etc) to make it MSC3079-compatible. This guide will also configure an
+Android device to speak MSC3079.&lt;&#x2F;p&gt;
+&lt;p&gt;Low bandwidth Matrix currently does not support web browsers due to their inability to send UDP
+traffic. You do &lt;em&gt;not&lt;&#x2F;em&gt; need to be running a homeserver to follow this tutorial.&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;setting-up-a-low-bandwidth-proxy-for-your-homeserver&quot;&gt;Setting up a low bandwidth proxy for your homeserver&lt;&#x2F;h2&gt;
+&lt;p&gt;Prerequisites:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Go 1.13+&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;code&gt;openssl&lt;&#x2F;code&gt; to generate a self-signed DTLS certificate, or an existing certificate you want to use.&lt;&#x2F;li&gt;
+&lt;li&gt;Linux or Mac user&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;Steps:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Clone the repo: &lt;code&gt;git clone https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;lb.git&lt;&#x2F;code&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;Build the low bandwidth proxy: &lt;code&gt;go build .&#x2F;cmd&#x2F;proxy&lt;&#x2F;code&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;Generate a elliptic curve DTLS key&#x2F;certificate: (we use curve keys as they are smaller than RSA
+keys, but both work.)&lt;pre data-lang=&quot;bash&quot; style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot; class=&quot;language-bash &quot;&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span&gt;openssl ecparam -name prime256v1 -genkey -noout -out private-key.pem
+&lt;&#x2F;span&gt;&lt;span&gt;openssl req -new -x509 -key private-key.pem -out cert.pem -days 365
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#608b4e;&quot;&gt;# you now have cert.pem and private-key.pem
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;Run it pointing at matrix.org:&lt;pre data-lang=&quot;bash&quot; style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot; class=&quot;language-bash &quot;&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span&gt;.&#x2F;proxy -local &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;#39;https:&#x2F;&#x2F;matrix-client.matrix.org&amp;#39; &lt;&#x2F;span&gt;&lt;span&gt;\
+&lt;&#x2F;span&gt;&lt;span&gt;--tls-cert cert.pem --tls-key private-key.pem \
+&lt;&#x2F;span&gt;&lt;span&gt;--advertise &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;http:&#x2F;&#x2F;127.0.0.1:8008&amp;quot; &lt;&#x2F;span&gt;&lt;span&gt;\
+&lt;&#x2F;span&gt;&lt;span&gt;--dtls-bind-addr :8008
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;You should see something like this:&lt;pre style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot;&gt;&lt;code&gt;&lt;span&gt;INFO[0000] Listening on :8008&#x2F;tcp to reverse proxy from http:&#x2F;&#x2F;127.0.0.1:8008 to https:&#x2F;&#x2F;matrix-client.matrix.org - HTTPS enabled: false 
+&lt;&#x2F;span&gt;&lt;span&gt;INFO[0000] Listening for DTLS on :8008 - ACK piggyback period: 5s
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;Mac users: If you are having trouble generating EC certificates, make sure you are using OpenSSL and
+not LibreSSL which comes by default: &lt;code&gt;openssl version&lt;&#x2F;code&gt;. To use OpenSSL, &lt;code&gt;brew install openssl&lt;&#x2F;code&gt; which
+then dumps the binary to &lt;code&gt;&#x2F;usr&#x2F;local&#x2F;opt&#x2F;openssl&#x2F;bin&#x2F;openssl&lt;&#x2F;code&gt;.&lt;&#x2F;p&gt;
+&lt;p&gt;To test it is working correctly:&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;bash&quot; style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot; class=&quot;language-bash &quot;&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span style=&quot;color:#608b4e;&quot;&gt;# build command line tools we can use to act as a low bandwidth client
+&lt;&#x2F;span&gt;&lt;span&gt;go build .&#x2F;cmd&#x2F;jc
+&lt;&#x2F;span&gt;&lt;span&gt;go build .&#x2F;cmd&#x2F;coap
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#608b4e;&quot;&gt;# do a CoAP GET request to matrix.org via the proxy
+&lt;&#x2F;span&gt;&lt;span&gt;.&#x2F;coap -X GET -k &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;#39;http:&#x2F;&#x2F;localhost:8008&#x2F;_matrix&#x2F;client&#x2F;versions&amp;#39; &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;| &lt;&#x2F;span&gt;&lt;span&gt;.&#x2F;jc -c2j &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;#39;-&amp;#39;
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span&gt;{&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;unstable_features&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;:{&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;io.element.e2ee_forced.private&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;:false,&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;io.element.e2ee_forced.public&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;:false,&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;io.element.e2ee_forced.trusted_private&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;:false,&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;org.matrix.e2e_cross_signing&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;:true,&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;org.matrix.label_based_filtering&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;:true,&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;org.matrix.msc2432&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;:true,&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;org.matrix.msc3026.busy_presence&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;:false,&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;uk.half-shot.msc2666&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;:true},&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;versions&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;:[&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;r0.0.1&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;,&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;r0.1.0&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;,&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;r0.2.0&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;,&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;r0.3.0&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;,&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;r0.4.0&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;,&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;r0.5.0&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;,&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;r0.6.0&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;]}
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;If this doesn&#x27;t work:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Check the proxy logs for errors (e.g bad hostname)&lt;&#x2F;li&gt;
+&lt;li&gt;Try adding &lt;code&gt;-v&lt;&#x2F;code&gt; to &lt;code&gt;.&#x2F;coap&lt;&#x2F;code&gt; (e.g bad method or path)&lt;&#x2F;li&gt;
+&lt;li&gt;Run the proxy with &lt;code&gt;SSLKEYLOGFILE=ssl.log&lt;&#x2F;code&gt; and inspect the decrypted traffic using Wireshark.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;Otherwise, congratulations! You now have a low bandwidth proxy! You can connect to your proxy just
+like you would to matrix.org or any other homeserver.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;security-considerations&quot;&gt;Security considerations&lt;&#x2F;h3&gt;
+&lt;ul&gt;
+&lt;li&gt;The proxy acts as a man in the middle and can read all non-E2EE traffic, including login
+credentials. DO NOT USE UNTRUSTED LOW BANDWIDTH PROXY SERVERS. Only use proxy servers run by
+yourself or the homeserver admins.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;h3 id=&quot;further-reading&quot;&gt;Further reading&lt;&#x2F;h3&gt;
+&lt;ul&gt;
+&lt;li&gt;The &lt;code&gt;proxy&lt;&#x2F;code&gt; &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;lb&#x2F;tree&#x2F;main&#x2F;cmd&#x2F;proxy&quot;&gt;README&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;code&gt;coap&lt;&#x2F;code&gt; &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;lb&#x2F;tree&#x2F;main&#x2F;cmd&#x2F;coap&quot;&gt;README&lt;&#x2F;a&gt; and &lt;code&gt;jc&lt;&#x2F;code&gt;
+&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;lb&#x2F;tree&#x2F;main&#x2F;cmd&#x2F;jc&quot;&gt;README&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;h2 id=&quot;setting-up-a-custom-element-android&quot;&gt;Setting up a custom Element Android&lt;&#x2F;h2&gt;
+&lt;p&gt;We&#x27;ll add low bandwidth matrix to Element Android and iOS by default once it&#x27;s standardised - but
+while things are still experimental, here&#x27;s a guide for how to build Element Android to do it
+yourself if you feel the urge.  This can be used as inspiration for other Matrix clients too.&lt;&#x2F;p&gt;
+&lt;p&gt;Prerequisites:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Android Studio&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;Steps:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Clone the repo: &lt;code&gt;git clone https:&#x2F;&#x2F;github.com&#x2F;vector-im&#x2F;element-android.git&lt;&#x2F;code&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;Checkout &lt;code&gt;kegan&#x2F;lb&lt;&#x2F;code&gt;: &lt;code&gt;git checkout kegan&#x2F;lb&lt;&#x2F;code&gt;. This branch replaces all HTTP traffic going to
+&lt;code&gt;&#x2F;_matrix&#x2F;client&#x2F;*&lt;&#x2F;code&gt; with LB traffic. &lt;code&gt;&#x2F;_matrix&#x2F;media&lt;&#x2F;code&gt; traffic is left untouched. This branch also
+disables TLS checks entirely so self-signed certificates will work.&lt;&#x2F;li&gt;
+&lt;li&gt;Clone the low bandwidth repo if you haven&#x27;t already:
+&lt;code&gt;git clone https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;lb.git&lt;&#x2F;code&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;In the low bandwidth repo, build the mobile bindings:&lt;pre style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot;&gt;&lt;code&gt;&lt;span&gt;go get golang.org&#x2F;x&#x2F;mobile&#x2F;cmd&#x2F;gomobile
+&lt;&#x2F;span&gt;&lt;span&gt;cd mobile
+&lt;&#x2F;span&gt;&lt;span&gt;# if gomobile isn&amp;#39;t on your path, then ~&#x2F;go&#x2F;bin&#x2F;gomobile
+&lt;&#x2F;span&gt;&lt;span&gt;gomobile bind -target=android
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;Copy the output files to a directory in the Element Android repo which Gradle will pick up:&lt;pre style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot;&gt;&lt;code&gt;&lt;span&gt;mkdir $PATH_TO_ELEMENT_ANDROID_REPO&#x2F;matrix-sdk-android&#x2F;libs
+&lt;&#x2F;span&gt;&lt;span&gt;cp mobile-sources.jar $PATH_TO_ELEMENT_ANDROID_REPO&#x2F;matrix-sdk-android&#x2F;libs
+&lt;&#x2F;span&gt;&lt;span&gt;cp mobile.aar $PATH_TO_ELEMENT_ANDROID_REPO&#x2F;matrix-sdk-android&#x2F;libs
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;Open the project in Android Studio.&lt;&#x2F;li&gt;
+&lt;li&gt;Build and run on a device&#x2F;emulator.&lt;&#x2F;li&gt;
+&lt;li&gt;Configure the proxy&#x27;s &lt;code&gt;--advertise&lt;&#x2F;code&gt; address. If you are running on a local device, restart the
+proxy with an &lt;code&gt;--advertise&lt;&#x2F;code&gt; of your machines LAN IP e.g 192.168.1.2 instead of 127.0.0.1.
+If you are running on an emulator, restart the proxy with an &lt;code&gt;--advertise&lt;&#x2F;code&gt; of the
+&lt;a href=&quot;https:&#x2F;&#x2F;developer.android.com&#x2F;studio&#x2F;run&#x2F;emulator-networking#networkaddresses&quot;&gt;host IP&lt;&#x2F;a&gt;:
+10.0.2.2. The URL scheme should be &lt;code&gt;https&lt;&#x2F;code&gt; not &lt;code&gt;http&lt;&#x2F;code&gt;, else image loading won&#x27;t work as Element
+Android won&#x27;t download media over &lt;code&gt;http&lt;&#x2F;code&gt;.&lt;&#x2F;li&gt;
+&lt;li&gt;Login to your matrix.org account via the proxy with the &lt;code&gt;--advertise&lt;&#x2F;code&gt; address as the HS URL
+e.g &lt;code&gt;https:&#x2F;&#x2F;192.168.1.2:8008&lt;&#x2F;code&gt; or &lt;code&gt;https:&#x2F;&#x2F;10.0.2.2:8008&lt;&#x2F;code&gt;. The port is important.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;To verify it is running via low bandwidth:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Install Wireshark.&lt;&#x2F;li&gt;
+&lt;li&gt;Restart the proxy with the environment variable &lt;code&gt;SSLKEYLOGFILE=ssl.log&lt;&#x2F;code&gt;.&lt;&#x2F;li&gt;
+&lt;li&gt;Run tcpdump on the right interface e.g: &lt;code&gt;sudo tcpdump -i en0 -s 0 -v port 8008 -w lb.pcap&lt;&#x2F;code&gt; &lt;&#x2F;li&gt;
+&lt;li&gt;Force stop the android app to forcibly close any existing DTLS connections.&lt;&#x2F;li&gt;
+&lt;li&gt;Re-open the app.&lt;&#x2F;li&gt;
+&lt;li&gt;Open &lt;code&gt;lb.pcap&lt;&#x2F;code&gt; in Wireshark and set &lt;code&gt;ssl.log&lt;&#x2F;code&gt; as the Pre-Master Secret log filename via
+Preferences -&amp;gt; Protocols -&amp;gt; TLS -&amp;gt; Pre-Master Secret log filename.&lt;&#x2F;li&gt;
+&lt;li&gt;Check there is DTLS&#x2F;CoAP traffic.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;h2 id=&quot;performance&quot;&gt;Performance&lt;&#x2F;h2&gt;
+&lt;p&gt;To send a single &#x27;Hello World&#x27; message to &lt;code&gt;&#x2F;room&#x2F;$room_id&#x2F;send&#x2F;m.room.message&#x2F;$txn_id&lt;&#x2F;code&gt;
+and receive the response, including connection setup:&lt;&#x2F;p&gt;
+&lt;table&gt;&lt;thead&gt;&lt;tr&gt;&lt;th&gt;Protocol&lt;&#x2F;th&gt;&lt;th&gt;Num packets&lt;&#x2F;th&gt;&lt;th&gt;Total bytes&lt;&#x2F;th&gt;&lt;&#x2F;tr&gt;&lt;&#x2F;thead&gt;&lt;tbody&gt;
+&lt;tr&gt;&lt;td&gt;HTTP2+JSON&lt;&#x2F;td&gt;&lt;td&gt;43&lt;&#x2F;td&gt;&lt;td&gt;6533&lt;&#x2F;td&gt;&lt;&#x2F;tr&gt;
+&lt;tr&gt;&lt;td&gt;CoAP+CBOR&lt;&#x2F;td&gt;&lt;td&gt;6&lt;&#x2F;td&gt;&lt;td&gt;1440&lt;&#x2F;td&gt;&lt;&#x2F;tr&gt;
+&lt;&#x2F;tbody&gt;&lt;&#x2F;table&gt;
+&lt;h2 id=&quot;limitations&quot;&gt;Limitations&lt;&#x2F;h2&gt;
+&lt;ul&gt;
+&lt;li&gt;CoAP &lt;a href=&quot;https:&#x2F;&#x2F;datatracker.ietf.org&#x2F;doc&#x2F;html&#x2F;rfc7641&quot;&gt;OBSERVE&lt;&#x2F;a&gt; is not enabled by default.
+This extension allows the server to push data to the client so the client doesn&#x27;t need to
+long-poll. It is not yet enabled because of the risk of state synchronisation issues between the
+proxy and the client. If the proxy gets restarted, the client will not receive sync updates
+until it refreshes its subscription, which happens infrequently. During this time the client
+is not aware that anything is wrong.&lt;&#x2F;li&gt;
+&lt;li&gt;CoAP uses &lt;a href=&quot;https:&#x2F;&#x2F;datatracker.ietf.org&#x2F;doc&#x2F;html&#x2F;rfc7959&quot;&gt;Blockwise Transfer&lt;&#x2F;a&gt; to download
+large responses. Each block must be ACKed before the next block can be sent. This is less
+efficient than TCP which has a Receive Window which allows multiple in-flight packets at
+once. This means CoAP is worse at downloading large responses, requiring more round trips
+to completely send the data.&lt;&#x2F;li&gt;
+&lt;li&gt;The current version of &lt;code&gt;&#x2F;sync&lt;&#x2F;code&gt; sends back much more data than is strictly necessary. This
+means the initial sync can be slower than expected. On a low kbps link this can flood the
+network with so much data that the sync stream begins to fall behind. Future work will look
+to optimise the sync API.&lt;&#x2F;li&gt;
+&lt;li&gt;The proxy currently doesn&#x27;t implement the &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-doc&#x2F;blob&#x2F;kegan&#x2F;low-bandwidth&#x2F;proposals&#x2F;3079-low-bandwidth-csapi.md#versioning&quot;&gt;low bandwidth response&lt;&#x2F;a&gt; in &lt;code&gt;&#x2F;versions&lt;&#x2F;code&gt;.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+</content>
+	</entry>
 	<entry xml:lang="en">
 		<title>Usage of matrix-nio (Python Sans IO)</title>
 		<published>2019-07-03T00:00:00+00:00</published>

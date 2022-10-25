@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="twitter:widgets:csp" content="on" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta name="twitter:site" content="@matrixdotorg" />
+    <meta name="twitter:creator" content="@matrixdotorg" />
+
+    <title>Matrix.org - Dendrite 0.4.0 Released</title>
+    <link rel="shortcut icon" href="/assets/favicon.ico" />
+    <link rel="icon" type="image/png" href="/assets/favicon.png" />
+    <link rel="stylesheet" href="/style.css" />
+
+    
+
+
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    "headline": "Dendrite 0.4.0 Released",
+    "datePublished": "2021-07-12T00:00+00:00",
+    
+    "author": [
+    
+    {
+        "@type": "Person",
+        "name": "Neil Alexander",
+        "url": "//authors/neil-alexander"
+    }
+    
+    ]
+}
+</script>
+</head>
+
+<body>
+    
+    <header class="site-header">
+    <a href="/" class="brand">
+        <img src="/images/matrix-logo.svg" alt="Matrix logo">
+    </a>
+    <input id="site-header-dropdown-checkbox" type="checkbox" class="dropdown-checkbox" aria-hidden="true">
+    <label for="site-header-dropdown-checkbox" class="dropdown-button">&#xe602;</label>
+    <label for="site-header-dropdown-checkbox" class="page-overlay"></label>
+    <nav>
+        
+        
+        <a href="&#x2F;about&#x2F;" class="
+            ">
+            About
+        </a>
+        
+        
+        
+        <a href="&#x2F;blog&#x2F;" class="
+            current">
+            Blog
+        </a>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;docs&#x2F;" class="section ">
+                Documentation
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;ecosystem&#x2F;" class="section ">
+                Ecosystem
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                    <a href="&#x2F;ecosystem&#x2F;clients&#x2F;">Clients</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;servers&#x2F;">Servers</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bots&#x2F;">Bots</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bridges&#x2F;">Bridges</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;sdks&#x2F;">SDKs</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;hosting&#x2F;">Hosting</a>
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        <a href="&#x2F;podcasts&#x2F;" class="
+            ">
+            Podcasts
+        </a>
+        
+        
+        
+        <a href="https:&#x2F;&#x2F;shop.matrix.org" class="
+            ">
+            Shop
+        </a>
+        
+        
+        
+        <a href="&#x2F;try-matrix&#x2F;" class="primary
+            ">
+            Try Matrix
+        </a>
+        
+        
+    </nav>
+</header>
+
+
+    <main>
+        
+<article class="content post with-sidebar">
+    <header>
+        <h1>Dendrite 0.4.0 Released</h1>
+        <span>12.07.2021 00:00 — <a
+                href="/category/releases">Releases</a>
+             — <a href="/author/neil-alexander">Neil Alexander</a>
+        </span>
+        
+    </header>
+    <div class="post-main">
+        <div class="post-content">
+            <p>After quite a significant gap between releases — version 0.3.11 was released at the beginning of March — we're happy to finally announce the release of Dendrite 0.4.0 today!</p>
+<p>The full changelog for the release is <a href="https://github.com/matrix-org/dendrite/releases/tag/v0.4.0">available on GitHub</a>, but we wanted to take the opportunity to talk a little about some of the changes that have gone into this release.</p>
+<p>Recently our release cadence for Dendrite has slowed as we have spent more time within the team working on <a href="https://github.com/matrix-org/pinecone">Pinecone</a> and <a href="https://github.com/matrix-org/lb">Low Bandwidth Matrix</a>. These are major areas of research for us which we hope will unlock a number of new opportunities within the Matrix ecosystem, allowing us to <a href="https://matrix.org/blog/2021/05/06/introducing-the-pinecone-overlay-network">build on Matrix anywhere</a> and to <a href="https://matrix.org/blog/2021/06/10/low-bandwidth-matrix-an-implementation-guide">reduce the protocol-level footprint</a>. However, Dendrite has not been forgotten amidst the excitement and we will be spending more time working on Dendrite again in the coming months.</p>
+<h3 id="state-storage">State storage</h3>
+<p>One of the major features in v0.4.0 is that we've introduced newly-refactored state storage in the roomserver database. The goal here is to make state storage significantly more efficient by ensuring that we deduplicate state  blocks and snapshots wherever we can. By ensuring that all state blocks and snapshots are ordered strictly, and by enforcing uniqueness constraints on the hashes of the blocks/snapshots, we've been able to achieve this.</p>
+<p>This was largely spurred on by watching <code>dendrite.matrix.org</code> consuming a rather alarming amount of disk space on a daily basis. In this particular instance, moving to the new state storage resulted in a 15x improvement on disk utilisation for state blocks and a further 2x improvement for state snapshot references immediately after the migration, and the growth rate of the database has slowed substantially since. </p>
+<p>Ensuring that we don't waste disk space is one of the most important factors in ensuring that Dendrite operates well at any scale — future datacentre deployments supporting many users will find storage overheads decreased and small/embedded single-user deployments (such as P2P, on mobile devices or in the browser) will fit much more effectively onto resource-constrained targets.</p>
+<p>After upgrading to v0.4.0, Dendrite will run an automatic migration to update your homeserver to the new state storage format. This might take a while on larger databases so please expect some downtime. </p>
+<h3 id="optimisations">Optimisations</h3>
+<p>We've continued to squeeze further optimisations into the federation and state resolution code, aiming to reduce the amount of CPU burn and memory utilisation. Some of the feedback that we receive most often from those that have been experimenting with the Dendrite betas is around the sudden spikes in resource usage, especially when joined to large rooms.</p>
+<p>The bulk of this resource usage comes either from attempting to reconcile missing events or running state resolution in rooms with lots of members, as potentially large state sets of events need to be brought into memory in order to do so. We've introduced some transaction-level caches for dealing with missing auth/prev events to reduce the memory pressure and we've also tweaked the caching around around <code>/get_missing_events</code> to ensure we don't duplicate any state events in memory.</p>
+<p>Resource spikes aren't completely eliminated but this should smooth out CPU and memory utilisation significantly. In the case of <code>dendrite.matrix.org</code>,  which is joined to some 6500 rooms at present, memory utilisation of the Dendrite process typically sits around 1.5GB at present. </p>
+<p>State Resolution v2 has also seen further optimisations in the power-level checking, which should reduce CPU usage even more.</p>
+<h3 id="bridges">Bridges</h3>
+<p>Thanks to Half-Shot's perseverance and contributions, we've merged a couple PRs and worked on some further fixes for getting Application Services working correctly in Dendrite. Whilst not entirely feature-complete and with a number of features still to go, enough support is now present to support basic bridging functionality.</p>
+<p>We've done quite a bit of preliminary testing with <a href="https://github.com/matrix-org/matrix-appservice-irc">matrix-appservice-irc</a> and have also heard a number of success stories from the community with <a href="https://github.com/tulir/mautrix-whatsapp">mautrix-whatsapp</a> and <a href="https://github.com/tulir/mautrix-telegram">mautrix-telegram</a>. Others may work too — let us know what you find!</p>
+<h3 id="bug-hunting">Bug-hunting</h3>
+<p>A number of bugs in various places (including the roomserver, federation API and media API) which could cause Dendrite to crash have also been fixed.  Some of these have been contributed by the community in pull requests, so we extend our thanks to anyone who has submitted a fix to the project.</p>
+<p>A special mention also goes to Jakob Varmose Bentzen for reporting a security issue to us around the legacy <code>/v1/register</code> endpoint, where a flaw in the legacy shared secret registration allowed malicious users to create accounts. We've since removed this legacy endpoint and the vulnerability is now fixed. </p>
+<h3 id="what-s-next">What's next</h3>
+<p>There are still a number of missing user-facing features which we will be working on over the coming months, as well as some architectural issues that we will look to address.</p>
+<p>A notable area of work involves attempting to remove the dependency on Kafka for polylith deployments. Kafka is very resource-heavy in operation and somewhat limits us to the types of interactions that we can perform between components. It's also very difficult to manage retention correctly, in the interests of not endlessly consuming disk space here either.</p>
+<p>As usual, Dendrite is still considered beta so you may not want to rely on it for production systems, although it should be stable enough to experiment with. If you find any bugs or anything that doesn't look right, please let us know:</p>
+<ul>
+<li><a href="https://matrix.to/#/#dendrite:matrix.org">#dendrite:matrix.org</a></li>
+<li><a href="https://github.com/matrix-org/dendrite/issues">GitHub Issues</a></li>
+</ul>
+<p>We're also open to contributions, so don't be afraid to open pull requests. Finally, thanks for your continued support!</p>
+<p>— Team Dendrite</p>
+
+        </div>
+        
+        <aside>
+            <h3>Post Contents</h3>
+
+            <ul style="list-style: none; padding-left: 0px;">
+                
+                <li>
+                    <a href="/blog/2021/07/12/dendrite-0-4-0-released/#state-storage">State storage</a>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2021/07/12/dendrite-0-4-0-released/#optimisations">Optimisations</a>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2021/07/12/dendrite-0-4-0-released/#bridges">Bridges</a>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2021/07/12/dendrite-0-4-0-released/#bug-hunting">Bug-hunting</a>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2021/07/12/dendrite-0-4-0-released/#what-s-next">What&#x27;s next</a>
+                    
+                </li>
+                
+            </ul>
+        </aside>
+        
+    </div>
+</article>
+
+    </main>
+
+    <footer class="site-footer">
+    <div class="internal-links">
+        
+        <a href="&#x2F;faq">FAQs</a>
+        
+        <a href="&#x2F;security-disclosure-policy">Security Disclosure Policy</a>
+        
+        <a href="&#x2F;hall-of-fame">Security Hall of Fame</a>
+        
+        <a href="&#x2F;legal&#x2F;code-of-conduct">Code of Conduct for Matrix.org</a>
+        
+        <a href="&#x2F;legal">Legal</a>
+        
+        <a href="&#x2F;contact">Contact</a>
+        
+        <a href="https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;">Site Source</a>
+        
+    </div>
+    <div class="external-links">
+        <div>
+            
+            <a href="&#x2F;code"><img src="/assets/github.svg" alt="GitHub"></a>
+            
+            <a href="https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;"><img src="/assets/gitlab.svg" alt="GitLab"></a>
+            
+            <a href="https:&#x2F;&#x2F;mastodon.matrix.org&#x2F;@matrix"><img src="/assets/mastodon.svg" alt="Mastodon"></a>
+            
+            <a href="https:&#x2F;&#x2F;twitter.com&#x2F;matrixdotorg"><img src="/assets/twitter.svg" alt="Twitter"></a>
+            
+            <a href="https:&#x2F;&#x2F;www.youtube.com&#x2F;channel&#x2F;UCVFkW-chclhuyYRbmmfwt6w"><img src="/assets/youtube.svg" alt="YouTube"></a>
+            
+        </div>
+    </div>
+    <p>© 2022 The Matrix.org Foundation C.I.C.</p>
+</footer>
+
+</body>
+
+</html>

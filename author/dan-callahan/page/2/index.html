@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="twitter:widgets:csp" content="on" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta name="twitter:site" content="@matrixdotorg" />
+    <meta name="twitter:creator" content="@matrixdotorg" />
+
+    <title>Matrix.org - Dan Callahan</title>
+    <link rel="shortcut icon" href="/assets/favicon.ico" />
+    <link rel="icon" type="image/png" href="/assets/favicon.png" />
+    <link rel="stylesheet" href="/style.css" />
+
+    
+<link rel="alternate" type="application/rss+xml" title="RSS" href="/author/dan-callahan/atom.xml">
+</head>
+
+<body>
+    
+    <header class="site-header">
+    <a href="/" class="brand">
+        <img src="/images/matrix-logo.svg" alt="Matrix logo">
+    </a>
+    <input id="site-header-dropdown-checkbox" type="checkbox" class="dropdown-checkbox" aria-hidden="true">
+    <label for="site-header-dropdown-checkbox" class="dropdown-button">&#xe602;</label>
+    <label for="site-header-dropdown-checkbox" class="page-overlay"></label>
+    <nav>
+        
+        
+        <a href="&#x2F;about&#x2F;" class="
+            ">
+            About
+        </a>
+        
+        
+        
+        <a href="&#x2F;blog&#x2F;" class="
+            ">
+            Blog
+        </a>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;docs&#x2F;" class="section ">
+                Documentation
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;ecosystem&#x2F;" class="section ">
+                Ecosystem
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                    <a href="&#x2F;ecosystem&#x2F;clients&#x2F;">Clients</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;servers&#x2F;">Servers</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bots&#x2F;">Bots</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bridges&#x2F;">Bridges</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;sdks&#x2F;">SDKs</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;hosting&#x2F;">Hosting</a>
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        <a href="&#x2F;podcasts&#x2F;" class="
+            ">
+            Podcasts
+        </a>
+        
+        
+        
+        <a href="https:&#x2F;&#x2F;shop.matrix.org" class="
+            ">
+            Shop
+        </a>
+        
+        
+        
+        <a href="&#x2F;try-matrix&#x2F;" class="primary
+            ">
+            Try Matrix
+        </a>
+        
+        
+    </nav>
+</header>
+
+
+    <main>
+        
+<div id="taxonomy-single">
+    <div class="content">
+        <header>
+            <h1>Dan Callahan</h1>
+            28 posts tagged with "Dan Callahan" <a href="/author">(See all Author)</a>
+            
+        </header>
+
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2021&#x2F;06&#x2F;15&#x2F;synapse-1-36-0-released&#x2F;" title="Synapse 1.36.0 released">Synapse 1.36.0 released</a></h2>
+                <span>
+                    15.06.2021 11:20
+                    —
+                    <a href="/category/releases">
+                        Releases
+                    </a>
+                    —
+                    <a
+                        href="/author/dan-callahan">
+                        Dan Callahan
+                    </a>
+                </span>
+                <br>
+                <small>Last update: 14.06.2021 23:14</small>
+            </header>
+            <div>
+                
+                <p>Synapse 1.36.0 is out, and it's a big one!</p>
+<h2 id="room-join-memory-improvements">Room Join Memory Improvements</h2>
+<p>We did it! Synapse no longer experiences a memory spike when joining large / complex rooms.</p>
+<p><img src="/blog/img/2021-06-15-synapse-1.36-join-memory.png" alt="Memory usage graph for Synapse 1.33 and 1.36" /></p>
+<p>These improvements mainly arise from processing join responses incrementally, rather than trying to load everything into memory at once. However, realizing these gains involved a fair bit of rewriting, as the entire processing pipeline had to work incrementally, and with appropriately sized batches, to avoid downstream bottlenecks. You can hear more about our original plans for this work in last month's Matrix Live: <a href="https://www.youtube.com/watch?v=694VuhmVmfo">S6E23 — Dan and Erik talk about Synapse</a>.</p>
+<h2 id="presence-improvements">Presence Improvements</h2>
+<p>Running presence on a single worker process is now expected to work correctly. This feature first debuted in <a href="/blog/2021/05/05/synapse-1-33-0-released">Synapse 1.33</a>, but a few bugs cropped up which could lead to presence state becoming outdated. With <a href="https://github.com/matrix-org/synapse/pull/10149">#10149</a> merged, we believe the last of these issues to be resolved.</p>
+<p>We had also noticed a recent increase in presence load on federation workers; this was ultimately tracked to two bugs, both fixed in this release: We were processing local presence via federation workers (<a href="https://github.com/matrix-org/synapse/pull/10163">#10163</a>) and we were occasionally sending duplicate presence updates (<a href="https://github.com/matrix-org/synapse/pull/10165">#10165)</a>.</p>
+<p>With both issues fixed, outgoing federation load has returned to normal levels:</p>
+<p><img src="/blog/img/2021-06-15-synapse-1.36-fed-sender-tx-rate.png" alt="Graph of outgoing federation transaction rate ranging from around 75 Hz down to under 25 Hz" /></p>
+<p>(Thank you to David Mehren for this graph from issue <a href="https://github.com/matrix-org/synapse/issues/10153">#10153</a>)</p>
+<h2 id="everything-else">Everything Else</h2>
+<p>Synapse now has two new Admin APIs for <a href="https://github.com/matrix-org/synapse/blob/v1.36.0/docs/admin_api/media_admin_api.md#unprotecting-media-from-being-quarantined">unprotecting</a> and <a href="https://github.com/matrix-org/synapse/blob/v1.36.0/docs/admin_api/media_admin_api.md#remove-media-from-quarantine-by-id">removing</a> media from quarantine, thanks to contributions by dklimpel.</p>
+<p>Synapse now implements the stable <code>/_matrix/client/r0/rooms/{roomId}/aliases</code> endpoint originally introduced by <a href="https://github.com/matrix-org/matrix-doc/pull/2432">MSC2432</a>, and, thanks to contributions by govynnus, makes the <code>reason</code> and <code>score</code> fields of event reports optional per <a href="https://github.com/matrix-org/matrix-doc/pull/2414">MSC2414</a>.</p>
+<p>These are just the highlights; please see the <a href="https://github.com/matrix-org/synapse/blob/v1.36.0/CHANGES.md">Release Notes</a> for a complete list of changes in this release.</p>
+<p>Synapse is a Free and Open Source Software project, and we'd like to extend our thanks to everyone who contributed to this release, including <a href="https://github.com/14mRh4X0r">14mRh4X0r</a>, <a href="https://github.com/aaronraimist">aaronraimist</a>, <a href="https://github.com/bradtgmurray">bradtgmurray</a>, <a href="https://github.com/crcastle">crcastle</a>, <a href="https://github.com/dklimpel">dklimpel</a>, <a href="https://github.com/govynnus">govynnus</a>, and <a href="https://github.com/RhnSharma">RhnSharma</a>.</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2021&#x2F;06&#x2F;01&#x2F;synapse-1-35-0-released&#x2F;" title="Synapse 1.35.0 released">Synapse 1.35.0 released</a></h2>
+                <span>
+                    01.06.2021 00:00
+                    —
+                    <a href="/category/releases">
+                        Releases
+                    </a>
+                    —
+                    <a
+                        href="/author/dan-callahan">
+                        Dan Callahan
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Synapse 1.35.0 is out! This release focused on improving internals as we drive toward better memory performance during room joins, but more on that below.</p>
+<blockquote>
+<p><strong>Update:</strong> <a href="https://github.com/matrix-org/synapse/releases/tag/v1.35.1">Synapse 1.35.1</a> was published on Thursday, June 3rd. It resolves a bug (<a href="https://github.com/matrix-org/synapse/issues/10109">#10109</a>) which mistakenly listed invite-only rooms in the Spaces summary.</p>
+<p>We'd also like to call the attention of client developers to a deprecation: The unstable prefixes used during development of <a href="https://github.com/matrix-org/matrix-doc/blob/master/proposals/2858-Multiple-SSO-Identity-Providers.md#unstable-prefix">MSC2858: Multiple SSO Identity Providers</a> will be removed from Synapse 1.38, due out in August. Please ensure your client supports the stable identifiers for this feature.</p>
+</blockquote>
+<h2 id="spaces-on-by-default">Spaces: On by Default</h2>
+<p>Following the successful release of <a href="/blog/2021/05/17/synapse-1-34-0-released">Synapse 1.34</a>, the experimental Spaces flag is now enabled by default. If you had manually enabled the <code>experimental_features: { spaces_enabled: true }</code> flag in your homeserver configuration, you may now remove it.</p>
+<h2 id="bug-squashing">Bug Squashing</h2>
+<p>This release of Synapse fixes an issue which could cause federated room joins to fail when the join response exceeded a size limit which was too low (<a href="https://github.com/matrix-org/synapse/pull/10082">#10082</a>). We've also improved what Synapse logs when it drops a connection in similar circumstances (<a href="https://github.com/matrix-org/synapse/pull/10091">#10091</a>), which should aid diagnosis if a similar issue were to arise in the future.</p>
+<p>GitHub user thermaq contributed a fix (<a href="https://github.com/matrix-org/synapse/pull/10014">#10014</a>) for a bug  which could cause user presence state to become stale.</p>
+<p>Lastly our OpenTracing support now allows for profiling end-to-end performance on a per-user basis (<a href="https://github.com/matrix-org/synapse/pull/9978">#9978</a>).</p>
+<h2 id="an-update-on-room-joins">An Update on Room Joins</h2>
+<p>We've been hammering away at shrinking Synapse's memory footprint when joining large / complex rooms, and while we're not there yet, the end is in sight! In particular, this release includes many internal refactorings, including using <a href="https://pypi.org/project/ijson/">ijson</a> to parse the JSON response to <code>/send_join</code> (<a href="https://github.com/matrix-org/synapse/pull/9958">#9958</a>), clearing the way for substantial improvements.</p>
+<p>Memory usage still spikes because we're effectively doing the same work with a different library, but ijson's design allows for iterative parsing. This will pay dividends once we modify the code downstream of <code>/send_join</code> to take advantage of it.</p>
+<p>Concretely, Erik Johnston has an experimental branch of Synapse which completely eliminates the memory spike:</p>
+<p><img src="/blog/img/2021-06-01-synapse-1.35-join-memory.png" alt="Memory usage graph for Synapse 1.33, 1.35, and an experimental branch" /></p>
+<p>The remaining work is centered on splitting that branch into self-contained, reviewable pull requests, like a rewrite of the Synapse Keyring class (<a href="https://github.com/matrix-org/synapse/pull/10035">#10035</a>). After that's merged, we'll need to make one further change to properly batch up work, at which point we should attain the efficiency gains from Erik's experiment.</p>
+<h2 id="everything-else">Everything Else</h2>
+<p>GitHub user savyajha contributed a security hardened systemd unit file which effectively sandboxes Synapse (<a href="https://github.com/matrix-org/synapse/pull/9803">#9803</a>). While not enabled by default, we'd encourage security conscious users to review the <a href="https://github.com/matrix-org/synapse/blob/v1.35.0/contrib/systemd/override-hardened.conf">example file</a> and associated <a href="https://github.com/matrix-org/synapse/blob/v1.35.0/docs/systemd-with-workers/README.md#hardening">documentation</a>.</p>
+<p>Please see the <a href="https://github.com/matrix-org/synapse/blob/v1.35.0/CHANGES.md">Release Notes</a> for a complete list of changes in this release.</p>
+<p>Synapse is a Free and Open Source Software project, and we'd like to extend our thanks to everyone who contributed to this release, including <a href="https://github.com/dklimpel">dklimpel</a>, <a href="https://github.com/jerinjtitus">jerinjtitus</a>, <a href="https://github.com/junquera">junquera</a>, <a href="https://github.com/lonyeon">lonyeon</a>, <a href="https://github.com/savyajha">savyajha</a>, and <a href="https://github.com/thermaq">thermaq</a>.</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2021&#x2F;05&#x2F;17&#x2F;synapse-1-34-0-released&#x2F;" title="Synapse 1.34.0 released">Synapse 1.34.0 released</a></h2>
+                <span>
+                    17.05.2021 16:45
+                    —
+                    <a href="/category/releases">
+                        Releases
+                    </a>
+                    —
+                    <a
+                        href="/author/dan-callahan">
+                        Dan Callahan
+                    </a>
+                </span>
+                <br>
+                <small>Last update: 17.05.2021 15:13</small>
+            </header>
+            <div>
+                
+                <p>Synapse 1.34.0 is now available, and it's loaded with new features and performance improvements.</p>
+<blockquote>
+<p><strong>Note:</strong> This release deprecates and replaces the <code>room_invite_state_types</code> configuration option. If you've customized that for your homeserver, please review the <a href="https://github.com/matrix-org/synapse/blob/v1.34.0/UPGRADE.rst#upgrading-to-v1340">Upgrade Notes</a>.</p>
+<p>We've also marked the v1 room deletion Admin API as deprecated. Instead of sending a <code>POST</code> to a path ending in <code>/delete</code>, administrators are encourage to instead send an HTTP <code>DELETE</code> to <code>/_synapse/admin/v1/rooms/&lt;room_id&gt;</code>. Thanks to ThibF for implementing this (<a href="https://github.com/matrix-org/synapse/pull/9889">#9889</a>).</p>
+</blockquote>
+<h2 id="spaces">Spaces</h2>
+<p>The highlight of this release is support for Spaces, now that <a href="https://github.com/matrix-org/matrix-doc/pull/1772">MSC1772: Matrix Spaces</a> has merged into the Matrix spec!</p>
+<p>Synapse also has support for <a href="https://github.com/matrix-org/matrix-doc/pull/2946">MSC2946: Spaces Summary</a> and <a href="https://github.com/matrix-org/matrix-doc/pull/3083">MSC3083: Restricting room membership based on space membership</a>, but these are off by default as they're still under development. To enable these experimental MSCs, set <code>experimental_features: { spaces_enabled: true }</code> in your homeserver configuration. These <em>are</em> enabled on the matrix.org homeserver, and we encourage you to experiment with Spaces there and let us know in the <a href="https://matrix.to/#/#spaces-feedback:matrix.org">Spaces Feedback Room</a> if you encounter any issues.</p>
+<h2 id="memory-and-caching">Memory and Caching</h2>
+<p>Memory consumption and caching have been a major focus of the Synapse team this quarter, and we've made significant strides:</p>
+<ul>
+<li>Synapse has a new <code>gc_min_interval</code> <a href="https://github.com/matrix-org/synapse/blob/v1.34.0/docs/sample_config.yaml#L155-L163">configuration option</a> with reasonable defaults to prevent Python's garbage collector from running too frequently and thrashing when a large homeserver has its collection thresholds set too low.</li>
+<li>Synapse will report <a href="https://github.com/matrix-org/synapse/pull/9882">memory allocation stats</a> to Prometheus when using jemalloc.</li>
+<li>Synapse will also <a href="https://github.com/matrix-org/synapse/pull/9904">measure Redis cache response times</a> and report those to Prometheus.</li>
+<li>For debugging, Synapse can <a href="https://github.com/matrix-org/synapse/pull/9881">optionally track</a> the memory use of each LruCache.</li>
+</ul>
+<p>We have a few more tricks up our sleeves; to learn more about how we're planning to improve the memory cost of joining large rooms, check out last week's <a href="https://www.youtube.com/watch?v=694VuhmVmfo">Matrix Live</a>.</p>
+<h2 id="other-fixes-and-improvements">Other Fixes and Improvements</h2>
+<p>We've also landed significant improvements to:</p>
+<ul>
+<li>Sending events when Redis is available (<a href="https://github.com/matrix-org/synapse/issues/9905">#9905</a>, <a href="https://github.com/matrix-org/synapse/issues/9950">#9950</a>, <a href="https://github.com/matrix-org/synapse/issues/9951">#9951</a>)</li>
+<li>Joining large rooms when presence is enabled (<a href="https://github.com/matrix-org/synapse/issues/9910">#9910</a>, <a href="https://github.com/matrix-org/synapse/issues/9916">#9916</a>)</li>
+<li>Backfilling history in large rooms (<a href="https://github.com/matrix-org/synapse/issues/9935">#9935</a>)</li>
+</ul>
+<p>...and fixed bugs that:</p>
+<ul>
+<li>Prevented cross-account <code>m.room_key_request</code> messages from being delivered (<a href="https://github.com/matrix-org/synapse/issues/9961">#9961</a>, <a href="https://github.com/matrix-org/synapse/issues/9965">#9965</a>)</li>
+<li>Incorrectly applied room creation / invitation rate limits to users and app services which <em>should</em> have been exempt (<a href="https://github.com/matrix-org/synapse/issues/9968">#9968</a>)</li>
+</ul>
+<p>The health check on our Docker images now responds more quickly upon successful startup thanks to improvements by maquis196 (<a href="https://github.com/matrix-org/synapse/pull/9913">#9913</a>), and for especially privacy-conscious homeservers, device names can now be shielded over federation thanks to a contribution by aaronraimist (<a href="https://github.com/matrix-org/synapse/pull/9945">#9945</a>).</p>
+<h2 id="new-access-token-format">New Access Token Format</h2>
+<p>Inspired by <a href="https://github.blog/2021-04-05-behind-githubs-new-authentication-token-formats/">GitHub's new token format</a>, we've <a href="https://github.com/matrix-org/synapse/pull/5588">restructured Synapse's access token format</a> to follow the pattern:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>syt_&lt;UnpaddedBase64MXIDLocalPart&gt;_&lt;20RandomLetters&gt;_&lt;CRC32&gt;
+</span></code></pre>
+<p>So a token for <code>@example:matrix.org</code> might look like:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>syt_ZXhhbXBsZQ_KfJetOcLWEKCvYdKnQLV_0i3W80
+</span></code></pre>
+<p>Existing tokens remain valid; this is just for new tokens. We hope the new format reduces network overhead while also making it easier identify misplaced tokens in logs and repositories.</p>
+<h2 id="everything-else">Everything Else</h2>
+<p>See the <a href="https://github.com/matrix-org/synapse/blob/v1.34.0/UPGRADE.rst#upgrading-to-v1340">Upgrading Instructions</a> and <a href="https://github.com/matrix-org/synapse/blob/v1.34.0/CHANGES.md">Release Notes</a> for further information on this release.</p>
+<p>Synapse is a Free and Open Source Software project, and we'd like to extend our thanks to everyone who contributed to this release, including <a href="https://github.com/aaronraimist">aaronraimist</a>, <a href="https://github.com/maquis196">maquis196</a>, and <a href="https://github.com/ThibF">ThibF</a>.</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2021&#x2F;05&#x2F;11&#x2F;synapse-1-33-2-released&#x2F;" title="Synapse 1.33.2 released">Synapse 1.33.2 released</a></h2>
+                <span>
+                    11.05.2021 23:53
+                    —
+                    <a href="/category/releases">
+                        Releases
+                    </a>
+                    —
+                    <a
+                        href="/author/dan-callahan">
+                        Dan Callahan
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p><a href="https://github.com/matrix-org/synapse/releases/tag/v1.33.2">Synapse 1.33.2</a> is now available.</p>
+<p>This release fixes a denial of service issue (<a href="https://github.com/matrix-org/synapse/security/advisories/GHSA-x345-32rc-8h85">CVE-2021-29471</a>) where evaluating specially crafted push rules could lead to excessive CPU load. Server administrators are encouraged to upgrade.</p>
+<p>To learn more about Synapse 1.33, see last week's <a href="/blog/2021/05/05/synapse-1-33-0-released">release announcement</a>.</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2021&#x2F;05&#x2F;05&#x2F;synapse-1-33-0-released&#x2F;" title="Synapse 1.33.0 released">Synapse 1.33.0 released</a></h2>
+                <span>
+                    05.05.2021 00:00
+                    —
+                    <a href="/category/releases">
+                        Releases
+                    </a>
+                    —
+                    <a
+                        href="/author/dan-callahan">
+                        Dan Callahan
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Synapse 1.33.0 is out! Three main items of note:</p>
+<ol>
+<li>
+<p>We plan to release <del>1.33.1</del> <ins>1.33.2</ins> with a <strong>low severity security fix</strong> on Tuesday next week, and we're interested in your thoughts on decoupling routine security fixes from normal releases. Please weigh in on <a href="https://github.com/matrix-org/synapse/discussions/9914">this discussion</a>.</p>
+<p><em><strong>Note:</strong> We shipped 1.33.1 with a <a href="https://github.com/matrix-org/synapse/issues/9936">small dependency fix</a> when installing Synapse via <code>pip</code>. A security release is still planned for Tuesday, which will now be 1.33.2.</em></p>
+</li>
+<li>
+<p>If you use Synapse's optional account revalidation feature (see <code>account_validity</code> in <a href="https://github.com/matrix-org/synapse/blob/v1.33.0/docs/sample_config.yaml#L1373-L1455">config.yaml</a>), you'll want to review the <a href="https://github.com/matrix-org/synapse/blob/v1.33.0/UPGRADE.rst#upgrading-to-v1330">upgrading instructions</a> as we've made a few small changes to the email templates it uses.</p>
+</li>
+<li>
+<p>Synapse now has <em>very</em> experimental support for moving presence off of the main process. This has not yet been extensively validated, so please proceed with caution. We expect to get this to a point where we can confidently recommend it in the coming weeks.</p>
+</li>
+</ol>
+<p>Otherwise, this is another release focused on internals. We're driving toward a goal of reducing excess memory consumption when joining large or complex rooms, and most of our effort (aside from the presence work) has been focused on measurement, instrumentation, and experimentation for that.</p>
+<p>We did manage to <a href="https://github.com/matrix-org/synapse/pull/9825">slightly speed up room joins</a>, improve the <a href="https://github.com/matrix-org/synapse/pull/9821">performance of the user directory</a>, and refine our implementation of <a href="https://github.com/matrix-org/matrix-doc/pull/3083">MSC3083</a>. Additionally, thanks to work by ShadowJonathan, Synapse now passes all of <code>flake8-bugbear</code>'s <a href="https://github.com/PyCQA/flake8-bugbear">lints</a>.</p>
+<p>See the <a href="https://github.com/matrix-org/synapse/blob/v1.33.0/UPGRADE.rst#upgrading-to-v1330">Upgrading Instructions</a> and <a href="https://github.com/matrix-org/synapse/blob/v1.33.0/CHANGES.md">Release Notes</a> for further information.</p>
+<h3 id="thank-you">Thank You</h3>
+<p>Synapse is a Free and Open Source Software project, and we'd like to extend our thanks to everyone who contributed to this release, including <a href="https://github.com/rkfg">rkfg</a>, and <a href="https://github.com/ShadowJonathan">ShadowJonathan</a>.</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2021&#x2F;04&#x2F;22&#x2F;synapse-1-32-2-released&#x2F;" title="Synapse 1.32.2 released">Synapse 1.32.2 released</a></h2>
+                <span>
+                    22.04.2021 18:16
+                    —
+                    <a href="/category/releases">
+                        Releases
+                    </a>
+                    —
+                    <a
+                        href="/author/dan-callahan">
+                        Dan Callahan
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Synapse 1.32.2 is out! <strong>Synapse now requires Python 3.6</strong> (or later) and we've made a few small changes which you should be aware of before upgrading. These are documented in the <a href="https://github.com/matrix-org/synapse/blob/v1.32.2/UPGRADE.rst#upgrading-to-v1320">upgrade notes</a>.</p>
+<blockquote>
+<p><strong>Note:</strong> We scrubbed the releases of Synapse 1.32.0 and 1.32.1 as we discovered a pair of regressions including <a href="https://github.com/matrix-org/synapse/issues/9853">a bug</a> with Prometheus metrics after tagging the release. These have been resolved.</p>
+</blockquote>
+<p>On Monday, humankind flew a helicopter on Mars. And while our pursuit of <a href="https://github.com/matrix-org/matrix-doc/pull/1772">Space(s)</a> is considerably more modest, it is nevertheless progressing apace: Synapse 1.32 includes an experimental implementation of <a href="https://github.com/matrix-org/matrix-doc/pull/3083">MSC3083</a>.</p>
+<p>This release also includes a <a href="https://github.com/matrix-org/synapse/pull/9491">new Synapse module</a> for routing of presence updates, which can allow devices to share presence information without requiring that they also share a room. Please note there are some <a href="https://github.com/matrix-org/synapse/pull/9823">nuances to worker configuration</a> when using this module which we hope to iron out in a future release.</p>
+<p>The Admin API is newly able to <a href="https://github.com/matrix-org/synapse/blob/v1.32.2/docs/admin_api/user_admin_api.rst#override-ratelimiting-for-users">manage rate limits</a>, and the user listing endpoint can finally <a href="https://github.com/matrix-org/synapse/pull/9691">sort its results</a> by a variety of criteria.</p>
+<p>Otherwise, this is again a very internals-focused release: many additional type hints, <a href="https://github.com/matrix-org/synapse/pull/9654">improvements to structured logging</a>, and small cleanups, especially those possible now that we've left Python 3.5 behind. We've made changes to how we check whether accounts are <a href="https://github.com/matrix-org/synapse/pull/9711">exempt from rate limits</a> to avoid cases where we mistakenly applied limits to Application Services which should have been exempt, and we've fixed a bug with sharded federation senders which could occasionally <a href="https://github.com/matrix-org/synapse/pull/9770">pin the CPU</a>.</p>
+<p>See the <a href="https://github.com/matrix-org/synapse/blob/v1.32.2/UPGRADE.rst#upgrading-to-v1320">Upgrading Instructions</a> and <a href="https://github.com/matrix-org/synapse/blob/v1.32.2/CHANGES.md#synapse-1322-2021-04-22">Release Notes</a> for further information.</p>
+<h3 id="thank-you">Thank You</h3>
+<p>Synapse is a Free and Open Source Software project, and we'd like to extend our thanks to everyone who contributed to this release, including <a href="https://github.com/dklimpel">dklimpel</a>, <a href="https://github.com/languitar">languitar</a>, <a href="https://github.com/ShadowJonathan">ShadowJonathan</a>, and <a href="https://github.com/xmunoz">xmunoz</a>.</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2021&#x2F;04&#x2F;06&#x2F;synapse-1-31-0-released&#x2F;" title="Synapse 1.31.0 released">Synapse 1.31.0 released</a></h2>
+                <span>
+                    07.04.2021 00:00
+                    —
+                    <a href="/category/releases">
+                        Releases
+                    </a>
+                    —
+                    <a
+                        href="/author/dan-callahan">
+                        Dan Callahan
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>We've released <a href="https://github.com/matrix-org/synapse/releases/tag/v1.31.0">Synapse 1.31.0</a>!</p>
+<p>Mainly internal changes this time (type hints, code lints, etc.) but we've also landed <a href="https://github.com/matrix-org/synapse/pull/9643">some</a> <a href="https://github.com/matrix-org/synapse/pull/9652">initial</a> <a href="https://github.com/matrix-org/synapse/pull/9653">work</a> on <a href="https://github.com/matrix-org/matrix-doc/pull/2946">MSC2946: Spaces Summary</a>. And speaking of MSCs, Synapse 1.31 has an experimental flag which can enable support for the draft <a href="https://github.com/matrix-org/matrix-doc/pull/3026">MSC3026: &quot;busy&quot; presence state</a>.</p>
+<p>Synapse 1.31 can now restrict OpenID Connect logins based on <a href="https://github.com/matrix-org/synapse/pull/9609">userinfo attributes</a> (Thanks, HubbeKing!).</p>
+<p>This release <a href="https://github.com/matrix-org/synapse/pull/9634">fixes a rare infinite loop</a> when fetching cross-signing keys or handling device list updates, and <a href="https://github.com/matrix-org/synapse/pull/9640">further</a> <a href="https://github.com/matrix-org/synapse/pull/9639">improves</a> the speed of federation catchup. It also makes Admin APIs around user reactivation <a href="https://github.com/matrix-org/synapse/pull/9636">behave correctly</a> when account passwords are disabled.</p>
+<p>See the  <a href="https://github.com/matrix-org/synapse/releases/tag/v1.31.0">Release Notes</a> for further information.</p>
+<h3 id="the-final-python-3-5-release">The Final Python 3.5 Release</h3>
+<p>This is the last release of Synapse to support Python 3.5 or PostgreSQL 9.5, and the last release of official packages for Debian 9 (Stretch) and Ubuntu 16.04 LTS (Xenial).</p>
+<p>Future releases of Synapse will follow upstream end-of-life dates for <a href="https://endoflife.date/python">Python</a> and <a href="https://endoflife.date/postgresql">Postgres</a>.</p>
+<p>Accordingly, we anticipate ending support for Python 3.6 and PostgreSQL 9.6 in December of this year. We will also cease producing packages for Ubuntu 18.04 LTS (Bionic) at that time.</p>
+<h3 id="thank-you">Thank You</h3>
+<p>Synapse is a Free and Open Source Software project, and we'd like to extend our thanks to everyone who contributed to this release, including <a href="http://github.com/ankitdobhal">ankitdobhal</a>, <a href="http://github.com/blakehawkins">blakehawkins</a>, <a href="http://github.com/dklimpel">dklimpel</a>, <a href="http://github.com/fuzzmz">fuzzmz</a>, <a href="http://github.com/HubbeKing">HubbeKing</a>, <a href="http://github.com/languitar">languitar</a>, <a href="http://github.com/sandhose">sandhose</a>, and <a href="http://github.com/ShadowJonathan">ShadowJonathan</a>.</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2021&#x2F;03&#x2F;26&#x2F;synapse-1-30-1-released&#x2F;" title="Synapse 1.30.1 released">Synapse 1.30.1 released</a></h2>
+                <span>
+                    26.03.2021 16:12
+                    —
+                    <a href="/category/releases">
+                        Releases
+                    </a>
+                    —
+                    <a
+                        href="/author/dan-callahan">
+                        Dan Callahan
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p><a href="https://github.com/matrix-org/synapse/releases/tag/v1.30.1">Synapse 1.30.1</a> is now available. This release is identical to Synapse 1.30.0, with the exception of explicitly setting a minimum version of the Python Cryptography library to ensure that users of Synapse are protected from yesterday's <a href="https://mta.openssl.org/pipermail/openssl-announce/2021-March/000198.html">OpenSSL security advisories</a>, especially CVE-2021-3449.</p>
+<p>Note that Cryptography defaults to bundling its own statically linked copy of OpenSSL, which means that you may not be protected by your operating system's security updates.</p>
+<p>It's also worth noting that Cryptography no longer supports Python 3.5, so admins deploying to older environments like Debian 9 (Stretch) or Ubuntu 16.04 (Xenial) may not be protected against this or future vulnerabilities.</p>
+<p>The next release of Synapse will be the last to support Python 3.5.</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2021&#x2F;03&#x2F;22&#x2F;synapse-1-30-0-released&#x2F;" title="Synapse 1.30.0 released">Synapse 1.30.0 released</a></h2>
+                <span>
+                    22.03.2021 16:56
+                    —
+                    <a href="/category/releases">
+                        Releases
+                    </a>
+                    —
+                    <a
+                        href="/author/dan-callahan">
+                        Dan Callahan
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>We've released <a href="https://github.com/matrix-org/synapse/releases/tag/v1.30.0">Synapse 1.30.0</a>!</p>
+<p>A key theme of this release was stability and resilience around federation. We've landed changes to be <a href="https://github.com/matrix-org/synapse/pull/9561">less eager about entering catch up mode</a> and to <a href="https://github.com/matrix-org/synapse/pull/9567">retry on HTTP 500 errors</a>, while also <a href="https://github.com/matrix-org/synapse/pull/9597">rejecting transactions</a> which arrive before we've completed processing earlier transactions from that same server. We've significantly <a href="https://github.com/matrix-org/synapse/pull/9601">optimized how we handle missing events</a> when receiving incoming federation traffic, and we've found a way to <a href="https://github.com/matrix-org/synapse/pull/9576">re-use the chain cover index</a> (from <a href="https://matrix.org/blog/2021/01/28/synapse-1-26-0-released">Synapse 1.26</a>) when responding to the <code>state_ids</code> endpoint.</p>
+<p>That last one turns out to be a pretty big deal: we've seen an order of magnitude improvement in both the CPU and DB cost of the <code>state_ids</code> endpoint. For example, the average CPU usage by that endpoint on matrix.org dropped from few seconds to well under 100ms:</p>
+<p><img src="/blog/img/2021-03-22-synapse-1.30rc1-state_ids-cpu.png" alt="CPU usage graph" /></p>
+<p>Enjoy. 🙂</p>
+<p>This release also includes further improves to our SSO support, including allowing spam checkers to <a href="https://github.com/matrix-org/synapse/pull/9626">distinguish between new registrations and first-time SSO users</a> and <a href="https://github.com/matrix-org/synapse/pull/9587">fixing account reactivation when local passwords are disabled</a>. Now that <em><a href="https://github.com/matrix-org/matrix-doc/pull/2858">MSC2858: Multiple SSO Identity Providers</a></em> has passed its Final Comment Period, we've also updated Synapse to respond to the stable versions of endpoints introduced by that MSC.</p>
+<p>See the  <a href="https://github.com/matrix-org/synapse/releases/tag/v1.30.0">Release Notes</a> for further information.</p>
+<h3 id="python-platform-deprecations">Python / Platform Deprecations</h3>
+<p>As a reminder, the next release of Synapse (1.31, scheduled for April 5th) will be the last to support Python 3.5 or PostgreSQL 9.5, both of which have reached their upstream end of life.</p>
+<p>We will also cease building packages for Ubuntu 16.04 (Xenial) and Debian 9 (Stretch) at the same time.</p>
+<h3 id="application-service-registration-changes">Application Service Registration Changes</h3>
+<p>Note that Application Services <em>must</em> provide a <code>type</code> parameter with the value <code>&quot;m.login.application_service&quot;</code> when calling <code>POST /_matrix/client/r0/register</code>. Synapse currently allows registration without an explicit <code>type</code>, but this <a href="https://github.com/matrix-org/synapse/pull/9548">divergence from the spec</a> will be resolved in a future release.</p>
+<h3 id="thanks">Thanks</h3>
+<p>Synapse is a Free and Open Source Software project, and we'd like to extend our thanks to everyone who contributed to this release, including <a href="https://github.com/dklimpel">dklimpel</a>, <a href="https://github.com/ShadowJonathan">ShadowJonathan</a>, and <a href="https://github.com/tlvb">tlvb</a>.</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2021&#x2F;03&#x2F;08&#x2F;synapse-1-29-0-released&#x2F;" title="Synapse 1.29.0 released">Synapse 1.29.0 released</a></h2>
+                <span>
+                    08.03.2021 22:26
+                    —
+                    <a href="/category/releases">
+                        Releases
+                    </a>
+                    —
+                    <a
+                        href="/author/dan-callahan">
+                        Dan Callahan
+                    </a>
+                </span>
+                <br>
+                <small>Last update: 08.03.2021 17:42</small>
+            </header>
+            <div>
+                
+                <p><a href="https://github.com/matrix-org/synapse/releases/tag/v1.29.0">Synapse 1.29.0</a> is now available!</p>
+<p>This release includes several useful new configuration options for administrators of federated home servers. In all cases, the defaults match Synapse's prior behavior.</p>
+<ul>
+<li>AndrewFerr <a href="https://github.com/matrix-org/synapse/pull/9203">implemented</a> <code>include_profile_data_on_invite</code> and <code>allow_profile_lookup_over_federation</code> which can limit disclosure of your users' profile information. These both default to True.</li>
+<li>We've also <a href="https://github.com/matrix-org/synapse/pull/9383">implemented</a> <code>user_directory.prefer_local_users</code> which weights users on the same homeserver higher in directory searches. This defaults to False.</li>
+</ul>
+<p>Synapse is now easier to run in proxied environments, with tzyl <a href="https://github.com/matrix-org/synapse/pull/9372">implementing</a> support for the <code>NO_PROXY</code> environment variable, as well as recognizing lowercase variants of that and related proxy variables.</p>
+<p>Under the hood, we've been steadily improving our type hints, especially in light of the recent release of Twisted 21.2.0 which includes its own type annotations. We've also landed <a href="https://github.com/matrix-org/synapse/pull/9402">some improvements</a> which reduce the amount of work Synapse does when presence is enabled and you join a room for the first time. Oh, and the media repository now <a href="https://github.com/matrix-org/synapse/pull/9438">regenerates missing thumbnails</a> on demand.</p>
+<p>Lastly, if you deploy Synapse behind a reverse proxy, Synapse now expects to receive an <code>X-Forwarded-Proto</code> header on incoming requests and will log a warning if it is missing. See the <a href="https://github.com/matrix-org/synapse/blob/release-v1.29.0/UPGRADE.rst#upgrading-to-v1290">upgrade notes</a> for more information. The <a href="https://github.com/matrix-org/synapse/blob/release-v1.29.0/CHANGES.md">full changelog</a> has more information on what's in this release.</p>
+<p>Synapse is a Free and Open Source Software project, and we'd like to extend our thanks to everyone who contributed to this release, including <a href="https://github.com/aaronraimist">aaronraimist</a>, <a href="https://github.com/AndrewFerr">AndrewFerr</a>, <a href="https://github.com/dklimpel">dklimpel</a>, <a href="https://github.com/ShadowJonathan">ShadowJonathan</a>, and <a href="https://github.com/tzyl">tzyl</a>.</p>
+
+                
+            </div>
+        </article>
+        
+        <nav class="pagination">
+    <div class="prev">
+        
+        <a href="&#x2F;author&#x2F;dan-callahan&#x2F;">‹ Previous</a>
+        
+    </div>
+    <span class="page-number">2 / 3</span>
+    <div class="prev">
+        
+        <a href="&#x2F;author&#x2F;dan-callahan&#x2F;page&#x2F;3&#x2F;">Next ›</a>
+        
+    </div>
+</nav>
+
+    </div>
+</div>
+
+    </main>
+
+    <footer class="site-footer">
+    <div class="internal-links">
+        
+        <a href="&#x2F;faq">FAQs</a>
+        
+        <a href="&#x2F;security-disclosure-policy">Security Disclosure Policy</a>
+        
+        <a href="&#x2F;hall-of-fame">Security Hall of Fame</a>
+        
+        <a href="&#x2F;legal&#x2F;code-of-conduct">Code of Conduct for Matrix.org</a>
+        
+        <a href="&#x2F;legal">Legal</a>
+        
+        <a href="&#x2F;contact">Contact</a>
+        
+        <a href="https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;">Site Source</a>
+        
+    </div>
+    <div class="external-links">
+        <div>
+            
+            <a href="&#x2F;code"><img src="/assets/github.svg" alt="GitHub"></a>
+            
+            <a href="https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;"><img src="/assets/gitlab.svg" alt="GitLab"></a>
+            
+            <a href="https:&#x2F;&#x2F;mastodon.matrix.org&#x2F;@matrix"><img src="/assets/mastodon.svg" alt="Mastodon"></a>
+            
+            <a href="https:&#x2F;&#x2F;twitter.com&#x2F;matrixdotorg"><img src="/assets/twitter.svg" alt="Twitter"></a>
+            
+            <a href="https:&#x2F;&#x2F;www.youtube.com&#x2F;channel&#x2F;UCVFkW-chclhuyYRbmmfwt6w"><img src="/assets/youtube.svg" alt="YouTube"></a>
+            
+        </div>
+    </div>
+    <p>© 2022 The Matrix.org Foundation C.I.C.</p>
+</footer>
+
+</body>
+
+</html>

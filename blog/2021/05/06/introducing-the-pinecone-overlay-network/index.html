@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="twitter:widgets:csp" content="on" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta name="twitter:site" content="@matrixdotorg" />
+    <meta name="twitter:creator" content="@matrixdotorg" />
+
+    <title>Matrix.org - Introducing the Pinecone overlay network</title>
+    <link rel="shortcut icon" href="/assets/favicon.ico" />
+    <link rel="icon" type="image/png" href="/assets/favicon.png" />
+    <link rel="stylesheet" href="/style.css" />
+
+    
+
+
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    "headline": "Introducing the Pinecone overlay network",
+    "datePublished": "2021-05-06T00:00+00:00",
+    
+    "author": [
+    
+    {
+        "@type": "Person",
+        "name": "Neil Alexander",
+        "url": "//authors/neil-alexander"
+    }
+    
+    ]
+}
+</script>
+</head>
+
+<body>
+    
+    <header class="site-header">
+    <a href="/" class="brand">
+        <img src="/images/matrix-logo.svg" alt="Matrix logo">
+    </a>
+    <input id="site-header-dropdown-checkbox" type="checkbox" class="dropdown-checkbox" aria-hidden="true">
+    <label for="site-header-dropdown-checkbox" class="dropdown-button">&#xe602;</label>
+    <label for="site-header-dropdown-checkbox" class="page-overlay"></label>
+    <nav>
+        
+        
+        <a href="&#x2F;about&#x2F;" class="
+            ">
+            About
+        </a>
+        
+        
+        
+        <a href="&#x2F;blog&#x2F;" class="
+            current">
+            Blog
+        </a>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;docs&#x2F;" class="section ">
+                Documentation
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;ecosystem&#x2F;" class="section ">
+                Ecosystem
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                    <a href="&#x2F;ecosystem&#x2F;clients&#x2F;">Clients</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;servers&#x2F;">Servers</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bots&#x2F;">Bots</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bridges&#x2F;">Bridges</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;sdks&#x2F;">SDKs</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;hosting&#x2F;">Hosting</a>
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        <a href="&#x2F;podcasts&#x2F;" class="
+            ">
+            Podcasts
+        </a>
+        
+        
+        
+        <a href="https:&#x2F;&#x2F;shop.matrix.org" class="
+            ">
+            Shop
+        </a>
+        
+        
+        
+        <a href="&#x2F;try-matrix&#x2F;" class="primary
+            ">
+            Try Matrix
+        </a>
+        
+        
+    </nav>
+</header>
+
+
+    <main>
+        
+<article class="content post">
+    <header>
+        <h1>Introducing the Pinecone overlay network</h1>
+        <span>06.05.2021 00:00 — <a
+                href="/category/tech">Tech</a>
+             — <a href="/author/neil-alexander">Neil Alexander</a>
+        </span>
+        
+    </header>
+    <div class="post-main">
+        <div class="post-content">
+            <p>Since the end of 2019, we have spent quite a bit of time thinking about and exploring different technologies whilst building various demos for P2P Matrix.  Our mission for P2P Matrix is to evolve Matrix into a hybrid between today's server-oriented network and a pure P2P network - empowering users to have <strong>total</strong> autonomy and privacy over their data if they want (by storing it in P2P Matrix, by embedding their server into their Matrix client), while also letting users store their data in serverside nodes if they so desire.</p>
+<p>The goal is to protect metadata much better (as users no longer have to depend on a server run by someone else to communicate), as well as drive new features such as account portability, multi-homed accounts, low-bandwidth Matrix and smarter federation transports - and provide support for internet-less mesh communication via Matrix which can also interoperate with the wider network.  You can read more about it in our <a href="https://matrix.org/blog/2020/06/02/introducing-p-2-p-matrix/">Introducing P2P Matrix</a> blog post from last summer, or watch our <a href="https://fosdem.org/2021/schedule/event/matrix_pinecones/">FOSDEM 2021 talk</a> where we previewed Pinecone.  It's important to note that this has been a small but important long-term project for Matrix, and has been progressing entirely outside our business-as-usual work of improving the core protocol and reference implementations.</p>
+<p>As the project has progressed, we've built a variety of prototypes using existing libraries (<a href="https://github.com/libp2p/go-libp2p">go-libp2p</a>, <a href="https://github.com/libp2p/js-libp2p">js-libp2p</a> and <a href="https://github.com/yggdrasil-network/yggdrasil-go">Yggdrasil</a>), demonstrating what an early P2P Matrix might feel like if it were running on a mobile device, in the web browser and so on using such an overlay network. Each of these demos has taught us something new, and so in October 2020 we decided to take this knowledge to build an experimental new overlay network of our own.</p>
+<p>Pinecone is designed to provide end-to-end encrypted communications between devices, regardless of how they are connected to one another, in a lightweight and self-arranging fashion. The routing protocol is a hybrid, taking inspiration from <a href="https://github.com/yggdrasil-network/yggdrasil-go">Yggdrasil</a> by building a global spanning tree, but rather than forwarding all traffic using the spanning tree topology, we use it as a bootstrap routing mechanism for a line/snake topology, ordered by their ed25519 public keys, which we have affectionately named SNEK (Sequentially Networked Edwards Key) routing.</p>
+<p>Nodes seek out their closest keyspace neighbours on the network and paths are built between these pairs of nodes, similar to how a Chord DHT functions, populating the routing tables of intermediate nodes in the process. These paths are then used to forward traffic without having to perform up-front searches, allowing for very fast connection setups between overlay nodes. These paths are resilient to network topology changes and handle node mobility considerably better than any other name-independent routing scheme that we have seen — early results are very promising so far. We have also been experimenting with a combination of the μTP (Micro Transport Protocol) and TLS to provide stateful connection setup, congestion control and end-to-end encryption for all federation traffic carried over the Pinecone network.</p>
+<p><img src="/blog/img/2021-05-06-pineconesim.png" alt="Pinecone simulator showing line/snake logical network topology" /></p>
+<p>If Pinecone works out, our intention is to collaborate with the libp2p and IPFS team to incorporate Pinecone routing into libp2p (if they'll have us!) while incorporating their gossipsub routing to improve Matrix federation... and get the best of both worlds :)</p>
+<p>Today we're releasing the source code for our current early implementation of Pinecone — you can <a href="https://github.com/matrix-org/pinecone">get it from GitHub</a> right now! It's very experimental still and not very well optimised yet, but it is the foundation of our latest mobile P2P Matrix demos, which support P2P Matrix over both <strong>Bluetooth Low Energy</strong> mesh networks, <strong>multicast DNS</strong> discovery within a LAN, and/or by routing through <strong>static Pinecone peers</strong> on the Internet:</p>
+<ul>
+<li>Android: https://appdistribution.firebase.dev/i/394600067ea8ba37</li>
+<li>iOS: https://testflight.apple.com/join/Tgh2MEk6</li>
+</ul>
+<p>Building a routing overlay is only the first step in the journey towards P2P Matrix. We will also be looking closely in the coming months at improving the Matrix federation protocol to work well in mixed-connectivity scenarios (rather than the full mesh approach used today) as well as decentralised identities, hybrid deployments with existing homeservers and getting Dendrite (the Matrix homeserver which is embedded into the current P2P demos) more stable and feature-complete.</p>
+<p>The long-term plan could look something like this:</p>
+<p><img src="/blog/img/2021-05-06-pinecone.png" alt="Diagram showing possible P2P Matrix stack" /></p>
+<p>Most discussion around P2P Matrix takes place in <a href="http://matrix.to/#/#p2p:matrix.org">#p2p:matrix.org</a>, so if you are interested in what's going on, please join us there!</p>
+
+        </div>
+        
+    </div>
+</article>
+
+    </main>
+
+    <footer class="site-footer">
+    <div class="internal-links">
+        
+        <a href="&#x2F;faq">FAQs</a>
+        
+        <a href="&#x2F;security-disclosure-policy">Security Disclosure Policy</a>
+        
+        <a href="&#x2F;hall-of-fame">Security Hall of Fame</a>
+        
+        <a href="&#x2F;legal&#x2F;code-of-conduct">Code of Conduct for Matrix.org</a>
+        
+        <a href="&#x2F;legal">Legal</a>
+        
+        <a href="&#x2F;contact">Contact</a>
+        
+        <a href="https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;">Site Source</a>
+        
+    </div>
+    <div class="external-links">
+        <div>
+            
+            <a href="&#x2F;code"><img src="/assets/github.svg" alt="GitHub"></a>
+            
+            <a href="https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;"><img src="/assets/gitlab.svg" alt="GitLab"></a>
+            
+            <a href="https:&#x2F;&#x2F;mastodon.matrix.org&#x2F;@matrix"><img src="/assets/mastodon.svg" alt="Mastodon"></a>
+            
+            <a href="https:&#x2F;&#x2F;twitter.com&#x2F;matrixdotorg"><img src="/assets/twitter.svg" alt="Twitter"></a>
+            
+            <a href="https:&#x2F;&#x2F;www.youtube.com&#x2F;channel&#x2F;UCVFkW-chclhuyYRbmmfwt6w"><img src="/assets/youtube.svg" alt="YouTube"></a>
+            
+        </div>
+    </div>
+    <p>© 2022 The Matrix.org Foundation C.I.C.</p>
+</footer>
+
+</body>
+
+</html>

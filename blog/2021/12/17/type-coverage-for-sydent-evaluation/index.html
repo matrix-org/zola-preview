@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="twitter:widgets:csp" content="on" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta name="twitter:site" content="@matrixdotorg" />
+    <meta name="twitter:creator" content="@matrixdotorg" />
+
+    <title>Matrix.org - Type coverage for Sydent: evaluation</title>
+    <link rel="shortcut icon" href="/assets/favicon.ico" />
+    <link rel="icon" type="image/png" href="/assets/favicon.png" />
+    <link rel="stylesheet" href="/style.css" />
+
+    
+
+
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    "headline": "Type coverage for Sydent: evaluation",
+    "datePublished": "2021-12-17T00:00+00:00",
+    
+    "author": [
+    
+    {
+        "@type": "Person",
+        "name": "David Robertson",
+        "url": "//authors/david-robertson"
+    }
+    
+    ]
+}
+</script>
+</head>
+
+<body>
+    
+    <header class="site-header">
+    <a href="/" class="brand">
+        <img src="/images/matrix-logo.svg" alt="Matrix logo">
+    </a>
+    <input id="site-header-dropdown-checkbox" type="checkbox" class="dropdown-checkbox" aria-hidden="true">
+    <label for="site-header-dropdown-checkbox" class="dropdown-button">&#xe602;</label>
+    <label for="site-header-dropdown-checkbox" class="page-overlay"></label>
+    <nav>
+        
+        
+        <a href="&#x2F;about&#x2F;" class="
+            ">
+            About
+        </a>
+        
+        
+        
+        <a href="&#x2F;blog&#x2F;" class="
+            current">
+            Blog
+        </a>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;docs&#x2F;" class="section ">
+                Documentation
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;ecosystem&#x2F;" class="section ">
+                Ecosystem
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                    <a href="&#x2F;ecosystem&#x2F;clients&#x2F;">Clients</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;servers&#x2F;">Servers</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bots&#x2F;">Bots</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bridges&#x2F;">Bridges</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;sdks&#x2F;">SDKs</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;hosting&#x2F;">Hosting</a>
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        <a href="&#x2F;podcasts&#x2F;" class="
+            ">
+            Podcasts
+        </a>
+        
+        
+        
+        <a href="https:&#x2F;&#x2F;shop.matrix.org" class="
+            ">
+            Shop
+        </a>
+        
+        
+        
+        <a href="&#x2F;try-matrix&#x2F;" class="primary
+            ">
+            Try Matrix
+        </a>
+        
+        
+    </nav>
+</header>
+
+
+    <main>
+        
+<article class="content post with-sidebar">
+    <header>
+        <h1>Type coverage for Sydent: evaluation</h1>
+        <span>17.12.2021 00:00 — <a
+                href="/category/tech">Tech</a>
+             — <a href="/author/david-robertson">David Robertson</a>
+        </span>
+        
+    </header>
+    <div class="post-main">
+        <div class="post-content">
+            <p>This is the third in a series of three posts which discuss recent work to improve type annotations in <a href="https://github.com/matrix-org/sydent">Sydent</a>, the reference Matrix Identity server. <a href="https://matrix.org/blog/2021/12/10/type-coverage-for-sydent-annotation">Last time</a> we discussed the mechanics of how we added type coverage. Now I want to reflect on how well we did. What information and guarantees did we gain from <code>mypy</code>? How could we track our progress and measure the effect of our work? And lastly, what other tools are out there apart from <code>mypy</code>?</p>
+<h2 id="the-best-parts-of-strict">The best parts of <code>--strict</code></h2>
+<p>While the primary goal was to improve Sydent's coverage and robustness, to some extent this was an experiment too. How much could we get out of typing and static analysis, if we <em>really</em> invested in thorough annotations? Sydent is a small project that would make for a good testbed! I decided my goal would be to get Sydent passing mypy under <a href="https://mypy.readthedocs.io/en/stable/command_line.html#cmdoption-mypy-strict">--strict mode</a>. This is a command line option which turns on a number of extra checks (though not everything); it feels similar to passing <code>-Wall -Wextra -Werror</code> to <code>gcc</code>. It's a little extreme, but Sydent is a small project and this would be a good chance to see how hard it would be. In my view, the most useful options implied by strict mode were as follows.</p>
+<h3 id="check-untyped-defs"><a href="https://mypy.readthedocs.io/en/stable/command_line.html#cmdoption-mypy-check-untyped-defs">--check-untyped-defs</a></h3>
+<p>By default, mypy will only analyze the implementation of functions that are annotated. On the one hand, without annotations for inputs and the return type, it's going to be hard for mypy to thoroughly check the soundness of your function. On the other, it can still do good work with the type information it has from other sources. Mypy can</p>
+<ul>
+<li>infer the type of literals, e.g. deducing <code>x: str</code> from  <code>x = &quot;hello&quot;</code>;</li>
+<li>lookup the return types of standard library calls, via <code>typeshed</code>; and similarly</li>
+<li>lookup the return types of any annotated functions in your code or dependencies.</li>
+</ul>
+<p>The information is already available for free: we may as well try to use it to spot problems.</p>
+<h3 id="disallow-untyped-defs-and-friends"><a href="https://mypy.readthedocs.io/en/stable/command_line.html#cmdoption-mypy-disallow-untyped-defs">--disallow-untyped-defs</a> and <a href="https://mypy.readthedocs.io/en/stable/command_line.html#untyped-definitions-and-calls">friends</a></h3>
+<p>This flag forces you to fully annotate every function. There are less extreme versions available, e.g. <code>--disallow-incomplete-defs</code>; but I think this is a good option to ensure full coverage of your module. It means you can rely on mypy's error output as a to-do list.</p>
+<p>One downside to this: sometimes I felt like I was writing obvious boilerplate annotations, e.g.</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span>    </span><span style="color:#569cd6;">def </span><span>__str__(self) -&gt; str:
+</span><span>        </span><span style="color:#569cd6;">...
+</span></code></pre>
+<p>There was one particular example of this that crops up a lot. Mypy has a special exception for a class's <code>__init__</code> and <code>__init_subclass__</code> methods. If a return type annotation is missing, it will <a href="https://github.com/python/mypy/issues/604#issuecomment-348525995">assume these functions return None</a> instead of <code>Any</code>. (See  here for <a href="https://github.com/python/mypy/pull/5677">its implementation</a>.) This is normally compatible with <code>--disallow-untyped-defs</code> and <code>--disallow-incomplete-defs</code>, with one exception. If your <code>__init__</code> function takes no arguments other than <code>self</code>, mypy won't consider it annotated, and you'll need to write <code>-&gt; None</code> explicitly.</p>
+<p>It's also worth mentioning <a href="https://mypy.readthedocs.io/en/stable/command_line.html#cmdoption-mypy-disallow-untyped-calls">--disallow-untyped-calls</a>, which will cause an error if an annotated function calls an unannotated function. Again, it helps to ensure that mypy has a complete picture of the types in your function's implementation. It also helps to highlight dependencies—if you see errors from this, it might be more practical to annotate the functions and modules it's calling first.</p>
+<h3 id="warn-return-any"><a href="https://mypy.readthedocs.io/en/stable/command_line.html#cmdoption-mypy-warn-return-any">--warn-return-any</a></h3>
+<p>If I've written a function and annotated it to return an <code>int</code>, mypy will rightly complain if its implementation actually goes on to return a <code>str</code>.</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span style="color:#569cd6;">def </span><span>foo() -&gt; int:
+</span><span>    </span><span style="color:#608b4e;"># error: Incompatible return value type (got &quot;str&quot;, expected &quot;int&quot;)
+</span><span>    </span><span style="color:#569cd6;">return </span><span style="color:#d69d85;">&quot;hello&quot;
+</span></code></pre>
+<p>If mypy isn't sure what type I'm returning though, i.e. if I'm returning an expression of type <code>Any</code>, then by default mypy will trust that we've done the right thing.</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span style="color:#569cd6;">def </span><span>i_promise_this_is_an_int():
+</span><span>    </span><span style="color:#569cd6;">return </span><span style="color:#d69d85;">&quot;hello&quot;
+</span><span>
+</span><span style="color:#569cd6;">def </span><span>bar() -&gt; int:
+</span><span>    reveal_type(i_promise_this_is_an_int()) </span><span style="color:#608b4e;"># Any
+</span><span>    </span><span style="color:#569cd6;">return </span><span>i_promise_this_is_an_int()
+</span></code></pre>
+<p>Enabling <code>--warn-return-any</code> will disable this behaviour; to make this error pass we'll have to prove to mypy that <code>i_promise_this_is_an_int()</code> really is an <code>int</code>. Sometimes that will be the case, and an extra annotation will provide the necessary proof. At other times (like in this example), investigation will prove that there really is a bug!</p>
+<h3 id="strict-equality"><a href="https://mypy.readthedocs.io/en/stable/command_line.html#cmdoption-mypy-strict-equality">--strict-equality</a></h3>
+<p>This is a bit like a limited form of gcc's <a href="https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html">-Wtautological-compare</a>. Mypy will report and reject equality tests between incompatible types. If mypy can spot that an equality is always <code>False</code>, there's a good chance of there being a bug in your program, or else an incorrect annotation.</p>
+<p>I'm not sure how general this check is, since users can define their own types with their own rules for equality by overriding <a href="https://docs.python.org/3/reference/datamodel.html?highlight=__eq__#object.__eq__"><strong>eq</strong></a>. Perhaps it only applies to built-in types?</p>
+<h2 id="quantifying-coverage">Quantifying coverage</h2>
+<p>It was important to have some way to numerically evaluate our efforts to improve type coverage. It's a fairly abstract piece of work: there's nothing user-visible about it, unless we happen to discover a bug and fix it.</p>
+<p>The most obvious metric is the number of total errors reported by mypy. Before the recent sprint, we had roughly 600 errors total.</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>dmr on titan in sydent on  HEAD (3dde3ad) via 🐍 v3.9.7 (env)
+</span><span>2021-11-08 12:35:37 ✔  $ mypy --strict sydent
+</span><span>Found 635 errors in 59 files (checked 78 source files)
+</span></code></pre>
+<p>This is a decent way to measure your progress when working on a particular module or package, but it's not perfect, because the errors aren't independent. Fixing one could fix another ten or reveal another twenty—the numeric value can be erratic.</p>
+<h3 id="reports">Reports</h3>
+<p>I found mypy's various <a href="https://mypy.readthedocs.io/en/stable/command_line.html#report-generation">reports</a> to be a better approach here. There were three reports I found particularly useful.</p>
+<h4 id="html-report"><code>--html-report</code></h4>
+<p>This produces a main index page showing the &quot;imprecision&quot; of each module. At the bottom of the table is a total imprecision value across the entire project.</p>
+<p><img src="/blog/img/2021-12-17-sydent-typing-html-report-index.png" alt="HTML report, index page. A table showing each module's precision and number of lines of code." /></p>
+<p>The precision for each module is broken down line-by-line and colour-coded accordingly, which is useful for getting an intuition for what makes a line imprecise. More on that shortly.</p>
+<p><img src="/blog/img/2021-12-17-sydent-typing-html-report-module.png" alt="HTML report, module page. Most lines of source code are highlighted green; a minority are highlighted red." /></p>
+<h4 id="txt-report"><code>--txt-report</code></h4>
+<p>This reproduces the index page from the <code>html</code> report as a plain text file. It's slightly easier to parse—that's how I got the data for the precision line graphs in <a href="https://matrix.org/blog/2021/12/03/type-coverage-for-sydent-motivation">part one</a> of this series. That was a quick and dirty hack, though; a proper analysis of precision probably ought to read from the json or xml output formats. Here's a truncated sample:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>+-----------------------------------+-------------------+----------+
+</span><span>| Module                            | Imprecision       | Lines    |
+</span><span>+-----------------------------------+-------------------+----------+
+</span><span>| sydent                            |   0.00% imprecise |    1 LOC |
+</span><span>| sydent.config                     |   0.00% imprecise |  266 LOC |
+</span><span>| sydent.config._base               |   0.00% imprecise |   31 LOC |
+</span><span>| sydent.config.crypto              |  15.94% imprecise |   69 LOC |
+</span><span>| ...                               |               ... |      ... |
+</span><span>| sydent.validators                 |   0.00% imprecise |   61 LOC |
+</span><span>| sydent.validators.common          |   7.35% imprecise |   68 LOC |
+</span><span>| sydent.validators.emailvalidator  |   1.30% imprecise |  154 LOC |
+</span><span>| sydent.validators.msisdnvalidator |   1.34% imprecise |  149 LOC |
+</span><span>+-----------------------------------+-------------------+----------+
+</span><span>| Total                             |   5.95% imprecise | 9707 LOC |
+</span><span>+-----------------------------------+-------------------+----------+
+</span></code></pre>
+<h4 id="any-exprs-report"><code>--any-exprs-report</code></h4>
+<p>Selecting this option generate two reports: <code>any-exprs.txt</code> and <code>types-of-anys.txt</code>. The latter is interesting to understand where the <code>Anys</code> come from, but the former is more useful for quantifying the progress of typing. Another sample:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>                  Name   Anys   Exprs   Coverage
+</span><span>-------------------------------------------------
+</span><span>                sydent      0       2    100.00%
+</span><span>         sydent.config      0     185    100.00%
+</span><span>   sydent.config._base      0       3    100.00%
+</span><span>  sydent.config.crypto     34      80     57.50%
+</span><span>sydent.config.database      0       8    100.00%
+</span><span>   sydent.config.email      0      86    100.00%
+</span><span>                   ...    ...     ...        ...
+</span><span>-------------------------------------------------
+</span><span>                 Total    544   11366     95.21%
+</span></code></pre>
+<p>The breakdown in <code>types-of-anys.txt</code> has more gory detail. I found the &quot;Unimported&quot; column particularly interesting: it lets us see how exposed we are to a lack of typing in our dependencies.</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>                             Name   Unannotated   Explicit   Unimported   Omitted Generics   Error   Special Form   Implementation Artifact
+</span><span>-------------------------------------------------------------------------------------------------------------------------------------------
+</span><span>                           sydent             0          0            0                  0       0              0                         0
+</span><span>                    sydent.config             0          3            0                  0       0              0                         0
+</span><span>              sydent.config._base             0          0            0                  0       0              0                         0
+</span><span>                              ...           ...        ...          ...                ...     ...            ...                       ...
+</span><span>        sydent.util.versionstring             0         80            0                  0       0              0                         0
+</span><span>                sydent.validators             0          4            0                  0       0              0                         0
+</span><span>         sydent.validators.common             0         20            0                  0       0              0                         0
+</span><span> sydent.validators.emailvalidator             0          8            0                  0       0              0                         0
+</span><span>sydent.validators.msisdnvalidator             0          8            0                  0       0              0                         0
+</span><span>-------------------------------------------------------------------------------------------------------------------------------------------
+</span><span>                            Total             9       1276          273                  0      37              0                        17
+</span><span>
+</span></code></pre>
+<h3 id="the-meaning-of-precision">The meaning of precision</h3>
+<p>There are two metrics I chose to focus on:</p>
+<ul>
+<li>the proportion of &quot;imprecise&quot; lines across the project; I also used the complement, <code>precision = 100% - imprecision</code>, and</li>
+<li>the proportion of expressions whose type is not <code>Any</code>.</li>
+</ul>
+<p>These are plotted in the graph at the top of this writeup. I could see that precision and the proportion of typed expressions were correlated, but I didn't understand how they differed. I couldn't see an explanation in the mypy docs, so I went <a href="https://github.com/python/mypy/blob/d807e097d142a88a48af93314d15ad87e41d2f19/mypy/stats.py">digging</a> into the mypy source code. My understanding is as follows.</p>
+<ol>
+<li>There are <a href="https://github.com/python/mypy/blob/d807e097d142a88a48af93314d15ad87e41d2f19/mypy/stats.py#L27-L31">five kinds of precision</a>. Full details are visible in the <code>--lineprecision-report</code>.</li>
+<li>Two kinds of precision, <code>EMPTY</code> and <code>UNANALYZED</code> convey no information, because there's nothing to analyze.</li>
+<li>A line is marked as precise, imprecise or any based on the expressions it uses.
+<ul>
+<li>An expression that has type <code>Any</code> leads to precision <code>ANY</code>.</li>
+<li>I <em>think</em> an expression that <a href="https://github.com/python/mypy/blob/2907a4dea939e20ff39ef7d9ff85ae1a199a0ee8/mypy/stats.py#L422-L423">involves <code>Any</code> but is not <code>Any</code></a> counts as imprecise. For instance, <code>Dict[str, Any]</code>.</li>
+<li>Remaining expressions have precision <code>PRECISE</code>.</li>
+</ul>
+</li>
+<li>A line's precision is the worst of all its expressions' precisions.
+<ul>
+<li><code>ANY</code> is worse than <code>IMPRECISE</code>, which is worse than <code>PRECISE</code>.</li>
+</ul>
+</li>
+</ol>
+<p>The &quot;imprecision&quot; number reported by mypy counts the number of lines <a href="https://github.com/python/mypy/blob/3bdef9fe6d401f3d2e0cacf4964bd315550c3394/mypy/xml/mypy-txt.xslt#L77-L78">classified as <code>IMPRECISE</code> or <code>ANY</code></a>.</p>
+<p>On balance, my preferred metric is the line-level (im)precision percentage. There wasn't much difference between the two in my experience, but the colour-coded visualisation in the HTML report is a neat feature to have. Maybe in the future there could be a version of the HTML report that colour-codes each <em>expression</em>?</p>
+<h2 id="the-larger-typing-ecosystem">The larger typing ecosystem</h2>
+<p>There are plenty of articles out there about the typing. As well as the <a href="http://mypy-lang.blogspot.com/">mypy blog itself</a>, see Daniele Varrazzo's <a href="https://www.varrazzo.com/blog/2020/03/31/first-experience-mypy/">post on <code>psycopg3</code> (2020)</a>, Dropbox's <a href="https://dropbox.tech/application/our-journey-to-type-checking-4-million-lines-of-python">blog post (2019)</a>, Zulip's <a href="https://blog.zulip.com/2016/10/13/static-types-in-python-oh-mypy/">blog post (2016)</a>, Glyph's <a href="https://glyph.twistedmatrix.com/2020/07/new-duck.html">blog post on <code>Protocols</code> (2020)</a> and a follow-up <a href="https://glyph.twistedmatrix.com/2021/03/interfaces-and-protocols.html">comparing them to <code>zope.interface</code> (2021)</a> and Nylas's <a href="https://www.nylas.com/blog/not-your-pie-mypy/">blog (2019)</a>. I'm sure there's plenty more out there.</p>
+<p>It's worth highlighting the <code>typeshed</code> project, which maintains stubs for the standard library, plus popular third-party libraries. I <a href="https://github.com/python/typeshed/pull/6150">submitted a PR</a> to add a single type hint—it was a very pleasant experience! Microsoft has an <a href="https://github.com/microsoft/python-type-stubs">incubator</a> of sorts for stubs too.</p>
+<h3 id="other-typecheckers">Other typecheckers</h3>
+<p>After the sprint to improve coverage, I spent a short amount of time trying the alternative type checkers out there. Mypy isn't the <em>only</em> typechecker out there—other companies have built and open-sourced their own tools, with different strengths, weaknesses and goals. This is by no means an authoritative, exhaustive survey—just my quick notes.</p>
+<h4 id="pyre-facebook"><a href="https://pyre-check.org/">Pyre</a> (Facebook)</h4>
+<ul>
+<li>I couldn't work out how to configure paths to resolve import errors; in the end, I wasn't able to process much of Sydent's source code.</li>
+<li>Couldn't get it to process annotations like <code>syd: &quot;Sydent&quot;</code> where &quot;Sydent&quot; is an import guarded by <a href="https://docs.python.org/3/library/typing.html?highlight=type_checking#typing.TYPE_CHECKING">TYPE_CHECKING</a>.</li>
+<li>No plugin system that I could see. That said, it has a separate mode/program for running <a href="https://pyre-check.org/docs/pysa-basics">&quot;Taint Analysis&quot;</a> to spot security issues.</li>
+<li>Seemed stricter by default compared to mypy: there was less inference of types.</li>
+<li>Also has its own strict mode.</li>
+</ul>
+<h4 id="pyright-microsoft"><a href="https://github.com/microsoft/pyright">Pyright</a> (Microsoft)</h4>
+<ul>
+<li>Didn't seem to recognise <code>getLogger</code> as being imported from <code>logging</code>. Not sure what happened there—maybe something wrong with its bundled version of <code>typeshed</code>?</li>
+<li>In a few places, Sydent uses <code>urllib.parse.quote</code> but only imports <code>urllib</code>. We must be unintentionally relying on our dependencies to <code>import urllib.parse</code> somewhere! Mypy didn't complain about this; pyright did.</li>
+<li>Seemed to give a better explanations of why complex types were incompatible. For example:<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>/home/dmr/workspace/sydent/sydent/replication/pusher.py
+</span><span>   /home/dmr/workspace/sydent/sydent/replication/pusher.py:77:16 - error: Expression of type &quot;DeferredList&quot; cannot be assigned to return type &quot;Deferred[List[Tuple[bool, None]]]&quot;
+</span><span>     TypeVar &quot;_DeferredResultT@Deferred&quot; is contravariant
+</span><span>       TypeVar &quot;_T@list&quot; is invariant
+</span><span>         Tuple entry 2 is incorrect type
+</span><span>           Type &quot;None&quot; cannot be assigned to type &quot;_DeferredResultT@_DeferredListResultItemT&quot; (reportGeneralTypeIssues)
+</span><span> /home/dmr/workspace/sydent/sydent/sms/openmarket.py
+</span><span>   /home/dmr/workspace/sydent/sydent/sms/openmarket.py:93:13 - error: Argument of type &quot;dict[_KT@dict, list[bytes]]&quot; cannot be assigned to parameter &quot;rawHeaders&quot; of type &quot;Mapping[AnyStr@__init__, Sequence[AnyStr@__init__]] | None&quot; in function &quot;__init__&quot;
+</span><span>     Type &quot;dict[_KT@dict, list[bytes]]&quot; cannot be assigned to type &quot;Mapping[AnyStr@__init__, Sequence[AnyStr@__init__]] | None&quot;
+</span><span>       TypeVar &quot;_KT@Mapping&quot; is invariant
+</span><span>         Type &quot;_KT@dict&quot; is incompatible with constrained type variable &quot;AnyStr&quot;
+</span><span>       Type cannot be assigned to type &quot;None&quot; (reportGeneralTypeIssues)
+</span></code></pre>
+This would have been really helpful when interpreting mypy's error reports; I'd love to see something like it in mypy.
+Here's another example where I tried running against a Synapse file.<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>/home/dmr/workspace/synapse/synapse/storage/databases/main/cache.py
+</span><span>/home/dmr/workspace/synapse/synapse/storage/databases/main/cache.py:103:53 - error: Expression of type &quot;list[tuple[Unknown, Tuple[Unknown, ...]]]&quot; cannot be assigned to declared type &quot;List[Tuple[int, _CacheData]]&quot;
+</span><span>  TypeVar &quot;_T@list&quot; is invariant
+</span><span>    Tuple entry 2 is incorrect type
+</span><span>      Tuple size mismatch; expected 3 but received indeterminate number (reportGeneralTypeIssues)
+</span></code></pre>
+This is really valuable information. It's worth considering Pyright as an option to get a second opinion!</li>
+<li>It looks like Pyright's name for <code>Any</code> is <code>Unknown</code>. I think that does a better job of emphasising that <code>Unknown</code> won't be type checked. I'd certainly be more reluctant to type <code>x: Unknown</code> versus <code>x: Any</code>!</li>
+<li>Pyright is the machinery behind <a href="https://github.com/microsoft/pylance-release">Pylance</a>, which drives <a href="https://marketplace.visualstudio.com/items?itemName=ms-python.vscode-pylance">VS Code's Python extension</a>. That alone probably makes it worthy of more eyes.</li>
+<li>Seemed like it was the best-placed alternative typechecker to challenge mypy (the de-facto standard).</li>
+</ul>
+<h4 id="pytype-google"><a href="https://github.com/google/pytype">Pytype</a> (Google)</h4>
+<ul>
+<li>Google internal? Seems to be maintained by one person semiregularly by &quot;syncing&quot; from Google.</li>
+<li>Apparently contains a script <a href="https://github.com/google/pytype/tree/master/pytype/tools/merge_pyi">merge-pyi</a> to annotate a source file given a stub file.</li>
+<li>No support for TypedDict: as soon as it saw one in Sydent, it stopped all analysis.</li>
+<li>No Python 3.10 support (according to the README anyway).</li>
+<li>I think it might use a different kind of typing semantics; its <a href="https://google.github.io/pytype/typing_faq.html">typing FAQ</a> speaks of &quot;descriptive typing&quot; and a more lenient approach.</li>
+</ul>
+<h4 id="pycharm"><a href="https://www.jetbrains.com/pycharm/">PyCharm</a></h4>
+<p>PyCharm has its own means to typechecking code as you write it. It's definitely caught bugs before, and having the instant feedback as you type is really nice! I have seen it struggle with <code>zope.interface</code> and some uses of <code>Generic</code>s though.</p>
+<h3 id="runtime-uses-of-annotations">Runtime uses of annotations</h3>
+<p>When annotations <a href="https://www.python.org/dev/peps/pep-3107/">were first introduced</a>, they were a generic means to associate Python objects with parts of a program. (It was only later that the community agreed that we really want to use them to annotate <em>types</em>). These annotations are available at runtime in the <code>__annotations__</code> attribute. There's also a helper function in <code>typing</code> which will help resolve forward references.</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span>&gt;&gt;&gt; </span><span style="color:#9b9b9b;">from </span><span>typing </span><span style="color:#9b9b9b;">import </span><span>get_type_hints
+</span><span>&gt;&gt;&gt; </span><span style="color:#ff3333;">def </span><span>foo(x: int) -&gt; str: </span><span style="color:#569cd6;">pass
+</span><span style="color:#569cd6;">...
+</span><span>&gt;&gt;&gt; get_type_hints(foo)
+</span><span>{</span><span style="color:#d69d85;">&#39;x&#39;</span><span>: &lt;</span><span style="color:#ff3333;">class </span><span style="color:#d69d85;">&#39;int&#39;</span><span>&gt;, </span><span style="color:#d69d85;">&#39;return&#39;</span><span>: &lt;</span><span style="color:#ff3333;">class </span><span style="color:#d69d85;">&#39;str&#39;</span><span>&gt;}
+</span></code></pre>
+<p>Programs and libraries are free to use these annotations at runtime as they see fit. The most well-known examples are probably <a href="https://docs.python.org/3/library/dataclasses.html">dataclasses</a>, <a href="https://www.attrs.org/en/stable/">attrs</a> with <a href="https://www.attrs.org/en/stable/types.html">auto_attribs=True</a> and <a href="https://pydantic-docs.helpmanual.io/">Pydantic</a>. I'd be interested to learn if anyone else is consuming annotations at runtime!</p>
+<h2 id="summary">Summary</h2>
+<p>All in all, in a two-week sprint we were able to get Sydent's mypy coverage from a precision of 83% up to 94%. Our work would have spotted the <a href="https://github.com/matrix-org/sydent/pull/415">bytes-versus-strings bug</a>; we understand why <a href="https://github.com/matrix-org/sydent/pull/413">the missing await</a> wasn't detected. We <a href="https://github.com/matrix-org/sydent/issues/419">fixed</a> <a href="https://github.com/matrix-org/sydent/issues/449">other</a> <a href="https://github.com/matrix-org/sydent/issues/447">small</a> <a href="https://github.com/matrix-org/sydent/issues/445">bugs</a> too as part of the process. As well as fix bugs, I've hopefully made the source code clearer for future readers (but that one is hard to quantify).</p>
+<p>There's room to spin out contributions upstream too. I submitted <a href="https://github.com/twisted/twisted/pull/1669">two</a> <a href="https://github.com/twisted/twisted/pull/1668">PRs</a> to twisted upstream; have started to work on annotations for <a href="https://github.com/pyca/pynacl/pull/693">pynacl</a> <a href="https://github.com/pyca/pynacl/pull/694">in my</a> <a href="https://github.com/pyca/pynacl/pull/695">spare time</a>; and submitted a quick fix to <a href="https://github.com/python/typeshed/pull/6150">typeshed</a>.</p>
+<p>Looking forward, I think we'd get a quick gain from ensuring that our smaller libraries (<a href="https://github.com/matrix-org/python-signedjson">signedjson</a>, <a href="https://github.com/matrix-org/python-canonicaljson">canonicaljson</a>) are annotated. We'll be sticking with mypy for now—the <code>mypy-zope</code> plugin is crucial given our reliance on twisted. We're also working to improve Sygnal and Synapse—though not to the extreme standard of <code>--strict</code> across everything.</p>
+<p>I'd say the biggest outstanding hole is our processing of JSON objects. There's too much <code>Dict[str, Any]</code> flying around. The ideal for me would be to define <code>dataclass</code> or <code>attr.s</code> class <code>C</code>, and be able to deserialise a JSON object to <code>C</code>, including automatic (deep) type checking. <a href="https://pydantic-docs.helpmanual.io/">Pydantic</a> sounds really close to what we want, but I'm told it will by default gladly interpret the json string <code>&quot;42&quot;</code> as the Python integer <code>42</code>, which isn't what we'd like. More investigation needed there. There are other avenues to explore too, like <a href="https://github.com/erickpeirson/jsonschema-typed">jsonschema-typed</a>, <a href="https://pypi.org/project/typedload/">typedload</a> or <a href="https://github.com/bloomberg/attrs-strict">attrs-strict</a>.</p>
+<p>To end, I'd like to add a few personal thoughts. Having types available in the source code is definitely A Good Thing. But there is a part of me that wonders if it might have been worth writing our projects in a language which incorporates types from day one. There are always trade-offs, of course: runtime performance, build times, iteration speed, ease of onboarding new contributors, ease of deployment, availability of libraries, ability to shoot yourself in the foot... the list goes on. </p>
+<p>On a more upbeat note, adding typing is a great way to get familiar with new source code. It involves a mixture of reading, cross-referencing, deduction, analysis, all across a wide variety of files. It'd be a <em>lot</em> easier to type as you write from the get-go, but typing after the fact is still a worthy use of time and effort. </p>
+<hr />
+<p>Many thanks for reading! If you've got any corrections, comments or queries, I'm available on Matrix at <a href="https://matrix.to/#/@dmrobertson:matrix.org">@dmrobertson:matrix.org</a>.</p>
+
+        </div>
+        
+        <aside>
+            <h3>Post Contents</h3>
+
+            <ul style="list-style: none; padding-left: 0px;">
+                
+                <li>
+                    <a href="/blog/2021/12/17/type-coverage-for-sydent-evaluation/#the-best-parts-of-strict">The best parts of --strict</a>
+                    
+                    <ul>
+                        
+                        <li>
+                            <a href="/blog/2021/12/17/type-coverage-for-sydent-evaluation/#check-untyped-defs">--check-untyped-defs</a>
+                        </li>
+                        
+                        <li>
+                            <a href="/blog/2021/12/17/type-coverage-for-sydent-evaluation/#disallow-untyped-defs-and-friends">--disallow-untyped-defs and friends</a>
+                        </li>
+                        
+                        <li>
+                            <a href="/blog/2021/12/17/type-coverage-for-sydent-evaluation/#warn-return-any">--warn-return-any</a>
+                        </li>
+                        
+                        <li>
+                            <a href="/blog/2021/12/17/type-coverage-for-sydent-evaluation/#strict-equality">--strict-equality</a>
+                        </li>
+                        
+                    </ul>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2021/12/17/type-coverage-for-sydent-evaluation/#quantifying-coverage">Quantifying coverage</a>
+                    
+                    <ul>
+                        
+                        <li>
+                            <a href="/blog/2021/12/17/type-coverage-for-sydent-evaluation/#reports">Reports</a>
+                        </li>
+                        
+                        <li>
+                            <a href="/blog/2021/12/17/type-coverage-for-sydent-evaluation/#the-meaning-of-precision">The meaning of precision</a>
+                        </li>
+                        
+                    </ul>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2021/12/17/type-coverage-for-sydent-evaluation/#the-larger-typing-ecosystem">The larger typing ecosystem</a>
+                    
+                    <ul>
+                        
+                        <li>
+                            <a href="/blog/2021/12/17/type-coverage-for-sydent-evaluation/#other-typecheckers">Other typecheckers</a>
+                        </li>
+                        
+                        <li>
+                            <a href="/blog/2021/12/17/type-coverage-for-sydent-evaluation/#runtime-uses-of-annotations">Runtime uses of annotations</a>
+                        </li>
+                        
+                    </ul>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2021/12/17/type-coverage-for-sydent-evaluation/#summary">Summary</a>
+                    
+                </li>
+                
+            </ul>
+        </aside>
+        
+    </div>
+</article>
+
+    </main>
+
+    <footer class="site-footer">
+    <div class="internal-links">
+        
+        <a href="&#x2F;faq">FAQs</a>
+        
+        <a href="&#x2F;security-disclosure-policy">Security Disclosure Policy</a>
+        
+        <a href="&#x2F;hall-of-fame">Security Hall of Fame</a>
+        
+        <a href="&#x2F;legal&#x2F;code-of-conduct">Code of Conduct for Matrix.org</a>
+        
+        <a href="&#x2F;legal">Legal</a>
+        
+        <a href="&#x2F;contact">Contact</a>
+        
+        <a href="https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;">Site Source</a>
+        
+    </div>
+    <div class="external-links">
+        <div>
+            
+            <a href="&#x2F;code"><img src="/assets/github.svg" alt="GitHub"></a>
+            
+            <a href="https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;"><img src="/assets/gitlab.svg" alt="GitLab"></a>
+            
+            <a href="https:&#x2F;&#x2F;mastodon.matrix.org&#x2F;@matrix"><img src="/assets/mastodon.svg" alt="Mastodon"></a>
+            
+            <a href="https:&#x2F;&#x2F;twitter.com&#x2F;matrixdotorg"><img src="/assets/twitter.svg" alt="Twitter"></a>
+            
+            <a href="https:&#x2F;&#x2F;www.youtube.com&#x2F;channel&#x2F;UCVFkW-chclhuyYRbmmfwt6w"><img src="/assets/youtube.svg" alt="YouTube"></a>
+            
+        </div>
+    </div>
+    <p>© 2022 The Matrix.org Foundation C.I.C.</p>
+</footer>
+
+</body>
+
+</html>

@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="twitter:widgets:csp" content="on" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta name="twitter:site" content="@matrixdotorg" />
+    <meta name="twitter:creator" content="@matrixdotorg" />
+
+    <title>Matrix.org - Security update: Synapse 1.37.1 released</title>
+    <link rel="shortcut icon" href="/assets/favicon.ico" />
+    <link rel="icon" type="image/png" href="/assets/favicon.png" />
+    <link rel="stylesheet" href="/style.css" />
+
+    
+
+
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    "headline": "Security update: Synapse 1.37.1 released",
+    "datePublished": "2021-06-30T00:00+00:00",
+    
+    "author": [
+    
+    {
+        "@type": "Person",
+        "name": "Matthew Hodgson",
+        "url": "//authors/matthew-hodgson"
+    }
+    
+    ]
+}
+</script>
+</head>
+
+<body>
+    
+    <header class="site-header">
+    <a href="/" class="brand">
+        <img src="/images/matrix-logo.svg" alt="Matrix logo">
+    </a>
+    <input id="site-header-dropdown-checkbox" type="checkbox" class="dropdown-checkbox" aria-hidden="true">
+    <label for="site-header-dropdown-checkbox" class="dropdown-button">&#xe602;</label>
+    <label for="site-header-dropdown-checkbox" class="page-overlay"></label>
+    <nav>
+        
+        
+        <a href="&#x2F;about&#x2F;" class="
+            ">
+            About
+        </a>
+        
+        
+        
+        <a href="&#x2F;blog&#x2F;" class="
+            current">
+            Blog
+        </a>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;docs&#x2F;" class="section ">
+                Documentation
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;ecosystem&#x2F;" class="section ">
+                Ecosystem
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                    <a href="&#x2F;ecosystem&#x2F;clients&#x2F;">Clients</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;servers&#x2F;">Servers</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bots&#x2F;">Bots</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bridges&#x2F;">Bridges</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;sdks&#x2F;">SDKs</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;hosting&#x2F;">Hosting</a>
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        <a href="&#x2F;podcasts&#x2F;" class="
+            ">
+            Podcasts
+        </a>
+        
+        
+        
+        <a href="https:&#x2F;&#x2F;shop.matrix.org" class="
+            ">
+            Shop
+        </a>
+        
+        
+        
+        <a href="&#x2F;try-matrix&#x2F;" class="primary
+            ">
+            Try Matrix
+        </a>
+        
+        
+    </nav>
+</header>
+
+
+    <main>
+        
+<article class="content post with-sidebar">
+    <header>
+        <h1>Security update: Synapse 1.37.1 released</h1>
+        <span>30.06.2021 00:00 — <a
+                href="/category/releases">Releases</a>
+             — <a href="/author/matthew-hodgson">Matthew Hodgson</a>
+        </span>
+        
+    </header>
+    <div class="post-main">
+        <div class="post-content">
+            <p>Hi all,</p>
+<p>Over the last few days we've seen a distributed spam attack across the public Matrix network, where large numbers of spambots have been registered across servers with open registration and then used to flood abusive traffic into rooms such as Matrix HQ.</p>
+<p>The spam itself has been handled by <a href="https://matrix.org/docs/guides/moderation#banning-servers">temporarily banning the abused servers</a>. However, on Monday and Tuesday the volume of traffic triggered performance problems for the homeservers participating in targeted rooms (e.g. memory explosions, or very delayed federation).  This was due to a combination of factors, but one of the most important ones was Synapse issue <a href="https://github.com/matrix-org/synapse/issues/9490">#9490</a>: that one busy room could cause head-of-line blocking, starving your server from processing events in other rooms, causing all traffic to fall behind.</p>
+<p>We're happy to say that Synapse 1.37.1 <a href="https://github.com/matrix-org/synapse/pull/10272">fixes this</a> and we now process inbound federation traffic asynchronously, ensuring that one busy room won't impact others.  First impressions are that this has significantly improved federation performance and end-to-end encryption stability — for instance, new E2EE keys from remote users for a given conversation should arrive immediately rather than being blocked behind other traffic.</p>
+<p><strong>Please upgrade to Synapse 1.37.1 as soon as possible, in order to increase resilience to any other traffic spikes.</strong></p>
+<p><strong>Also, we highly recommend that you disable open registration or, if you keep it enabled, use SSO or require email validation to avoid abusive signups. Empirically adding a CAPTCHA is not enough. Otherwise you may find your server blocked all over the place if it is hosting spambots.</strong></p>
+<p><strong>Finally, if your server has open registration, PLEASE check whether spambots have been registered on your server, and deactivate them.  Once deactivated, you will need to contact abuse@matrix.org to request that blocks on your server are removed</strong>.</p>
+<p>Your best bet for spotting and neutralising dormant spambots is to review signups on your homeserver over the past 3-5 days and deactivate suspicious users. We do not recommend relying solely on lists of suspicious IP addresses for this task, as the distributed nature of the attack means any such list is likely to be incomplete or include shared proxies which may also catch legitimate users.</p>
+<p>To ease review, we're working on an auditing script in <a href="https://github.com/matrix-org/synapse/pull/10290">#10290</a>; feedback on whether this is useful would be appreciated. Problematic accounts can then be dealt with using the <a href="https://matrix-org.github.io/synapse/v1.37/admin_api/user_admin_api.html#deactivate-account">Deactivate Account Admin API</a>.</p>
+<p>Meanwhile, over to Dan for the Synapse 1.37 release notes.</p>
+<h2 id="synapse-1-37-release-announcement">Synapse 1.37 Release Announcement</h2>
+<p>Synapse 1.37 is now available!</p>
+<blockquote>
+<p>**Note: ** The legacy APIs for Spam Checker extension modules are now considered deprecated and targeted for removal in August. Please see <a href="https://matrix-org.github.io/synapse/v1.37/modules.html#porting-an-existing-module-that-uses-the-old-interface">the module docs</a> for information on updating.</p>
+<p>This release also removes Synapse's built-in support for the obsolete ACMEv1 protocol for automatically obtaining TLS certificates. Server administrators should place Synapse behind a <a href="https://matrix-org.github.io/synapse/v1.37/reverse_proxy.html">reverse proxy</a> for TLS termination, or switch to a standalone ACMEv2 client like <a href="https://certbot.eff.org/">certbot</a>.</p>
+</blockquote>
+<h3 id="knock-knock">Knock, knock?</h3>
+<p>After nearly 18 months and 129 commits, Synapse now includes support for <a href="https://github.com/matrix-org/matrix-doc/pull/2403">MSC2403: Add &quot;knock&quot; feature</a> and <a href="https://spec.matrix.org/unstable/rooms/v7/">Room Version 7</a>! This feature allows users to directly request admittance to private rooms, without having to track down an invitation out-of-band. One caveat: Though the server-side foundation is there, knocking is not <em>yet</em> implemented in clients.</p>
+<h3 id="a-unified-interface-for-extension-modules">A Unified Interface for Extension Modules</h3>
+<p>Third party modules can customize Synapse's behavior, implementing things like bespoke media storage providers or user event filters. However, Synapse previously lacked a unified means of enumerating and configuring third-party modules. That changes with Synapse 1.37, which introduces a new, <a href="https://matrix-org.github.io/synapse/v1.37/modules.html">generic interface for extensions</a>.</p>
+<p>This new interface consolidates configuration into one place, allowing for more flexibility and granularity by explicitly registering callbacks with specific hooks. You can learn more about the new module API in the docs linked above, or in <a href="https://www.youtube.com/playlist?list=PLl5dnxRMP1hULbP8MYk2noPKFCFyg-SHK">Matrix Live</a> S6E29, due out this Friday, July 2nd.</p>
+<h3 id="safer-reauthentication">Safer Reauthentication</h3>
+<p>User-interactive authentication (&quot;UIA&quot;) is required for potentially dangerous actions like removing devices or uploading cross-signing keys. However, Synapse can optionally be configured to provide a brief grace period such that users are not prompted to re-authenticate on actions taken shortly after logging in or otherwise authenticating.</p>
+<p>This improves user experience, but also creates risks for clients which rely on UIA as a guard against actions like account deactivation. Synapse 1.37 protects users by exempting especially risky actions from the grace period. See <a href="https://github.com/matrix-org/synapse/pull/10184">#10184</a> for details.</p>
+<h3 id="smaller-improvements">Smaller Improvements</h3>
+<p>We've landed a number of smaller improvements which, together, make Synapse more responsive and reliable. We now:</p>
+<ul>
+<li>More efficiently respond to key requests, preventing excessive load (<a href="https://github.com/matrix-org/synapse/pull/10221">#10221</a>, <a href="https://github.com/matrix-org/synapse/pull/10144">#10144</a>)</li>
+<li>Render docs for each <code>vX.Y</code> Synapse release, starting with v1.37 (<a href="https://github.com/matrix-org/synapse/pull/10198">#10198</a>)</li>
+<li>Ensure that log entries from failures during early startup are not lost (<a href="https://github.com/matrix-org/synapse/pull/10191">#10191</a>)</li>
+<li>Have a notion of database schema &quot;compatibility versions&quot;, allowing for more graceful upgrades and downgrades of Synapse (<a href="https://matrix-org.github.io/synapse/v1.37/development/database_schema.html#synapse-schema-versions">docs</a>)</li>
+</ul>
+<p>We've also resolved two bugs which could cause sync requests to immediately return with empty payloads (<a href="https://github.com/matrix-org/synapse/issues/8518">#8518</a>), producing a tight loop of repeated network requests.</p>
+<h3 id="everything-else">Everything Else</h3>
+<p>Lastly, we've merged an experimental implementation of <a href="https://github.com/matrix-org/matrix-doc/pull/2716">MSC2716: Incrementally importing history into existing rooms</a> (<a href="https://github.com/matrix-org/synapse/pull/9247">#9247</a>) as part of Element's work to fully <a href="https://matrix.org/blog/2020/09/30/welcoming-gitter-to-matrix">integrate Gitter into Matrix</a>.</p>
+<p>These are just the highlights; please see the <a href="https://github.com/matrix-org/synapse/blob/v1.37.1/UPGRADE.rst#upgrading-to-v1370">Upgrade Information</a> and <a href="https://github.com/matrix-org/synapse/blob/v1.37.1/CHANGES.md">Release Notes</a> for a complete list of changes in this release.</p>
+<p>Synapse is a Free and Open Source Software project, and we'd like to extend our thanks to everyone who contributed to this release, including <a href="https://github.com/aaronraimist">aaronraimist</a>, <a href="https://github.com/Bubu">Bubu</a>, <a href="https://github.com/dklimpel">dklimpel</a>, <a href="https://github.com/jkanefendt">jkanefendt</a>, <a href="https://github.com/lukaslihotzki">lukaslihotzki</a>, <a href="https://github.com/mikure">mikure</a>, and <a href="https://github.com/Sorunome">Sorunome</a>,</p>
+
+        </div>
+        
+        <aside>
+            <h3>Post Contents</h3>
+
+            <ul style="list-style: none; padding-left: 0px;">
+                
+                <li>
+                    <a href="/blog/2021/06/30/security-update-synapse-1-37-1-released/#synapse-1-37-release-announcement">Synapse 1.37 Release Announcement</a>
+                    
+                    <ul>
+                        
+                        <li>
+                            <a href="/blog/2021/06/30/security-update-synapse-1-37-1-released/#knock-knock">Knock, knock?</a>
+                        </li>
+                        
+                        <li>
+                            <a href="/blog/2021/06/30/security-update-synapse-1-37-1-released/#a-unified-interface-for-extension-modules">A Unified Interface for Extension Modules</a>
+                        </li>
+                        
+                        <li>
+                            <a href="/blog/2021/06/30/security-update-synapse-1-37-1-released/#safer-reauthentication">Safer Reauthentication</a>
+                        </li>
+                        
+                        <li>
+                            <a href="/blog/2021/06/30/security-update-synapse-1-37-1-released/#smaller-improvements">Smaller Improvements</a>
+                        </li>
+                        
+                        <li>
+                            <a href="/blog/2021/06/30/security-update-synapse-1-37-1-released/#everything-else">Everything Else</a>
+                        </li>
+                        
+                    </ul>
+                    
+                </li>
+                
+            </ul>
+        </aside>
+        
+    </div>
+</article>
+
+    </main>
+
+    <footer class="site-footer">
+    <div class="internal-links">
+        
+        <a href="&#x2F;faq">FAQs</a>
+        
+        <a href="&#x2F;security-disclosure-policy">Security Disclosure Policy</a>
+        
+        <a href="&#x2F;hall-of-fame">Security Hall of Fame</a>
+        
+        <a href="&#x2F;legal&#x2F;code-of-conduct">Code of Conduct for Matrix.org</a>
+        
+        <a href="&#x2F;legal">Legal</a>
+        
+        <a href="&#x2F;contact">Contact</a>
+        
+        <a href="https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;">Site Source</a>
+        
+    </div>
+    <div class="external-links">
+        <div>
+            
+            <a href="&#x2F;code"><img src="/assets/github.svg" alt="GitHub"></a>
+            
+            <a href="https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;"><img src="/assets/gitlab.svg" alt="GitLab"></a>
+            
+            <a href="https:&#x2F;&#x2F;mastodon.matrix.org&#x2F;@matrix"><img src="/assets/mastodon.svg" alt="Mastodon"></a>
+            
+            <a href="https:&#x2F;&#x2F;twitter.com&#x2F;matrixdotorg"><img src="/assets/twitter.svg" alt="Twitter"></a>
+            
+            <a href="https:&#x2F;&#x2F;www.youtube.com&#x2F;channel&#x2F;UCVFkW-chclhuyYRbmmfwt6w"><img src="/assets/youtube.svg" alt="YouTube"></a>
+            
+        </div>
+    </div>
+    <p>© 2022 The Matrix.org Foundation C.I.C.</p>
+</footer>
+
+</body>
+
+</html>

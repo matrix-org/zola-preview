@@ -4,8 +4,875 @@
 	<link href="/category/tech/atom.xml" rel="self" type="application/atom+xml"/>
   <link href="/"/>
 	<generator uri="https://www.getzola.org/">Zola</generator>
-	<updated>2019-09-27T00:00:00+00:00</updated>
+	<updated>2021-12-17T00:00:00+00:00</updated>
 	<id>/category/tech/atom.xml</id>
+	<entry xml:lang="en">
+		<title>Type coverage for Sydent: evaluation</title>
+		<published>2021-12-17T00:00:00+00:00</published>
+		<updated>2021-12-17T00:00:00+00:00</updated>
+		<link rel="alternate" href="/blog/2021/12/17/type-coverage-for-sydent-evaluation/" type="text/html"/>
+		<id>/blog/2021/12/17/type-coverage-for-sydent-evaluation/</id>
+		<content type="html">&lt;p&gt;This is the third in a series of three posts which discuss recent work to improve type annotations in &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;sydent&quot;&gt;Sydent&lt;&#x2F;a&gt;, the reference Matrix Identity server. &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2021&#x2F;12&#x2F;10&#x2F;type-coverage-for-sydent-annotation&quot;&gt;Last time&lt;&#x2F;a&gt; we discussed the mechanics of how we added type coverage. Now I want to reflect on how well we did. What information and guarantees did we gain from &lt;code&gt;mypy&lt;&#x2F;code&gt;? How could we track our progress and measure the effect of our work? And lastly, what other tools are out there apart from &lt;code&gt;mypy&lt;&#x2F;code&gt;?&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;the-best-parts-of-strict&quot;&gt;The best parts of &lt;code&gt;--strict&lt;&#x2F;code&gt;&lt;&#x2F;h2&gt;
+&lt;p&gt;While the primary goal was to improve Sydent&#x27;s coverage and robustness, to some extent this was an experiment too. How much could we get out of typing and static analysis, if we &lt;em&gt;really&lt;&#x2F;em&gt; invested in thorough annotations? Sydent is a small project that would make for a good testbed! I decided my goal would be to get Sydent passing mypy under &lt;a href=&quot;https:&#x2F;&#x2F;mypy.readthedocs.io&#x2F;en&#x2F;stable&#x2F;command_line.html#cmdoption-mypy-strict&quot;&gt;--strict mode&lt;&#x2F;a&gt;. This is a command line option which turns on a number of extra checks (though not everything); it feels similar to passing &lt;code&gt;-Wall -Wextra -Werror&lt;&#x2F;code&gt; to &lt;code&gt;gcc&lt;&#x2F;code&gt;. It&#x27;s a little extreme, but Sydent is a small project and this would be a good chance to see how hard it would be. In my view, the most useful options implied by strict mode were as follows.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;check-untyped-defs&quot;&gt;&lt;a href=&quot;https:&#x2F;&#x2F;mypy.readthedocs.io&#x2F;en&#x2F;stable&#x2F;command_line.html#cmdoption-mypy-check-untyped-defs&quot;&gt;--check-untyped-defs&lt;&#x2F;a&gt;&lt;&#x2F;h3&gt;
+&lt;p&gt;By default, mypy will only analyze the implementation of functions that are annotated. On the one hand, without annotations for inputs and the return type, it&#x27;s going to be hard for mypy to thoroughly check the soundness of your function. On the other, it can still do good work with the type information it has from other sources. Mypy can&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;infer the type of literals, e.g. deducing &lt;code&gt;x: str&lt;&#x2F;code&gt; from  &lt;code&gt;x = &amp;quot;hello&amp;quot;&lt;&#x2F;code&gt;;&lt;&#x2F;li&gt;
+&lt;li&gt;lookup the return types of standard library calls, via &lt;code&gt;typeshed&lt;&#x2F;code&gt;; and similarly&lt;&#x2F;li&gt;
+&lt;li&gt;lookup the return types of any annotated functions in your code or dependencies.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;The information is already available for free: we may as well try to use it to spot problems.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;disallow-untyped-defs-and-friends&quot;&gt;&lt;a href=&quot;https:&#x2F;&#x2F;mypy.readthedocs.io&#x2F;en&#x2F;stable&#x2F;command_line.html#cmdoption-mypy-disallow-untyped-defs&quot;&gt;--disallow-untyped-defs&lt;&#x2F;a&gt; and &lt;a href=&quot;https:&#x2F;&#x2F;mypy.readthedocs.io&#x2F;en&#x2F;stable&#x2F;command_line.html#untyped-definitions-and-calls&quot;&gt;friends&lt;&#x2F;a&gt;&lt;&#x2F;h3&gt;
+&lt;p&gt;This flag forces you to fully annotate every function. There are less extreme versions available, e.g. &lt;code&gt;--disallow-incomplete-defs&lt;&#x2F;code&gt;; but I think this is a good option to ensure full coverage of your module. It means you can rely on mypy&#x27;s error output as a to-do list.&lt;&#x2F;p&gt;
+&lt;p&gt;One downside to this: sometimes I felt like I was writing obvious boilerplate annotations, e.g.&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;python&quot; style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot; class=&quot;language-python &quot;&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;def &lt;&#x2F;span&gt;&lt;span&gt;__str__(self) -&amp;gt; str:
+&lt;&#x2F;span&gt;&lt;span&gt;        &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;...
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;There was one particular example of this that crops up a lot. Mypy has a special exception for a class&#x27;s &lt;code&gt;__init__&lt;&#x2F;code&gt; and &lt;code&gt;__init_subclass__&lt;&#x2F;code&gt; methods. If a return type annotation is missing, it will &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;python&#x2F;mypy&#x2F;issues&#x2F;604#issuecomment-348525995&quot;&gt;assume these functions return None&lt;&#x2F;a&gt; instead of &lt;code&gt;Any&lt;&#x2F;code&gt;. (See  here for &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;python&#x2F;mypy&#x2F;pull&#x2F;5677&quot;&gt;its implementation&lt;&#x2F;a&gt;.) This is normally compatible with &lt;code&gt;--disallow-untyped-defs&lt;&#x2F;code&gt; and &lt;code&gt;--disallow-incomplete-defs&lt;&#x2F;code&gt;, with one exception. If your &lt;code&gt;__init__&lt;&#x2F;code&gt; function takes no arguments other than &lt;code&gt;self&lt;&#x2F;code&gt;, mypy won&#x27;t consider it annotated, and you&#x27;ll need to write &lt;code&gt;-&amp;gt; None&lt;&#x2F;code&gt; explicitly.&lt;&#x2F;p&gt;
+&lt;p&gt;It&#x27;s also worth mentioning &lt;a href=&quot;https:&#x2F;&#x2F;mypy.readthedocs.io&#x2F;en&#x2F;stable&#x2F;command_line.html#cmdoption-mypy-disallow-untyped-calls&quot;&gt;--disallow-untyped-calls&lt;&#x2F;a&gt;, which will cause an error if an annotated function calls an unannotated function. Again, it helps to ensure that mypy has a complete picture of the types in your function&#x27;s implementation. It also helps to highlight dependencies—if you see errors from this, it might be more practical to annotate the functions and modules it&#x27;s calling first.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;warn-return-any&quot;&gt;&lt;a href=&quot;https:&#x2F;&#x2F;mypy.readthedocs.io&#x2F;en&#x2F;stable&#x2F;command_line.html#cmdoption-mypy-warn-return-any&quot;&gt;--warn-return-any&lt;&#x2F;a&gt;&lt;&#x2F;h3&gt;
+&lt;p&gt;If I&#x27;ve written a function and annotated it to return an &lt;code&gt;int&lt;&#x2F;code&gt;, mypy will rightly complain if its implementation actually goes on to return a &lt;code&gt;str&lt;&#x2F;code&gt;.&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;python&quot; style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot; class=&quot;language-python &quot;&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;def &lt;&#x2F;span&gt;&lt;span&gt;foo() -&amp;gt; int:
+&lt;&#x2F;span&gt;&lt;span&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#608b4e;&quot;&gt;# error: Incompatible return value type (got &amp;quot;str&amp;quot;, expected &amp;quot;int&amp;quot;)
+&lt;&#x2F;span&gt;&lt;span&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;return &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;hello&amp;quot;
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;If mypy isn&#x27;t sure what type I&#x27;m returning though, i.e. if I&#x27;m returning an expression of type &lt;code&gt;Any&lt;&#x2F;code&gt;, then by default mypy will trust that we&#x27;ve done the right thing.&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;python&quot; style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot; class=&quot;language-python &quot;&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;def &lt;&#x2F;span&gt;&lt;span&gt;i_promise_this_is_an_int():
+&lt;&#x2F;span&gt;&lt;span&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;return &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;hello&amp;quot;
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;def &lt;&#x2F;span&gt;&lt;span&gt;bar() -&amp;gt; int:
+&lt;&#x2F;span&gt;&lt;span&gt;    reveal_type(i_promise_this_is_an_int()) &lt;&#x2F;span&gt;&lt;span style=&quot;color:#608b4e;&quot;&gt;# Any
+&lt;&#x2F;span&gt;&lt;span&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;return &lt;&#x2F;span&gt;&lt;span&gt;i_promise_this_is_an_int()
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;Enabling &lt;code&gt;--warn-return-any&lt;&#x2F;code&gt; will disable this behaviour; to make this error pass we&#x27;ll have to prove to mypy that &lt;code&gt;i_promise_this_is_an_int()&lt;&#x2F;code&gt; really is an &lt;code&gt;int&lt;&#x2F;code&gt;. Sometimes that will be the case, and an extra annotation will provide the necessary proof. At other times (like in this example), investigation will prove that there really is a bug!&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;strict-equality&quot;&gt;&lt;a href=&quot;https:&#x2F;&#x2F;mypy.readthedocs.io&#x2F;en&#x2F;stable&#x2F;command_line.html#cmdoption-mypy-strict-equality&quot;&gt;--strict-equality&lt;&#x2F;a&gt;&lt;&#x2F;h3&gt;
+&lt;p&gt;This is a bit like a limited form of gcc&#x27;s &lt;a href=&quot;https:&#x2F;&#x2F;gcc.gnu.org&#x2F;onlinedocs&#x2F;gcc&#x2F;Warning-Options.html&quot;&gt;-Wtautological-compare&lt;&#x2F;a&gt;. Mypy will report and reject equality tests between incompatible types. If mypy can spot that an equality is always &lt;code&gt;False&lt;&#x2F;code&gt;, there&#x27;s a good chance of there being a bug in your program, or else an incorrect annotation.&lt;&#x2F;p&gt;
+&lt;p&gt;I&#x27;m not sure how general this check is, since users can define their own types with their own rules for equality by overriding &lt;a href=&quot;https:&#x2F;&#x2F;docs.python.org&#x2F;3&#x2F;reference&#x2F;datamodel.html?highlight=__eq__#object.__eq__&quot;&gt;&lt;strong&gt;eq&lt;&#x2F;strong&gt;&lt;&#x2F;a&gt;. Perhaps it only applies to built-in types?&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;quantifying-coverage&quot;&gt;Quantifying coverage&lt;&#x2F;h2&gt;
+&lt;p&gt;It was important to have some way to numerically evaluate our efforts to improve type coverage. It&#x27;s a fairly abstract piece of work: there&#x27;s nothing user-visible about it, unless we happen to discover a bug and fix it.&lt;&#x2F;p&gt;
+&lt;p&gt;The most obvious metric is the number of total errors reported by mypy. Before the recent sprint, we had roughly 600 errors total.&lt;&#x2F;p&gt;
+&lt;pre style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot;&gt;&lt;code&gt;&lt;span&gt;dmr on titan in sydent on  HEAD (3dde3ad) via 🐍 v3.9.7 (env)
+&lt;&#x2F;span&gt;&lt;span&gt;2021-11-08 12:35:37 ✔  $ mypy --strict sydent
+&lt;&#x2F;span&gt;&lt;span&gt;Found 635 errors in 59 files (checked 78 source files)
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;This is a decent way to measure your progress when working on a particular module or package, but it&#x27;s not perfect, because the errors aren&#x27;t independent. Fixing one could fix another ten or reveal another twenty—the numeric value can be erratic.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;reports&quot;&gt;Reports&lt;&#x2F;h3&gt;
+&lt;p&gt;I found mypy&#x27;s various &lt;a href=&quot;https:&#x2F;&#x2F;mypy.readthedocs.io&#x2F;en&#x2F;stable&#x2F;command_line.html#report-generation&quot;&gt;reports&lt;&#x2F;a&gt; to be a better approach here. There were three reports I found particularly useful.&lt;&#x2F;p&gt;
+&lt;h4 id=&quot;html-report&quot;&gt;&lt;code&gt;--html-report&lt;&#x2F;code&gt;&lt;&#x2F;h4&gt;
+&lt;p&gt;This produces a main index page showing the &amp;quot;imprecision&amp;quot; of each module. At the bottom of the table is a total imprecision value across the entire project.&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;img src=&quot;&#x2F;blog&#x2F;img&#x2F;2021-12-17-sydent-typing-html-report-index.png&quot; alt=&quot;HTML report, index page. A table showing each module&#x27;s precision and number of lines of code.&quot; &#x2F;&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;The precision for each module is broken down line-by-line and colour-coded accordingly, which is useful for getting an intuition for what makes a line imprecise. More on that shortly.&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;img src=&quot;&#x2F;blog&#x2F;img&#x2F;2021-12-17-sydent-typing-html-report-module.png&quot; alt=&quot;HTML report, module page. Most lines of source code are highlighted green; a minority are highlighted red.&quot; &#x2F;&gt;&lt;&#x2F;p&gt;
+&lt;h4 id=&quot;txt-report&quot;&gt;&lt;code&gt;--txt-report&lt;&#x2F;code&gt;&lt;&#x2F;h4&gt;
+&lt;p&gt;This reproduces the index page from the &lt;code&gt;html&lt;&#x2F;code&gt; report as a plain text file. It&#x27;s slightly easier to parse—that&#x27;s how I got the data for the precision line graphs in &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2021&#x2F;12&#x2F;03&#x2F;type-coverage-for-sydent-motivation&quot;&gt;part one&lt;&#x2F;a&gt; of this series. That was a quick and dirty hack, though; a proper analysis of precision probably ought to read from the json or xml output formats. Here&#x27;s a truncated sample:&lt;&#x2F;p&gt;
+&lt;pre style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot;&gt;&lt;code&gt;&lt;span&gt;+-----------------------------------+-------------------+----------+
+&lt;&#x2F;span&gt;&lt;span&gt;| Module                            | Imprecision       | Lines    |
+&lt;&#x2F;span&gt;&lt;span&gt;+-----------------------------------+-------------------+----------+
+&lt;&#x2F;span&gt;&lt;span&gt;| sydent                            |   0.00% imprecise |    1 LOC |
+&lt;&#x2F;span&gt;&lt;span&gt;| sydent.config                     |   0.00% imprecise |  266 LOC |
+&lt;&#x2F;span&gt;&lt;span&gt;| sydent.config._base               |   0.00% imprecise |   31 LOC |
+&lt;&#x2F;span&gt;&lt;span&gt;| sydent.config.crypto              |  15.94% imprecise |   69 LOC |
+&lt;&#x2F;span&gt;&lt;span&gt;| ...                               |               ... |      ... |
+&lt;&#x2F;span&gt;&lt;span&gt;| sydent.validators                 |   0.00% imprecise |   61 LOC |
+&lt;&#x2F;span&gt;&lt;span&gt;| sydent.validators.common          |   7.35% imprecise |   68 LOC |
+&lt;&#x2F;span&gt;&lt;span&gt;| sydent.validators.emailvalidator  |   1.30% imprecise |  154 LOC |
+&lt;&#x2F;span&gt;&lt;span&gt;| sydent.validators.msisdnvalidator |   1.34% imprecise |  149 LOC |
+&lt;&#x2F;span&gt;&lt;span&gt;+-----------------------------------+-------------------+----------+
+&lt;&#x2F;span&gt;&lt;span&gt;| Total                             |   5.95% imprecise | 9707 LOC |
+&lt;&#x2F;span&gt;&lt;span&gt;+-----------------------------------+-------------------+----------+
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;h4 id=&quot;any-exprs-report&quot;&gt;&lt;code&gt;--any-exprs-report&lt;&#x2F;code&gt;&lt;&#x2F;h4&gt;
+&lt;p&gt;Selecting this option generate two reports: &lt;code&gt;any-exprs.txt&lt;&#x2F;code&gt; and &lt;code&gt;types-of-anys.txt&lt;&#x2F;code&gt;. The latter is interesting to understand where the &lt;code&gt;Anys&lt;&#x2F;code&gt; come from, but the former is more useful for quantifying the progress of typing. Another sample:&lt;&#x2F;p&gt;
+&lt;pre style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot;&gt;&lt;code&gt;&lt;span&gt;                  Name   Anys   Exprs   Coverage
+&lt;&#x2F;span&gt;&lt;span&gt;-------------------------------------------------
+&lt;&#x2F;span&gt;&lt;span&gt;                sydent      0       2    100.00%
+&lt;&#x2F;span&gt;&lt;span&gt;         sydent.config      0     185    100.00%
+&lt;&#x2F;span&gt;&lt;span&gt;   sydent.config._base      0       3    100.00%
+&lt;&#x2F;span&gt;&lt;span&gt;  sydent.config.crypto     34      80     57.50%
+&lt;&#x2F;span&gt;&lt;span&gt;sydent.config.database      0       8    100.00%
+&lt;&#x2F;span&gt;&lt;span&gt;   sydent.config.email      0      86    100.00%
+&lt;&#x2F;span&gt;&lt;span&gt;                   ...    ...     ...        ...
+&lt;&#x2F;span&gt;&lt;span&gt;-------------------------------------------------
+&lt;&#x2F;span&gt;&lt;span&gt;                 Total    544   11366     95.21%
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;The breakdown in &lt;code&gt;types-of-anys.txt&lt;&#x2F;code&gt; has more gory detail. I found the &amp;quot;Unimported&amp;quot; column particularly interesting: it lets us see how exposed we are to a lack of typing in our dependencies.&lt;&#x2F;p&gt;
+&lt;pre style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot;&gt;&lt;code&gt;&lt;span&gt;                             Name   Unannotated   Explicit   Unimported   Omitted Generics   Error   Special Form   Implementation Artifact
+&lt;&#x2F;span&gt;&lt;span&gt;-------------------------------------------------------------------------------------------------------------------------------------------
+&lt;&#x2F;span&gt;&lt;span&gt;                           sydent             0          0            0                  0       0              0                         0
+&lt;&#x2F;span&gt;&lt;span&gt;                    sydent.config             0          3            0                  0       0              0                         0
+&lt;&#x2F;span&gt;&lt;span&gt;              sydent.config._base             0          0            0                  0       0              0                         0
+&lt;&#x2F;span&gt;&lt;span&gt;                              ...           ...        ...          ...                ...     ...            ...                       ...
+&lt;&#x2F;span&gt;&lt;span&gt;        sydent.util.versionstring             0         80            0                  0       0              0                         0
+&lt;&#x2F;span&gt;&lt;span&gt;                sydent.validators             0          4            0                  0       0              0                         0
+&lt;&#x2F;span&gt;&lt;span&gt;         sydent.validators.common             0         20            0                  0       0              0                         0
+&lt;&#x2F;span&gt;&lt;span&gt; sydent.validators.emailvalidator             0          8            0                  0       0              0                         0
+&lt;&#x2F;span&gt;&lt;span&gt;sydent.validators.msisdnvalidator             0          8            0                  0       0              0                         0
+&lt;&#x2F;span&gt;&lt;span&gt;-------------------------------------------------------------------------------------------------------------------------------------------
+&lt;&#x2F;span&gt;&lt;span&gt;                            Total             9       1276          273                  0      37              0                        17
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;h3 id=&quot;the-meaning-of-precision&quot;&gt;The meaning of precision&lt;&#x2F;h3&gt;
+&lt;p&gt;There are two metrics I chose to focus on:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;the proportion of &amp;quot;imprecise&amp;quot; lines across the project; I also used the complement, &lt;code&gt;precision = 100% - imprecision&lt;&#x2F;code&gt;, and&lt;&#x2F;li&gt;
+&lt;li&gt;the proportion of expressions whose type is not &lt;code&gt;Any&lt;&#x2F;code&gt;.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;These are plotted in the graph at the top of this writeup. I could see that precision and the proportion of typed expressions were correlated, but I didn&#x27;t understand how they differed. I couldn&#x27;t see an explanation in the mypy docs, so I went &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;python&#x2F;mypy&#x2F;blob&#x2F;d807e097d142a88a48af93314d15ad87e41d2f19&#x2F;mypy&#x2F;stats.py&quot;&gt;digging&lt;&#x2F;a&gt; into the mypy source code. My understanding is as follows.&lt;&#x2F;p&gt;
+&lt;ol&gt;
+&lt;li&gt;There are &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;python&#x2F;mypy&#x2F;blob&#x2F;d807e097d142a88a48af93314d15ad87e41d2f19&#x2F;mypy&#x2F;stats.py#L27-L31&quot;&gt;five kinds of precision&lt;&#x2F;a&gt;. Full details are visible in the &lt;code&gt;--lineprecision-report&lt;&#x2F;code&gt;.&lt;&#x2F;li&gt;
+&lt;li&gt;Two kinds of precision, &lt;code&gt;EMPTY&lt;&#x2F;code&gt; and &lt;code&gt;UNANALYZED&lt;&#x2F;code&gt; convey no information, because there&#x27;s nothing to analyze.&lt;&#x2F;li&gt;
+&lt;li&gt;A line is marked as precise, imprecise or any based on the expressions it uses.
+&lt;ul&gt;
+&lt;li&gt;An expression that has type &lt;code&gt;Any&lt;&#x2F;code&gt; leads to precision &lt;code&gt;ANY&lt;&#x2F;code&gt;.&lt;&#x2F;li&gt;
+&lt;li&gt;I &lt;em&gt;think&lt;&#x2F;em&gt; an expression that &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;python&#x2F;mypy&#x2F;blob&#x2F;2907a4dea939e20ff39ef7d9ff85ae1a199a0ee8&#x2F;mypy&#x2F;stats.py#L422-L423&quot;&gt;involves &lt;code&gt;Any&lt;&#x2F;code&gt; but is not &lt;code&gt;Any&lt;&#x2F;code&gt;&lt;&#x2F;a&gt; counts as imprecise. For instance, &lt;code&gt;Dict[str, Any]&lt;&#x2F;code&gt;.&lt;&#x2F;li&gt;
+&lt;li&gt;Remaining expressions have precision &lt;code&gt;PRECISE&lt;&#x2F;code&gt;.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;A line&#x27;s precision is the worst of all its expressions&#x27; precisions.
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;ANY&lt;&#x2F;code&gt; is worse than &lt;code&gt;IMPRECISE&lt;&#x2F;code&gt;, which is worse than &lt;code&gt;PRECISE&lt;&#x2F;code&gt;.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;&#x2F;li&gt;
+&lt;&#x2F;ol&gt;
+&lt;p&gt;The &amp;quot;imprecision&amp;quot; number reported by mypy counts the number of lines &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;python&#x2F;mypy&#x2F;blob&#x2F;3bdef9fe6d401f3d2e0cacf4964bd315550c3394&#x2F;mypy&#x2F;xml&#x2F;mypy-txt.xslt#L77-L78&quot;&gt;classified as &lt;code&gt;IMPRECISE&lt;&#x2F;code&gt; or &lt;code&gt;ANY&lt;&#x2F;code&gt;&lt;&#x2F;a&gt;.&lt;&#x2F;p&gt;
+&lt;p&gt;On balance, my preferred metric is the line-level (im)precision percentage. There wasn&#x27;t much difference between the two in my experience, but the colour-coded visualisation in the HTML report is a neat feature to have. Maybe in the future there could be a version of the HTML report that colour-codes each &lt;em&gt;expression&lt;&#x2F;em&gt;?&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;the-larger-typing-ecosystem&quot;&gt;The larger typing ecosystem&lt;&#x2F;h2&gt;
+&lt;p&gt;There are plenty of articles out there about the typing. As well as the &lt;a href=&quot;http:&#x2F;&#x2F;mypy-lang.blogspot.com&#x2F;&quot;&gt;mypy blog itself&lt;&#x2F;a&gt;, see Daniele Varrazzo&#x27;s &lt;a href=&quot;https:&#x2F;&#x2F;www.varrazzo.com&#x2F;blog&#x2F;2020&#x2F;03&#x2F;31&#x2F;first-experience-mypy&#x2F;&quot;&gt;post on &lt;code&gt;psycopg3&lt;&#x2F;code&gt; (2020)&lt;&#x2F;a&gt;, Dropbox&#x27;s &lt;a href=&quot;https:&#x2F;&#x2F;dropbox.tech&#x2F;application&#x2F;our-journey-to-type-checking-4-million-lines-of-python&quot;&gt;blog post (2019)&lt;&#x2F;a&gt;, Zulip&#x27;s &lt;a href=&quot;https:&#x2F;&#x2F;blog.zulip.com&#x2F;2016&#x2F;10&#x2F;13&#x2F;static-types-in-python-oh-mypy&#x2F;&quot;&gt;blog post (2016)&lt;&#x2F;a&gt;, Glyph&#x27;s &lt;a href=&quot;https:&#x2F;&#x2F;glyph.twistedmatrix.com&#x2F;2020&#x2F;07&#x2F;new-duck.html&quot;&gt;blog post on &lt;code&gt;Protocols&lt;&#x2F;code&gt; (2020)&lt;&#x2F;a&gt; and a follow-up &lt;a href=&quot;https:&#x2F;&#x2F;glyph.twistedmatrix.com&#x2F;2021&#x2F;03&#x2F;interfaces-and-protocols.html&quot;&gt;comparing them to &lt;code&gt;zope.interface&lt;&#x2F;code&gt; (2021)&lt;&#x2F;a&gt; and Nylas&#x27;s &lt;a href=&quot;https:&#x2F;&#x2F;www.nylas.com&#x2F;blog&#x2F;not-your-pie-mypy&#x2F;&quot;&gt;blog (2019)&lt;&#x2F;a&gt;. I&#x27;m sure there&#x27;s plenty more out there.&lt;&#x2F;p&gt;
+&lt;p&gt;It&#x27;s worth highlighting the &lt;code&gt;typeshed&lt;&#x2F;code&gt; project, which maintains stubs for the standard library, plus popular third-party libraries. I &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;python&#x2F;typeshed&#x2F;pull&#x2F;6150&quot;&gt;submitted a PR&lt;&#x2F;a&gt; to add a single type hint—it was a very pleasant experience! Microsoft has an &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;microsoft&#x2F;python-type-stubs&quot;&gt;incubator&lt;&#x2F;a&gt; of sorts for stubs too.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;other-typecheckers&quot;&gt;Other typecheckers&lt;&#x2F;h3&gt;
+&lt;p&gt;After the sprint to improve coverage, I spent a short amount of time trying the alternative type checkers out there. Mypy isn&#x27;t the &lt;em&gt;only&lt;&#x2F;em&gt; typechecker out there—other companies have built and open-sourced their own tools, with different strengths, weaknesses and goals. This is by no means an authoritative, exhaustive survey—just my quick notes.&lt;&#x2F;p&gt;
+&lt;h4 id=&quot;pyre-facebook&quot;&gt;&lt;a href=&quot;https:&#x2F;&#x2F;pyre-check.org&#x2F;&quot;&gt;Pyre&lt;&#x2F;a&gt; (Facebook)&lt;&#x2F;h4&gt;
+&lt;ul&gt;
+&lt;li&gt;I couldn&#x27;t work out how to configure paths to resolve import errors; in the end, I wasn&#x27;t able to process much of Sydent&#x27;s source code.&lt;&#x2F;li&gt;
+&lt;li&gt;Couldn&#x27;t get it to process annotations like &lt;code&gt;syd: &amp;quot;Sydent&amp;quot;&lt;&#x2F;code&gt; where &amp;quot;Sydent&amp;quot; is an import guarded by &lt;a href=&quot;https:&#x2F;&#x2F;docs.python.org&#x2F;3&#x2F;library&#x2F;typing.html?highlight=type_checking#typing.TYPE_CHECKING&quot;&gt;TYPE_CHECKING&lt;&#x2F;a&gt;.&lt;&#x2F;li&gt;
+&lt;li&gt;No plugin system that I could see. That said, it has a separate mode&#x2F;program for running &lt;a href=&quot;https:&#x2F;&#x2F;pyre-check.org&#x2F;docs&#x2F;pysa-basics&quot;&gt;&amp;quot;Taint Analysis&amp;quot;&lt;&#x2F;a&gt; to spot security issues.&lt;&#x2F;li&gt;
+&lt;li&gt;Seemed stricter by default compared to mypy: there was less inference of types.&lt;&#x2F;li&gt;
+&lt;li&gt;Also has its own strict mode.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;h4 id=&quot;pyright-microsoft&quot;&gt;&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;microsoft&#x2F;pyright&quot;&gt;Pyright&lt;&#x2F;a&gt; (Microsoft)&lt;&#x2F;h4&gt;
+&lt;ul&gt;
+&lt;li&gt;Didn&#x27;t seem to recognise &lt;code&gt;getLogger&lt;&#x2F;code&gt; as being imported from &lt;code&gt;logging&lt;&#x2F;code&gt;. Not sure what happened there—maybe something wrong with its bundled version of &lt;code&gt;typeshed&lt;&#x2F;code&gt;?&lt;&#x2F;li&gt;
+&lt;li&gt;In a few places, Sydent uses &lt;code&gt;urllib.parse.quote&lt;&#x2F;code&gt; but only imports &lt;code&gt;urllib&lt;&#x2F;code&gt;. We must be unintentionally relying on our dependencies to &lt;code&gt;import urllib.parse&lt;&#x2F;code&gt; somewhere! Mypy didn&#x27;t complain about this; pyright did.&lt;&#x2F;li&gt;
+&lt;li&gt;Seemed to give a better explanations of why complex types were incompatible. For example:&lt;pre style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot;&gt;&lt;code&gt;&lt;span&gt;&#x2F;home&#x2F;dmr&#x2F;workspace&#x2F;sydent&#x2F;sydent&#x2F;replication&#x2F;pusher.py
+&lt;&#x2F;span&gt;&lt;span&gt;   &#x2F;home&#x2F;dmr&#x2F;workspace&#x2F;sydent&#x2F;sydent&#x2F;replication&#x2F;pusher.py:77:16 - error: Expression of type &amp;quot;DeferredList&amp;quot; cannot be assigned to return type &amp;quot;Deferred[List[Tuple[bool, None]]]&amp;quot;
+&lt;&#x2F;span&gt;&lt;span&gt;     TypeVar &amp;quot;_DeferredResultT@Deferred&amp;quot; is contravariant
+&lt;&#x2F;span&gt;&lt;span&gt;       TypeVar &amp;quot;_T@list&amp;quot; is invariant
+&lt;&#x2F;span&gt;&lt;span&gt;         Tuple entry 2 is incorrect type
+&lt;&#x2F;span&gt;&lt;span&gt;           Type &amp;quot;None&amp;quot; cannot be assigned to type &amp;quot;_DeferredResultT@_DeferredListResultItemT&amp;quot; (reportGeneralTypeIssues)
+&lt;&#x2F;span&gt;&lt;span&gt; &#x2F;home&#x2F;dmr&#x2F;workspace&#x2F;sydent&#x2F;sydent&#x2F;sms&#x2F;openmarket.py
+&lt;&#x2F;span&gt;&lt;span&gt;   &#x2F;home&#x2F;dmr&#x2F;workspace&#x2F;sydent&#x2F;sydent&#x2F;sms&#x2F;openmarket.py:93:13 - error: Argument of type &amp;quot;dict[_KT@dict, list[bytes]]&amp;quot; cannot be assigned to parameter &amp;quot;rawHeaders&amp;quot; of type &amp;quot;Mapping[AnyStr@__init__, Sequence[AnyStr@__init__]] | None&amp;quot; in function &amp;quot;__init__&amp;quot;
+&lt;&#x2F;span&gt;&lt;span&gt;     Type &amp;quot;dict[_KT@dict, list[bytes]]&amp;quot; cannot be assigned to type &amp;quot;Mapping[AnyStr@__init__, Sequence[AnyStr@__init__]] | None&amp;quot;
+&lt;&#x2F;span&gt;&lt;span&gt;       TypeVar &amp;quot;_KT@Mapping&amp;quot; is invariant
+&lt;&#x2F;span&gt;&lt;span&gt;         Type &amp;quot;_KT@dict&amp;quot; is incompatible with constrained type variable &amp;quot;AnyStr&amp;quot;
+&lt;&#x2F;span&gt;&lt;span&gt;       Type cannot be assigned to type &amp;quot;None&amp;quot; (reportGeneralTypeIssues)
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+This would have been really helpful when interpreting mypy&#x27;s error reports; I&#x27;d love to see something like it in mypy.
+Here&#x27;s another example where I tried running against a Synapse file.&lt;pre style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot;&gt;&lt;code&gt;&lt;span&gt;&#x2F;home&#x2F;dmr&#x2F;workspace&#x2F;synapse&#x2F;synapse&#x2F;storage&#x2F;databases&#x2F;main&#x2F;cache.py
+&lt;&#x2F;span&gt;&lt;span&gt;&#x2F;home&#x2F;dmr&#x2F;workspace&#x2F;synapse&#x2F;synapse&#x2F;storage&#x2F;databases&#x2F;main&#x2F;cache.py:103:53 - error: Expression of type &amp;quot;list[tuple[Unknown, Tuple[Unknown, ...]]]&amp;quot; cannot be assigned to declared type &amp;quot;List[Tuple[int, _CacheData]]&amp;quot;
+&lt;&#x2F;span&gt;&lt;span&gt;  TypeVar &amp;quot;_T@list&amp;quot; is invariant
+&lt;&#x2F;span&gt;&lt;span&gt;    Tuple entry 2 is incorrect type
+&lt;&#x2F;span&gt;&lt;span&gt;      Tuple size mismatch; expected 3 but received indeterminate number (reportGeneralTypeIssues)
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+This is really valuable information. It&#x27;s worth considering Pyright as an option to get a second opinion!&lt;&#x2F;li&gt;
+&lt;li&gt;It looks like Pyright&#x27;s name for &lt;code&gt;Any&lt;&#x2F;code&gt; is &lt;code&gt;Unknown&lt;&#x2F;code&gt;. I think that does a better job of emphasising that &lt;code&gt;Unknown&lt;&#x2F;code&gt; won&#x27;t be type checked. I&#x27;d certainly be more reluctant to type &lt;code&gt;x: Unknown&lt;&#x2F;code&gt; versus &lt;code&gt;x: Any&lt;&#x2F;code&gt;!&lt;&#x2F;li&gt;
+&lt;li&gt;Pyright is the machinery behind &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;microsoft&#x2F;pylance-release&quot;&gt;Pylance&lt;&#x2F;a&gt;, which drives &lt;a href=&quot;https:&#x2F;&#x2F;marketplace.visualstudio.com&#x2F;items?itemName=ms-python.vscode-pylance&quot;&gt;VS Code&#x27;s Python extension&lt;&#x2F;a&gt;. That alone probably makes it worthy of more eyes.&lt;&#x2F;li&gt;
+&lt;li&gt;Seemed like it was the best-placed alternative typechecker to challenge mypy (the de-facto standard).&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;h4 id=&quot;pytype-google&quot;&gt;&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;google&#x2F;pytype&quot;&gt;Pytype&lt;&#x2F;a&gt; (Google)&lt;&#x2F;h4&gt;
+&lt;ul&gt;
+&lt;li&gt;Google internal? Seems to be maintained by one person semiregularly by &amp;quot;syncing&amp;quot; from Google.&lt;&#x2F;li&gt;
+&lt;li&gt;Apparently contains a script &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;google&#x2F;pytype&#x2F;tree&#x2F;master&#x2F;pytype&#x2F;tools&#x2F;merge_pyi&quot;&gt;merge-pyi&lt;&#x2F;a&gt; to annotate a source file given a stub file.&lt;&#x2F;li&gt;
+&lt;li&gt;No support for TypedDict: as soon as it saw one in Sydent, it stopped all analysis.&lt;&#x2F;li&gt;
+&lt;li&gt;No Python 3.10 support (according to the README anyway).&lt;&#x2F;li&gt;
+&lt;li&gt;I think it might use a different kind of typing semantics; its &lt;a href=&quot;https:&#x2F;&#x2F;google.github.io&#x2F;pytype&#x2F;typing_faq.html&quot;&gt;typing FAQ&lt;&#x2F;a&gt; speaks of &amp;quot;descriptive typing&amp;quot; and a more lenient approach.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;h4 id=&quot;pycharm&quot;&gt;&lt;a href=&quot;https:&#x2F;&#x2F;www.jetbrains.com&#x2F;pycharm&#x2F;&quot;&gt;PyCharm&lt;&#x2F;a&gt;&lt;&#x2F;h4&gt;
+&lt;p&gt;PyCharm has its own means to typechecking code as you write it. It&#x27;s definitely caught bugs before, and having the instant feedback as you type is really nice! I have seen it struggle with &lt;code&gt;zope.interface&lt;&#x2F;code&gt; and some uses of &lt;code&gt;Generic&lt;&#x2F;code&gt;s though.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;runtime-uses-of-annotations&quot;&gt;Runtime uses of annotations&lt;&#x2F;h3&gt;
+&lt;p&gt;When annotations &lt;a href=&quot;https:&#x2F;&#x2F;www.python.org&#x2F;dev&#x2F;peps&#x2F;pep-3107&#x2F;&quot;&gt;were first introduced&lt;&#x2F;a&gt;, they were a generic means to associate Python objects with parts of a program. (It was only later that the community agreed that we really want to use them to annotate &lt;em&gt;types&lt;&#x2F;em&gt;). These annotations are available at runtime in the &lt;code&gt;__annotations__&lt;&#x2F;code&gt; attribute. There&#x27;s also a helper function in &lt;code&gt;typing&lt;&#x2F;code&gt; which will help resolve forward references.&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;python&quot; style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot; class=&quot;language-python &quot;&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span&gt;&amp;gt;&amp;gt;&amp;gt; &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9b9b9b;&quot;&gt;from &lt;&#x2F;span&gt;&lt;span&gt;typing &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9b9b9b;&quot;&gt;import &lt;&#x2F;span&gt;&lt;span&gt;get_type_hints
+&lt;&#x2F;span&gt;&lt;span&gt;&amp;gt;&amp;gt;&amp;gt; &lt;&#x2F;span&gt;&lt;span style=&quot;color:#ff3333;&quot;&gt;def &lt;&#x2F;span&gt;&lt;span&gt;foo(x: int) -&amp;gt; str: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;pass
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;...
+&lt;&#x2F;span&gt;&lt;span&gt;&amp;gt;&amp;gt;&amp;gt; get_type_hints(foo)
+&lt;&#x2F;span&gt;&lt;span&gt;{&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;#39;x&amp;#39;&lt;&#x2F;span&gt;&lt;span&gt;: &amp;lt;&lt;&#x2F;span&gt;&lt;span style=&quot;color:#ff3333;&quot;&gt;class &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;#39;int&amp;#39;&lt;&#x2F;span&gt;&lt;span&gt;&amp;gt;, &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;#39;return&amp;#39;&lt;&#x2F;span&gt;&lt;span&gt;: &amp;lt;&lt;&#x2F;span&gt;&lt;span style=&quot;color:#ff3333;&quot;&gt;class &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;#39;str&amp;#39;&lt;&#x2F;span&gt;&lt;span&gt;&amp;gt;}
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;Programs and libraries are free to use these annotations at runtime as they see fit. The most well-known examples are probably &lt;a href=&quot;https:&#x2F;&#x2F;docs.python.org&#x2F;3&#x2F;library&#x2F;dataclasses.html&quot;&gt;dataclasses&lt;&#x2F;a&gt;, &lt;a href=&quot;https:&#x2F;&#x2F;www.attrs.org&#x2F;en&#x2F;stable&#x2F;&quot;&gt;attrs&lt;&#x2F;a&gt; with &lt;a href=&quot;https:&#x2F;&#x2F;www.attrs.org&#x2F;en&#x2F;stable&#x2F;types.html&quot;&gt;auto_attribs=True&lt;&#x2F;a&gt; and &lt;a href=&quot;https:&#x2F;&#x2F;pydantic-docs.helpmanual.io&#x2F;&quot;&gt;Pydantic&lt;&#x2F;a&gt;. I&#x27;d be interested to learn if anyone else is consuming annotations at runtime!&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;summary&quot;&gt;Summary&lt;&#x2F;h2&gt;
+&lt;p&gt;All in all, in a two-week sprint we were able to get Sydent&#x27;s mypy coverage from a precision of 83% up to 94%. Our work would have spotted the &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;sydent&#x2F;pull&#x2F;415&quot;&gt;bytes-versus-strings bug&lt;&#x2F;a&gt;; we understand why &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;sydent&#x2F;pull&#x2F;413&quot;&gt;the missing await&lt;&#x2F;a&gt; wasn&#x27;t detected. We &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;sydent&#x2F;issues&#x2F;419&quot;&gt;fixed&lt;&#x2F;a&gt; &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;sydent&#x2F;issues&#x2F;449&quot;&gt;other&lt;&#x2F;a&gt; &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;sydent&#x2F;issues&#x2F;447&quot;&gt;small&lt;&#x2F;a&gt; &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;sydent&#x2F;issues&#x2F;445&quot;&gt;bugs&lt;&#x2F;a&gt; too as part of the process. As well as fix bugs, I&#x27;ve hopefully made the source code clearer for future readers (but that one is hard to quantify).&lt;&#x2F;p&gt;
+&lt;p&gt;There&#x27;s room to spin out contributions upstream too. I submitted &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;twisted&#x2F;twisted&#x2F;pull&#x2F;1669&quot;&gt;two&lt;&#x2F;a&gt; &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;twisted&#x2F;twisted&#x2F;pull&#x2F;1668&quot;&gt;PRs&lt;&#x2F;a&gt; to twisted upstream; have started to work on annotations for &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;pyca&#x2F;pynacl&#x2F;pull&#x2F;693&quot;&gt;pynacl&lt;&#x2F;a&gt; &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;pyca&#x2F;pynacl&#x2F;pull&#x2F;694&quot;&gt;in my&lt;&#x2F;a&gt; &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;pyca&#x2F;pynacl&#x2F;pull&#x2F;695&quot;&gt;spare time&lt;&#x2F;a&gt;; and submitted a quick fix to &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;python&#x2F;typeshed&#x2F;pull&#x2F;6150&quot;&gt;typeshed&lt;&#x2F;a&gt;.&lt;&#x2F;p&gt;
+&lt;p&gt;Looking forward, I think we&#x27;d get a quick gain from ensuring that our smaller libraries (&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;python-signedjson&quot;&gt;signedjson&lt;&#x2F;a&gt;, &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;python-canonicaljson&quot;&gt;canonicaljson&lt;&#x2F;a&gt;) are annotated. We&#x27;ll be sticking with mypy for now—the &lt;code&gt;mypy-zope&lt;&#x2F;code&gt; plugin is crucial given our reliance on twisted. We&#x27;re also working to improve Sygnal and Synapse—though not to the extreme standard of &lt;code&gt;--strict&lt;&#x2F;code&gt; across everything.&lt;&#x2F;p&gt;
+&lt;p&gt;I&#x27;d say the biggest outstanding hole is our processing of JSON objects. There&#x27;s too much &lt;code&gt;Dict[str, Any]&lt;&#x2F;code&gt; flying around. The ideal for me would be to define &lt;code&gt;dataclass&lt;&#x2F;code&gt; or &lt;code&gt;attr.s&lt;&#x2F;code&gt; class &lt;code&gt;C&lt;&#x2F;code&gt;, and be able to deserialise a JSON object to &lt;code&gt;C&lt;&#x2F;code&gt;, including automatic (deep) type checking. &lt;a href=&quot;https:&#x2F;&#x2F;pydantic-docs.helpmanual.io&#x2F;&quot;&gt;Pydantic&lt;&#x2F;a&gt; sounds really close to what we want, but I&#x27;m told it will by default gladly interpret the json string &lt;code&gt;&amp;quot;42&amp;quot;&lt;&#x2F;code&gt; as the Python integer &lt;code&gt;42&lt;&#x2F;code&gt;, which isn&#x27;t what we&#x27;d like. More investigation needed there. There are other avenues to explore too, like &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;erickpeirson&#x2F;jsonschema-typed&quot;&gt;jsonschema-typed&lt;&#x2F;a&gt;, &lt;a href=&quot;https:&#x2F;&#x2F;pypi.org&#x2F;project&#x2F;typedload&#x2F;&quot;&gt;typedload&lt;&#x2F;a&gt; or &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;bloomberg&#x2F;attrs-strict&quot;&gt;attrs-strict&lt;&#x2F;a&gt;.&lt;&#x2F;p&gt;
+&lt;p&gt;To end, I&#x27;d like to add a few personal thoughts. Having types available in the source code is definitely A Good Thing. But there is a part of me that wonders if it might have been worth writing our projects in a language which incorporates types from day one. There are always trade-offs, of course: runtime performance, build times, iteration speed, ease of onboarding new contributors, ease of deployment, availability of libraries, ability to shoot yourself in the foot... the list goes on. &lt;&#x2F;p&gt;
+&lt;p&gt;On a more upbeat note, adding typing is a great way to get familiar with new source code. It involves a mixture of reading, cross-referencing, deduction, analysis, all across a wide variety of files. It&#x27;d be a &lt;em&gt;lot&lt;&#x2F;em&gt; easier to type as you write from the get-go, but typing after the fact is still a worthy use of time and effort. &lt;&#x2F;p&gt;
+&lt;hr &#x2F;&gt;
+&lt;p&gt;Many thanks for reading! If you&#x27;ve got any corrections, comments or queries, I&#x27;m available on Matrix at &lt;a href=&quot;https:&#x2F;&#x2F;matrix.to&#x2F;#&#x2F;@dmrobertson:matrix.org&quot;&gt;@dmrobertson:matrix.org&lt;&#x2F;a&gt;.&lt;&#x2F;p&gt;
+</content>
+	</entry>
+	<entry xml:lang="en">
+		<title>Type coverage for Sydent: annotation</title>
+		<published>2021-12-10T00:00:00+00:00</published>
+		<updated>2021-12-10T00:00:00+00:00</updated>
+		<link rel="alternate" href="/blog/2021/12/10/type-coverage-for-sydent-annotation/" type="text/html"/>
+		<id>/blog/2021/12/10/type-coverage-for-sydent-annotation/</id>
+		<content type="html">&lt;p&gt;This is the second in a series of three posts which discuss recent work to improve type annotations in &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;sydent&quot;&gt;Sydent&lt;&#x2F;a&gt;, the reference Matrix Identity server. &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2021&#x2F;12&#x2F;03&#x2F;type-coverage-for-sydent-motivation&quot;&gt;Last time&lt;&#x2F;a&gt; we discussed the motivation for doing this work in the first place: the &lt;em&gt;why&lt;&#x2F;em&gt;. Now I want to talk about the &lt;em&gt;how&lt;&#x2F;em&gt;. How did we add annotations to individual files, and across the project as whole? What common idioms did we learn on the way?&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;the-process-of-improving-coverage&quot;&gt;The process of improving coverage&lt;&#x2F;h2&gt;
+&lt;p&gt;From experience adding typing to Synapse, we decided to annotate one module at a time. We configured a list of files in &lt;code&gt;pyproject.toml&lt;&#x2F;code&gt; which we knew passed mypy&#x27;s checks. We could run &lt;code&gt;mypy&lt;&#x2F;code&gt; in CI to check that new PRs didn&#x27;t introduce type problems in modules already covered.&lt;&#x2F;p&gt;
+&lt;p&gt;From there, the workflow was&lt;&#x2F;p&gt;
+&lt;ol&gt;
+&lt;li&gt;Choose a new module to annotate. Add it to the list of &lt;code&gt;files&lt;&#x2F;code&gt; in mypy&#x27;s configuration.&lt;&#x2F;li&gt;
+&lt;li&gt;Run &lt;code&gt;mypy&lt;&#x2F;code&gt;. See how many errors you get.&lt;&#x2F;li&gt;
+&lt;li&gt;Choose an error. Fix it. Re-run &lt;code&gt;mypy&lt;&#x2F;code&gt;.&lt;&#x2F;li&gt;
+&lt;li&gt;Repeat until no errors remaining.&lt;&#x2F;li&gt;
+&lt;li&gt;Submit for review.&lt;&#x2F;li&gt;
+&lt;&#x2F;ol&gt;
+&lt;p&gt;There are two parts in there which involve a choice. Being honest, I made those choices unscientifically: I tried to choose the easy tasks to do first. My first target was actually the entire &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;sydent&#x2F;pull&#x2F;418&quot;&gt;sydent.util&lt;&#x2F;a&gt; subpackage. Probably a bit too large for a first bite! My thinking was that &lt;code&gt;util&lt;&#x2F;code&gt; sounded like something with few dependencies that would have impact across the whole source tree.&lt;&#x2F;p&gt;
+&lt;p&gt;Within a given module, I&#x27;d try to fix easier errors first: partly for confidence, partly to build up momentum, and partly to get myself familiar with that piece of source code. For example, I&#x27;d often start by telling mypy that &lt;code&gt;mylist = []&lt;&#x2F;code&gt; was actually was a &lt;code&gt;List[str]&lt;&#x2F;code&gt; (rather than the generic &lt;code&gt;List[Any]&lt;&#x2F;code&gt; which it would use otherwise).&lt;&#x2F;p&gt;
+&lt;p&gt;Picking and choosing easy targets works fairly well, but sometimes that means you end up fixing an error that&#x27;s really a symptom of an earlier one. Other times fixing one error, e.g. by giving a return type annotation to a function—would solve a series of other errors throughout the file. Watching the total number of errors mypy reports bob up and down was intriguing!&lt;&#x2F;p&gt;
+&lt;p&gt;In retrospect, I think it would be smoother to generate some kind of dependency graph for the package. I&#x27;m imagining a &lt;a href=&quot;https:&#x2F;&#x2F;en.wikipedia.org&#x2F;wiki&#x2F;Directed_acyclic_graph&quot;&gt;DAG&lt;&#x2F;a&gt; where whose vertices are modules, and there&#x27;s an edge &lt;code&gt;A -&amp;gt; B&lt;&#x2F;code&gt; if &lt;code&gt;A&lt;&#x2F;code&gt; imports from &lt;code&gt;B&lt;&#x2F;code&gt;. The sinks of this DAG (i.e. modules which don&#x27;t depend on any others in the package) are the ideal place to start: you can get something strictly typechecked there without having to annotate a long chain of dependencies across other files. Another strategy would be to see which modules were the least precise according to mypy&#x27;s reports—but more on those &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2021&#x2F;12&#x2F;17&#x2F;type-coverage-for-sydent-evaluation&quot;&gt;next time&lt;&#x2F;a&gt;.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;you-re-at-the-mercy-of-your-dependencies&quot;&gt;You&#x27;re at the mercy of your dependencies&lt;&#x2F;h3&gt;
+&lt;p&gt;I think this is my single biggest takeaway from the process of adding annotations to Sydent.
+I&#x27;ll admit the phrasing is melodramatic, but I think it rings true. &lt;&#x2F;p&gt;
+&lt;p&gt;Improving coverage boils down to giving the typechecker more information about your program. The more information it has, the more it can check—and the more errors it can spot. (Hopefully this doesn&#x27;t make typing come across like a pyramid scheme.) If your dependencies aren&#x27;t typed, mypy can&#x27;t validate you&#x27;re correctly providing inputs and correctly consuming outputs. You might have a bigger impact on overall typing coverage by annotating a dependency (directly or via stubs). I have a hunch that bugs are more likely in code that uses an external dependency: we&#x27;re much more familiar with the details of our own source code compared to that of a third party we trust.&lt;&#x2F;p&gt;
+&lt;p&gt;It&#x27;s worth looking to see if your dependencies have a newer version including type annotations. Failing that, they may have a stub package added to &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;python&#x2F;typeshed&#x2F;tree&#x2F;master&#x2F;stubs&quot;&gt;typeshed&lt;&#x2F;a&gt; and published on PyPI. I saw example of both cases when choosing how to configure mypy for Sydent. If some of your dependencies are under your control, consider annotating them—you&#x27;ll feel the benefits across multiple projects pretty quickly.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;annotations-when-working-with-twisted&quot;&gt;Annotations when working with twisted&lt;&#x2F;h3&gt;
+&lt;p&gt;Twisted is Sydent&#x27;s biggest dependency, and I certainly felt at its mercy! In particular, it has a few quirks which make it trickier to annotate applications using it. Here&#x27;s a summary of the work we had to do to get those annotations working.&lt;&#x2F;p&gt;
+&lt;h4 id=&quot;partially-typed-modules-and-stubs&quot;&gt;Partially typed modules and stubs&lt;&#x2F;h4&gt;
+&lt;p&gt;Early into the process, mypy reported that calling the function &lt;a href=&quot;https:&#x2F;&#x2F;twistedmatrix.com&#x2F;documents&#x2F;current&#x2F;api&#x2F;twisted.python.log.html#err&quot;&gt;twisted.python.log.err&lt;&#x2F;a&gt; was an error. It did so because I was running mypy in &lt;a href=&quot;https:&#x2F;&#x2F;mypy.readthedocs.io&#x2F;en&#x2F;stable&#x2F;command_line.html#cmdoption-mypy-strict&quot;&gt;--strict mode&lt;&#x2F;a&gt;. We&#x27;ll talk more about why I did so and what this means &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2021&#x2F;12&#x2F;17&#x2F;type-coverage-for-sydent-evaluation&quot;&gt;next time&lt;&#x2F;a&gt;; for now, it&#x27;s enough to know that calling a function that isn&#x27;t fully annotated from within a function that is constitutes an error under strict mode. &lt;code&gt;twisted&lt;&#x2F;code&gt; is partially annotated: many key modules and functions have type annotations, but others don&#x27;t. I was reluctant to give up on &lt;code&gt;--strict&lt;&#x2F;code&gt;. Instead, I decided to stub the &lt;code&gt;err&lt;&#x2F;code&gt; function myself.&lt;&#x2F;p&gt;
+&lt;p&gt;A stub is a cut-down version of a python function, class or module which lives in a &lt;code&gt;.pyi&lt;&#x2F;code&gt; file. All implementation details are removed; only type annotations remain. Stubs are useful when you want to write annotations for code you don&#x27;t control. The &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;python&#x2F;typeshed&quot;&gt;typeshed&lt;&#x2F;a&gt; library is probably the best example: a collection of third party stubs for the standard library, plus some popular third party packages. Microsoft&#x27;s &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;microsoft&#x2F;python-type-stubs&quot;&gt;python-type-stubs&lt;&#x2F;a&gt; is another example. They&#x27;d also solve the problem I mentioned at the end of the &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2021&#x2F;12&#x2F;03&#x2F;type-coverage-for-sydent-motivation&quot;&gt;first part&lt;&#x2F;a&gt;: I could use a stub to &lt;em&gt;teach&lt;&#x2F;em&gt; mypy that &lt;code&gt;IResponse.headers&lt;&#x2F;code&gt; was a &lt;code&gt;Headers&lt;&#x2F;code&gt; object. &lt;&#x2F;p&gt;
+&lt;p&gt;Writing a stub for &lt;code&gt;log.err&lt;&#x2F;code&gt; was straightforward, thanks mainly to Twisted&#x27;s thorough documentation. I chose to write it by hand, rather than use &lt;a href=&quot;https:&#x2F;&#x2F;mypy.readthedocs.io&#x2F;en&#x2F;stable&#x2F;stubgen.html&quot;&gt;stubgen&lt;&#x2F;a&gt;. I&#x27;d heard of the latter, but was reluctant to use it for a few reasons.&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Twisted is a big project with many big files. I didn&#x27;t want to commit huge stub files for me and my colleagues to maintain.&lt;&#x2F;li&gt;
+&lt;li&gt;The more our stubs cover, the larger the risk of a stub becoming out-of-date with twisted itself. Upstream twisted is the best place for these annotations.&lt;&#x2F;li&gt;
+&lt;li&gt;We only need annotations for the bits of twisted that we&#x27;re using.&lt;&#x2F;li&gt;
+&lt;li&gt;And, being honest: I wanted the low-level experience of writing stubs, cross-referencing between the source and working how to best capture its type semantics.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;I think this decision to write a targeted stub made sense at the time. After all, &lt;code&gt;twisted.python.logging.err&lt;&#x2F;code&gt; is just one simple function! But for the project as a whole, I regret not using &lt;code&gt;stubgen&lt;&#x2F;code&gt; to generate module-level stubs. The reason for this is that a &lt;code&gt;.pyi&lt;&#x2F;code&gt; stub file accounts for an entire module: &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;python&#x2F;mypy&#x2F;issues&#x2F;5880#issuecomment-439237176&quot;&gt;no more and no less&lt;&#x2F;a&gt;. This means that the stubs I was writing for parts of twisted only covered the functions and classes I&#x27;d stubbed. Any existing annotations in the twisted source code would be ignored, along with any types that mypy was able to infer for itself.&lt;&#x2F;p&gt;
+&lt;p&gt;I think it would have been more efficient to use &lt;code&gt;stubgen&lt;&#x2F;code&gt; to generate stubs and patch them up, rather than writing them. That would have helped avoid a few cases I encountered where stubbing one function would cause additional typechecking failures (because mypy was no longer examining the twisted source for that file). It would also have meant that I could just faithfully stub Twisted as it is; in practice, I would sometimes hesitate to stub to avoid having to cover another module. &lt;code&gt;sydent.http&lt;&#x2F;code&gt; was the most painful part of the source tree for this: that&#x27;s where we make the most use of Twisted.&lt;&#x2F;p&gt;
+&lt;h4 id=&quot;defer-inlinecallbacks&quot;&gt;&lt;a href=&quot;https:&#x2F;&#x2F;twistedmatrix.com&#x2F;documents&#x2F;current&#x2F;api&#x2F;twisted.internet.defer.html#inlineCallbacks&quot;&gt;defer.inlineCallbacks&lt;&#x2F;a&gt;&lt;&#x2F;h4&gt;
+&lt;p&gt;This is a decorator which allows us to write code in the style of &lt;code&gt;async&lt;&#x2F;code&gt;&#x2F;&lt;code&gt;await&lt;&#x2F;code&gt; without actually using that syntax. (Twisted predates &lt;code&gt;asyncio&lt;&#x2F;code&gt; and the &lt;code&gt;async&lt;&#x2F;code&gt;&#x2F;&lt;code&gt;await&lt;&#x2F;code&gt; syntax, introduced in Python 3.4 and 3.5 respectively. It was originally released in 2002, back when Python had released version 2.2.) We only use it in &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;sydent&#x2F;blob&#x2F;e4b4dbbdf25255d19effceae7061ad9b3eefc374&#x2F;sydent&#x2F;http&#x2F;matrixfederationagent.py#L125-L132&quot;&gt;one place in Sydent&lt;&#x2F;a&gt; nowadays, but I&#x27;ve seen used across Synapse too. I mention it here because it was a bit fiddly to annotate. Here&#x27;s its use in Sydent:&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;python&quot; style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot; class=&quot;language-python &quot;&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span&gt;    @defer.inlineCallbacks
+&lt;&#x2F;span&gt;&lt;span&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;def &lt;&#x2F;span&gt;&lt;span&gt;request(
+&lt;&#x2F;span&gt;&lt;span&gt;        self,
+&lt;&#x2F;span&gt;&lt;span&gt;        method: bytes,
+&lt;&#x2F;span&gt;&lt;span&gt;        uri: bytes,
+&lt;&#x2F;span&gt;&lt;span&gt;        headers: Optional[&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;Headers&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;] = &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;None&lt;&#x2F;span&gt;&lt;span&gt;,
+&lt;&#x2F;span&gt;&lt;span&gt;        bodyProducer: Optional[&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;IBodyProducer&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;] = &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;None&lt;&#x2F;span&gt;&lt;span&gt;,
+&lt;&#x2F;span&gt;&lt;span&gt;    ) -&amp;gt; Generator[&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;defer.Deferred[Any]&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;, Any, IResponse]:
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;Here, &lt;code&gt;request&lt;&#x2F;code&gt; is a &lt;a href=&quot;https:&#x2F;&#x2F;docs.python.org&#x2F;3&#x2F;glossary.html#term-generator&quot;&gt;generator function&lt;&#x2F;a&gt; because its body uses the &lt;code&gt;yield&lt;&#x2F;code&gt; keyword. Yielding allows the function to relinquish control back to twisted&#x27;s reactor, only for its execution to be resumed asynchronously in the future. The &lt;a href=&quot;https:&#x2F;&#x2F;docs.python.org&#x2F;3&#x2F;library&#x2F;typing.html?highlight=typing%20generator#typing.Generator&quot;&gt;Generator&lt;&#x2F;a&gt; type takes three parameters:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;a &lt;code&gt;YieldType&lt;&#x2F;code&gt;, &lt;code&gt;Deferred[Any]&lt;&#x2F;code&gt;;&lt;&#x2F;li&gt;
+&lt;li&gt;a &lt;code&gt;SendType&lt;&#x2F;code&gt;, &lt;code&gt;Any&lt;&#x2F;code&gt;; and&lt;&#x2F;li&gt;
+&lt;li&gt;a &lt;code&gt;ReturnType&lt;&#x2F;code&gt;, &lt;code&gt;IResponse&lt;&#x2F;code&gt;.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;Why have I opted to use &lt;code&gt;Any&lt;&#x2F;code&gt; here, when we&#x27;ve seen (and will see) that this limits mypy&#x27;s ability to run checks? The answer is that we yield two different types within the function. Firstly a &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;sydent&#x2F;blob&#x2F;e4b4dbbdf25255d19effceae7061ad9b3eefc374&#x2F;sydent&#x2F;http&#x2F;matrixfederationagent.py#L152-L153&quot;&gt;routing result&lt;&#x2F;a&gt;:&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;python&quot; style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot; class=&quot;language-python &quot;&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span&gt;        routing: _RoutingResult
+&lt;&#x2F;span&gt;&lt;span&gt;        routing = &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;yield &lt;&#x2F;span&gt;&lt;span&gt;defer.ensureDeferred(self._route_matrix_uri(parsed_uri))
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;and later, &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;sydent&#x2F;blob&#x2F;e4b4dbbdf25255d19effceae7061ad9b3eefc374&#x2F;sydent&#x2F;http&#x2F;matrixfederationagent.py#L194-L195&quot;&gt;the IResponse&lt;&#x2F;a&gt; we go on to return:&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;python&quot; style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot; class=&quot;language-python &quot;&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span&gt;        res: IResponse
+&lt;&#x2F;span&gt;&lt;span&gt;        res = &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;yield &lt;&#x2F;span&gt;&lt;span&gt;agent.request(method, uri, headers, bodyProducer)
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;In this example:&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;We yield a value &lt;code&gt;y: Deferred[Any]&lt;&#x2F;code&gt;.&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;That will later be resolved by twisted to an &lt;code&gt;x: Any&lt;&#x2F;code&gt; value. Twisted will send that value to &lt;code&gt;request&lt;&#x2F;code&gt;, and the execution continues.&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;This repeats, until we eventually return an &lt;code&gt;IResponse&lt;&#x2F;code&gt;.&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;I could more correctly annotate the &lt;code&gt;YieldType&lt;&#x2F;code&gt; as &lt;code&gt;Deferred[Union[_RoutingResult, IResponse]]&lt;&#x2F;code&gt; so that the &lt;code&gt;SendType&lt;&#x2F;code&gt; was &lt;code&gt;Union[_RoutingResult, IResponse]&lt;&#x2F;code&gt;. But this would mean we end up having some kind of type check at each yield point: a &lt;code&gt;cast&lt;&#x2F;code&gt;, or a &lt;code&gt;type: ignore&lt;&#x2F;code&gt;, or a runtime &lt;code&gt;isinstance&lt;&#x2F;code&gt; check. It didn&#x27;t feel like it was worth the boilerplate, especially since I could narrow e.g. &lt;code&gt;res: Any&lt;&#x2F;code&gt; to &lt;code&gt;res: IResponse&lt;&#x2F;code&gt; with minimal effort.&lt;&#x2F;p&gt;
+&lt;p&gt;This problem doesn&#x27;t arise with using the &lt;code&gt;async&#x2F;await&lt;&#x2F;code&gt; syntax:&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;python&quot; style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot; class=&quot;language-python &quot;&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;async def &lt;&#x2F;span&gt;&lt;span&gt;foo() -&amp;gt; int:
+&lt;&#x2F;span&gt;&lt;span&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;return &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b5cea8;&quot;&gt;1
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;async def &lt;&#x2F;span&gt;&lt;span&gt;bar() -&amp;gt; &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;None&lt;&#x2F;span&gt;&lt;span&gt;:
+&lt;&#x2F;span&gt;&lt;span&gt;    x = &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;await &lt;&#x2F;span&gt;&lt;span&gt;foo()
+&lt;&#x2F;span&gt;&lt;span&gt;    reveal_type(foo())
+&lt;&#x2F;span&gt;&lt;span&gt;    reveal_type(x)
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;pre style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot;&gt;&lt;code&gt;&lt;span&gt;$ mypy example.py
+&lt;&#x2F;span&gt;&lt;span&gt;example.py:6: note: Revealed type is &amp;quot;typing.Coroutine[Any, Any, builtins.int]&amp;quot;
+&lt;&#x2F;span&gt;&lt;span&gt;example.py:7: note: Revealed type is &amp;quot;builtins.int*&amp;quot;
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;Behind the scenes, I &lt;em&gt;think&lt;&#x2F;em&gt; that &lt;code&gt;x = await foo()&lt;&#x2F;code&gt; is really using the same mechanism as the &lt;code&gt;inlineCallbacks&lt;&#x2F;code&gt; approach.&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;An &lt;code&gt;async def&lt;&#x2F;code&gt; function is really a generator function behind the scenes.&lt;&#x2F;li&gt;
+&lt;li&gt;When we &lt;code&gt;await foo()&lt;&#x2F;code&gt;, we yield the expression &lt;code&gt;foo()&lt;&#x2F;code&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;Then the machinery running our coroutine &lt;code&gt;c&lt;&#x2F;code&gt; will call &lt;code&gt;c.send(x)&lt;&#x2F;code&gt; to resume execution, where &lt;code&gt;x&lt;&#x2F;code&gt; is the value produced by waiting for &lt;code&gt;foo()&lt;&#x2F;code&gt;.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;With the &lt;code&gt;await&lt;&#x2F;code&gt; form, mypy knows two things:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;the value &lt;code&gt;foo()&lt;&#x2F;code&gt; which was yielded should be &lt;code&gt;Awaitable[T]&lt;&#x2F;code&gt;, and&lt;&#x2F;li&gt;
+&lt;li&gt;the value &lt;code&gt;x&lt;&#x2F;code&gt; send to the coroutine should come from awaiting &lt;code&gt;foo()&lt;&#x2F;code&gt;, and therefore be of type &lt;code&gt;T&lt;&#x2F;code&gt;.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;Mypy can&#x27;t assume or enforce these rules for the yield form, which can yield and send whatever it likes. There&#x27;s no reason why the send type should be related to the yield type. Here&#x27;s a toy example:&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;python&quot; style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot; class=&quot;language-python &quot;&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span style=&quot;color:#9b9b9b;&quot;&gt;from &lt;&#x2F;span&gt;&lt;span&gt;typing &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9b9b9b;&quot;&gt;import &lt;&#x2F;span&gt;&lt;span&gt;Any, Dict, Generator
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;def &lt;&#x2F;span&gt;&lt;span&gt;generator_function() -&amp;gt; Generator[int, str, Dict[str, Any]]:
+&lt;&#x2F;span&gt;&lt;span&gt;  y: int = &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b5cea8;&quot;&gt;10
+&lt;&#x2F;span&gt;&lt;span&gt;  x: str = &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;yield &lt;&#x2F;span&gt;&lt;span&gt;y
+&lt;&#x2F;span&gt;&lt;span&gt;  print(&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;Coroutine was sent&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;, x)  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#608b4e;&quot;&gt;# -&amp;gt; Coroutine was sent hello
+&lt;&#x2F;span&gt;&lt;span&gt;  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;return &lt;&#x2F;span&gt;&lt;span&gt;{&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;got&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;: x, &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;done&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;True&lt;&#x2F;span&gt;&lt;span&gt;}
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span&gt;coroutine = generator_function()
+&lt;&#x2F;span&gt;&lt;span&gt;y = next(coroutine)
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;try&lt;&#x2F;span&gt;&lt;span&gt;:
+&lt;&#x2F;span&gt;&lt;span&gt;  coroutine.send(&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;hello&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;)
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;except &lt;&#x2F;span&gt;&lt;span&gt;StopIteration &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;as &lt;&#x2F;span&gt;&lt;span&gt;e:
+&lt;&#x2F;span&gt;&lt;span&gt;  return_value = e.value
+&lt;&#x2F;span&gt;&lt;span&gt;  print(return_value)  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#608b4e;&quot;&gt;# -&amp;gt; {&amp;#39;got&amp;#39;: &amp;#39;hello&amp;#39;, &amp;#39;done&amp;#39;: True}
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;All in all, the handling of &lt;code&gt;inlineCallbacks&lt;&#x2F;code&gt; is a situation specific to working with (older?) twisted code. It&#x27;s still nice to understand what&#x27;s going on behind the scenes though!&lt;&#x2F;p&gt;
+&lt;h4 id=&quot;zope-interface-interface&quot;&gt;&lt;code&gt;zope.interface.Interface&lt;&#x2F;code&gt;&lt;&#x2F;h4&gt;
+&lt;p&gt;Twisted makes use of &lt;code&gt;zope&lt;&#x2F;code&gt;&#x27;s &lt;code&gt;Interface&lt;&#x2F;code&gt; to define a number of abstract interface classes. Speaking personally, I&#x27;ve not seen it used outside twisted, and I think that means it&#x27;s not supported by much of the typechecking tooling. For example, I&#x27;ve definitely seen PyCharm struggle to realise that it&#x27;s okay to pass a &lt;code&gt;Response&lt;&#x2F;code&gt; to a function which expects an &lt;code&gt;IResponse&lt;&#x2F;code&gt;! Here&#x27;s a more complicated example where &lt;code&gt;PyCharm&lt;&#x2F;code&gt; isn&#x27;t happy with me widening the type &lt;code&gt;LoggingHostnameEndpoint&lt;&#x2F;code&gt; to &lt;code&gt;IStreamClientEndpoint&lt;&#x2F;code&gt;, even though &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;sydent&#x2F;blob&#x2F;92ff7a878a25696365b10cc49e32f5cba32c5960&#x2F;sydent&#x2F;http&#x2F;matrixfederationagent.py#L379-L380&quot;&gt;the latter implements the former&lt;&#x2F;a&gt;.&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;img src=&quot;&#x2F;blog&#x2F;img&#x2F;2021-12-10-pycharm-false-positive.png&quot; alt=&quot;Screenshot from pycharm showing a false positive warning&quot; &#x2F;&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;Mypy out of the box doesn&#x27;t play well with a zope &lt;code&gt;Interface&lt;&#x2F;code&gt; (nor does any other typechecker I tried). Fortunately, the excellent &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;Shoobx&#x2F;mypy-zope&quot;&gt;mypy-zope&lt;&#x2F;a&gt; plugin helps here: it teaches mypy that any class like &lt;code&gt;Response&lt;&#x2F;code&gt; which &lt;code&gt;@implements(IResponse)&lt;&#x2F;code&gt;  can be passed in place of an &lt;code&gt;IResponse&lt;&#x2F;code&gt;.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;tricks-of-the-trade&quot;&gt;Tricks of the trade&lt;&#x2F;h3&gt;
+&lt;p&gt;At this point I&#x27;d like to share a few generic lessons about typing I&#x27;d picked up. Nothing ground-breaking here: I think these are all fairly well-known. Hopefully they&#x27;re the start of a good cheat sheet for annotating—though it pales in comparison to the &lt;a href=&quot;https:&#x2F;&#x2F;mypy.readthedocs.io&#x2F;en&#x2F;stable&#x2F;cheat_sheet_py3.html&quot;&gt;Mypy cheat sheet&lt;&#x2F;a&gt;.&lt;&#x2F;p&gt;
+&lt;h4 id=&quot;annotating-decorators&quot;&gt;Annotating decorators&lt;&#x2F;h4&gt;
+&lt;p&gt;Annotating decorators is fiddly, but it&#x27;s also vitally important. An unannotated decorator will mask or throw away your decoratee&#x27;s annotations! The way to write the annotation is best explained by the &lt;a href=&quot;https:&#x2F;&#x2F;mypy.readthedocs.io&#x2F;en&#x2F;stable&#x2F;generics.html#declaring-decorators&quot;&gt;mypy docs&lt;&#x2F;a&gt;, but briefly: it involves a &lt;code&gt;TypeVar&lt;&#x2F;code&gt; and sometimes a &lt;code&gt;cast&lt;&#x2F;code&gt; too. Here&#x27;s an example.&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;python&quot; style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot; class=&quot;language-python &quot;&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span style=&quot;color:#9b9b9b;&quot;&gt;from &lt;&#x2F;span&gt;&lt;span&gt;typing &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9b9b9b;&quot;&gt;import &lt;&#x2F;span&gt;&lt;span&gt;TypeVar, Callable, Any, cast
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span&gt;F = TypeVar(&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;F&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;, bound=Callable[&lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;...&lt;&#x2F;span&gt;&lt;span&gt;, Any])
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;def &lt;&#x2F;span&gt;&lt;span&gt;decorator(input: F) -&amp;gt; F:
+&lt;&#x2F;span&gt;&lt;span&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;def &lt;&#x2F;span&gt;&lt;span&gt;wrapped(&lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;*&lt;&#x2F;span&gt;&lt;span&gt;args: Any, &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;**&lt;&#x2F;span&gt;&lt;span&gt;kwargs: Any) -&amp;gt; Any:
+&lt;&#x2F;span&gt;&lt;span&gt;        print(&lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;f&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;Calling &lt;&#x2F;span&gt;&lt;span&gt;{f.__name__}&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;)
+&lt;&#x2F;span&gt;&lt;span&gt;        &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;return &lt;&#x2F;span&gt;&lt;span&gt;input_func(*args, &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;**&lt;&#x2F;span&gt;&lt;span&gt;kwargs)
+&lt;&#x2F;span&gt;&lt;span&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;return &lt;&#x2F;span&gt;&lt;span&gt;cast(F, wrapped)
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;The idea here is&lt;&#x2F;p&gt;
+&lt;ol&gt;
+&lt;li&gt;Use &lt;code&gt;Callable[..., Any]&lt;&#x2F;code&gt; to describe a generic function with no particular signature.&lt;&#x2F;li&gt;
+&lt;li&gt;Use that as a bound on a type variable &lt;code&gt;F&lt;&#x2F;code&gt;. At each usage of &lt;code&gt;@decorator&lt;&#x2F;code&gt;, mypy will deduce a more specific version of &lt;code&gt;F&lt;&#x2F;code&gt;, e.g. &lt;code&gt;Callable[[int], str]&lt;&#x2F;code&gt;.&lt;&#x2F;li&gt;
+&lt;li&gt;Within that usage of &lt;code&gt;@decorator&lt;&#x2F;code&gt;, &lt;code&gt;F&lt;&#x2F;code&gt; is fixed to that specific type. We use &lt;code&gt;-&amp;gt; F&lt;&#x2F;code&gt; to express that &amp;quot;we return a function with the same signature as the decoratee&amp;quot;.&lt;&#x2F;li&gt;
+&lt;li&gt;Unfortunately, we don&#x27;t have a good way to tell &lt;code&gt;mypy&lt;&#x2F;code&gt; that &lt;code&gt;wrapped&lt;&#x2F;code&gt; also has that signature &lt;code&gt;F&lt;&#x2F;code&gt;. We resort to a &lt;code&gt;cast&lt;&#x2F;code&gt; to force mypy to accept this without proof.&lt;&#x2F;li&gt;
+&lt;&#x2F;ol&gt;
+&lt;p&gt;This might change in the future, e.g. when &lt;a href=&quot;https:&#x2F;&#x2F;docs.python.org&#x2F;3&#x2F;library&#x2F;typing.html?highlight=paramspec#typing.ParamSpec&quot;&gt;ParamSpec&lt;&#x2F;a&gt; is &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;python&#x2F;mypy&#x2F;issues&#x2F;8645&quot;&gt;fully understood&lt;&#x2F;a&gt; by mypy.&lt;&#x2F;p&gt;
+&lt;h4 id=&quot;prefer-object-over-any&quot;&gt;Prefer &lt;code&gt;object&lt;&#x2F;code&gt; over &lt;code&gt;Any&lt;&#x2F;code&gt;&lt;&#x2F;h4&gt;
+&lt;p&gt;Both of these are general types for expressing &amp;quot;I don&#x27;t know anything about this expression&amp;quot;. But only the former will undergo static type checks. We want those type checks to guard against bugs accidentally introduced in the future. For instance, imagine a class with an &lt;code&gt;Any&lt;&#x2F;code&gt; attribute.&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;python&quot; style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot; class=&quot;language-python &quot;&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span style=&quot;color:#9b9b9b;&quot;&gt;from &lt;&#x2F;span&gt;&lt;span&gt;typing &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9b9b9b;&quot;&gt;import &lt;&#x2F;span&gt;&lt;span&gt;Any
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9b9b9b;&quot;&gt;import &lt;&#x2F;span&gt;&lt;span&gt;dataclasses
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span&gt;@dataclasses.dataclass
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;class &lt;&#x2F;span&gt;&lt;span&gt;C:
+&lt;&#x2F;span&gt;&lt;span&gt;    label: Any
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;Imagine in the future we add a new method which assumes that &lt;code&gt;label&lt;&#x2F;code&gt; is a string:&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;python&quot; style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot; class=&quot;language-python &quot;&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;def &lt;&#x2F;span&gt;&lt;span&gt;greeting(self) -&amp;gt; str:
+&lt;&#x2F;span&gt;&lt;span&gt;        &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;return &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;My name is &amp;quot; &lt;&#x2F;span&gt;&lt;span&gt;+ self.label
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;Mypy will consider this valid, because no type-checking is done on an &lt;code&gt;Any&lt;&#x2F;code&gt; value. It will complain that it can&#x27;t prove that &lt;code&gt;greeting&lt;&#x2F;code&gt; returns a &lt;code&gt;str&lt;&#x2F;code&gt;, if &lt;code&gt;--warn-return-any&lt;&#x2F;code&gt; is enabled; but putting that aside, it can&#x27;t identify the call site as a bug. The bug slips through to runtime.&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;python&quot; style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot; class=&quot;language-python &quot;&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span&gt;C(&lt;&#x2F;span&gt;&lt;span style=&quot;color:#b5cea8;&quot;&gt;123&lt;&#x2F;span&gt;&lt;span&gt;).greeting()  &lt;&#x2F;span&gt;&lt;span style=&quot;color:#608b4e;&quot;&gt;# TypeError: can only concatenate str (not &amp;quot;int&amp;quot;) to str
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;Replacing the &lt;code&gt;Any&lt;&#x2F;code&gt; with &lt;code&gt;object&lt;&#x2F;code&gt; does allow mypy to spot the problem.&lt;&#x2F;p&gt;
+&lt;pre style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot;&gt;&lt;code&gt;&lt;span&gt;error: Unsupported operand types for + (&amp;quot;str&amp;quot; and &amp;quot;object&amp;quot;)  [operator]
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;h4 id=&quot;type-ignore-and-cast-sparingly&quot;&gt;&lt;code&gt;# type: ignore&lt;&#x2F;code&gt; and &lt;code&gt;cast&lt;&#x2F;code&gt; sparingly&lt;&#x2F;h4&gt;
+&lt;p&gt;There&#x27;s a good chance that mypy knows better than we do, so we should only overrule it if there&#x27;s no better option. There are two techniques for this. One option is to tell mypy to just silence the error, by appending a &lt;code&gt;# type: ignore&lt;&#x2F;code&gt; comment to the erroneous line. The other is to force it to accept that a certain expression has a given type: that&#x27;s what &lt;a href=&quot;https:&#x2F;&#x2F;docs.python.org&#x2F;3&#x2F;library&#x2F;typing.html?highlight=paramspec#typing.cast&quot;&gt;cast&lt;&#x2F;a&gt; is for.&lt;&#x2F;p&gt;
+&lt;p&gt;I never like using either of these, but sometimes they&#x27;re the most practical choice. I&#x27;d recommend two best practices for their use, however:&lt;&#x2F;p&gt;
+&lt;ol&gt;
+&lt;li&gt;Only ignore a specific error code, e.g. &lt;code&gt;# type: ignore[assignment]&lt;&#x2F;code&gt;.  Those codes can be displayed by passing &lt;code&gt;--show-error-codes&lt;&#x2F;code&gt; to mypy.&lt;&#x2F;li&gt;
+&lt;li&gt;Leave a comment before every &lt;code&gt;#type: ignore[...]&lt;&#x2F;code&gt; and every &lt;code&gt;cast&lt;&#x2F;code&gt; to justify their correctness. I don&#x27;t think this is a widely-held practice. I picked it up from the Rust world, where it&#x27;s &lt;a href=&quot;https:&#x2F;&#x2F;rust-lang.github.io&#x2F;api-guidelines&#x2F;documentation.html#function-docs-include-error-panic-and-safety-considerations-c-failure&quot;&gt;encouraged&lt;&#x2F;a&gt; as a way to justify &lt;code&gt;unsafe&lt;&#x2F;code&gt; source code.&lt;&#x2F;li&gt;
+&lt;&#x2F;ol&gt;
+&lt;h4 id=&quot;there-s-good-stuff-in-typing&quot;&gt;There&#x27;s good stuff in &lt;code&gt;typing&lt;&#x2F;code&gt;&lt;&#x2F;h4&gt;
+&lt;p&gt;It&#x27;s worth a read through the &lt;a href=&quot;https:&#x2F;&#x2F;docs.python.org&#x2F;3&#x2F;library&#x2F;typing.html&quot;&gt;module documentation&lt;&#x2F;a&gt;—plenty of things in there I wish I&#x27;d known about sooner. There&#x27;s lots in the toolkit to chose from. Some bits I use fairly often include:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;https:&#x2F;&#x2F;docs.python.org&#x2F;3&#x2F;library&#x2F;typing.html?highlight=typing%20protocol#typing.Protocol&quot;&gt;Protocol&lt;&#x2F;a&gt;: lets you formalise duck typing. To use it, define a class that inherits from &lt;code&gt;Protocol&lt;&#x2F;code&gt;. Its methods and attributes are all stubs which describe what you require of objects belonging to this type. It&#x27;s like an &lt;a href=&quot;https:&#x2F;&#x2F;docs.python.org&#x2F;3&#x2F;library&#x2F;abc.html?highlight=abc#module-abc&quot;&gt;abstract base class&lt;&#x2F;a&gt; or interface, but purely at typecheck time.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;https:&#x2F;&#x2F;docs.python.org&#x2F;3&#x2F;library&#x2F;typing.html?highlight=typing%20generic#typing.Generic&quot;&gt;Generic&lt;&#x2F;a&gt;: define your own generic types. A bit of a slippery slope to type mania!&lt;&#x2F;li&gt;
+&lt;li&gt;[Optional&lt;code&gt;](https:&#x2F;&#x2F;docs.python.org&#x2F;3&#x2F;library&#x2F;typing.html?highlight=typing%20generic#typing.Optional): I use this all the time. It&#x27;s always good to make your &lt;&#x2F;code&gt;None`s explicit!&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;https:&#x2F;&#x2F;docs.python.org&#x2F;3&#x2F;library&#x2F;typing.html?highlight=typing%20generic#typing.NewType&quot;&gt;NewType&lt;&#x2F;a&gt;: I haven&#x27;t had a chance to use it much. As I understand it, it&#x27;s a way to define a &amp;quot;strong typedef&amp;quot;. For example, we can use it to distinguish lengths from durations, even if they&#x27;re both represented by a &lt;code&gt;float&lt;&#x2F;code&gt; at runtime.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;I want to call out two parts of &lt;code&gt;typing&lt;&#x2F;code&gt; in particular:&lt;&#x2F;p&gt;
+&lt;h4 id=&quot;overload&quot;&gt;&lt;a href=&quot;https:&#x2F;&#x2F;docs.python.org&#x2F;3&#x2F;library&#x2F;typing.html?highlight=typing%20generic#typing.overload&quot;&gt;overload&lt;&#x2F;a&gt;&lt;&#x2F;h4&gt;
+&lt;p&gt;&lt;code&gt;overload&lt;&#x2F;code&gt; is a way to provide extra information about a function depending on how it&#x27;s called. For instance, consider this function which takes a &lt;code&gt;str&lt;&#x2F;code&gt; or &lt;code&gt;bytes&lt;&#x2F;code&gt; as input and returns its uppercase version.&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;python&quot; style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot; class=&quot;language-python &quot;&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;def &lt;&#x2F;span&gt;&lt;span&gt;upper(x: Union[bytes, str]) -&amp;gt; Union[bytes, str]:
+&lt;&#x2F;span&gt;&lt;span&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;return &lt;&#x2F;span&gt;&lt;span&gt;x.upper()
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;The problem with this annotation is that we&#x27;ll have to check at every call site to see if the return value was a &lt;code&gt;bytes&lt;&#x2F;code&gt; or a &lt;code&gt;str&lt;&#x2F;code&gt; object. But we know that uppercasing a &lt;code&gt;str&lt;&#x2F;code&gt; gives us a &lt;code&gt;str&lt;&#x2F;code&gt;, and uppercasing a &lt;code&gt;bytes&lt;&#x2F;code&gt; gives us a &lt;code&gt;bytes.&lt;&#x2F;code&gt; We can use &lt;code&gt;overload&lt;&#x2F;code&gt; to express this.&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;python&quot; style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot; class=&quot;language-python &quot;&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span style=&quot;color:#9b9b9b;&quot;&gt;from &lt;&#x2F;span&gt;&lt;span&gt;typing &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9b9b9b;&quot;&gt;import &lt;&#x2F;span&gt;&lt;span&gt;overload
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span&gt;@overload
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;def &lt;&#x2F;span&gt;&lt;span&gt;upper(x: str) -&amp;gt; str: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;...
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span&gt;@overload
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;def &lt;&#x2F;span&gt;&lt;span&gt;upper(x: bytes) -&amp;gt; bytes: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;...
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;def &lt;&#x2F;span&gt;&lt;span&gt;upper(x: Union[bytes, str]) -&amp;gt; Union[bytes, str]:
+&lt;&#x2F;span&gt;&lt;span&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;return &lt;&#x2F;span&gt;&lt;span&gt;x.upper()
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;The first two &lt;code&gt;@overload&lt;&#x2F;code&gt; definitions are like stubs: they&#x27;re purely used for their annotations. The actual runtime implementation is specified at the end, undecorated. (&lt;strong&gt;NB&lt;&#x2F;strong&gt;: this specific example is better expressed without overloads, by using &lt;a href=&quot;https:&#x2F;&#x2F;docs.python.org&#x2F;3&#x2F;library&#x2F;typing.html?highlight=typing%20generic#typing.AnyStr&quot;&gt;AnyStr&lt;&#x2F;a&gt;.)&lt;&#x2F;p&gt;
+&lt;p&gt;I was really impressed to see how &lt;code&gt;mypy&lt;&#x2F;code&gt; could use this overloading information. Here&#x27;s an example:&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;python&quot; style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot; class=&quot;language-python &quot;&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span style=&quot;color:#9b9b9b;&quot;&gt;from &lt;&#x2F;span&gt;&lt;span&gt;typing &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9b9b9b;&quot;&gt;import &lt;&#x2F;span&gt;&lt;span&gt;overload, Literal
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span&gt;@overload
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;def &lt;&#x2F;span&gt;&lt;span&gt;f(x: int) -&amp;gt; Literal[&lt;&#x2F;span&gt;&lt;span style=&quot;color:#b5cea8;&quot;&gt;1&lt;&#x2F;span&gt;&lt;span&gt;]: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;...
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span&gt;@overload
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;def &lt;&#x2F;span&gt;&lt;span&gt;f(x: str) -&amp;gt; Literal[&lt;&#x2F;span&gt;&lt;span style=&quot;color:#b5cea8;&quot;&gt;2&lt;&#x2F;span&gt;&lt;span&gt;]: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;...
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;def &lt;&#x2F;span&gt;&lt;span&gt;f(x: object) -&amp;gt; int:
+&lt;&#x2F;span&gt;&lt;span&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;if &lt;&#x2F;span&gt;&lt;span&gt;isinstance(x, int):
+&lt;&#x2F;span&gt;&lt;span&gt;        &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;return &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b5cea8;&quot;&gt;1
+&lt;&#x2F;span&gt;&lt;span&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;elif &lt;&#x2F;span&gt;&lt;span&gt;isinstance(x, str):
+&lt;&#x2F;span&gt;&lt;span&gt;        &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;return &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b5cea8;&quot;&gt;2
+&lt;&#x2F;span&gt;&lt;span&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;return &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b5cea8;&quot;&gt;3
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;if &lt;&#x2F;span&gt;&lt;span&gt;f(&lt;&#x2F;span&gt;&lt;span style=&quot;color:#b5cea8;&quot;&gt;10&lt;&#x2F;span&gt;&lt;span&gt;) == &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b5cea8;&quot;&gt;2&lt;&#x2F;span&gt;&lt;span&gt;:
+&lt;&#x2F;span&gt;&lt;span&gt;    print(&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;potato&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;)
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;We can see that &lt;code&gt;f(10) == 1&lt;&#x2F;code&gt; and so the equality is always &lt;code&gt;False&lt;&#x2F;code&gt;: we&#x27;ll never print the word &amp;quot;potato&amp;quot;. Mypy can reason through this too, if we ask it nicely.&lt;&#x2F;p&gt;
+&lt;pre style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot;&gt;&lt;code&gt;&lt;span&gt;$ mypy example.py
+&lt;&#x2F;span&gt;&lt;span&gt;Success: no issues found in 1 source file
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span&gt;$ mypy --strict-equality --warn-unreachable example.py
+&lt;&#x2F;span&gt;&lt;span&gt;example.py:16: error: Non-overlapping equality check (left operand type: &amp;quot;Literal[1]&amp;quot;, right operand type: &amp;quot;Literal[2]&amp;quot;)
+&lt;&#x2F;span&gt;&lt;span&gt;example.py:17: error: Statement is unreachable
+&lt;&#x2F;span&gt;&lt;span&gt;Found 2 errors in 1 file (checked 1 source file)
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;h4 id=&quot;typeddict&quot;&gt;&lt;a href=&quot;https:&#x2F;&#x2F;docs.python.org&#x2F;3&#x2F;library&#x2F;typing.html?highlight=typeddict#typing.TypedDict&quot;&gt;TypedDict&lt;&#x2F;a&gt;&lt;&#x2F;h4&gt;
+&lt;p&gt;I mentioned this &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2021&#x2F;12&#x2F;03&#x2F;type-coverage-for-sydent-motivation&quot;&gt;in last week&#x27;s post&lt;&#x2F;a&gt;) when talking about the missing &lt;code&gt;await&lt;&#x2F;code&gt; bug.
+Subclassing from &lt;code&gt;TypedDict&lt;&#x2F;code&gt; allows us to define a new type whose values are dictionaries with&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;a fixed set of keys (some mandatory, some not), and&lt;&#x2F;li&gt;
+&lt;li&gt;a fixed type for each key&#x27;s value.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;&lt;a href=&quot;https:&#x2F;&#x2F;www.python.org&#x2F;dev&#x2F;peps&#x2F;pep-0589&#x2F;&quot;&gt;PEP 589&lt;&#x2F;a&gt; can best describe the motivation, but in short: there&#x27;s a lot of source code out there that passes dictionaries around. &lt;code&gt;TypedDict&lt;&#x2F;code&gt; is a way to gradually add typechecking to that code, without having to refactor it to use e.g. a &lt;a href=&quot;https:&#x2F;&#x2F;docs.python.org&#x2F;3&#x2F;library&#x2F;dataclasses.html&quot;&gt;dataclass&lt;&#x2F;a&gt; or a &lt;a href=&quot;https:&#x2F;&#x2F;docs.python.org&#x2F;3&#x2F;library&#x2F;typing.html#typing.NamedTuple&quot;&gt;NamedTuple&lt;&#x2F;a&gt;. Let&#x27;s have a quick example.&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;python&quot; style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot; class=&quot;language-python &quot;&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span style=&quot;color:#9b9b9b;&quot;&gt;from &lt;&#x2F;span&gt;&lt;span&gt;typing &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9b9b9b;&quot;&gt;import &lt;&#x2F;span&gt;&lt;span&gt;List, TypedDict
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;class &lt;&#x2F;span&gt;&lt;span&gt;Person(&lt;&#x2F;span&gt;&lt;span style=&quot;color:#4ec9b0;&quot;&gt;TypedDict&lt;&#x2F;span&gt;&lt;span&gt;):
+&lt;&#x2F;span&gt;&lt;span&gt;    full_name: str
+&lt;&#x2F;span&gt;&lt;span&gt;    nicknames: List[str]
+&lt;&#x2F;span&gt;&lt;span&gt;    age: int
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span&gt;p: Person = {
+&lt;&#x2F;span&gt;&lt;span&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;full_name&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;David Matthew Robertson&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;,
+&lt;&#x2F;span&gt;&lt;span&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;nicknames&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;: [&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;dmr&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;],
+&lt;&#x2F;span&gt;&lt;span&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;age&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b5cea8;&quot;&gt;29&lt;&#x2F;span&gt;&lt;span&gt;,
+&lt;&#x2F;span&gt;&lt;span&gt;}
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;Mypy will detect if you delete or omit a required key, or if you insert a key that&#x27;s not part of the type.&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;python&quot; style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot; class=&quot;language-python &quot;&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span style=&quot;color:#608b4e;&quot;&gt;# error: Key &amp;quot;age&amp;quot; of TypedDict &amp;quot;Person&amp;quot; cannot be deleted
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;del &lt;&#x2F;span&gt;&lt;span&gt;p[&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;age&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;]
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#608b4e;&quot;&gt;# error: Missing keys (&amp;quot;full_name&amp;quot;, &amp;quot;nicknames&amp;quot;, &amp;quot;age&amp;quot;) for TypedDict &amp;quot;Person&amp;quot;
+&lt;&#x2F;span&gt;&lt;span&gt;p2: Person = {}
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#608b4e;&quot;&gt;# error: TypedDict &amp;quot;Person&amp;quot; has no key &amp;quot;eye_colour&amp;quot;
+&lt;&#x2F;span&gt;&lt;span&gt;p[&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;eye_colour&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;] = &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;brown&amp;quot;
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;&lt;code&gt;TypedDict&lt;&#x2F;code&gt; is a useful tool, but there are a few important gotchas to be aware of. In my view, these are all minor and worth putting up with, to benefit from the extra type information that a &lt;code&gt;TypedDict&lt;&#x2F;code&gt; provides. Let&#x27;s take a look.&lt;&#x2F;p&gt;
+&lt;h5 id=&quot;typeddict-is-incompatible-with-dict&quot;&gt;&lt;code&gt;TypedDict&lt;&#x2F;code&gt; is incompatible with &lt;code&gt;Dict&lt;&#x2F;code&gt;&lt;&#x2F;h5&gt;
+&lt;p&gt;This one surprised me at first. Why can&#x27;t I pass my &lt;code&gt;TypedDict&lt;&#x2F;code&gt; to a function that accepts a generic dictionary?&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;python&quot; style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot; class=&quot;language-python &quot;&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span style=&quot;color:#9b9b9b;&quot;&gt;import &lt;&#x2F;span&gt;&lt;span&gt;json
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9b9b9b;&quot;&gt;from &lt;&#x2F;span&gt;&lt;span&gt;typing &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9b9b9b;&quot;&gt;import &lt;&#x2F;span&gt;&lt;span&gt;Dict, TypedDict
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;class &lt;&#x2F;span&gt;&lt;span&gt;Foo(&lt;&#x2F;span&gt;&lt;span style=&quot;color:#4ec9b0;&quot;&gt;TypedDict&lt;&#x2F;span&gt;&lt;span&gt;):
+&lt;&#x2F;span&gt;&lt;span&gt;    bar: str
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;def &lt;&#x2F;span&gt;&lt;span&gt;print_size(d: Dict[object, object]) -&amp;gt; &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;None&lt;&#x2F;span&gt;&lt;span&gt;:
+&lt;&#x2F;span&gt;&lt;span&gt;    print(len(d))
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span&gt;f: Foo = {&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;bar&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;baz&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;}
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#608b4e;&quot;&gt;# error: Argument 1 to &amp;quot;print_size&amp;quot; has incompatible type &amp;quot;Foo&amp;quot;; expected &amp;quot;Dict[object, object]&amp;quot;
+&lt;&#x2F;span&gt;&lt;span&gt;print_size(f)
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;The answer is that it wouldn&#x27;t be type-safe! For all we know, the function &lt;code&gt;print_size&lt;&#x2F;code&gt; might mutate its argument &lt;code&gt;d&lt;&#x2F;code&gt;. It might add a key, remove a key, or change the type of a value. Each of those would break the contract that &lt;code&gt;TypedDict&lt;&#x2F;code&gt; is supposed to enforce, so mypy is correct to flag this as an error. &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;python&#x2F;mypy&#x2F;issues&#x2F;4976&quot;&gt;This GitHub issue&lt;&#x2F;a&gt; has more discussion.&lt;&#x2F;p&gt;
+&lt;p&gt;There are few workarounds for this kind of problem.&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;The function might be able to accept a &lt;code&gt;TypedDict&lt;&#x2F;code&gt; directly.&lt;&#x2F;li&gt;
+&lt;li&gt;The function could accept a &lt;code&gt;Mapping&lt;&#x2F;code&gt; instead of a &lt;code&gt;Dict&lt;&#x2F;code&gt;. This is type-safe because the &lt;code&gt;Mapping&lt;&#x2F;code&gt; type does not offer mutating methods such as &lt;code&gt;pop&lt;&#x2F;code&gt;, &lt;code&gt;__setitem__&lt;&#x2F;code&gt;, &lt;code&gt;__del__&lt;&#x2F;code&gt;; but it only works if the function does not mutate the dictionary.&lt;&#x2F;li&gt;
+&lt;li&gt;A more drastic approach would discard the &lt;code&gt;TypedDict&lt;&#x2F;code&gt; information with a &lt;code&gt;cast&lt;&#x2F;code&gt; to &lt;code&gt;Dict[str, object]&lt;&#x2F;code&gt; or similar. If so, I&#x27;d strongly recommend a comment explaining why the cast is correct and safe.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;h5 id=&quot;mixing-mandatory-and-required-fields&quot;&gt;Mixing mandatory and required fields&lt;&#x2F;h5&gt;
+&lt;p&gt;Secondly, defining a &lt;code&gt;TypedDict&lt;&#x2F;code&gt; with a mixture of optional and required keys is a little fiddly. All keys can be made optional by passing &lt;code&gt;total=False&lt;&#x2F;code&gt; in the class definition. To have some keys optional and others mandatory, we have to make &lt;em&gt;two&lt;&#x2F;em&gt; TypedDicts. Say for instance we wanted to allow a potentially-missing &lt;code&gt;favourite_colour&lt;&#x2F;code&gt; field to &lt;code&gt;Person&lt;&#x2F;code&gt;. We can&#x27;t add an annotation &lt;code&gt;favourite_colour: Optional[str]&lt;&#x2F;code&gt; to the first class body. That&#x27;s optional in a different sense: it would mean that &lt;code&gt;favourite_colour&lt;&#x2F;code&gt; is a mandatory field which is allowed to be &lt;code&gt;None&lt;&#x2F;code&gt;. Instead, we apply &lt;code&gt;total=False&lt;&#x2F;code&gt; to a subclass:&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;python&quot; style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot; class=&quot;language-python &quot;&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span style=&quot;color:#9b9b9b;&quot;&gt;from &lt;&#x2F;span&gt;&lt;span&gt;typing &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9b9b9b;&quot;&gt;import &lt;&#x2F;span&gt;&lt;span&gt;List, TypedDict
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;class &lt;&#x2F;span&gt;&lt;span&gt;_PersonRequired(&lt;&#x2F;span&gt;&lt;span style=&quot;color:#4ec9b0;&quot;&gt;TypedDict&lt;&#x2F;span&gt;&lt;span&gt;):
+&lt;&#x2F;span&gt;&lt;span&gt;    full_name: str
+&lt;&#x2F;span&gt;&lt;span&gt;    nicknames: List[str]
+&lt;&#x2F;span&gt;&lt;span&gt;    age: int
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;class &lt;&#x2F;span&gt;&lt;span&gt;Person(&lt;&#x2F;span&gt;&lt;span style=&quot;color:#4ec9b0;&quot;&gt;_PersonRequired&lt;&#x2F;span&gt;&lt;span&gt;, total=&lt;&#x2F;span&gt;&lt;span style=&quot;color:#4ec9b0;&quot;&gt;False&lt;&#x2F;span&gt;&lt;span&gt;):
+&lt;&#x2F;span&gt;&lt;span&gt;    favourite_colour: str
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;This means that a valid &lt;code&gt;Person&lt;&#x2F;code&gt; dictionary may have no &lt;code&gt;favourite_colour&lt;&#x2F;code&gt; key. If it is present, it must be a &lt;code&gt;str&lt;&#x2F;code&gt;.&lt;&#x2F;p&gt;
+&lt;p&gt;The syntax is unfortunately a little clunky. &lt;a href=&quot;https:&#x2F;&#x2F;www.python.org&#x2F;dev&#x2F;peps&#x2F;pep-0655&#x2F;&quot;&gt;PEP 655&lt;&#x2F;a&gt; acknowledges this and proposes an alternative.&lt;&#x2F;p&gt;
+&lt;h5 id=&quot;typeddict-is-typecheck-time-only&quot;&gt;&lt;code&gt;TypedDict&lt;&#x2F;code&gt; is typecheck-time only&lt;&#x2F;h5&gt;
+&lt;p&gt;One final note: a &lt;code&gt;TypedDict&lt;&#x2F;code&gt; does no validation or conversion whatsoever. If mypy can&#x27;t know the keys and values a dictionary will have a typecheck-time, you&#x27;ll need to validate it by hand at runtime. We see this a lot because when deserialising json objects into a dictionary. Here&#x27;s an example.&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;python&quot; style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot; class=&quot;language-python &quot;&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span style=&quot;color:#9b9b9b;&quot;&gt;import &lt;&#x2F;span&gt;&lt;span&gt;json
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#9b9b9b;&quot;&gt;from &lt;&#x2F;span&gt;&lt;span&gt;typing &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9b9b9b;&quot;&gt;import &lt;&#x2F;span&gt;&lt;span&gt;TypedDict
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;class &lt;&#x2F;span&gt;&lt;span&gt;Foo(&lt;&#x2F;span&gt;&lt;span style=&quot;color:#4ec9b0;&quot;&gt;TypedDict&lt;&#x2F;span&gt;&lt;span&gt;):
+&lt;&#x2F;span&gt;&lt;span&gt;    bar: str
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#608b4e;&quot;&gt;# note: Revealed type is &amp;quot;Any&amp;quot;
+&lt;&#x2F;span&gt;&lt;span&gt;reveal_type(json.loads(&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;&lt;&#x2F;span&gt;&lt;span style=&quot;color:#b4cea8;&quot;&gt;{}&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;))
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#608b4e;&quot;&gt;# no error. mypy can&amp;#39;t do analysis on Any.
+&lt;&#x2F;span&gt;&lt;span&gt;f: Foo = json.loads(&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;&lt;&#x2F;span&gt;&lt;span style=&quot;color:#b4cea8;&quot;&gt;{}&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;)
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;h2 id=&quot;next-time&quot;&gt;Next time&lt;&#x2F;h2&gt;
+&lt;p&gt;This covers a lot of the machinery and the day-to-day process of annotating Sydent. The &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2021&#x2F;12&#x2F;17&#x2F;type-coverage-for-sydent-evaluation&quot;&gt;last part of this series&lt;&#x2F;a&gt; will give us a chance to quantify our efforts and reflect on the wider typing ecosystem.&lt;&#x2F;p&gt;
+&lt;hr &#x2F;&gt;
+&lt;p&gt;Many thanks for reading! If you&#x27;ve got any corrections, comments or queries, I&#x27;m available on Matrix at &lt;a href=&quot;https:&#x2F;&#x2F;matrix.to&#x2F;#&#x2F;@dmrobertson:matrix.org&quot;&gt;@dmrobertson:matrix.org&lt;&#x2F;a&gt;.&lt;&#x2F;p&gt;
+</content>
+	</entry>
+	<entry xml:lang="en">
+		<title>Type coverage for Sydent: motivation</title>
+		<published>2021-12-03T00:00:00+00:00</published>
+		<updated>2021-12-03T00:00:00+00:00</updated>
+		<link rel="alternate" href="/blog/2021/12/03/type-coverage-for-sydent-motivation/" type="text/html"/>
+		<id>/blog/2021/12/03/type-coverage-for-sydent-motivation/</id>
+		<content type="html">&lt;p&gt;&lt;em&gt;This is the first of three posts on improving type coverage in Sydent. Join us next Friday for the &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2021&#x2F;12&#x2F;10&#x2F;type-coverage-for-sydent-annotation&quot;&gt;second part&lt;&#x2F;a&gt;!&lt;&#x2F;em&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;sydent&quot;&gt;Sydent&lt;&#x2F;a&gt; is the reference Matrix Identity server. It provides a &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;docs&#x2F;spec&#x2F;identity_service&#x2F;r0.3.0&quot;&gt;lookup service&lt;&#x2F;a&gt;, so that you can find a Matrix user via their email address or phone number (if they&#x27;ve chosen to share it).&lt;&#x2F;p&gt;
+&lt;p&gt;We recently worked on &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;sydent&#x2F;issues&#x2F;414&quot;&gt;improving Sydent&#x27;s type coverage&lt;&#x2F;a&gt;: the proportion of its source code with explicit annotations denoting the kind of data that each variable, expression and return value is expected to hold. These annotations are optional, but if present, they allow tools like &lt;a href=&quot;https:&#x2F;&#x2F;mypy.readthedocs.io&#x2F;en&#x2F;stable&#x2F;&quot;&gt;mypy&lt;&#x2F;a&gt; to analyze your programs and spot entire classes of bugs &lt;em&gt;before&lt;&#x2F;em&gt; you ship them! In this instance, we aimed to make Sydent pass &lt;code&gt;mypy --strict&lt;&#x2F;code&gt;, which &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;sydent&#x2F;commit&#x2F;7bdaac2774840e1f9697d30515f367c5c8c16866&quot;&gt;it now does&lt;&#x2F;a&gt;. Here&#x27;s what the process looked like:&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;img src=&quot;&#x2F;blog&#x2F;img&#x2F;TWGXKTFpjYxlbnHRkZFAzljQ.png&quot; alt=&quot;Coverage as measured by mypy. Precision and the number of typed expressions increase over the latter half of 2021.&quot; &#x2F;&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;Two lines show two different measures of how well-typed the project is. The grey region covers our two-week sprint towards improving coverage; the earliest data point is from just before previous efforts to improve typing earlier in the year.&lt;&#x2F;p&gt;
+&lt;p&gt;In a series of posts, I&#x27;d like to reflect on this sprint and share what we&#x27;ve learned. In particular, I aim to:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;explain why we wanted to improve type coverage &lt;em&gt;now&lt;&#x2F;em&gt;;&lt;&#x2F;li&gt;
+&lt;li&gt;work through examples to see how (if?) mypy could have spotted bugs;&lt;&#x2F;li&gt;
+&lt;li&gt;describe the annotation process;&lt;&#x2F;li&gt;
+&lt;li&gt;illustrate common patterns I learned along the way;&lt;&#x2F;li&gt;
+&lt;li&gt;discuss the checks that &lt;code&gt;mypy&lt;&#x2F;code&gt; provides; and finally&lt;&#x2F;li&gt;
+&lt;li&gt;reflect on the state of Python&#x27;s typing ecosystem.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;In this first part, we&#x27;ll concentrate on the first two topics; the &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2021&#x2F;12&#x2F;10&#x2F;type-coverage-for-sydent-annotation&quot;&gt;second&lt;&#x2F;a&gt; covers the middle two; and the &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2021&#x2F;12&#x2F;17&#x2F;type-coverage-for-sydent-evaluation&quot;&gt;third&lt;&#x2F;a&gt; the last two.&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;why-do-this-now&quot;&gt;Why do this now?&lt;&#x2F;h2&gt;
+&lt;p&gt;It took us a long time (too long) to notice that the Sydent instance serving &lt;code&gt;matrix.org&lt;&#x2F;code&gt; &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;vector-im&#x2F;element-web&#x2F;issues&#x2F;19317&quot;&gt;was failing to send SMS messages for verification&lt;&#x2F;a&gt;. We suspected that something was going wrong with our &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;sydent&#x2F;blob&#x2F;main&#x2F;sydent&#x2F;sms&#x2F;openmarket.py&quot;&gt;API call to OpenMarket&lt;&#x2F;a&gt;. Our first step was to &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;sydent&#x2F;issues&#x2F;410&quot;&gt;improve logging&lt;&#x2F;a&gt;, so we could start to deduce what was going wrong and why. Whilst trawling through logs, we spotted &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;sydent&#x2F;pull&#x2F;413#pullrequestreview-775154313&quot;&gt;
+one problem&lt;&#x2F;a&gt; which meant we weren&#x27;t actually sending off the API request in the first place. Further investigation revealed a &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;sydent&#x2F;pull&#x2F;415&quot;&gt;strings-versus-bytes confusion&lt;&#x2F;a&gt; which meant that we would always (incorrectly) interpret the API response as having failed.&lt;&#x2F;p&gt;
+&lt;p&gt;All in all, phone number verification was unknowingly broken in the 2.4.0 release, to be fixed in 2.4.6 a month later. How could we do better? Better test coverage is (as ever) one answer. But &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;sydent&#x2F;pull&#x2F;413#pullrequestreview-775154313&quot;&gt;it struck me&lt;&#x2F;a&gt; that the two bugs we&#x27;d encountered might be ripe for automatic detection:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;we created an &lt;a href=&quot;https:&#x2F;&#x2F;docs.python.org&#x2F;3&#x2F;library&#x2F;typing.html#typing.Awaitable&quot;&gt;Awaitable&lt;&#x2F;a&gt; but didn&#x27;t &lt;code&gt;await&lt;&#x2F;code&gt; it or use it in any way, and&lt;&#x2F;li&gt;
+&lt;li&gt;we tried to look up a &lt;code&gt;str&lt;&#x2F;code&gt; key in a dictionary which mapped &lt;code&gt;bytes&lt;&#x2F;code&gt; to &lt;code&gt;bytes&lt;&#x2F;code&gt;.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;Could a static analysis tool like &lt;code&gt;mypy&lt;&#x2F;code&gt; detect these? How much work would it take to do so? Are there other bugs and problems we could spot with it? I was curious to answer these questions and learn more about the tools that Python&#x27;s typing ecosystem provides.&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;could-typing-have-spotted-these-problems&quot;&gt;Could typing have spotted these problems?&lt;&#x2F;h2&gt;
+&lt;p&gt;Let&#x27;s start with the first of question: what can &lt;code&gt;mypy&lt;&#x2F;code&gt; detect?&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;the-missing-await&quot;&gt;The missing &lt;code&gt;await&lt;&#x2F;code&gt;&lt;&#x2F;h3&gt;
+&lt;p&gt;Instead of writing &lt;code&gt;x = await foo()&lt;&#x2F;code&gt;, we simply had &lt;code&gt;x = foo()&lt;&#x2F;code&gt; and didn&#x27;t then go on to &lt;code&gt;await x&lt;&#x2F;code&gt;. Mypy doesn&#x27;t have means to detect this at present. There was interest in &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;python&#x2F;mypy&#x2F;issues&#x2F;2499&quot;&gt;this issue&lt;&#x2F;a&gt; on such a feature, with related threads &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;python&#x2F;mypy&#x2F;issues&#x2F;5597&quot;&gt;here&lt;&#x2F;a&gt; and &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;python&#x2F;mypy&#x2F;issues&#x2F;5650&quot;&gt;here&lt;&#x2F;a&gt;.&lt;&#x2F;p&gt;
+&lt;p&gt;Are there other opportunities to spot the error? Here&#x27;s the relevant bit of source code from &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;sydent&#x2F;blob&#x2F;2e3b7576b17e92080319e08c0c0ebf566935636c&#x2F;sydent&#x2F;http&#x2F;servlets&#x2F;msisdnservlet.py#L93-L98&quot;&gt;before the fix&lt;&#x2F;a&gt;.&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;python&quot; style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot; class=&quot;language-python &quot;&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span&gt;            sid = self.sydent.validators.msisdn.requestToken(
+&lt;&#x2F;span&gt;&lt;span&gt;                phone_number_object, clientSecret, sendAttempt, brand
+&lt;&#x2F;span&gt;&lt;span&gt;            )
+&lt;&#x2F;span&gt;&lt;span&gt;            resp = {
+&lt;&#x2F;span&gt;&lt;span&gt;                &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;success&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;True&lt;&#x2F;span&gt;&lt;span&gt;,
+&lt;&#x2F;span&gt;&lt;span&gt;                &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;sid&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;: str(sid),
+&lt;&#x2F;span&gt;&lt;span&gt;                &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;msisdn&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;: msisdn,
+&lt;&#x2F;span&gt;&lt;span&gt;                &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;intl_fmt&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;: intl_fmt,
+&lt;&#x2F;span&gt;&lt;span&gt;            }
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;The call to &lt;code&gt;requestToken&lt;&#x2F;code&gt; produces a value of type &lt;code&gt;Awaitable[int]&lt;&#x2F;code&gt;. If we tried to assign that to an expression of type &lt;code&gt;int&lt;&#x2F;code&gt; we&#x27;d get an error that mypy can spot.&lt;&#x2F;p&gt;
+&lt;pre style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot;&gt;&lt;code&gt;&lt;span&gt;$ cat example.py
+&lt;&#x2F;span&gt;&lt;span&gt;async def foo() -&amp;gt; int:
+&lt;&#x2F;span&gt;&lt;span&gt;    return 1
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span&gt;async def bar():
+&lt;&#x2F;span&gt;&lt;span&gt;    x = foo()      # no error
+&lt;&#x2F;span&gt;&lt;span&gt;    y: int = foo() # error: rhs is Awaitable[int], but lhs expects int
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span&gt;$ mypy --check-untyped-defs example.py
+&lt;&#x2F;span&gt;&lt;span&gt;example.py:6: error: Incompatible types in assignment (expression has type &amp;quot;Coroutine[Any, Any, int]&amp;quot;, variable has type &amp;quot;int&amp;quot;)
+&lt;&#x2F;span&gt;&lt;span&gt;Found 1 error in 1 file (checked 1 source file)
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;Note that we have to specifically ask mypy to typecheck the body of &lt;code&gt;bar&lt;&#x2F;code&gt; by passing &lt;a href=&quot;https:&#x2F;&#x2F;mypy.readthedocs.io&#x2F;en&#x2F;stable&#x2F;command_line.html#cmdoption-mypy-check-untyped-defs&quot;&gt;--check-untyped-defs&lt;&#x2F;a&gt;; by default, &lt;code&gt;mypy&lt;&#x2F;code&gt; will only typecheck annotated code.&lt;&#x2F;p&gt;
+&lt;p&gt;We might also have been able to detect the error by looking at how we used &lt;code&gt;sid&lt;&#x2F;code&gt;. Unfortunately, the only use of was in a conversion &lt;code&gt;str(sid)&lt;&#x2F;code&gt;, which is a perfectly type-safe call for both &lt;code&gt;sid: int&lt;&#x2F;code&gt; and &lt;code&gt;sid: Awaitable[int]&lt;&#x2F;code&gt;. But let&#x27;s put that aside for a second—suppose we added &lt;code&gt;&amp;quot;sid&amp;quot;: sid&lt;&#x2F;code&gt; directly into the &lt;code&gt;resp&lt;&#x2F;code&gt; dictionary. Could mypy have spotted there was a problem with &lt;em&gt;that&lt;&#x2F;em&gt;?&lt;&#x2F;p&gt;
+&lt;p&gt;Unfortunately not. Because &lt;code&gt;resp&lt;&#x2F;code&gt; has no annotation, we have to rely on how it&#x27;s used to spot any type inconsistencies. There&#x27;s only one use of &lt;code&gt;resp&lt;&#x2F;code&gt;: as the return value from its enclosing function, &lt;code&gt;render_POST&lt;&#x2F;code&gt;. Mypy&#x27;s only chance to spot a type problem would be to compare the mypy&#x27;s inferred type for &lt;code&gt;resp&lt;&#x2F;code&gt; to the return type of &lt;code&gt;render_POST&lt;&#x2F;code&gt;. What are those types? We can use &lt;code&gt;reveal_type&lt;&#x2F;code&gt; to see the former is &lt;code&gt;Dict[str, object]&lt;&#x2F;code&gt;. For the latter:&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;python&quot; style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot; class=&quot;language-python &quot;&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span&gt;    @jsonwrap
+&lt;&#x2F;span&gt;&lt;span&gt;    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;def &lt;&#x2F;span&gt;&lt;span&gt;render_POST(self, request: Request) -&amp;gt; JsonDict:
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;The return type is &lt;code&gt;JsonDict&lt;&#x2F;code&gt;, which is an &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;sydent&#x2F;blob&#x2F;2e3b7576b17e92080319e08c0c0ebf566935636c&#x2F;sydent&#x2F;types.py#L17&quot;&gt;alias&lt;&#x2F;a&gt; for &lt;code&gt;Dict[str, Any]&lt;&#x2F;code&gt;. This is bad news, because &lt;code&gt;Dict[str, object]&lt;&#x2F;code&gt; and &lt;code&gt;Dict[str, Any]&lt;&#x2F;code&gt; are compatible. Digging a level deeper, this is because &lt;code&gt;sid: Any&lt;&#x2F;code&gt; holds true for both &lt;code&gt;sid: int&lt;&#x2F;code&gt; and &lt;code&gt;sid: Awaitable[int]&lt;&#x2F;code&gt;—so there&#x27;s no error to spot here. The &lt;code&gt;Any&lt;&#x2F;code&gt; type is compatible with any other type whatsoever! Mypy uses &lt;code&gt;Any&lt;&#x2F;code&gt; as a way to &lt;a href=&quot;https:&#x2F;&#x2F;mypy.readthedocs.io&#x2F;en&#x2F;stable&#x2F;kinds_of_types.html#the-any-type&quot;&gt;defer all type checking to runtime&lt;&#x2F;a&gt;; mypy won&#x27;t (and can&#x27;t!) statically analyse the usage of an expression of type &lt;code&gt;Any&lt;&#x2F;code&gt;. Indeed, mypy&#x27;s reports will tell you how many &lt;code&gt;Any&lt;&#x2F;code&gt;s you&#x27;re working with, and offer a variety of options to &lt;a href=&quot;https:&#x2F;&#x2F;mypy.readthedocs.io&#x2F;en&#x2F;stable&#x2F;command_line.html#disallow-dynamic-typing&quot;&gt;warn or error on usages of &lt;code&gt;Any&lt;&#x2F;code&gt;&lt;&#x2F;a&gt;.&lt;&#x2F;p&gt;
+&lt;p&gt;If we were inserting &lt;code&gt;sid&lt;&#x2F;code&gt; directly into a dictionary, we could do better by annotating the dictionary (or the function&#x27;s return type) as a &lt;a href=&quot;https:&#x2F;&#x2F;docs.python.org&#x2F;3&#x2F;library&#x2F;typing.html#typing.TypedDict&quot;&gt;TypedDict&lt;&#x2F;a&gt;. This is a way to specify a dictionary with a fixed set of keys, each with a fixed type. It comes in really handy for Sydent, Sygnal and Synapse—all of &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;docs&#x2F;spec&#x2F;&quot;&gt;the Matrix APIs&lt;&#x2F;a&gt; exchange JSON dictionaries, so anything we can do to teach mypy about their shape and types is gold dust.&lt;&#x2F;p&gt;
+&lt;p&gt;In short, there were options for detecting this with some code changes, but no magic wand that would have spotted the error in the code as written.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;the-strings-bytes-confusion&quot;&gt;The strings&#x2F;bytes confusion&lt;&#x2F;h3&gt;
+&lt;p&gt;Our &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;sydent&#x2F;pull&#x2F;415&#x2F;files#diff-4b3e0551612818927c87fe0100262ec230e0342def9d3f09214b93dea3efacb8L103-R107&quot;&gt;error&lt;&#x2F;a&gt; was here:&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;python&quot; style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot; class=&quot;language-python &quot;&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span&gt;        headers = dict(resp.headers.getAllRawHeaders())
+&lt;&#x2F;span&gt;&lt;span&gt;        request_id = &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;None
+&lt;&#x2F;span&gt;&lt;span&gt;        &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;if &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;X-Request-Id&amp;quot; &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;in &lt;&#x2F;span&gt;&lt;span&gt;headers:
+&lt;&#x2F;span&gt;&lt;span&gt;            request_id = headers[&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;X-Request-Id&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;][&lt;&#x2F;span&gt;&lt;span style=&quot;color:#b5cea8;&quot;&gt;0&lt;&#x2F;span&gt;&lt;span&gt;]
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;In this sample, &lt;code&gt;resp.headers&lt;&#x2F;code&gt; is a &lt;a href=&quot;https:&#x2F;&#x2F;twistedmatrix.com&#x2F;documents&#x2F;current&#x2F;api&#x2F;twisted.web.http_headers.Headers.html&quot;&gt;twisted.web.http_headers.Headers&lt;&#x2F;a&gt; instance. &lt;code&gt;getAllRawHeaders&lt;&#x2F;code&gt; is &lt;a href=&quot;https:&#x2F;&#x2F;twistedmatrix.com&#x2F;documents&#x2F;current&#x2F;api&#x2F;twisted.web.http_headers.Headers.html#getAllRawHeaders&quot;&gt;documented&lt;&#x2F;a&gt; as returning an iterable of &lt;code&gt;(bytes, Sequence[bytes])&lt;&#x2F;code&gt; pairs. Even better, mypy can see this because &lt;code&gt;getAllRawHeaders&lt;&#x2F;code&gt; is &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;twisted&#x2F;twisted&#x2F;blob&#x2F;5c24e99e671c4082a1ddc8dbeb869402294bd0dc&#x2F;src&#x2F;twisted&#x2F;web&#x2F;http_headers.py#L261&quot;&gt;annotated&lt;&#x2F;a&gt; (many thanks to the twisted authors for this). Mypy should be able to deduce that we build a dictionary &lt;code&gt;headers: Dict[bytes, Sequence[bytes]&lt;&#x2F;code&gt;. We can check this using &lt;a href=&quot;https:&#x2F;&#x2F;mypy.readthedocs.io&#x2F;en&#x2F;stable&#x2F;cheat_sheet_py3.html#when-you-re-puzzled-or-when-things-are-complicated&quot;&gt;&lt;code&gt;reveal_type&lt;&#x2F;code&gt;&lt;&#x2F;a&gt;:&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;python&quot; style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot; class=&quot;language-python &quot;&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span&gt;        headers = dict(resp.headers.getAllRawHeaders())
+&lt;&#x2F;span&gt;&lt;span&gt;        reveal_type(headers)
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;pre style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot;&gt;&lt;code&gt;&lt;span&gt;$ mypy
+&lt;&#x2F;span&gt;&lt;span&gt;sydent&#x2F;sms&#x2F;openmarket.py:110: note: Revealed type is &amp;quot;builtins.dict[builtins.bytes*, typing.Sequence*[builtins.bytes]]&amp;quot;
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;(The &lt;code&gt;*&lt;&#x2F;code&gt; in &lt;code&gt;builtins.bytes*&lt;&#x2F;code&gt; here means mypy has &lt;a href=&quot;https:&#x2F;&#x2F;stackoverflow.com&#x2F;a&#x2F;50499509&#x2F;5252017&quot;&gt;inferred&lt;&#x2F;a&gt; that the dictionary&#x27;s keys are bytes, rather than being told explicitly that they must be bytes.)&lt;&#x2F;p&gt;
+&lt;p&gt;That&#x27;s all fine and dandy. But why didn&#x27;t we spot this before if the annotations were all in place in twisted? Let&#x27;s put aside the fact that, erm, we weren&#x27;t running mypy in Sydent&#x27;s CI &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;sydent&#x2F;pull&#x2F;416&quot;&gt;until the recent sprint&lt;&#x2F;a&gt;, unlike our &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;synapse&#x2F;blob&#x2F;5640992d176a499204a0756b1677c9b1575b0a49&#x2F;.github&#x2F;workflows&#x2F;tests.yml#L21&quot;&gt;other&lt;&#x2F;a&gt; &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;sygnal&#x2F;blob&#x2F;4a7367e84476a4b1054b1fe20e9e06f9f66e27f8&#x2F;.github&#x2F;workflows&#x2F;pipeline.yml#L18-L26&quot;&gt;projects&lt;&#x2F;a&gt;. Checking out the problematic version, we can run mypy on the file we know to contain the bug.&lt;&#x2F;p&gt;
+&lt;pre style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot;&gt;&lt;code&gt;&lt;span&gt;$ git checkout v2.4.0
+&lt;&#x2F;span&gt;&lt;span&gt;$ mypy --strict sydent&#x2F;sms&#x2F;openmarket.py
+&lt;&#x2F;span&gt;&lt;span&gt;sydent&#x2F;sms&#x2F;openmarket.py:82: error: Dict entry 0 has incompatible type &amp;quot;str&amp;quot;: &amp;quot;int&amp;quot;; expected &amp;quot;str&amp;quot;: &amp;quot;str&amp;quot;  [dict-item]
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;Huh. Mypy spots something, but not the error we were hoping for. What&#x27;s going on here? We can ask mypy to show its working with &lt;code&gt;reveal_type&lt;&#x2F;code&gt; again.&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;python&quot; style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot; class=&quot;language-python &quot;&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span&gt;        resp = &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;await &lt;&#x2F;span&gt;&lt;span&gt;self.http_cli.post_json_get_nothing(
+&lt;&#x2F;span&gt;&lt;span&gt;            API_BASE_URL, send_body, {&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d69d85;&quot;&gt;&amp;quot;headers&amp;quot;&lt;&#x2F;span&gt;&lt;span&gt;: req_headers}
+&lt;&#x2F;span&gt;&lt;span&gt;        )
+&lt;&#x2F;span&gt;&lt;span&gt;        reveal_type(resp)
+&lt;&#x2F;span&gt;&lt;span&gt;        headers = dict(resp.headers.getAllRawHeaders())
+&lt;&#x2F;span&gt;&lt;span&gt;        reveal_type(resp.headers)
+&lt;&#x2F;span&gt;&lt;span&gt;        reveal_type(resp.headers.getAllwRawHeaders())
+&lt;&#x2F;span&gt;&lt;span&gt;        reveal_type(headers)
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;This yields:&lt;&#x2F;p&gt;
+&lt;pre style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot;&gt;&lt;code&gt;&lt;span&gt;$ mypy sydent&#x2F;sms&#x2F;openmarket.py
+&lt;&#x2F;span&gt;&lt;span&gt;sydent&#x2F;sms&#x2F;openmarket.py:82: error: Dict entry 0 has incompatible type &amp;quot;str&amp;quot;: &amp;quot;int&amp;quot;; expected &amp;quot;str&amp;quot;: &amp;quot;str&amp;quot;  [dict-item]
+&lt;&#x2F;span&gt;&lt;span&gt;sydent&#x2F;sms&#x2F;openmarket.py:102: note: Revealed type is &amp;quot;twisted.web.iweb.IResponse*&amp;quot;
+&lt;&#x2F;span&gt;&lt;span&gt;sydent&#x2F;sms&#x2F;openmarket.py:104: note: Revealed type is &amp;quot;Any&amp;quot;
+&lt;&#x2F;span&gt;&lt;span&gt;sydent&#x2F;sms&#x2F;openmarket.py:105: note: Revealed type is &amp;quot;Any&amp;quot;
+&lt;&#x2F;span&gt;&lt;span&gt;sydent&#x2F;sms&#x2F;openmarket.py:106: note: Revealed type is &amp;quot;builtins.dict[Any, Any]&amp;quot;
+&lt;&#x2F;span&gt;&lt;span&gt;Found 1 error in 1 file (checked 1 source file)
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;Ahh, the &lt;code&gt;Any&lt;&#x2F;code&gt; type. As mentioned above, this represents a value whose type can&#x27;t be statically determined. We&#x27;re left to runtime checks to detect the problem. But we won&#x27;t detect it at runtime, because dictionaries don&#x27;t enforce any kind of type requirements on their keys and values.&lt;&#x2F;p&gt;
+&lt;p&gt;The problem here is that mypy can&#x27;t see that &lt;code&gt;resp.headers&lt;&#x2F;code&gt; is a twisted &lt;code&gt;Headers&lt;&#x2F;code&gt; object. If we could inform it of this, mypy would spot our bug:&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;python&quot; style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot; class=&quot;language-python &quot;&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span&gt;        &lt;&#x2F;span&gt;&lt;span style=&quot;color:#9b9b9b;&quot;&gt;import &lt;&#x2F;span&gt;&lt;span&gt;twisted.web.http_headers
+&lt;&#x2F;span&gt;&lt;span&gt;        raw_headers: twisted.web.http_headers.Headers = resp.headers
+&lt;&#x2F;span&gt;&lt;span&gt;        reveal_type(resp)
+&lt;&#x2F;span&gt;&lt;span&gt;        headers = dict(raw_headers.getAllRawHeaders())
+&lt;&#x2F;span&gt;&lt;span&gt;        reveal_type(raw_headers)
+&lt;&#x2F;span&gt;&lt;span&gt;        reveal_type(raw_headers.getAllRawHeaders())
+&lt;&#x2F;span&gt;&lt;span&gt;        reveal_type(headers)
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;pre style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot;&gt;&lt;code&gt;&lt;span&gt;$ mypy sydent&#x2F;sms&#x2F;openmarket.py
+&lt;&#x2F;span&gt;&lt;span&gt;sydent&#x2F;sms&#x2F;openmarket.py:82: error: Dict entry 0 has incompatible type &amp;quot;str&amp;quot;: &amp;quot;int&amp;quot;; expected &amp;quot;str&amp;quot;: &amp;quot;str&amp;quot;  [dict-item]
+&lt;&#x2F;span&gt;&lt;span&gt;sydent&#x2F;sms&#x2F;openmarket.py:104: note: Revealed type is &amp;quot;twisted.web.iweb.IResponse*&amp;quot;
+&lt;&#x2F;span&gt;&lt;span&gt;sydent&#x2F;sms&#x2F;openmarket.py:106: note: Revealed type is &amp;quot;twisted.web.http_headers.Headers&amp;quot;
+&lt;&#x2F;span&gt;&lt;span&gt;sydent&#x2F;sms&#x2F;openmarket.py:107: note: Revealed type is &amp;quot;typing.Iterator[Tuple[builtins.bytes, typing.Sequence[builtins.bytes]]]&amp;quot;
+&lt;&#x2F;span&gt;&lt;span&gt;sydent&#x2F;sms&#x2F;openmarket.py:108: note: Revealed type is &amp;quot;builtins.dict[builtins.bytes*, typing.Sequence*[builtins.bytes]]&amp;quot;
+&lt;&#x2F;span&gt;&lt;span&gt;sydent&#x2F;sms&#x2F;openmarket.py:114: error: Invalid index type &amp;quot;str&amp;quot; for &amp;quot;Dict[bytes, Sequence[bytes]]&amp;quot;; expected type &amp;quot;bytes&amp;quot;  [index]
+&lt;&#x2F;span&gt;&lt;span&gt;sydent&#x2F;sms&#x2F;openmarket.py:114: error: Argument 1 to &amp;quot;split&amp;quot; of &amp;quot;bytes&amp;quot; has incompatible type &amp;quot;str&amp;quot;; expected &amp;quot;Optional[bytes]&amp;quot;  [arg-type]
+&lt;&#x2F;span&gt;&lt;span&gt;Found 3 errors in 1 file (checked 1 source file)
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;There it is, on line 114: &lt;code&gt;Invalid index type &amp;quot;str&amp;quot; for &amp;quot;Dict[bytes, Sequence[bytes]]&amp;quot;; expected type &amp;quot;bytes&amp;quot;&lt;&#x2F;code&gt;.&lt;&#x2F;p&gt;
+&lt;p&gt;Unfortunately it&#x27;d be a pain to annotate our application code to mark every use of &lt;code&gt;IResponse.headers&lt;&#x2F;code&gt; as a &lt;code&gt;Headers&lt;&#x2F;code&gt; object. We&#x27;ll see a better way to do things in this &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2021&#x2F;12&#x2F;10&#x2F;type-coverage-for-sydent-annotation&quot;&gt;the next post&lt;&#x2F;a&gt;, which discusses the nitty-gritty details of adding annotations file-by-file.&lt;&#x2F;p&gt;
+&lt;hr &#x2F;&gt;
+&lt;p&gt;Many thanks for reading! If you&#x27;ve got any corrections, comments or queries, I&#x27;m available on Matrix at &lt;a href=&quot;https:&#x2F;&#x2F;matrix.to&#x2F;#&#x2F;@dmrobertson:matrix.org&quot;&gt;@dmrobertson:matrix.org&lt;&#x2F;a&gt;.&lt;&#x2F;p&gt;
+</content>
+	</entry>
+	<entry xml:lang="en">
+		<title>How the UK&#x27;s Online Safety Bill threatens Matrix</title>
+		<published>2021-05-19T15:47:03+00:00</published>
+		<updated>2021-05-19T14:48:44+00:00</updated>
+		<link rel="alternate" href="/blog/2021/05/19/how-the-uk-s-online-safety-bill-threatens-matrix/" type="text/html"/>
+		<id>/blog/2021/05/19/how-the-uk-s-online-safety-bill-threatens-matrix/</id>
+		<content type="html">&lt;p&gt;Last week the UK government published a &lt;a href=&quot;https:&#x2F;&#x2F;www.gov.uk&#x2F;government&#x2F;publications&#x2F;draft-online-safety-bill&quot;&gt;draft of the proposed Online Safety
+Bill,&lt;&#x2F;a&gt;
+after having initially introduced &lt;a href=&quot;https:&#x2F;&#x2F;www.gov.uk&#x2F;government&#x2F;consultations&#x2F;online-harms-white-paper&#x2F;public-feedback&#x2F;online-harms-white-paper-initial-consultation-response&quot;&gt;formal proposals for said bill in early
+2020&lt;&#x2F;a&gt;.
+With this post we aim to shed some light on its potential impacts and explain
+why we think that this bill - despite having great intentions - may actually
+be setting a dangerous precedent when it comes to our rights to privacy,
+freedom of expression and self determination.&lt;&#x2F;p&gt;
+&lt;p&gt;The proposed bill aims to provide a legal framework to address illegal and
+harmful content online. This focus on “not illegal, but harmful” content is at
+the centre of our concerns - it puts responsibility on organisations
+themselves to arbitrarily decide what might be harmful, without any legal
+backing. The bill itself does not actually provide a definition of harmful,
+instead relying on service providers to assess and decide on this. This
+requirement to identify what is “likely to be harmful” applies to all users,
+children and adults. Our question here is - would you trust a service provider
+to decide what might be harmful to you and your children, with zero input from
+you as a user?&lt;&#x2F;p&gt;
+&lt;p&gt;Additionally, the bill incentivises the use of privacy-invasive age
+verification processes which come with their own set of problems. This
+complete disregard of people’s right to privacy is a reflection of the
+privileged perspectives of those in charge of the drafting of this bill, which
+fails to acknowledge how &lt;em&gt;actually&lt;&#x2F;em&gt; harmful it would be for certain groups of
+the population to have their real life identity associated with their online
+identity.&lt;&#x2F;p&gt;
+&lt;p&gt;Our view of the world, and of the internet, is largely different from the one
+presented by this bill. Now, this categorically does not mean we don’t care
+about online safety (it is quite literally our bread and butter) - we just
+fundamentally disagree with the approach taken.&lt;&#x2F;p&gt;
+&lt;p&gt;Whilst we sympathise with the government’s desire to show action in this space
+and to do something about children’s safety (everyone’s safety really), we
+cannot possibly agree with the methods.&lt;&#x2F;p&gt;
+&lt;p&gt;Back in October of 2020 we presented &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2020&#x2F;10&#x2F;19&#x2F;combating-abuse-in-matrix-without-backdoors&quot;&gt;our proposed approach to online safety&lt;&#x2F;a&gt; -
+ironically also in response to a government proposal, albeit about encryption
+backdoors. In it, we briefly discussed the dangers of absolute determinations
+of morality from a single cultural perspective:&lt;&#x2F;p&gt;
+&lt;blockquote&gt;
+&lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2020&#x2F;10&#x2F;19&#x2F;combating-abuse-in-matrix-without-backdoors&quot;&gt;As uncomfortable as it may be, one man’s terrorist is another man’s freedom fighter, and different jurisdictions have different laws - and it’s not up to the Matrix.org Foundation to play God and adjudicate.&lt;&#x2F;a&gt;
+&lt;&#x2F;blockquote&gt;
+&lt;p&gt;We now find ourselves reading a piece of legislation that essentially demands
+these determinations from tech companies. The beauty of the human experience
+lies with its diversity and when we force technology companies to make calls
+about what is right or wrong - or what is “likely to have adverse
+psychological or physical impacts” on children - we end up in a dangerous
+place of centralising and regulating relative morals. Worst of all, when the
+consequence of getting it wrong is criminal liability for senior managers what
+do we think will happen?&lt;&#x2F;p&gt;
+&lt;p&gt;Regardless of how omnipresent it is in our daily lives, technology is still
+not a solution for human problems. Forcing organisations to be judge and jury
+of human morals for the sake of “free speech” will, ironically, have severe
+consequences on free speech, as risk profiles will change for fear of
+liability.&lt;&#x2F;p&gt;
+&lt;p&gt;Forcing a “duty of care” responsibility on organisations which operate online
+will not only drown small and medium sized companies in administrative tasks
+and costs, it will further accentuate the existing monopolies by Big Tech.
+Plainly, Big Tech can afford the regulatory burden - small start-ups can’t.
+Future creators will have their wings clipped from the offset and we might
+just miss out on new ideas and projects for fear of legal repercussions. This
+is a threat to the technology sector, particularly those building on emerging
+technologies like Matrix. In some ways, it is a threat to democracy and some
+of the freedoms this bill claims to protect.&lt;&#x2F;p&gt;
+&lt;p&gt;These are, quite frankly, steps towards an authoritarian dystopia. If Trust &amp;amp;
+Safety managers start censoring something as natural as a nipple on the off
+chance it might cause “adverse psychological impacts” on children, whose
+freedom of expression are we actually protecting here?&lt;&#x2F;p&gt;
+&lt;p&gt;More specifically on the issue of content moderation: the &lt;a href=&quot;https:&#x2F;&#x2F;assets.publishing.service.gov.uk&#x2F;government&#x2F;uploads&#x2F;system&#x2F;uploads&#x2F;attachment_data&#x2F;file&#x2F;985283&#x2F;Draft_Online_Safety_Bill_-_Impact_Assessment_Web_Accessible.pdf&quot;&gt;impact assessment
+provided by the government alongside this
+bill&lt;&#x2F;a&gt;
+predicts that the additional costs for companies directly related to the bill
+will be in the billions, over the course of 10 years. The cost for the
+government? £400k, in every proposed policy option. Our question is - why are
+these responsibilities being placed on tech companies, when evidently this is
+a societal problem?&lt;&#x2F;p&gt;
+&lt;p&gt;We are not saying it is up to the government to single-handedly end the
+existence of Child Sexual Abuse and Exploitation (CSAE) or extremist content
+online. What we are saying is that it takes more than content filtering, risk
+assessments and (faulty) age verification processes for it to end. More
+funding for tech literacy organisations and schools, to give children (and
+parents) the tools to stay safe is the first thing that comes to mind. Further
+investment in law enforcement cyber units and the judicial system, improving
+tech companies’ routes for abuse reporting and allowing the actual judges to
+do the judging seems pretty sensible too. What is absolutely egregious is the
+degradation of the digital rights of the majority, due to the wrongdoings of a
+few.&lt;&#x2F;p&gt;
+&lt;p&gt;Our goal with this post is not to be dramatic or alarmist. However, we want to
+add our voices to the countless &lt;a href=&quot;https:&#x2F;&#x2F;www.openrightsgroup.org&#x2F;blog&#x2F;online-abuse-why-management-liability-isnt-the-answer&#x2F;&quot;&gt;digital rights
+campaigners&lt;&#x2F;a&gt;,
+individuals and organisations that have been raising the alarm since the early
+days of this bill. Just like with coercive control and abuse, the degradation
+of our rights does not happen all at once. It is a slippery slope that starts
+with something as (seemingly) innocuous as &lt;a href=&quot;https:&#x2F;&#x2F;twitter.com&#x2F;matthew_d_green&#x2F;status&#x2F;1392823038920564736&quot;&gt;mandatory content scanning for
+CSAE content and ends with authoritarian surveillance
+infrastructure&lt;&#x2F;a&gt;.
+It is our duty to put a stop to this before it even begins.&lt;&#x2F;p&gt;
+&lt;small style=&quot;display: block; text-align: right&quot;&gt;
+Twitter card image credit from &lt;a href=&quot;https:&#x2F;&#x2F;film-grab.com&#x2F;2010&#x2F;10&#x2F;04&#x2F;brazil&#x2F;#bwg644&#x2F;39614&quot;&gt;Brazil&lt;&#x2F;a&gt;, which feels all too familiar right now.
+&lt;&#x2F;small&gt;
+</content>
+	</entry>
+	<entry xml:lang="en">
+		<title>The Matrix Space Beta!</title>
+		<published>2021-05-17T17:50:17+00:00</published>
+		<updated>2021-05-17T17:35:09+00:00</updated>
+		<link rel="alternate" href="/blog/2021/05/17/the-matrix-space-beta/" type="text/html"/>
+		<id>/blog/2021/05/17/the-matrix-space-beta/</id>
+		<content type="html">&lt;p&gt;Hi all,&lt;&#x2F;p&gt;
+&lt;p&gt;As many know, over the years we&#x27;ve experimented with how to let users locate
+and curate sets of users and rooms in Matrix. &lt;a href=&quot;https:&#x2F;&#x2F;medium.com&#x2F;@RiotChat&#x2F;communities-aka-groups-are-here-announcing-riot-web-0-13-riot-ios-0-6-and-riot-android-0-7-4-933cb193a28e&quot;&gt;Back in Nov
+2017&lt;&#x2F;a&gt;
+we added &#x27;groups&#x27; (aka &#x27;communities&#x27;) as a custom mechanism for this -
+introducing identifiers beginning with a + symbol to represent sets of rooms
+and users, like &lt;a href=&quot;https:&#x2F;&#x2F;matrix.to&#x2F;#&#x2F;+matrix:matrix.org&quot;&gt;+matrix:matrix.org&lt;&#x2F;a&gt;.&lt;&#x2F;p&gt;
+&lt;p&gt;However, it rapidly became obvious that Communities had some major
+shortcomings.  They ended up being an extensive and entirely new API surface
+(designed around letting you dynamically bridge the membership of a group
+through to a single source of truth like LDAP) - while in practice groups
+have enormous overlap with rooms: managing membership, inviting by email,
+access control, power levels, names, topics, avatars, etc.  Meanwhile the
+custom groups API re-invented the wheel for things like pushing updates
+to the client (causing a whole suite of
+&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;vector-im&#x2F;element-web&#x2F;issues&#x2F;5235&quot;&gt;problems&lt;&#x2F;a&gt;).  So clients
+and servers alike ended up reimplementing large chunks of similar
+functionality for both rooms and groups.&lt;&#x2F;p&gt;
+&lt;p&gt;And so almost before Communities were born, we started thinking about whether
+it would make more sense to model them as a special type of room, rather than
+being their own custom primitive.
+&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-doc&#x2F;issues&#x2F;1215&quot;&gt;MSC1215&lt;&#x2F;a&gt; had the first
+thoughts on this in 2017, and then a formal proposal emerged at
+&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-doc&#x2F;pull&#x2F;1772&quot;&gt;MSC1772&lt;&#x2F;a&gt; in Jan 2019. We
+started working on this in earnest at the end of 2020, and christened the new
+way of handling groups of rooms and users as... Spaces!&lt;&#x2F;p&gt;
+&lt;p&gt;Spaces work as follows:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;You can designate specific rooms as &#x27;spaces&#x27;, which contain other rooms.&lt;&#x2F;li&gt;
+&lt;li&gt;You can have a nested hierarchy of spaces.&lt;&#x2F;li&gt;
+&lt;li&gt;You can rapidly navigate around that hierarchy using the new &#x27;space summary&#x27;
+(aka space-nav) API - &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-doc&#x2F;blob&#x2F;kegan&#x2F;spaces-summary&#x2F;proposals&#x2F;2946-spaces-summary.md&quot;&gt;MSC2946&lt;&#x2F;a&gt;.&lt;&#x2F;li&gt;
+&lt;li&gt;Spaces can be shared with other people publicly, or invite-only, or private
+for your own curation purposes.&lt;&#x2F;li&gt;
+&lt;li&gt;Rooms can appear in multiple places in the hierarchy.&lt;&#x2F;li&gt;
+&lt;li&gt;You can have &#x27;secret&#x27; spaces where you group your own personal rooms and
+spaces into an existing hierarchy.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;Today, we&#x27;re ridiculously excited to be launching Space support as a beta in
+matrix-react-sdk and matrix-android-sdk2 (and thus Element Web&#x2F;Desktop and
+Element Android) and Synapse
+&lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2021&#x2F;05&#x2F;17&#x2F;synapse-1-34-0-released&quot;&gt;1.34.0&lt;&#x2F;a&gt; - so head
+over to your nearest Element, make sure it&#x27;s connected to the latest Synapse
+(and that Synapse has Spaces enabled in its config) and find some Space to
+explore! &lt;a href=&quot;https:&#x2F;&#x2F;matrix.to&#x2F;#&#x2F;#community:matrix.org&quot;&gt;#community:matrix.org&lt;&#x2F;a&gt;
+might be a good start :)&lt;&#x2F;p&gt;
+&lt;p&gt;The beta today gives us the bare essentials: and we haven&#x27;t yet finished
+space-based access controls such as setting powerlevels in rooms based on
+space membership
+(&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-doc&#x2F;blob&#x2F;matthew&#x2F;msc2962&#x2F;proposals&#x2F;2962-spaces-access-control.md&quot;&gt;MSC2962&lt;&#x2F;a&gt;)
+or limiting who can join a room based on their space membership
+(&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-doc&#x2F;blob&#x2F;clokep&#x2F;restricted-rooms&#x2F;proposals&#x2F;3083-restricted-rooms.md&quot;&gt;MSC3083&lt;&#x2F;a&gt;) -
+but these will be coming asap.  We also need to figure out how to implement
+Flair on top of Spaces rather than Communities.&lt;&#x2F;p&gt;
+&lt;p&gt;This is also a bit of a turning point in Matrix&#x27;s architecture: we are now
+using rooms more and more as a generic way of modelling new features in
+Matrix.  For instance, rooms could be used as a structured way of storing
+files (&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-doc&#x2F;pull&#x2F;3089&quot;&gt;MSC3089&lt;&#x2F;a&gt;);
+Reputation data
+(&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-doc&#x2F;pull&#x2F;2313&quot;&gt;MSC2313&lt;&#x2F;a&gt;) is stored in
+rooms; Threads can be stored in rooms
+(&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-doc&#x2F;pull&#x2F;2836&quot;&gt;MSC2836&lt;&#x2F;a&gt;); Extensible
+Profiles are proposed as rooms too
+(&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-doc&#x2F;pull&#x2F;1769&quot;&gt;MSC1769&lt;&#x2F;a&gt;).  As such,
+this pushes us towards ensuring rooms are as lightweight as possible in Matrix -
+and that things like sync and changing profile scale independently of the
+number of rooms you&#x27;re in.  Spaces effectively gives us a way of creating a
+global decentralised filesystem hierarchy on top of Matrix - grouping the
+existing rooms of all flavours into an epic multiplayer tree of realtime data.
+It&#x27;s like USENET had a baby with the Web!&lt;&#x2F;p&gt;
+&lt;p&gt;For lots more info from the Element perspective, head over to the &lt;a href=&quot;https:&#x2F;&#x2F;element.io&#x2F;blog&#x2F;p&#x2F;4ff44807-fe9a-4363-8521-9eab7efd4365&#x2F;&quot;&gt;Element
+blog&lt;&#x2F;a&gt;. 
+Finally, the point of the beta is to gather feedback and fix bugs - so please
+go wild in Element reporting your first impressions and help us make Spaces as
+awesome as they deserve to be!&lt;&#x2F;p&gt;
+&lt;p&gt;Thanks for flying Matrix into Space;&lt;&#x2F;p&gt;
+&lt;p&gt;Matthew &amp;amp; the whole Spaces (and Matrix) team.&lt;&#x2F;p&gt;
+</content>
+	</entry>
+	<entry xml:lang="en">
+		<title>Introducing the Pinecone overlay network</title>
+		<published>2021-05-06T00:00:00+00:00</published>
+		<updated>2021-05-06T00:00:00+00:00</updated>
+		<link rel="alternate" href="/blog/2021/05/06/introducing-the-pinecone-overlay-network/" type="text/html"/>
+		<id>/blog/2021/05/06/introducing-the-pinecone-overlay-network/</id>
+		<content type="html">&lt;p&gt;Since the end of 2019, we have spent quite a bit of time thinking about and exploring different technologies whilst building various demos for P2P Matrix.  Our mission for P2P Matrix is to evolve Matrix into a hybrid between today&#x27;s server-oriented network and a pure P2P network - empowering users to have &lt;strong&gt;total&lt;&#x2F;strong&gt; autonomy and privacy over their data if they want (by storing it in P2P Matrix, by embedding their server into their Matrix client), while also letting users store their data in serverside nodes if they so desire.&lt;&#x2F;p&gt;
+&lt;p&gt;The goal is to protect metadata much better (as users no longer have to depend on a server run by someone else to communicate), as well as drive new features such as account portability, multi-homed accounts, low-bandwidth Matrix and smarter federation transports - and provide support for internet-less mesh communication via Matrix which can also interoperate with the wider network.  You can read more about it in our &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2020&#x2F;06&#x2F;02&#x2F;introducing-p-2-p-matrix&#x2F;&quot;&gt;Introducing P2P Matrix&lt;&#x2F;a&gt; blog post from last summer, or watch our &lt;a href=&quot;https:&#x2F;&#x2F;fosdem.org&#x2F;2021&#x2F;schedule&#x2F;event&#x2F;matrix_pinecones&#x2F;&quot;&gt;FOSDEM 2021 talk&lt;&#x2F;a&gt; where we previewed Pinecone.  It&#x27;s important to note that this has been a small but important long-term project for Matrix, and has been progressing entirely outside our business-as-usual work of improving the core protocol and reference implementations.&lt;&#x2F;p&gt;
+&lt;p&gt;As the project has progressed, we&#x27;ve built a variety of prototypes using existing libraries (&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;libp2p&#x2F;go-libp2p&quot;&gt;go-libp2p&lt;&#x2F;a&gt;, &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;libp2p&#x2F;js-libp2p&quot;&gt;js-libp2p&lt;&#x2F;a&gt; and &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;yggdrasil-network&#x2F;yggdrasil-go&quot;&gt;Yggdrasil&lt;&#x2F;a&gt;), demonstrating what an early P2P Matrix might feel like if it were running on a mobile device, in the web browser and so on using such an overlay network. Each of these demos has taught us something new, and so in October 2020 we decided to take this knowledge to build an experimental new overlay network of our own.&lt;&#x2F;p&gt;
+&lt;p&gt;Pinecone is designed to provide end-to-end encrypted communications between devices, regardless of how they are connected to one another, in a lightweight and self-arranging fashion. The routing protocol is a hybrid, taking inspiration from &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;yggdrasil-network&#x2F;yggdrasil-go&quot;&gt;Yggdrasil&lt;&#x2F;a&gt; by building a global spanning tree, but rather than forwarding all traffic using the spanning tree topology, we use it as a bootstrap routing mechanism for a line&#x2F;snake topology, ordered by their ed25519 public keys, which we have affectionately named SNEK (Sequentially Networked Edwards Key) routing.&lt;&#x2F;p&gt;
+&lt;p&gt;Nodes seek out their closest keyspace neighbours on the network and paths are built between these pairs of nodes, similar to how a Chord DHT functions, populating the routing tables of intermediate nodes in the process. These paths are then used to forward traffic without having to perform up-front searches, allowing for very fast connection setups between overlay nodes. These paths are resilient to network topology changes and handle node mobility considerably better than any other name-independent routing scheme that we have seen — early results are very promising so far. We have also been experimenting with a combination of the μTP (Micro Transport Protocol) and TLS to provide stateful connection setup, congestion control and end-to-end encryption for all federation traffic carried over the Pinecone network.&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;img src=&quot;&#x2F;blog&#x2F;img&#x2F;2021-05-06-pineconesim.png&quot; alt=&quot;Pinecone simulator showing line&#x2F;snake logical network topology&quot; &#x2F;&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;If Pinecone works out, our intention is to collaborate with the libp2p and IPFS team to incorporate Pinecone routing into libp2p (if they&#x27;ll have us!) while incorporating their gossipsub routing to improve Matrix federation... and get the best of both worlds :)&lt;&#x2F;p&gt;
+&lt;p&gt;Today we&#x27;re releasing the source code for our current early implementation of Pinecone — you can &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;pinecone&quot;&gt;get it from GitHub&lt;&#x2F;a&gt; right now! It&#x27;s very experimental still and not very well optimised yet, but it is the foundation of our latest mobile P2P Matrix demos, which support P2P Matrix over both &lt;strong&gt;Bluetooth Low Energy&lt;&#x2F;strong&gt; mesh networks, &lt;strong&gt;multicast DNS&lt;&#x2F;strong&gt; discovery within a LAN, and&#x2F;or by routing through &lt;strong&gt;static Pinecone peers&lt;&#x2F;strong&gt; on the Internet:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Android: https:&#x2F;&#x2F;appdistribution.firebase.dev&#x2F;i&#x2F;394600067ea8ba37&lt;&#x2F;li&gt;
+&lt;li&gt;iOS: https:&#x2F;&#x2F;testflight.apple.com&#x2F;join&#x2F;Tgh2MEk6&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;Building a routing overlay is only the first step in the journey towards P2P Matrix. We will also be looking closely in the coming months at improving the Matrix federation protocol to work well in mixed-connectivity scenarios (rather than the full mesh approach used today) as well as decentralised identities, hybrid deployments with existing homeservers and getting Dendrite (the Matrix homeserver which is embedded into the current P2P demos) more stable and feature-complete.&lt;&#x2F;p&gt;
+&lt;p&gt;The long-term plan could look something like this:&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;img src=&quot;&#x2F;blog&#x2F;img&#x2F;2021-05-06-pinecone.png&quot; alt=&quot;Diagram showing possible P2P Matrix stack&quot; &#x2F;&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;Most discussion around P2P Matrix takes place in &lt;a href=&quot;http:&#x2F;&#x2F;matrix.to&#x2F;#&#x2F;#p2p:matrix.org&quot;&gt;#p2p:matrix.org&lt;&#x2F;a&gt;, so if you are interested in what&#x27;s going on, please join us there!&lt;&#x2F;p&gt;
+</content>
+	</entry>
 	<entry xml:lang="en">
 		<title>Privacy improvements in Synapse 1.4 and Riot 1.4</title>
 		<published>2019-09-27T00:00:00+00:00</published>

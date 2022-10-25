@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="twitter:widgets:csp" content="on" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta name="twitter:site" content="@matrixdotorg" />
+    <meta name="twitter:creator" content="@matrixdotorg" />
+
+    <title>Matrix.org - Low Bandwidth Matrix: An implementation guide</title>
+    <link rel="shortcut icon" href="/assets/favicon.ico" />
+    <link rel="icon" type="image/png" href="/assets/favicon.png" />
+    <link rel="stylesheet" href="/style.css" />
+
+    
+
+
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    "headline": "Low Bandwidth Matrix: An implementation guide",
+    "datePublished": "2021-06-10T17:08+00:00",
+    
+    "dateModified": "2021-06-10T11:28+00:00",
+    
+    "author": [
+    
+    {
+        "@type": "Person",
+        "name": "Kegan Dougal",
+        "url": "//authors/kegan-dougal"
+    }
+    
+    ]
+}
+</script>
+</head>
+
+<body>
+    
+    <header class="site-header">
+    <a href="/" class="brand">
+        <img src="/images/matrix-logo.svg" alt="Matrix logo">
+    </a>
+    <input id="site-header-dropdown-checkbox" type="checkbox" class="dropdown-checkbox" aria-hidden="true">
+    <label for="site-header-dropdown-checkbox" class="dropdown-button">&#xe602;</label>
+    <label for="site-header-dropdown-checkbox" class="page-overlay"></label>
+    <nav>
+        
+        
+        <a href="&#x2F;about&#x2F;" class="
+            ">
+            About
+        </a>
+        
+        
+        
+        <a href="&#x2F;blog&#x2F;" class="
+            current">
+            Blog
+        </a>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;docs&#x2F;" class="section ">
+                Documentation
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;ecosystem&#x2F;" class="section ">
+                Ecosystem
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                    <a href="&#x2F;ecosystem&#x2F;clients&#x2F;">Clients</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;servers&#x2F;">Servers</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bots&#x2F;">Bots</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bridges&#x2F;">Bridges</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;sdks&#x2F;">SDKs</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;hosting&#x2F;">Hosting</a>
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        <a href="&#x2F;podcasts&#x2F;" class="
+            ">
+            Podcasts
+        </a>
+        
+        
+        
+        <a href="https:&#x2F;&#x2F;shop.matrix.org" class="
+            ">
+            Shop
+        </a>
+        
+        
+        
+        <a href="&#x2F;try-matrix&#x2F;" class="primary
+            ">
+            Try Matrix
+        </a>
+        
+        
+    </nav>
+</header>
+
+
+    <main>
+        
+<article class="content post with-sidebar">
+    <header>
+        <h1>Low Bandwidth Matrix: An implementation guide</h1>
+        <span>10.06.2021 17:08 — <a
+                href="/category/tutorials">Tutorials</a>
+             — <a href="/author/kegan-dougal">Kegan Dougal</a>
+        </span>
+        
+        <br><small>Last update: 10.06.2021 11:28</small>
+        
+    </header>
+    <div class="post-main">
+        <div class="post-content">
+            <p><em>Disclaimer: Low bandwidth Matrix is experimental, not yet standardised, and subject to change without notice.</em></p>
+<p>This guide is for Matrix developers who want to support
+<a href="https://github.com/matrix-org/matrix-doc/pull/3079">MSC3079: Low Bandwidth CS API</a> in their
+clients/servers. Please read the experimental MSC if you want to learn more about what is happening
+at a protocol level. If you want a high level overview of low bandwidth Matrix and why you should
+care, watch the <a href="http://www.youtube.com/watch?v=_E-J6Hk2dYs&amp;t=14m14s">12 minute demo on Matrix Live</a>.</p>
+<p>Matrix currently uses HTTP APIs with JSON data to communicate from the client to the server. This is
+widely supported but is not very bandwidth efficient. This means that the protocol is slower, more
+costly and less able to be used on low bandwidth links (e.g 2G networks) which are common in certain
+parts of the world. MSC3079 defines a low bandwidth protocol using CoAP and CBOR instead of HTTP and
+JSON respectively. In the future homeservers will natively support some form of low bandwidth
+protocol. However, at present, no homeserver natively supports MSC3079. Therefore, this guide will
+set up a low bandwidth proxy server which can be put in front of any Matrix homeserver
+(Synapse, Dendrite, Conduit, etc) to make it MSC3079-compatible. This guide will also configure an
+Android device to speak MSC3079.</p>
+<p>Low bandwidth Matrix currently does not support web browsers due to their inability to send UDP
+traffic. You do <em>not</em> need to be running a homeserver to follow this tutorial.</p>
+<h2 id="setting-up-a-low-bandwidth-proxy-for-your-homeserver">Setting up a low bandwidth proxy for your homeserver</h2>
+<p>Prerequisites:</p>
+<ul>
+<li>Go 1.13+</li>
+<li><code>openssl</code> to generate a self-signed DTLS certificate, or an existing certificate you want to use.</li>
+<li>Linux or Mac user</li>
+</ul>
+<p>Steps:</p>
+<ul>
+<li>Clone the repo: <code>git clone https://github.com/matrix-org/lb.git</code></li>
+<li>Build the low bandwidth proxy: <code>go build ./cmd/proxy</code></li>
+<li>Generate a elliptic curve DTLS key/certificate: (we use curve keys as they are smaller than RSA
+keys, but both work.)<pre data-lang="bash" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-bash "><code class="language-bash" data-lang="bash"><span>openssl ecparam -name prime256v1 -genkey -noout -out private-key.pem
+</span><span>openssl req -new -x509 -key private-key.pem -out cert.pem -days 365
+</span><span style="color:#608b4e;"># you now have cert.pem and private-key.pem
+</span></code></pre>
+</li>
+<li>Run it pointing at matrix.org:<pre data-lang="bash" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-bash "><code class="language-bash" data-lang="bash"><span>./proxy -local </span><span style="color:#d69d85;">&#39;https://matrix-client.matrix.org&#39; </span><span>\
+</span><span>--tls-cert cert.pem --tls-key private-key.pem \
+</span><span>--advertise </span><span style="color:#d69d85;">&quot;http://127.0.0.1:8008&quot; </span><span>\
+</span><span>--dtls-bind-addr :8008
+</span></code></pre>
+</li>
+<li>You should see something like this:<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>INFO[0000] Listening on :8008/tcp to reverse proxy from http://127.0.0.1:8008 to https://matrix-client.matrix.org - HTTPS enabled: false 
+</span><span>INFO[0000] Listening for DTLS on :8008 - ACK piggyback period: 5s
+</span></code></pre>
+</li>
+</ul>
+<p>Mac users: If you are having trouble generating EC certificates, make sure you are using OpenSSL and
+not LibreSSL which comes by default: <code>openssl version</code>. To use OpenSSL, <code>brew install openssl</code> which
+then dumps the binary to <code>/usr/local/opt/openssl/bin/openssl</code>.</p>
+<p>To test it is working correctly:</p>
+<pre data-lang="bash" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#608b4e;"># build command line tools we can use to act as a low bandwidth client
+</span><span>go build ./cmd/jc
+</span><span>go build ./cmd/coap
+</span><span>
+</span><span style="color:#608b4e;"># do a CoAP GET request to matrix.org via the proxy
+</span><span>./coap -X GET -k </span><span style="color:#d69d85;">&#39;http://localhost:8008/_matrix/client/versions&#39; </span><span style="color:#569cd6;">| </span><span>./jc -c2j </span><span style="color:#d69d85;">&#39;-&#39;
+</span><span>
+</span><span>{</span><span style="color:#d69d85;">&quot;unstable_features&quot;</span><span>:{</span><span style="color:#d69d85;">&quot;io.element.e2ee_forced.private&quot;</span><span>:false,</span><span style="color:#d69d85;">&quot;io.element.e2ee_forced.public&quot;</span><span>:false,</span><span style="color:#d69d85;">&quot;io.element.e2ee_forced.trusted_private&quot;</span><span>:false,</span><span style="color:#d69d85;">&quot;org.matrix.e2e_cross_signing&quot;</span><span>:true,</span><span style="color:#d69d85;">&quot;org.matrix.label_based_filtering&quot;</span><span>:true,</span><span style="color:#d69d85;">&quot;org.matrix.msc2432&quot;</span><span>:true,</span><span style="color:#d69d85;">&quot;org.matrix.msc3026.busy_presence&quot;</span><span>:false,</span><span style="color:#d69d85;">&quot;uk.half-shot.msc2666&quot;</span><span>:true},</span><span style="color:#d69d85;">&quot;versions&quot;</span><span>:[</span><span style="color:#d69d85;">&quot;r0.0.1&quot;</span><span>,</span><span style="color:#d69d85;">&quot;r0.1.0&quot;</span><span>,</span><span style="color:#d69d85;">&quot;r0.2.0&quot;</span><span>,</span><span style="color:#d69d85;">&quot;r0.3.0&quot;</span><span>,</span><span style="color:#d69d85;">&quot;r0.4.0&quot;</span><span>,</span><span style="color:#d69d85;">&quot;r0.5.0&quot;</span><span>,</span><span style="color:#d69d85;">&quot;r0.6.0&quot;</span><span>]}
+</span></code></pre>
+<p>If this doesn't work:</p>
+<ul>
+<li>Check the proxy logs for errors (e.g bad hostname)</li>
+<li>Try adding <code>-v</code> to <code>./coap</code> (e.g bad method or path)</li>
+<li>Run the proxy with <code>SSLKEYLOGFILE=ssl.log</code> and inspect the decrypted traffic using Wireshark.</li>
+</ul>
+<p>Otherwise, congratulations! You now have a low bandwidth proxy! You can connect to your proxy just
+like you would to matrix.org or any other homeserver.</p>
+<h3 id="security-considerations">Security considerations</h3>
+<ul>
+<li>The proxy acts as a man in the middle and can read all non-E2EE traffic, including login
+credentials. DO NOT USE UNTRUSTED LOW BANDWIDTH PROXY SERVERS. Only use proxy servers run by
+yourself or the homeserver admins.</li>
+</ul>
+<h3 id="further-reading">Further reading</h3>
+<ul>
+<li>The <code>proxy</code> <a href="https://github.com/matrix-org/lb/tree/main/cmd/proxy">README</a></li>
+<li><code>coap</code> <a href="https://github.com/matrix-org/lb/tree/main/cmd/coap">README</a> and <code>jc</code>
+<a href="https://github.com/matrix-org/lb/tree/main/cmd/jc">README</a></li>
+</ul>
+<h2 id="setting-up-a-custom-element-android">Setting up a custom Element Android</h2>
+<p>We'll add low bandwidth matrix to Element Android and iOS by default once it's standardised - but
+while things are still experimental, here's a guide for how to build Element Android to do it
+yourself if you feel the urge.  This can be used as inspiration for other Matrix clients too.</p>
+<p>Prerequisites:</p>
+<ul>
+<li>Android Studio</li>
+</ul>
+<p>Steps:</p>
+<ul>
+<li>Clone the repo: <code>git clone https://github.com/vector-im/element-android.git</code></li>
+<li>Checkout <code>kegan/lb</code>: <code>git checkout kegan/lb</code>. This branch replaces all HTTP traffic going to
+<code>/_matrix/client/*</code> with LB traffic. <code>/_matrix/media</code> traffic is left untouched. This branch also
+disables TLS checks entirely so self-signed certificates will work.</li>
+<li>Clone the low bandwidth repo if you haven't already:
+<code>git clone https://github.com/matrix-org/lb.git</code></li>
+<li>In the low bandwidth repo, build the mobile bindings:<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>go get golang.org/x/mobile/cmd/gomobile
+</span><span>cd mobile
+</span><span># if gomobile isn&#39;t on your path, then ~/go/bin/gomobile
+</span><span>gomobile bind -target=android
+</span></code></pre>
+</li>
+<li>Copy the output files to a directory in the Element Android repo which Gradle will pick up:<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>mkdir $PATH_TO_ELEMENT_ANDROID_REPO/matrix-sdk-android/libs
+</span><span>cp mobile-sources.jar $PATH_TO_ELEMENT_ANDROID_REPO/matrix-sdk-android/libs
+</span><span>cp mobile.aar $PATH_TO_ELEMENT_ANDROID_REPO/matrix-sdk-android/libs
+</span></code></pre>
+</li>
+<li>Open the project in Android Studio.</li>
+<li>Build and run on a device/emulator.</li>
+<li>Configure the proxy's <code>--advertise</code> address. If you are running on a local device, restart the
+proxy with an <code>--advertise</code> of your machines LAN IP e.g 192.168.1.2 instead of 127.0.0.1.
+If you are running on an emulator, restart the proxy with an <code>--advertise</code> of the
+<a href="https://developer.android.com/studio/run/emulator-networking#networkaddresses">host IP</a>:
+10.0.2.2. The URL scheme should be <code>https</code> not <code>http</code>, else image loading won't work as Element
+Android won't download media over <code>http</code>.</li>
+<li>Login to your matrix.org account via the proxy with the <code>--advertise</code> address as the HS URL
+e.g <code>https://192.168.1.2:8008</code> or <code>https://10.0.2.2:8008</code>. The port is important.</li>
+</ul>
+<p>To verify it is running via low bandwidth:</p>
+<ul>
+<li>Install Wireshark.</li>
+<li>Restart the proxy with the environment variable <code>SSLKEYLOGFILE=ssl.log</code>.</li>
+<li>Run tcpdump on the right interface e.g: <code>sudo tcpdump -i en0 -s 0 -v port 8008 -w lb.pcap</code> </li>
+<li>Force stop the android app to forcibly close any existing DTLS connections.</li>
+<li>Re-open the app.</li>
+<li>Open <code>lb.pcap</code> in Wireshark and set <code>ssl.log</code> as the Pre-Master Secret log filename via
+Preferences -&gt; Protocols -&gt; TLS -&gt; Pre-Master Secret log filename.</li>
+<li>Check there is DTLS/CoAP traffic.</li>
+</ul>
+<h2 id="performance">Performance</h2>
+<p>To send a single 'Hello World' message to <code>/room/$room_id/send/m.room.message/$txn_id</code>
+and receive the response, including connection setup:</p>
+<table><thead><tr><th>Protocol</th><th>Num packets</th><th>Total bytes</th></tr></thead><tbody>
+<tr><td>HTTP2+JSON</td><td>43</td><td>6533</td></tr>
+<tr><td>CoAP+CBOR</td><td>6</td><td>1440</td></tr>
+</tbody></table>
+<h2 id="limitations">Limitations</h2>
+<ul>
+<li>CoAP <a href="https://datatracker.ietf.org/doc/html/rfc7641">OBSERVE</a> is not enabled by default.
+This extension allows the server to push data to the client so the client doesn't need to
+long-poll. It is not yet enabled because of the risk of state synchronisation issues between the
+proxy and the client. If the proxy gets restarted, the client will not receive sync updates
+until it refreshes its subscription, which happens infrequently. During this time the client
+is not aware that anything is wrong.</li>
+<li>CoAP uses <a href="https://datatracker.ietf.org/doc/html/rfc7959">Blockwise Transfer</a> to download
+large responses. Each block must be ACKed before the next block can be sent. This is less
+efficient than TCP which has a Receive Window which allows multiple in-flight packets at
+once. This means CoAP is worse at downloading large responses, requiring more round trips
+to completely send the data.</li>
+<li>The current version of <code>/sync</code> sends back much more data than is strictly necessary. This
+means the initial sync can be slower than expected. On a low kbps link this can flood the
+network with so much data that the sync stream begins to fall behind. Future work will look
+to optimise the sync API.</li>
+<li>The proxy currently doesn't implement the <a href="https://github.com/matrix-org/matrix-doc/blob/kegan/low-bandwidth/proposals/3079-low-bandwidth-csapi.md#versioning">low bandwidth response</a> in <code>/versions</code>.</li>
+</ul>
+
+        </div>
+        
+        <aside>
+            <h3>Post Contents</h3>
+
+            <ul style="list-style: none; padding-left: 0px;">
+                
+                <li>
+                    <a href="/blog/2021/06/10/low-bandwidth-matrix-an-implementation-guide/#setting-up-a-low-bandwidth-proxy-for-your-homeserver">Setting up a low bandwidth proxy for your homeserver</a>
+                    
+                    <ul>
+                        
+                        <li>
+                            <a href="/blog/2021/06/10/low-bandwidth-matrix-an-implementation-guide/#security-considerations">Security considerations</a>
+                        </li>
+                        
+                        <li>
+                            <a href="/blog/2021/06/10/low-bandwidth-matrix-an-implementation-guide/#further-reading">Further reading</a>
+                        </li>
+                        
+                    </ul>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2021/06/10/low-bandwidth-matrix-an-implementation-guide/#setting-up-a-custom-element-android">Setting up a custom Element Android</a>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2021/06/10/low-bandwidth-matrix-an-implementation-guide/#performance">Performance</a>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2021/06/10/low-bandwidth-matrix-an-implementation-guide/#limitations">Limitations</a>
+                    
+                </li>
+                
+            </ul>
+        </aside>
+        
+    </div>
+</article>
+
+    </main>
+
+    <footer class="site-footer">
+    <div class="internal-links">
+        
+        <a href="&#x2F;faq">FAQs</a>
+        
+        <a href="&#x2F;security-disclosure-policy">Security Disclosure Policy</a>
+        
+        <a href="&#x2F;hall-of-fame">Security Hall of Fame</a>
+        
+        <a href="&#x2F;legal&#x2F;code-of-conduct">Code of Conduct for Matrix.org</a>
+        
+        <a href="&#x2F;legal">Legal</a>
+        
+        <a href="&#x2F;contact">Contact</a>
+        
+        <a href="https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;">Site Source</a>
+        
+    </div>
+    <div class="external-links">
+        <div>
+            
+            <a href="&#x2F;code"><img src="/assets/github.svg" alt="GitHub"></a>
+            
+            <a href="https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;"><img src="/assets/gitlab.svg" alt="GitLab"></a>
+            
+            <a href="https:&#x2F;&#x2F;mastodon.matrix.org&#x2F;@matrix"><img src="/assets/mastodon.svg" alt="Mastodon"></a>
+            
+            <a href="https:&#x2F;&#x2F;twitter.com&#x2F;matrixdotorg"><img src="/assets/twitter.svg" alt="Twitter"></a>
+            
+            <a href="https:&#x2F;&#x2F;www.youtube.com&#x2F;channel&#x2F;UCVFkW-chclhuyYRbmmfwt6w"><img src="/assets/youtube.svg" alt="YouTube"></a>
+            
+        </div>
+    </div>
+    <p>© 2022 The Matrix.org Foundation C.I.C.</p>
+</footer>
+
+</body>
+
+</html>

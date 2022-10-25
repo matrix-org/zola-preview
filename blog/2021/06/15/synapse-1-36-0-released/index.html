@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="twitter:widgets:csp" content="on" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta name="twitter:site" content="@matrixdotorg" />
+    <meta name="twitter:creator" content="@matrixdotorg" />
+
+    <title>Matrix.org - Synapse 1.36.0 released</title>
+    <link rel="shortcut icon" href="/assets/favicon.ico" />
+    <link rel="icon" type="image/png" href="/assets/favicon.png" />
+    <link rel="stylesheet" href="/style.css" />
+
+    
+
+
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    "headline": "Synapse 1.36.0 released",
+    "datePublished": "2021-06-15T11:20+00:00",
+    
+    "dateModified": "2021-06-14T23:14+00:00",
+    
+    "author": [
+    
+    {
+        "@type": "Person",
+        "name": "Dan Callahan",
+        "url": "//authors/dan-callahan"
+    }
+    
+    ]
+}
+</script>
+</head>
+
+<body>
+    
+    <header class="site-header">
+    <a href="/" class="brand">
+        <img src="/images/matrix-logo.svg" alt="Matrix logo">
+    </a>
+    <input id="site-header-dropdown-checkbox" type="checkbox" class="dropdown-checkbox" aria-hidden="true">
+    <label for="site-header-dropdown-checkbox" class="dropdown-button">&#xe602;</label>
+    <label for="site-header-dropdown-checkbox" class="page-overlay"></label>
+    <nav>
+        
+        
+        <a href="&#x2F;about&#x2F;" class="
+            ">
+            About
+        </a>
+        
+        
+        
+        <a href="&#x2F;blog&#x2F;" class="
+            current">
+            Blog
+        </a>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;docs&#x2F;" class="section ">
+                Documentation
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;ecosystem&#x2F;" class="section ">
+                Ecosystem
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                    <a href="&#x2F;ecosystem&#x2F;clients&#x2F;">Clients</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;servers&#x2F;">Servers</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bots&#x2F;">Bots</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bridges&#x2F;">Bridges</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;sdks&#x2F;">SDKs</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;hosting&#x2F;">Hosting</a>
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        <a href="&#x2F;podcasts&#x2F;" class="
+            ">
+            Podcasts
+        </a>
+        
+        
+        
+        <a href="https:&#x2F;&#x2F;shop.matrix.org" class="
+            ">
+            Shop
+        </a>
+        
+        
+        
+        <a href="&#x2F;try-matrix&#x2F;" class="primary
+            ">
+            Try Matrix
+        </a>
+        
+        
+    </nav>
+</header>
+
+
+    <main>
+        
+<article class="content post with-sidebar">
+    <header>
+        <h1>Synapse 1.36.0 released</h1>
+        <span>15.06.2021 11:20 — <a
+                href="/category/releases">Releases</a>
+             — <a href="/author/dan-callahan">Dan Callahan</a>
+        </span>
+        
+        <br><small>Last update: 14.06.2021 23:14</small>
+        
+    </header>
+    <div class="post-main">
+        <div class="post-content">
+            <p>Synapse 1.36.0 is out, and it's a big one!</p>
+<h2 id="room-join-memory-improvements">Room Join Memory Improvements</h2>
+<p>We did it! Synapse no longer experiences a memory spike when joining large / complex rooms.</p>
+<p><img src="/blog/img/2021-06-15-synapse-1.36-join-memory.png" alt="Memory usage graph for Synapse 1.33 and 1.36" /></p>
+<p>These improvements mainly arise from processing join responses incrementally, rather than trying to load everything into memory at once. However, realizing these gains involved a fair bit of rewriting, as the entire processing pipeline had to work incrementally, and with appropriately sized batches, to avoid downstream bottlenecks. You can hear more about our original plans for this work in last month's Matrix Live: <a href="https://www.youtube.com/watch?v=694VuhmVmfo">S6E23 — Dan and Erik talk about Synapse</a>.</p>
+<h2 id="presence-improvements">Presence Improvements</h2>
+<p>Running presence on a single worker process is now expected to work correctly. This feature first debuted in <a href="/blog/2021/05/05/synapse-1-33-0-released">Synapse 1.33</a>, but a few bugs cropped up which could lead to presence state becoming outdated. With <a href="https://github.com/matrix-org/synapse/pull/10149">#10149</a> merged, we believe the last of these issues to be resolved.</p>
+<p>We had also noticed a recent increase in presence load on federation workers; this was ultimately tracked to two bugs, both fixed in this release: We were processing local presence via federation workers (<a href="https://github.com/matrix-org/synapse/pull/10163">#10163</a>) and we were occasionally sending duplicate presence updates (<a href="https://github.com/matrix-org/synapse/pull/10165">#10165)</a>.</p>
+<p>With both issues fixed, outgoing federation load has returned to normal levels:</p>
+<p><img src="/blog/img/2021-06-15-synapse-1.36-fed-sender-tx-rate.png" alt="Graph of outgoing federation transaction rate ranging from around 75 Hz down to under 25 Hz" /></p>
+<p>(Thank you to David Mehren for this graph from issue <a href="https://github.com/matrix-org/synapse/issues/10153">#10153</a>)</p>
+<h2 id="everything-else">Everything Else</h2>
+<p>Synapse now has two new Admin APIs for <a href="https://github.com/matrix-org/synapse/blob/v1.36.0/docs/admin_api/media_admin_api.md#unprotecting-media-from-being-quarantined">unprotecting</a> and <a href="https://github.com/matrix-org/synapse/blob/v1.36.0/docs/admin_api/media_admin_api.md#remove-media-from-quarantine-by-id">removing</a> media from quarantine, thanks to contributions by dklimpel.</p>
+<p>Synapse now implements the stable <code>/_matrix/client/r0/rooms/{roomId}/aliases</code> endpoint originally introduced by <a href="https://github.com/matrix-org/matrix-doc/pull/2432">MSC2432</a>, and, thanks to contributions by govynnus, makes the <code>reason</code> and <code>score</code> fields of event reports optional per <a href="https://github.com/matrix-org/matrix-doc/pull/2414">MSC2414</a>.</p>
+<p>These are just the highlights; please see the <a href="https://github.com/matrix-org/synapse/blob/v1.36.0/CHANGES.md">Release Notes</a> for a complete list of changes in this release.</p>
+<p>Synapse is a Free and Open Source Software project, and we'd like to extend our thanks to everyone who contributed to this release, including <a href="https://github.com/14mRh4X0r">14mRh4X0r</a>, <a href="https://github.com/aaronraimist">aaronraimist</a>, <a href="https://github.com/bradtgmurray">bradtgmurray</a>, <a href="https://github.com/crcastle">crcastle</a>, <a href="https://github.com/dklimpel">dklimpel</a>, <a href="https://github.com/govynnus">govynnus</a>, and <a href="https://github.com/RhnSharma">RhnSharma</a>.</p>
+
+        </div>
+        
+        <aside>
+            <h3>Post Contents</h3>
+
+            <ul style="list-style: none; padding-left: 0px;">
+                
+                <li>
+                    <a href="/blog/2021/06/15/synapse-1-36-0-released/#room-join-memory-improvements">Room Join Memory Improvements</a>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2021/06/15/synapse-1-36-0-released/#presence-improvements">Presence Improvements</a>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2021/06/15/synapse-1-36-0-released/#everything-else">Everything Else</a>
+                    
+                </li>
+                
+            </ul>
+        </aside>
+        
+    </div>
+</article>
+
+    </main>
+
+    <footer class="site-footer">
+    <div class="internal-links">
+        
+        <a href="&#x2F;faq">FAQs</a>
+        
+        <a href="&#x2F;security-disclosure-policy">Security Disclosure Policy</a>
+        
+        <a href="&#x2F;hall-of-fame">Security Hall of Fame</a>
+        
+        <a href="&#x2F;legal&#x2F;code-of-conduct">Code of Conduct for Matrix.org</a>
+        
+        <a href="&#x2F;legal">Legal</a>
+        
+        <a href="&#x2F;contact">Contact</a>
+        
+        <a href="https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;">Site Source</a>
+        
+    </div>
+    <div class="external-links">
+        <div>
+            
+            <a href="&#x2F;code"><img src="/assets/github.svg" alt="GitHub"></a>
+            
+            <a href="https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;"><img src="/assets/gitlab.svg" alt="GitLab"></a>
+            
+            <a href="https:&#x2F;&#x2F;mastodon.matrix.org&#x2F;@matrix"><img src="/assets/mastodon.svg" alt="Mastodon"></a>
+            
+            <a href="https:&#x2F;&#x2F;twitter.com&#x2F;matrixdotorg"><img src="/assets/twitter.svg" alt="Twitter"></a>
+            
+            <a href="https:&#x2F;&#x2F;www.youtube.com&#x2F;channel&#x2F;UCVFkW-chclhuyYRbmmfwt6w"><img src="/assets/youtube.svg" alt="YouTube"></a>
+            
+        </div>
+    </div>
+    <p>© 2022 The Matrix.org Foundation C.I.C.</p>
+</footer>
+
+</body>
+
+</html>

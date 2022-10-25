@@ -117,10 +117,325 @@
     <div class="content">
         <header>
             <h1>Matthew Hodgson</h1>
-            132 posts tagged with "Matthew Hodgson" <a href="/author">(See all Author)</a>
+            140 posts tagged with "Matthew Hodgson" <a href="/author">(See all Author)</a>
             
         </header>
 
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2015&#x2F;06&#x2F;22&#x2F;the-matrix-org-irc-bridge-now-bridges-all-of-freenode&#x2F;" title="The matrix.org IRC bridge now bridges all of Freenode!">The matrix.org IRC bridge now bridges all of Freenode!</a></h2>
+                <span>
+                    22.06.2015 00:00
+                    —
+                    <a href="/category/tech">
+                        Tech
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>We've been running an IRC gateway from Matrix to Freenode almost since day 1 - originally it was a <a href="/blog/project/perl-matrix-ircbridge/">simple perl bot</a> written by tm604 using Net::Async::Matrix; later it was rewritten by LeoNerd to be a bit more modular, and nowadays it's a full <a href="https://github.com/matrix-org/matrix-appservice-irc">IRC/Matrix Application Service</a> written in Node.js by Kegan.</p>
+<p>Up until the end of last week the bridge was limited to synchronising a fixed number of channels between Freenode and Matrix (#matrix, #matrix-dev, #openwebrtc, #vuc and #hypothes.is, to be precise), as well as any PMs.  But as of Friday, with huge thanks to the admins over at Freenode, we can now bridge <em>any</em> channel in Freenode through to Matrix.</p>
+<p>Doing this is trivial - you just <code>/join #freenode_#channelname:matrix.org</code> from a typical Matrix client - e.g. <code>/join #freenode_#Node.js:matrix.org</code> will give you access to all of #Node.js via Matrix, effectively using Matrix as a great big distributed IRC bouncer in the sky ;)</p>
+<p>There are a few limitations in the current setup:</p>
+<ul>
+<li>We only incrementally synchronise the membership lists when folks speak in either IRC or Matrix.  This is to avoid flooding either IRC or Matrix with lurkers when the bridge initially joins a channel.  We have some plans to improve this in future - see <a href="/jira/browse/BOTS-53">BOTS-53</a> for some of the sordid details.</li>
+<li>We don't synchronise joins/parts currently to avoid flooding Matrix with lots of IRC join/part spam.  Again, this will improve in future.</li>
+<li>You can't join +k channels.</li>
+<li>Kicks/bans/invites and other ACLs currently don't propagate between IRC &amp; Matrix.  (I.e. a Matrix user can be kicked from IRC, but it'll continue to sit in Matrix unless also kicked for there).  +i chanmode supported however.</li>
+<li>Bridged public IRC rooms are not yet advertised in the public room list on matrix.org.</li>
+<li>It should be possible to change the nickname of your IRC user by messaging <code>!nick irc.freenode.net MrFlibble</code> to @appservice-irc:matrix.org.  (This isn't actually turned on right now, but should be fixed shortly.  See <a href="https://github.com/matrix-org/matrix-appservice-irc/blob/master/HOWTO.md#changing-nicks">https://github.com/matrix-org/matrix-appservice-irc/blob/master/HOWTO.md#changing-nicks</a> for details.</li>
+</ul>
+<p>We'll keep chipping away at making the IRC&lt;-&gt;Matrix mapping perfect, but in its current state it's still really usable.  It's obviously beta still, but please give it a go and let us know in #matrix:matrix.org how you get on with it!</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2015&#x2F;06&#x2F;12&#x2F;introducing-all-new-matrix-js-sdk-v0-1-0&#x2F;" title="Introducing all new matrix-js-sdk v0.1.0">Introducing all new matrix-js-sdk v0.1.0</a></h2>
+                <span>
+                    12.06.2015 00:00
+                    —
+                    <a href="/category/tech">
+                        Tech
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Hi all,</p>
+<p>If things seem a bit quiet here at the moment it's because most of the Matrix team is in the 'build' phase across the board on a bunch of major new projects - including the long-awaited reusable UI component library for the Web, end-to-end encryption support, stable VoIP on mobile and a few other surprises.  The first wave of all this new work landed today in the form of a new major version release (0.1.0) of <a href="https://github.com/matrix-org/matrix-js-sdk">matrix-js-sdk</a>: our javascript SDK library.</p>
+<p>The history of JS client support on Matrix is that in the original rush to get a PoC webclient out the door back in September, we jumped straight to talking to the Matrix HTTP API from Angular controllers in 'syweb'.  This then got split into an Angular SDK (<a href="https://github.com/matrix-org/matrix-angular-sdk">matrix-angular-sdk</a>) containing a bunch of services for handling the Matrix client state with the actual webapp sitting alongside as an example of the SDK.  This then in turn got split into a basic matrix-js-sdk (wrapping the Matrix client-server HTTP API) and matrix-angular-sdk (handling the clientside state and exposing it as Angular services) - and this is how the current demo Angular webapp works at <a href="http://matrix.org/beta">http://matrix.org/beta</a>.</p>
+<p>However, this poses a major problem if you want a richer client SDK but don't want to use Angular - e.g. if you prefer another framework (or no framework at all), or are using the SDK in an Application Service or similar.  So, this has prompted a major upgrade to the matrix-js-sdk in order to extend it to act both as a simple wrapper of the Matrix Client-Server HTTP API, but also expose a full object and event model to describe the state of a Matrix client together with all the higher level functions to drive it.  To quote from the <a href="https://github.com/matrix-org/matrix-js-sdk/blob/master/README.md">README</a>:</p>
+<blockquote>
+This SDK provides a full object model around the Matrix Client-Server API and emits events for incoming data and state changes. Aside from wrapping the HTTP API, it:
+<ul>
+<li>Handles syncing (via /initialSync and /events)</li>
+<li>Handles the generation of "friendly" room and member names.</li>
+<li>Handles historical RoomMember information (e.g. display names).</li>
+<li>Manages room member state across multiple events (e.g. it handles typing, power levels and membership changes).</li>
+<li>Exposes high-level objects like Rooms, RoomState, RoomMembers and Users which can be listened to for things like name changes, new messages, membership changes, presence changes, and more.</li>
+</ul>
+<p>Later versions of the SDK will:</p>
+<ul>
+<li>Automatically retry requests to send messages due to network errors.</li>
+<li>Automatically retry requests to send messages due to rate limiting errors.</li>
+<li>Mark events' sent status (e.g. 'not sent').</li>
+<li>Handle "local echo" of messages sent.</li>
+<li>Handle queueing of messages.</li>
+<li>Handle pagination.</li>
+<li>Expose a RoomSummary which would be suitable for a recents page.</li>
+<li>Provide different pluggable storage layers (e.g. local storage, database-backed)</li>
+</ul>
+</blockquote>
+<p>It also is designed to provide an API that abstracts both version 1 of the client-server API and the upcoming version 2 (which fixes various thinkos we've discovered along the way in v1).</p>
+<p>This is incredibly exciting stuff as it now gives a really robust yet lightweight API for client-side and application-service development in JavaScript.  Predictably enough we're using it to develop our new reusable web UI components, and I suspect we'll see new Node-based application services making use of in the near future.  Meanwhile, it's more than topical as it should run straight on top of the <a href="http://tessel.io">Tessel</a> JavaScript hardware modules we're giving away this weekend as our prize for the best hack built on Matrix at <a href="/blog/2015/06/05/global-tadhack-hackathon/">TADHack</a> - letting the little Tessel ARM system-on-a-chip speak a very rich and native Matrix dialect!</p>
+<p>The new matrix-js-sdk comes with comprehensive jsdoc detailing the new API which you can find at <a href="http://matrix-org.github.io/matrix-js-sdk/global.html">http://matrix-org.github.io/matrix-js-sdk/global.html</a>.  There are also some <a href="https://github.com/matrix-org/matrix-js-sdk/tree/master/examples">basic examples</a> available, including a new simple node-powered command-line client designed for testing the SDK.  Finally, if you're interested in reading the design process by which we've converged on the current API, all the details may be found in JIRA on <a href="/jira/browse/SYJS-5">SYJS-5</a>.</p>
+<p>So: if you've been itching to get your hands on a much more powerful pure-JS Matrix SDK, now's your chance!  It's very early days for the new API so we expect to see a few incompatible changes on the horizon, but we encourage you to have a play and <a href="http://matrix.org/beta/#/room/#matrix:matrix.org">tell us what you think!</a>.</p>
+<p>To find out more, go check out the project at <a href="http://github.com/matrix-org/matrix-js-sdk">http://github.com/matrix-org/matrix-js-sdk</a>, or if you're feeling daring just grab the library with <code>npm install matrix-js-sdk</code> and get hacking!</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2015&#x2F;06&#x2F;01&#x2F;synapse-0-9-1-released&#x2F;" title="Synapse 0.9.1 released">Synapse 0.9.1 released</a></h2>
+                <span>
+                    01.06.2015 00:00
+                    —
+                    <a href="/category/tech">
+                        Tech
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>In the excitement of KamailioWorld last week we completely forgot to mention that we released Synapse 0.9.1.</p>
+<p>This is a pretty important performance and stability update of all the new stuff that landed in 0.9.0, as well as landing a major new feature in the form of 'backfill': we finally have the ability to correctly sync in historical conversation history over federation for newly federated rooms.  In other words, if you join a remote room you should be able to navigate its history as intended.</p>
+<p>We highly recommend upgrading to 0.9.1 for all the performance improvements and backfill support - get it now from <a href="http://github.com/matrix-org/synapse">http://github.com/matrix-org/synapse</a>.</p>
+<code>
+Changes in synapse v0.9.1 (2015-05-26)
+======================================
+<p>General:</p>
+<ul>
+<li>Add support for backfilling when a client paginates. This allows servers to
+request history for a room from remote servers when a client tries to
+paginate history the server does not have - SYN-36</li>
+<li>Fix bug where you couldn't disable non-default pushrules - SYN-378</li>
+<li>Fix <code>register_new_user</code> script - SYN-359</li>
+<li>Improve performance of fetching events from the database, this improves both
+initialSync and sending of events.</li>
+<li>Improve performance of event streams, allowing synapse to handle more
+simultaneous connected clients.</li>
+</ul>
+<p>Federation:</p>
+<ul>
+<li>Fix bug with existing backfill implementation where it returned the wrong
+selection of events in some circumstances.</li>
+<li>Improve performance of joining remote rooms.</li>
+</ul>
+<p>Configuration:</p>
+<ul>
+<li>Add support for changing the bind host of the metrics listener via the <code>metrics_bind_host</code> option.</li>
+</ul>
+</code>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2015&#x2F;05&#x2F;18&#x2F;matrix-wins-best-of-show-at-webrtc-world&#x2F;" title="Matrix wins Best of Show at WebRTC World!">Matrix wins Best of Show at WebRTC World!</a></h2>
+                <span>
+                    18.05.2015 00:00
+                    —
+                    <a href="/category/in-the-news">
+                        In the News
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p><a href="http://www.webrtcworld.com/topics/newsfeed/articles/403642-webrtc-conference-expo-announces-demo-winners.htm"><img src="/blog/wp-content/uploads/2015/05/WebRTC-Best-in-ShowLogo-Only.jpg" alt="WebRTC Best in Show" width="282" height="214" class="alignright size-full wp-image-1022" /></a></p>
+<p>Amandine and I just got back from WebRTC World 2015 in Miami - the conference was a great success: a fantastic opportunity to meet up with many of the companies who are supporting Matrix and give everyone an update on what Matrix is up to with our Keynote: <a href="/blog/wp-content/uploads/2015/05/2015-05-13.2-Matrix-Keynote.pdf">Defragmenting the Internet for fun and non-profit!</a>.</p>
+<p>We also had a little too much fun in the demo shoot-out - hooking up a <a href="http://www.parrot.com/uk/products/bebop-drone/">Parrot Bebop quadrocopter</a> into Matrix using a Matrix-enabled <a href="https://janus.conf.meetecho.com/">Janus WebRTC Gateway</a>.  The problem here is that the Parrot firmware and C SDK provides H.264 video, but doesn't package it up at all for use with WebRTC - let alone using interoperable signalling like Matrix.  So this is a classic use of Matrix to expose a simple open consistent interface to a system which is otherwise is stuck with a proprietary non-web-friendly API.  The code hasn't been tidied up yet, but our hacked Matrixified fork of Janus is up at <a href="https://github.com/matrix-org/janus-gateway/tree/ardrone3">https://github.com/matrix-org/janus-gateway/tree/ardrone3</a> if anyone has a drone and is crazy enough to want to experiment with it :)</p>
+<p>Meanwhile, we also showed <a href="http://openwebrtc.io">OpenWebRTC</a>-powered VoIP on the latest develop iOS Matrix Console app talking hardware-accelerated H.264 through to Firefox on the desktop.  My ancient 2010 MacBook Pro did its best to sabotage the demo (turns out that 1080P AirPlay + Firefox WebRTC is a bridge too far), but it gave a good idea of what's to come.  Many thanks to the OpenWebRTC team for lots of help in getting the demo together in time!</p>
+<p>It turns out that all the demo excitement was worth it in the end, as the jury seemed to like what Matrix is up to and was kind enough to award us more points than any of the other 13 demos... meaning that <b>we won <a href="https://twitter.com/webrtcexpo/status/598901296100462592">Best In Show!!</a></b>.  Huge thanks to the judges for believing in the Matrix vision, and congratulations to all the other demoists too :)</p>
+<p><a href="http://matrix.org/blog/wp-content/uploads/2015/05/prize-e1431964418791.jpg"><img src="/blog/wp-content/uploads/2015/05/prize-e1431964418791-300x225.jpg" alt="Best in Show at WebRTC World!" width="300" height="225" class="aligncenter size-medium wp-image-1017" /></a></p>
+<p>Meanwhile, the slides from the demo presentation can be found here: <a href="/blog/wp-content/uploads/2015/05/2015-05-12-Matrix-Demo-Miami.pdf">Building bridges between islands of communication</a>, and you can see the full video of our Demo here:</p>
+<iframe width="560" height="315" src="https://www.youtube.com/embed/OMzDklvDS3c" frameBorder="0" allowFullScreen></iframe>
+<p>...and the actual video stream that the drone transmitted before I crashed it (recorded on Janus) is at...</p>
+<iframe width="420" height="315" src="https://www.youtube.com/embed/NpBStIIq6fM" frameBorder="0" allowFullScreen></iframe>
+<p>Finally, our grand finale was meant to be combining the two demos, and showing OpenWebRTC decoding the H.264 from the Drone in hardware on an iPhone - using Matrix of course to set up the call and control the drone.  Alas a TURN-related bug got in the way of this working, but we just fixed it up in the office this morning, and I'm proud to show the first ever Parrot Bebop -&gt; Janus -&gt; Matrix -&gt; OpenWebRTC video stream!! (and very exciting it is too...)</p>
+<iframe width="420" height="315" src="https://www.youtube.com/embed/KsJOqLcpzNM" frameBorder="0" allowFullScreen></iframe>
+<p>Huge thanks again to Dave for doing the Matrix integration with Janus, Stefan and Rob from OpenWebRTC for all the help on the OWR side, and Manu &amp; Giom for porting the OpenWebRTC pull request to MatrixKit and landing it in iOS Console Develop for the demo!</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2015&#x2F;05&#x2F;04&#x2F;ios-console-0-4-0-released&#x2F;" title="iOS Console 0.4.0 released!">iOS Console 0.4.0 released!</a></h2>
+                <span>
+                    04.05.2015 00:00
+                    —
+                    <a href="/category/tech">
+                        Tech
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>As a follow-on to the previous post, Apple approved version 0.4.0 of the iOS Matrix Console app over the weekend - <a href="https://itunes.apple.com/gb/app/matrix-console/id970074271?mt=8">grab it now from the app store!</a>.  Whilst cosmetically it looks almost identical to 0.3.x, the architecture is completely different given the app is now built using <a href="https://github.com/matrix-org/matrix-ios-kit">MatrixKit</a> - and stability has improved considerably as a result.  Please install and let us know how you get on!</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2015&#x2F;04&#x2F;23&#x2F;monitoring-synapse-metrics-with-prometheus&#x2F;" title="Monitoring Synapse Metrics with Prometheus">Monitoring Synapse Metrics with Prometheus</a></h2>
+                <span>
+                    23.04.2015 00:00
+                    —
+                    <a href="/category/tutorials">
+                        Tutorials
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <h2>Note: This blog post is outdated, and an up-to-date tutorial is located <a href="https://github.com/matrix-org/synapse/blob/master/docs/metrics-howto.md">on the synapse project repo</a></h2>
+<p>Synapse has had support for exporting a comprehensive range of metrics via HTTP since 0.8.1 - we added this to help quantify the benefits of all the performance work which is going on currently in advance of Synapse 0.9. If you're interested in monitoring your own synapse and seeing what's going on using something like Prometheus, Leo just wrote a quick tutorial on getting up and running:</p>
+<h4>How to monitor Synapse metrics using Prometheus</h4>
+<dl>
+<dt>1: Install prometheus:</dt><dd>Follow instructions at <a href="http://prometheus.io/docs/introduction/install/">http://prometheus.io/docs/introduction/install/</a></dd>
+<dt>2: Enable synapse metrics:</dt><dd>Simply setting a (local) port number will enable it. Pick a port. prometheus itself defaults to 9090, so starting just above that for locally monitored services seems reasonable. E.g. 9092:
+<p>Add to homeserver.yaml</p>
+<pre>metrics_port: 9092</pre>
+<p>Restart synapse</p>
+</dd>
+<dt>3: Check out synapse-prometheus-config</dt><dd><a href="https://github.com/matrix-org/synapse-prometheus-config">https://github.com/matrix-org/synapse-prometheus-config</a></dd>
+<dt>4: Add <code>synapse.html</code> and <code>synapse.rules</code></dt><dd>The <code>.html</code> file needs to appear in prometheus's <code>consoles</code> directory, and the <code>.rules</code> file needs to be invoked somewhere in the main config file. A symlink to each from the git checkout into the prometheus directory might be easiest to ensure <code>git pull</code> keeps it updated.</dd>
+<dt>5: Add a prometheus target for synapse</dt><dd>This is easiest if prometheus runs on the same machine as synapse, as it can then just use localhost:
+<pre>global: {'{'}
+  rule_file: "synapse.rules"
+{'}'}
+<p>job: {'{'}
+name: &quot;synapse&quot;</p>
+<p>target_group: {'{'}
+target: &quot;http://localhost:9092/&quot;
+{'}'}
+{'}'}
+</pre></p>
+</dd>
+<dt>6: Start prometheus:</dt><dd><pre>./prometheus -config.file=prometheus.conf
+</pre>
+</dd>
+<dt>7: Wait a few seconds for it to start and perform the first scrape,</dt><dd>then visit the console:
+<pre><a href="http://server-where-prometheus-runs:9090/consoles/synapse.html">http://server-where-prometheus-runs:9090/consoles/synapse.html</a></pre>
+</dd></dl>
+<p>And the end result looks something like...</p>
+<p><a href="http://matrix.org/blog/wp-content/uploads/2015/04/Screen-Shot-2015-04-23-at-16.32.01.png"><img src="http://matrix.org/blog/wp-content/uploads/2015/04/Screen-Shot-2015-04-23-at-16.32.01-1024x930.png" alt="Prometheus screenshot" width="1024" height="930" class="aligncenter size-large wp-image-905" /></a></p>
+<p>...amongst many many other system &amp; application metrics.</p>
+<p>You can grab the latest version of the tutorial at <a href="https://github.com/matrix-org/synapse/blob/master/docs/metrics-howto.md">https://github.com/matrix-org/synapse/blob/master/docs/metrics-howto.md</a> - thanks to Leo for writing it up.  Any questions, let us know!</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2015&#x2F;04&#x2F;10&#x2F;looking-forward-to-tadhack-london&#x2F;" title="Looking forward to TADHack London!!">Looking forward to TADHack London!!</a></h2>
+                <span>
+                    10.04.2015 00:00
+                    —
+                    <a href="/category/events">
+                        Events
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>As of 9am tomorrow, somewhere in the depths of East London (and remotely from around the world), a diaspora of elite VoIP/WebRTC/Telco developers will compete to build the most innovative and impressive communications demos at <a href="http://tadhack.com/2015/tadhack-mini-london/">Tadhack Mini London</a>!  Dave, Oddvar and myself are going to be there from the core Matrix.org team, both on-site and online (at <a href="/beta/#/room/#matrix:matrix.org">#matrix:matrix.org</a>, of course) to provide support - especially to everyone who's using Matrix APIs in their solution.  And as we mentioned before, we'll even be giving away <a href="/blog/2015/03/19/tadhack-mini-london">two Parrot Bebop Drones</a> to the best hacks built using Matrix!</p>
+<p>It's not too late to get involved - the more the merrier.  We reckon it's going to be a really fun weekend, so look forward to chatting to some of you soon!</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2015&#x2F;03&#x2F;14&#x2F;matrix-at-enterprise-connect-2015&#x2F;" title="Matrix at Enterprise Connect 2015">Matrix at Enterprise Connect 2015</a></h2>
+                <span>
+                    14.03.2015 00:00
+                    —
+                    <a href="/category/events">
+                        Events
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Quick heads up that Matrix.org is going to be at <a href="http://enterpriseconnect.com/orlando/">Enterprise Connect</a> next week in Orlando.  If you're attending and interested in open federation between WebRTC solutions, Enterprise UC, messaging/voip apps, the PSTN etc - then needless to say we'd love to talk to you!  Please come seek us out, or drop us an email (firstname at matrix.org) or find us on <a href="/beta">#matrix:matrix.org</a> to schedule a chat in person.</p>
+
+                
+            </div>
+        </article>
         
         <article class="post">
             <header>
@@ -247,537 +562,6 @@ Changes in Matrix Android SDK in 0.2.3 (2015-03-10)
 <li>The account creation used to fail if the home server had a trailing slash.</li>
 <li>SYAND-44 In progress text entry could be saved across crashes.</li>
 <li>SYAND-38 Inline image viewer in Android app.</li>
-</ul>
-</code>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2015&#x2F;03&#x2F;09&#x2F;synapse-0-8-0-android-0-2-2-sdk-app-ios-0-3-1-sdk-app-javascript-sdk-0-0-1-released-oh-my&#x2F;" title="Synapse 0.8.0, Android 0.2.2 SDK &amp; App, iOS 0.3.1 SDK &amp; App, JavaScript SDK 0.0.1 released! (oh my!)">Synapse 0.8.0, Android 0.2.2 SDK &amp; App, iOS 0.3.1 SDK &amp; App, JavaScript SDK 0.0.1 released! (oh my!)</a></h2>
-                <span>
-                    09.03.2015 00:00
-                    —
-                    <a href="/category/tutorials">
-                        Tutorials
-                    </a>
-                    —
-                    <a
-                        href="/author/matthew-hodgson">
-                        Matthew Hodgson
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Hi all,</p>
-<p>What with the chaos of Mobile World Congress last week we seem to have been hoarding releases - so here's what's been happening!</p>
-<p><a href="https://github.com/matrix-org/synapse">Synapse 0.8.0</a> was released this afternoon.  This is a major performance/stability release, with lots of good stuff going on - especially adding more customisable push notification support APIs for iOS/Android; support for registering accounts from mobile devices; extensions to the new Application Service API and lots of federation improvements and bug fixes.  <b>Please upgrade at your earliest convenience.</b></p>
-<p>Meanwhile, we quietly released the <a href="https://play.google.com/store/apps/details?id=org.matrix.androidsdk.alpha">Matrix Console</a> Android example app to the Google Play last week, alongside <a href="https://github.com/matrix-org/matrix-android-sdk">v0.2.2 of the Android SDK</a> - release notes below.  There'll be a new version of the Android Console app out tomorrow, but mentioning here for completeness and to share the release notes.  Also, the <a href="https://github.com/matrix-org/matrix-ios-sdk">iOS SDK is now on v0.3.1</a>, with lots of performance and usability improvements.</p>
-<p>Finally, we have a whole new official <a href="https://github.com/matrix-org/matrix-js-sdk">Matrix client SDK for JavaScript</a>, all packaged up ready for use by Node developers and JS purists alike as an NPM with minimal dependencies.  Meanwhile, the <a href="https://github.com/matrix-org/matrix-angular-sdk">matrix-angular-sdk</a> has been switched to use matrix-js-sdk from now on.  You can use the plain JS API with a <code>npm install matrix-js-sdk</code> and then:</p>
-<pre>
-var sdk = require("matrix-js-sdk");
-var client = sdk.createClient("https://matrix.org");
-client.publicRooms(function(err, data) {'{'}
-    console.log("Public Rooms: %s", JSON.stringify(data));
-{'}'});
-
-</pre>
-<p>
-Meanwhile, release notes for all &amp; sundry lie below.
-</p>
-<pre>
-
-Changes in synapse v0.8.0 (2015-03-06)
-======================================
-
-General:
-
-* Add support for registration fallback. This is a page hosted on the server
-  which allows a user to register for an account, regardless of what client
-  they are using (e.g. mobile devices).
-
-* Added new default push rules and made them configurable by clients:
-
-  * Suppress all notice messages.
-  * Notify when invited to a new room.
-  * Notify for messages that don't match any rule.
-  * Notify on incoming call.
-
-Federation:
-
-* Added per host server side rate-limiting of incoming federation requests.
-* Added a ``/get_missing_events/`` API to federation to reduce number of
-  ``/events/`` requests.
-
-Configuration:
-
-* Added configuration option to disable registration:
-  ``disable_registration``.
-* Added configuration option to change soft limit of number of open file
-  descriptors: ``soft_file_limit``.
-* Make ``tls_private_key_path`` optional when running with ``no_tls``.
-
-Application services:
-
-* Application services can now poll on the CS API ``/events`` for their events,
-  by providing their application service ``access_token``.
-* Added exclusive namespace support to application services API.
-
-
-</pre>
-<pre>
-Changes in Matrix Android SDK in 0.2.2 (2015-02-27)
-===============================================
-
------
- SDK
------
-  
------------------
- Matrix Console
------------------
-Improvements:
- * Exif management : the uploaded image is rotated according to the exif metadata
-   (if the device has enough free memory).
- * Add a piechart while downloading an image 
- * Add JSON representation of a message (tap on its row, “Message details”
- * The public rooms list is now sorted according to the number of members.
-
-Features:
- * Add configuration and skeleton classes for receiving GCM messages
- * Add REST client for pushers API with add method for HTTP pushers.
- * Add the account creation.
-
-Bug fixes:
- * Reset the image thumbnail when a row is reused.
- * SYAND-30 Notification should be away when entering a room.
- * Some images thumbnails were downloaded several times.
- * Restore the foreground service
- * The medias cache was not cleared after logging out.
- * The client crashed when joining #anime:matrix.org.
- * SYAND-29 Messages in delivery status are not seen
- * Some user display names were their matrix IDs.
- * The room name/ topic were invalid when inviting to a room.
-
-
-</pre>
-<pre>
-Changes in Matrix iOS SDK in 0.3.1 (2015-03-03)
-===============================================
-
------
- SDK
------
-Improvements:
- * Improved push notifications documentation.
- * MXSession: Slightly randomise reconnection times by up to 3s to prevent all
-   Matrix clients from retrying requests to the homeserver at the same time.
- * Improved logs
- 
-Bug fixes:
- * SYIOS-90 - iOS can receive & display messages multiple times when on bad connections
- 
------------------
- Matrix Console
------------------
-Improvements:
- * Fixed warnings with 64bits builds.
- * Room history: Improve scrolling handling when keyboard appears.
- * Contacts: Prompt user when local contacts tab is selected if constact sync is disabled.
- 
-Bug fixes:
- * Fix crash when switching rooms while the event stream is resuming.
- * SYIOS-69 - On Screen Keyboard can end up hiding the most recent messages in a room.
- * SYIOS-98 - Crash when attempting to attach image on iPad
- 
-Changes in Matrix iOS SDK in 0.3.0 (2015-02-23)
-===============================================
-
------
- SDK
------
-Breaks:
- * [MXSession initWithMatrixRestClient: andStore: ] and the onStoreDataReady argument in
-   [MXSession start:] has been removed. The SDK client can now use the asynchronous
-   [MXSession setStore:] method to define a store and getting notified when the SDK can
-   read cached data from it. (SYIOS-62)
- * MXStore implementations must now implement [MXStore openWithCredentials].
- * All MXRestClient methods now return MXHTTPOperation objects.
- 
-Improvements:
- * Created the MXSession.notificationCenter component: it indicates when an event must be
-   notified to the user according to user's push rules settings.
- * MXFileStore: Improved loading performance by 8x.
- * Added an option (MXSession.loadPresenceBeforeCompletingSessionStart) to refresh presence
-   data in background when starting a session.
- * Created MXLogger to redirect NSLog to file and to log crashes or uncaught exception.
- * MXRestClient: Added [MXRestClient registerFallback].
- * Logs: Make all NSLog calls follows the same format.
- 
-Features:
- * SYIOS-40 - Any HTTP request can fail due to rate-limiting on the server, and need to be retried.
- * SYIOS-81 - Ability to send messages in the background.
- 
-Bug fixes:
- * SYIOS-67 - We should synthesise identicons for users with no avatar.
- * MXSession: Fixed crash when closing the MXSession before the end of initial Sync.
-</pre>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2015&#x2F;02&#x2F;21&#x2F;matrix-at-mobile-world-congress-2015&#x2F;" title="Matrix at Mobile World Congress 2015">Matrix at Mobile World Congress 2015</a></h2>
-                <span>
-                    21.02.2015 00:00
-                    —
-                    <a href="/category/events">
-                        Events
-                    </a>
-                    —
-                    <a
-                        href="/author/matthew-hodgson">
-                        Matthew Hodgson
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Hi everyone,</p>
-<p>Just a quick heads up that we'll be attending <a href="http://www.mobileworldcongress.com">Mobile World Congress</a> (Mar 2-5) this year, chatting to the telco community about how they can benefit from Matrix; encouraging companies to build gateways, servers and clients and generally trying to grow the Matrix ecosystem.  If you're going to be there and are interested in finding out more, please mail us (matrix at matrix.org) to arrange a meeting - we'll be hanging out at the OpenMarket (8.1D113) and the Amdocs (3G10) booths.</p>
-<p>Thanks!</p>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2015&#x2F;02&#x2F;19&#x2F;synapse-0-7-1-released-with-application-service-api&#x2F;" title="Synapse 0.7.1 released - with Application Service API">Synapse 0.7.1 released - with Application Service API</a></h2>
-                <span>
-                    19.02.2015 00:00
-                    —
-                    <a href="/category/general">
-                        General
-                    </a>
-                    —
-                    <a
-                        href="/author/matthew-hodgson">
-                        Matthew Hodgson
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Hi all,</p>
-<p>We released Synapse 0.7.1 this morning - <strong>This release includes more critical federation stability and performance updates - please upgrade as soon as you can!</strong>.  You can get the code and installation instructions from <a href="http://github.com/matrix-org/synapse">http://github.com/matrix-org/synapse</a> as normal.</p>
-<p><b>Update:</b> You can also install and run Synapse now via <a href="http://docker.com">Docker</a>, thanks to a Dockerfile at <a href="https://registry.hub.docker.com/u/silviof/docker-matrix/">https://registry.hub.docker.com/u/silviof/docker-matrix/</a> contributed today by Silvio Fricke.  Thanks Silvio!!</p>
-<p>Other than the federation improvements, the big new feature that lands here is the long-awaited Application Service API.  This is a set of simple extensions to the Client-Server API to make it much easier to build powerful gateways and other application logic on top of Matrix.  You can think of it being somewhere between IRC Services, IMS application services and XMPP components - but with the simplicity of an IRC bot.  The extensions let you register application services as privileged Matrix clients, and create virtual users and virtual rooms in bulk within Matrix (e.g. bridging an entire IRC network into Matrix).  The API also lets your application service receive inbound events as HTTP pushes rather than having to poll.  The end result is that it's suddenly become <strong>a lot</strong> easier to bridge existing communities with Matrix!</p>
-<p>We'll post another blog post shortly to give a lot more information; in the interim you can read more about it in the newly updated spec at <a href="http://matrix.org/docs/spec/#application-service-api">http://matrix.org/docs/spec/#application-service-api</a>.</p>
-<br/>
-<pre>
-Changes in synapse v0.7.1 (2015-02-19)
-======================================
-<ul>
-<li>
-<p>Initial alpha implementation of parts of the Application Services API.
-Including:</p>
-<ul>
-<li>AS Registration / Unregistration</li>
-<li>User Query API</li>
-<li>Room Alias Query API</li>
-<li>Push transport for receiving events.</li>
-<li>User/Alias namespace admin control</li>
-</ul>
-</li>
-<li>
-<p>Add cache when fetching events from remote servers to stop repeatedly
-fetching events with bad signatures.</p>
-</li>
-<li>
-<p>Respect the per remote server retry scheme when fetching both events and
-server keys to reduce the number of times we send requests to dead servers.</p>
-</li>
-<li>
-<p>Inform remote servers when the local server fails to handle a received event.</p>
-</li>
-<li>
-<p>Turn off python bytecode generation due to problems experienced when
-upgrading from previous versions.</p>
-</li>
-</ul>
-</pre>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2015&#x2F;02&#x2F;12&#x2F;synapse-0-7-0-and-matrix-angular-sdk-0-6-2-released&#x2F;" title="Synapse 0.7.0 and matrix-angular-sdk 0.6.2 released!">Synapse 0.7.0 and matrix-angular-sdk 0.6.2 released!</a></h2>
-                <span>
-                    12.02.2015 00:00
-                    —
-                    <a href="/category/tech">
-                        Tech
-                    </a>
-                    —
-                    <a
-                        href="/author/matthew-hodgson">
-                        Matthew Hodgson
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>We just pushed out a major new release of <a href="http://github.com/matrix-org/synapse">Synapse 0.7.0</a>, the python reference server for Matrix, and a minor maintenance update for <a href="http://github.com/matrix-org/matrix-angular-sdk">matrix-angular-sdk 0.6.2</a>, the reference web client implementation.</p>
-<p>The emphasis here has been on federation performance and stability - with all the recent interest from <a href="https://fosdem.org/2015/schedule/event/matrix/">FOSDEM</a> and <a href="http://lwn.net/Articles/632572">LWN</a> and <a href="https://news.ycombinator.com/item?id=8997844">HackerNews</a> we've been getting a lot of traffic on matrix.org and new servers federating up, so we've been busy profiling and fixing performance on some of the hot paths by adding in-memory caches and similar.</p>
-<p><b>This release is <em>highly</em> recommended if you are running a federated server, as it fixes many denial-of-service failure modes in the federation implementation, as well as many performance improvements</b></p>
-<p>Behind the scenes, there's also lots of work going on for v2 of the Client-Server API (which lets you filter the events your client subscribes to in a room, and combines the 'initial sync' and 'eventstream' APIs into a single simplified '/sync' API) - the alpha of this has landed in 0.7.0, but we don't recommend trying to use it yet. Meanwhile the Application Service API is effectively finished, but hasn't landed on the master branch yet. Synapse also finally has initial support for push notifications for the iOS client now via the <a href="http://github.com/matrix-org/sygnal">sygnal</a> APNS gateway, although we need to actually document how to set this up to be usable in general.</p>
-<p>Finally, we have switched to recommending that synapse is installed in a virtualenv rather than into ~/.local, due to various problems with how setup.py's dependency management works. Instructions on setting up a virtualenv can be found in the <a href="http://github.com/matrix-org/synapse/README.rst">README</a>.</p>
-<p>On the clientside: we've improved performance, enabled identicons for unknown users, and now fully support OpenWebRTC for VoIP calling from Safari, Bowser, and other OpenWebRTC-capable browsers!</p>
-<p>Thanks to everyone running servers - please upgrade, tell your friends, and help us grow Matrix!</p>
-<p> </p>
-<pre>
-Changes in synapse v0.7.0 (2015-02-12)
-======================================
-
-* Add initial implementation of the query auth federation API, allowing
-  servers to agree on whether an event should be allowed or rejected.
-* Persist events we have rejected from federation, fixing the bug where
-  servers would keep requesting the same events.
-* Various federation performance improvements, including:
-  - Add in memory caches on queries such as:
-     * Computing the state of a room at a point in time, used for
-       authorization on federation requests.
-     * Fetching events from the database.
-     * User's room membership, used for authorizing presence updates.
-  - Upgraded JSON library to improve parsing and serialisation speeds.
-* Add default avatars to new user accounts using pydenticon library.
-* Correctly time out federation requests.
-* Retry federation requests against different servers.
-* Add support for push notifications and push rules.
-* Add alpha versions of proposed new CSv2 APIs, including ``/sync`` API.
-
-</pre>
-<pre>
-Changes in Matrix Angular SDK 0.6.2 (2015-02-12)
-================================================
-Bug fixes:
- - Fixed a bug which caused OpenWebRTC to occasionally fail.
- - Fixed a bug which caused multiple room initial syncs to occur in rapid
-   succession.
-
-Features:
- - Display a "Joining Room" dialog when joining rooms.
- - Display identicons for users with no avatar.
- - Display m.notice events with full formatting.
- - Add push notification rules to settings.
-
-Improvements:
- - Modified the red/blue notification colours to be more noticeable on a wider
-   range of displays.
- - Highlight room invitations in blue.
- - Calculate room names for rooms of 3+ members.
- - Improved page load performance.
- 
-</pre>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2015&#x2F;01&#x2F;07&#x2F;synapse-0-6-1-released-and-other-news&#x2F;" title="Synapse 0.6.1 released and other news!">Synapse 0.6.1 released and other news!</a></h2>
-                <span>
-                    07.01.2015 00:00
-                    —
-                    <a href="/category/tech">
-                        Tech
-                    </a>
-                    —
-                    <a
-                        href="/author/matthew-hodgson">
-                        Matthew Hodgson
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Happy 2015 from everyone at Matrix.org!</p>
-<p>We're excited to kick off the new year with a major performance upgrade for Synapse: having had a chance to do some profiling over the Christmas break, Synapse 0.6.1 improves performance by up to an order of magnitude thanks to optimising the way events are constructed and manipulated, DB optimisations, etc.  Suddenly things are feeling <em>much</em> more snappy and less of a PoC and more of a real system, which hopefully bodes well for 2015!  Please upgrade if you're running a homeserver, or install one if you're not - grab the code from <a href="http://github.com/matrix-org/synapse">http://github.com/matrix-org/synapse</a>.</p>
-<p>The iOS SDK and demo app has also been improving lots in the last few weeks - grab the latest code from <a href="http://github.com/matrix-org/matrix-ios-sdk">http://github.com/matrix-org/matrix-ios-sdk</a>.  We have zoomable image support; full support for the new media repository in Synapse 0.6.0; file transfer status UI; offline support; snappy message synchronisation and more...</p>
-<p>We also released a new simple Python SDK client library for Python called <a href="https://pypi.python.org/pypi/matrix-client">matrix-client</a>, which is now being used by <a href="https://github.com/Kegsay/Matrix-NEB">NEB</a> (our general-purpose Matrix helper bot).</p>
-<p>Meanwhile, our (constantly evolving) plan for the beginning of 2015 is:</p>
-<ul>
-	<li>Finish v2 of the client-server API based on all the lessons learnt since launch: <a href="https://github.com/matrix-org/matrix-doc/pull/4">draft in progress here</a></li>	 
-        <li>Finish the Application Services API to allow proper gateways and services in and out of Matrix at last:<a href="https://github.com/matrix-org/matrix-doc/pull/5">draft in progress here</a></li>
-        <li>Re-release the spec based on the above</li>
-        <li>Build robust gateways (IRC, XMPP, SIP and more) on top of the AS API</li>
-        <li>Polish and release the iOS, Android demo clients - including push notification and VoIP support!</li>
-        <li>Overhaul the identity server architecture and add end-to-end crypto</li>
-</ul>
-<p>Given the rate at which Matrix is maturing, the next few months should be really exciting - please come join us on <a href="http://matrix.org/beta">#matrix:matrix.org</a> and get involved!</p>
-<code>
-Changes in synapse 0.6.1 (2015-01-07)
-=====================================
-<ul>
-<li>Major optimizations to improve performance of initial sync and event sending
-in large rooms (by up to 10x)</li>
-<li>Media repository now includes a Content-Length header on media downloads.</li>
-<li>Improve quality of thumbnails by changing resizing algorithm.</li>
-</ul>
-</code>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2014&#x2F;12&#x2F;24&#x2F;matrix-wins-best-innovation-award-at-webrtc-paris&#x2F;" title="Matrix wins Best Innovation Award at WebRTC Paris!">Matrix wins Best Innovation Award at WebRTC Paris!</a></h2>
-                <span>
-                    24.12.2014 00:00
-                    —
-                    <a href="/category/events">
-                        Events
-                    </a>
-                    —
-                    <a
-                        href="/author/matthew-hodgson">
-                        Matthew Hodgson
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Last week we had a great time attending WebRTC Conference Expo Paris 2014 - chatting to lots of new folks about Matrix; speaking in the &quot;To Build or Not To Build&quot; panel discussion; giving a general presentation on Matrix, and participating in the Demo shoot-out.</p>
-<p>And we're very proud to say that we won the <a href="http://blog.uppersideconferences.com/award-winners-webrtc-2014-conference-expo/">Best Innovation Award</a> for a slightly frantic demo, showing an iPad mounted on our pet Trossen Robotics PhantomX Hexapod being used for robot telepresence by streaming video and audio to an Oculus Rift VR headset.  This was using our proprietary in-house WebRTC stack, but once Matrix has fully taken off we hope to share our WebRTC stack with the world too :)  This was a very last minute demo - we wanted to show something different to normal browser-to-browser IM/Video calling via Matrix and had the idea to use the Rift at the last minute - and in fact it still wasn't working when we went on stage (turns out that iOS 8.1 introduces some quirks in the video capture API which were producing corrupt video).  By switching from an iPhone 5S running iOS 8.1 to an iPad running iOS 6 we were able to turn the demo around in the nick of time and get it working live on stage (modulo a RGB&lt;-&gt;BGR colourspace bug) just in time to win the award.  Huge thanks to the jury for voting for us against the odds :D  For those interested in displaying raw video straight onto the Oculus Rift (without using any head-mounted tracking), there's an OpenGL code snippet up at <a href="https://gist.github.com/ara4n/875b5e8b66be3617efb7">https://gist.github.com/ara4n/875b5e8b66be3617efb7</a>.</p>
-<p><a href="http://matrix.org/blog/wp-content/uploads/2014/12/oculus.jpg"><img src="http://matrix.org/blog/wp-content/uploads/2014/12/oculus-1024x764.jpg" alt="iOS to Oculus Rift Telepresence" width="625" height="466" class="aligncenter size-large wp-image-262" /></a></p>
-<p>(Image credit to <a href="https://twitter.com/victorpascual/status/545247282212667393">Victor Pascual Avila</a> at Quobis)</p>
-<p>Also, huge congratulations to <a href="https://twitter.com/VladimirTechMan/status/545550432542916608">Vladimir Beloborodov</a> who won the Best Data Channel Award for hacking his Romotive telepresence robot to rendezvous via Matrix with his iPad, stream video via Google's WebRTC stack and control the robot's motion via the WebRTC Data Channel:</p>
-<p><a href="http://matrix.org/blog/wp-content/uploads/2014/12/vladimir.jpg"><img src="http://matrix.org/blog/wp-content/uploads/2014/12/vladimir.jpg" alt="Vladimir Beloborodov" width="600" height="800" class="aligncenter size-full wp-image-263" /></a></p>
-<p>We're really excited to see other folks' Matrix projects out there winning prizes!</p>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2014&#x2F;12&#x2F;19&#x2F;synapse-0-6-0a-released&#x2F;" title="Synapse 0.6.0a released!">Synapse 0.6.0a released!</a></h2>
-                <span>
-                    19.12.2014 00:00
-                    —
-                    <a href="/category/tech">
-                        Tech
-                    </a>
-                    —
-                    <a
-                        href="/author/matthew-hodgson">
-                        Matthew Hodgson
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>We're proud to announce the new 0.6.0 major release of Synapse: the Python reference implementation of Matrix - as well as 0.6.0 of the AngularJS example Matrix client, as a special early Christmas present from the Matrix team :)</p>
-<p>The main priority here has been hunting down stability bugs whilst also adding in a few more features.  The most exciting new feature is the new Media/Content API: this allows every homeserver to replicate, cache and thumbnail any files associated with Matrix rooms, rather than relying on retrieving them from the origin homeserver as was previously the case.  This is really cool, as it effectively makes Matrix a distributed content distribution network and gives the same replication semantics to file attachments as to the rest of JSON in rooms.</p>
-<p>We've also landed a major new branch which changes the way events are represented internally in order to make them immutable, and fixes a whole range of minor stability issues.  In other news, performance issues are still a work in progress...</p>
-<p>To get involved, head over to <a href="https://github.com/matrix-org/synapse">https://github.com/matrix-org/synapse</a> and install and upgrade today!</p>
-<code>
-Changes in synapse 0.6.0 (2014-12-19)
-=====================================
-<ul>
-<li>Add new API for media upload and download that supports thumbnailing.</li>
-<li>Replicate media uploads over multiple homeservers so media is always served
-to clients from their local homeserver.  This obsoletes the
---content-addr parameter and confusion over accessing content directly
-from remote homeservers.</li>
-<li>Implement exponential backoff when retrying federation requests when
-sending to remote homeservers which are offline.</li>
-<li>Implement typing notifications.</li>
-<li>Fix bugs where we sent events with invalid signatures due to bugs where
-we incorrectly persisted events.</li>
-<li>Improve performance of database queries involving retrieving events.</li>
-</ul>
-</code>
-<code>
-Changes in Matrix Angular SDK 0.6.0 (2014-12-19)
-================================================
-<p>Breaking changes:</p>
-<ul>
-<li>Uploading files in the web client will now hit the new content repository URL
-introduced in Synapse 0.6, and be incompatible with previous Matrix clients.</li>
-</ul>
-<p>Bug fixes:</p>
-<ul>
-<li>Fixed a bug which caused the event stream to become wedged when the computer is asleep.</li>
-<li>Fixed a bug which caused the recents to update but not the message window.</li>
-</ul>
-<p>Features:</p>
-<ul>
-<li>Typing notifications will now be sent.</li>
-<li>Typing notifications will now be displayed for other users.</li>
-<li>Use the new content repository introduced in Synapse 0.6 when uploading files.</li>
-</ul>
-<p>Improvements:</p>
-<ul>
-<li>Display more error dialogs rather than silently failing.</li>
-<li>Display loading spinners on signup.</li>
-<li>Display feedback when joining a room.</li>
-<li>CTRL + clicking on a recents entry will now open that room in a new tab.</li>
-<li>Clicking on links in messages will now open them in a new tab.</li>
-<li>Provide a progress dialog when uploading files.</li>
-<li>Display a red bar when the event stream connection is lost for an extended period of time.</li>
-</ul>
-</code>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2014&#x2F;12&#x2F;03&#x2F;synapse-0-5-4-released&#x2F;" title="Synapse 0.5.4 released">Synapse 0.5.4 released</a></h2>
-                <span>
-                    03.12.2014 00:00
-                    —
-                    <a href="/category/tech">
-                        Tech
-                    </a>
-                    —
-                    <a
-                        href="/author/matthew-hodgson">
-                        Matthew Hodgson
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>We just pushed a bugfix update to Synapse 0.5, mainly to fix a memory leak where federated events could get leaked whilst retrying to send them to a remote server which is unavailable.  Please upgrade, especially if you've noticed synapse hogging RAM!</p>
-<code>
-Changes in synapse 0.5.4 (2014-12-03)
-=====================================
-<ul>
-<li>Fix presence bug where some rooms did not display presence updates for
-remote users.</li>
-<li>Do not log SQL timing log lines when started with &quot;-v&quot;</li>
-<li>Fix potential memory leak.</li>
 </ul>
 </code>
 

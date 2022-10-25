@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="twitter:widgets:csp" content="on" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta name="twitter:site" content="@matrixdotorg" />
+    <meta name="twitter:creator" content="@matrixdotorg" />
+
+    <title>Matrix.org - Type coverage for Sydent: annotation</title>
+    <link rel="shortcut icon" href="/assets/favicon.ico" />
+    <link rel="icon" type="image/png" href="/assets/favicon.png" />
+    <link rel="stylesheet" href="/style.css" />
+
+    
+
+
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    "headline": "Type coverage for Sydent: annotation",
+    "datePublished": "2021-12-10T00:00+00:00",
+    
+    "author": [
+    
+    {
+        "@type": "Person",
+        "name": "David Robertson",
+        "url": "//authors/david-robertson"
+    }
+    
+    ]
+}
+</script>
+</head>
+
+<body>
+    
+    <header class="site-header">
+    <a href="/" class="brand">
+        <img src="/images/matrix-logo.svg" alt="Matrix logo">
+    </a>
+    <input id="site-header-dropdown-checkbox" type="checkbox" class="dropdown-checkbox" aria-hidden="true">
+    <label for="site-header-dropdown-checkbox" class="dropdown-button">&#xe602;</label>
+    <label for="site-header-dropdown-checkbox" class="page-overlay"></label>
+    <nav>
+        
+        
+        <a href="&#x2F;about&#x2F;" class="
+            ">
+            About
+        </a>
+        
+        
+        
+        <a href="&#x2F;blog&#x2F;" class="
+            current">
+            Blog
+        </a>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;docs&#x2F;" class="section ">
+                Documentation
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;ecosystem&#x2F;" class="section ">
+                Ecosystem
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                    <a href="&#x2F;ecosystem&#x2F;clients&#x2F;">Clients</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;servers&#x2F;">Servers</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bots&#x2F;">Bots</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bridges&#x2F;">Bridges</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;sdks&#x2F;">SDKs</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;hosting&#x2F;">Hosting</a>
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        <a href="&#x2F;podcasts&#x2F;" class="
+            ">
+            Podcasts
+        </a>
+        
+        
+        
+        <a href="https:&#x2F;&#x2F;shop.matrix.org" class="
+            ">
+            Shop
+        </a>
+        
+        
+        
+        <a href="&#x2F;try-matrix&#x2F;" class="primary
+            ">
+            Try Matrix
+        </a>
+        
+        
+    </nav>
+</header>
+
+
+    <main>
+        
+<article class="content post with-sidebar">
+    <header>
+        <h1>Type coverage for Sydent: annotation</h1>
+        <span>10.12.2021 00:00 — <a
+                href="/category/tech">Tech</a>
+             — <a href="/author/david-robertson">David Robertson</a>
+        </span>
+        
+    </header>
+    <div class="post-main">
+        <div class="post-content">
+            <p>This is the second in a series of three posts which discuss recent work to improve type annotations in <a href="https://github.com/matrix-org/sydent">Sydent</a>, the reference Matrix Identity server. <a href="https://matrix.org/blog/2021/12/03/type-coverage-for-sydent-motivation">Last time</a> we discussed the motivation for doing this work in the first place: the <em>why</em>. Now I want to talk about the <em>how</em>. How did we add annotations to individual files, and across the project as whole? What common idioms did we learn on the way?</p>
+<h2 id="the-process-of-improving-coverage">The process of improving coverage</h2>
+<p>From experience adding typing to Synapse, we decided to annotate one module at a time. We configured a list of files in <code>pyproject.toml</code> which we knew passed mypy's checks. We could run <code>mypy</code> in CI to check that new PRs didn't introduce type problems in modules already covered.</p>
+<p>From there, the workflow was</p>
+<ol>
+<li>Choose a new module to annotate. Add it to the list of <code>files</code> in mypy's configuration.</li>
+<li>Run <code>mypy</code>. See how many errors you get.</li>
+<li>Choose an error. Fix it. Re-run <code>mypy</code>.</li>
+<li>Repeat until no errors remaining.</li>
+<li>Submit for review.</li>
+</ol>
+<p>There are two parts in there which involve a choice. Being honest, I made those choices unscientifically: I tried to choose the easy tasks to do first. My first target was actually the entire <a href="https://github.com/matrix-org/sydent/pull/418">sydent.util</a> subpackage. Probably a bit too large for a first bite! My thinking was that <code>util</code> sounded like something with few dependencies that would have impact across the whole source tree.</p>
+<p>Within a given module, I'd try to fix easier errors first: partly for confidence, partly to build up momentum, and partly to get myself familiar with that piece of source code. For example, I'd often start by telling mypy that <code>mylist = []</code> was actually was a <code>List[str]</code> (rather than the generic <code>List[Any]</code> which it would use otherwise).</p>
+<p>Picking and choosing easy targets works fairly well, but sometimes that means you end up fixing an error that's really a symptom of an earlier one. Other times fixing one error, e.g. by giving a return type annotation to a function—would solve a series of other errors throughout the file. Watching the total number of errors mypy reports bob up and down was intriguing!</p>
+<p>In retrospect, I think it would be smoother to generate some kind of dependency graph for the package. I'm imagining a <a href="https://en.wikipedia.org/wiki/Directed_acyclic_graph">DAG</a> where whose vertices are modules, and there's an edge <code>A -&gt; B</code> if <code>A</code> imports from <code>B</code>. The sinks of this DAG (i.e. modules which don't depend on any others in the package) are the ideal place to start: you can get something strictly typechecked there without having to annotate a long chain of dependencies across other files. Another strategy would be to see which modules were the least precise according to mypy's reports—but more on those <a href="https://matrix.org/blog/2021/12/17/type-coverage-for-sydent-evaluation">next time</a>.</p>
+<h3 id="you-re-at-the-mercy-of-your-dependencies">You're at the mercy of your dependencies</h3>
+<p>I think this is my single biggest takeaway from the process of adding annotations to Sydent.
+I'll admit the phrasing is melodramatic, but I think it rings true. </p>
+<p>Improving coverage boils down to giving the typechecker more information about your program. The more information it has, the more it can check—and the more errors it can spot. (Hopefully this doesn't make typing come across like a pyramid scheme.) If your dependencies aren't typed, mypy can't validate you're correctly providing inputs and correctly consuming outputs. You might have a bigger impact on overall typing coverage by annotating a dependency (directly or via stubs). I have a hunch that bugs are more likely in code that uses an external dependency: we're much more familiar with the details of our own source code compared to that of a third party we trust.</p>
+<p>It's worth looking to see if your dependencies have a newer version including type annotations. Failing that, they may have a stub package added to <a href="https://github.com/python/typeshed/tree/master/stubs">typeshed</a> and published on PyPI. I saw example of both cases when choosing how to configure mypy for Sydent. If some of your dependencies are under your control, consider annotating them—you'll feel the benefits across multiple projects pretty quickly.</p>
+<h3 id="annotations-when-working-with-twisted">Annotations when working with twisted</h3>
+<p>Twisted is Sydent's biggest dependency, and I certainly felt at its mercy! In particular, it has a few quirks which make it trickier to annotate applications using it. Here's a summary of the work we had to do to get those annotations working.</p>
+<h4 id="partially-typed-modules-and-stubs">Partially typed modules and stubs</h4>
+<p>Early into the process, mypy reported that calling the function <a href="https://twistedmatrix.com/documents/current/api/twisted.python.log.html#err">twisted.python.log.err</a> was an error. It did so because I was running mypy in <a href="https://mypy.readthedocs.io/en/stable/command_line.html#cmdoption-mypy-strict">--strict mode</a>. We'll talk more about why I did so and what this means <a href="https://matrix.org/blog/2021/12/17/type-coverage-for-sydent-evaluation">next time</a>; for now, it's enough to know that calling a function that isn't fully annotated from within a function that is constitutes an error under strict mode. <code>twisted</code> is partially annotated: many key modules and functions have type annotations, but others don't. I was reluctant to give up on <code>--strict</code>. Instead, I decided to stub the <code>err</code> function myself.</p>
+<p>A stub is a cut-down version of a python function, class or module which lives in a <code>.pyi</code> file. All implementation details are removed; only type annotations remain. Stubs are useful when you want to write annotations for code you don't control. The <a href="https://github.com/python/typeshed">typeshed</a> library is probably the best example: a collection of third party stubs for the standard library, plus some popular third party packages. Microsoft's <a href="https://github.com/microsoft/python-type-stubs">python-type-stubs</a> is another example. They'd also solve the problem I mentioned at the end of the <a href="https://matrix.org/blog/2021/12/03/type-coverage-for-sydent-motivation">first part</a>: I could use a stub to <em>teach</em> mypy that <code>IResponse.headers</code> was a <code>Headers</code> object. </p>
+<p>Writing a stub for <code>log.err</code> was straightforward, thanks mainly to Twisted's thorough documentation. I chose to write it by hand, rather than use <a href="https://mypy.readthedocs.io/en/stable/stubgen.html">stubgen</a>. I'd heard of the latter, but was reluctant to use it for a few reasons.</p>
+<ul>
+<li>Twisted is a big project with many big files. I didn't want to commit huge stub files for me and my colleagues to maintain.</li>
+<li>The more our stubs cover, the larger the risk of a stub becoming out-of-date with twisted itself. Upstream twisted is the best place for these annotations.</li>
+<li>We only need annotations for the bits of twisted that we're using.</li>
+<li>And, being honest: I wanted the low-level experience of writing stubs, cross-referencing between the source and working how to best capture its type semantics.</li>
+</ul>
+<p>I think this decision to write a targeted stub made sense at the time. After all, <code>twisted.python.logging.err</code> is just one simple function! But for the project as a whole, I regret not using <code>stubgen</code> to generate module-level stubs. The reason for this is that a <code>.pyi</code> stub file accounts for an entire module: <a href="https://github.com/python/mypy/issues/5880#issuecomment-439237176">no more and no less</a>. This means that the stubs I was writing for parts of twisted only covered the functions and classes I'd stubbed. Any existing annotations in the twisted source code would be ignored, along with any types that mypy was able to infer for itself.</p>
+<p>I think it would have been more efficient to use <code>stubgen</code> to generate stubs and patch them up, rather than writing them. That would have helped avoid a few cases I encountered where stubbing one function would cause additional typechecking failures (because mypy was no longer examining the twisted source for that file). It would also have meant that I could just faithfully stub Twisted as it is; in practice, I would sometimes hesitate to stub to avoid having to cover another module. <code>sydent.http</code> was the most painful part of the source tree for this: that's where we make the most use of Twisted.</p>
+<h4 id="defer-inlinecallbacks"><a href="https://twistedmatrix.com/documents/current/api/twisted.internet.defer.html#inlineCallbacks">defer.inlineCallbacks</a></h4>
+<p>This is a decorator which allows us to write code in the style of <code>async</code>/<code>await</code> without actually using that syntax. (Twisted predates <code>asyncio</code> and the <code>async</code>/<code>await</code> syntax, introduced in Python 3.4 and 3.5 respectively. It was originally released in 2002, back when Python had released version 2.2.) We only use it in <a href="https://github.com/matrix-org/sydent/blob/e4b4dbbdf25255d19effceae7061ad9b3eefc374/sydent/http/matrixfederationagent.py#L125-L132">one place in Sydent</a> nowadays, but I've seen used across Synapse too. I mention it here because it was a bit fiddly to annotate. Here's its use in Sydent:</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span>    @defer.inlineCallbacks
+</span><span>    </span><span style="color:#569cd6;">def </span><span>request(
+</span><span>        self,
+</span><span>        method: bytes,
+</span><span>        uri: bytes,
+</span><span>        headers: Optional[</span><span style="color:#d69d85;">&quot;Headers&quot;</span><span>] = </span><span style="color:#569cd6;">None</span><span>,
+</span><span>        bodyProducer: Optional[</span><span style="color:#d69d85;">&quot;IBodyProducer&quot;</span><span>] = </span><span style="color:#569cd6;">None</span><span>,
+</span><span>    ) -&gt; Generator[</span><span style="color:#d69d85;">&quot;defer.Deferred[Any]&quot;</span><span>, Any, IResponse]:
+</span></code></pre>
+<p>Here, <code>request</code> is a <a href="https://docs.python.org/3/glossary.html#term-generator">generator function</a> because its body uses the <code>yield</code> keyword. Yielding allows the function to relinquish control back to twisted's reactor, only for its execution to be resumed asynchronously in the future. The <a href="https://docs.python.org/3/library/typing.html?highlight=typing%20generator#typing.Generator">Generator</a> type takes three parameters:</p>
+<ul>
+<li>a <code>YieldType</code>, <code>Deferred[Any]</code>;</li>
+<li>a <code>SendType</code>, <code>Any</code>; and</li>
+<li>a <code>ReturnType</code>, <code>IResponse</code>.</li>
+</ul>
+<p>Why have I opted to use <code>Any</code> here, when we've seen (and will see) that this limits mypy's ability to run checks? The answer is that we yield two different types within the function. Firstly a <a href="https://github.com/matrix-org/sydent/blob/e4b4dbbdf25255d19effceae7061ad9b3eefc374/sydent/http/matrixfederationagent.py#L152-L153">routing result</a>:</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span>        routing: _RoutingResult
+</span><span>        routing = </span><span style="color:#569cd6;">yield </span><span>defer.ensureDeferred(self._route_matrix_uri(parsed_uri))
+</span></code></pre>
+<p>and later, <a href="https://github.com/matrix-org/sydent/blob/e4b4dbbdf25255d19effceae7061ad9b3eefc374/sydent/http/matrixfederationagent.py#L194-L195">the IResponse</a> we go on to return:</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span>        res: IResponse
+</span><span>        res = </span><span style="color:#569cd6;">yield </span><span>agent.request(method, uri, headers, bodyProducer)
+</span></code></pre>
+<ul>
+<li>
+<p>In this example:</p>
+</li>
+<li>
+<p>We yield a value <code>y: Deferred[Any]</code>.</p>
+</li>
+<li>
+<p>That will later be resolved by twisted to an <code>x: Any</code> value. Twisted will send that value to <code>request</code>, and the execution continues.</p>
+</li>
+<li>
+<p>This repeats, until we eventually return an <code>IResponse</code>.</p>
+</li>
+</ul>
+<p>I could more correctly annotate the <code>YieldType</code> as <code>Deferred[Union[_RoutingResult, IResponse]]</code> so that the <code>SendType</code> was <code>Union[_RoutingResult, IResponse]</code>. But this would mean we end up having some kind of type check at each yield point: a <code>cast</code>, or a <code>type: ignore</code>, or a runtime <code>isinstance</code> check. It didn't feel like it was worth the boilerplate, especially since I could narrow e.g. <code>res: Any</code> to <code>res: IResponse</code> with minimal effort.</p>
+<p>This problem doesn't arise with using the <code>async/await</code> syntax:</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span style="color:#569cd6;">async def </span><span>foo() -&gt; int:
+</span><span>    </span><span style="color:#569cd6;">return </span><span style="color:#b5cea8;">1
+</span><span>
+</span><span style="color:#569cd6;">async def </span><span>bar() -&gt; </span><span style="color:#569cd6;">None</span><span>:
+</span><span>    x = </span><span style="color:#569cd6;">await </span><span>foo()
+</span><span>    reveal_type(foo())
+</span><span>    reveal_type(x)
+</span></code></pre>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>$ mypy example.py
+</span><span>example.py:6: note: Revealed type is &quot;typing.Coroutine[Any, Any, builtins.int]&quot;
+</span><span>example.py:7: note: Revealed type is &quot;builtins.int*&quot;
+</span></code></pre>
+<p>Behind the scenes, I <em>think</em> that <code>x = await foo()</code> is really using the same mechanism as the <code>inlineCallbacks</code> approach.</p>
+<ul>
+<li>An <code>async def</code> function is really a generator function behind the scenes.</li>
+<li>When we <code>await foo()</code>, we yield the expression <code>foo()</code></li>
+<li>Then the machinery running our coroutine <code>c</code> will call <code>c.send(x)</code> to resume execution, where <code>x</code> is the value produced by waiting for <code>foo()</code>.</li>
+</ul>
+<p>With the <code>await</code> form, mypy knows two things:</p>
+<ul>
+<li>the value <code>foo()</code> which was yielded should be <code>Awaitable[T]</code>, and</li>
+<li>the value <code>x</code> send to the coroutine should come from awaiting <code>foo()</code>, and therefore be of type <code>T</code>.</li>
+</ul>
+<p>Mypy can't assume or enforce these rules for the yield form, which can yield and send whatever it likes. There's no reason why the send type should be related to the yield type. Here's a toy example:</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span style="color:#9b9b9b;">from </span><span>typing </span><span style="color:#9b9b9b;">import </span><span>Any, Dict, Generator
+</span><span>
+</span><span>
+</span><span style="color:#569cd6;">def </span><span>generator_function() -&gt; Generator[int, str, Dict[str, Any]]:
+</span><span>  y: int = </span><span style="color:#b5cea8;">10
+</span><span>  x: str = </span><span style="color:#569cd6;">yield </span><span>y
+</span><span>  print(</span><span style="color:#d69d85;">&quot;Coroutine was sent&quot;</span><span>, x)  </span><span style="color:#608b4e;"># -&gt; Coroutine was sent hello
+</span><span>  </span><span style="color:#569cd6;">return </span><span>{</span><span style="color:#d69d85;">&quot;got&quot;</span><span>: x, </span><span style="color:#d69d85;">&quot;done&quot;</span><span>: </span><span style="color:#569cd6;">True</span><span>}
+</span><span>
+</span><span>coroutine = generator_function()
+</span><span>y = next(coroutine)
+</span><span>
+</span><span style="color:#569cd6;">try</span><span>:
+</span><span>  coroutine.send(</span><span style="color:#d69d85;">&quot;hello&quot;</span><span>)
+</span><span style="color:#569cd6;">except </span><span>StopIteration </span><span style="color:#569cd6;">as </span><span>e:
+</span><span>  return_value = e.value
+</span><span>  print(return_value)  </span><span style="color:#608b4e;"># -&gt; {&#39;got&#39;: &#39;hello&#39;, &#39;done&#39;: True}
+</span></code></pre>
+<p>All in all, the handling of <code>inlineCallbacks</code> is a situation specific to working with (older?) twisted code. It's still nice to understand what's going on behind the scenes though!</p>
+<h4 id="zope-interface-interface"><code>zope.interface.Interface</code></h4>
+<p>Twisted makes use of <code>zope</code>'s <code>Interface</code> to define a number of abstract interface classes. Speaking personally, I've not seen it used outside twisted, and I think that means it's not supported by much of the typechecking tooling. For example, I've definitely seen PyCharm struggle to realise that it's okay to pass a <code>Response</code> to a function which expects an <code>IResponse</code>! Here's a more complicated example where <code>PyCharm</code> isn't happy with me widening the type <code>LoggingHostnameEndpoint</code> to <code>IStreamClientEndpoint</code>, even though <a href="https://github.com/matrix-org/sydent/blob/92ff7a878a25696365b10cc49e32f5cba32c5960/sydent/http/matrixfederationagent.py#L379-L380">the latter implements the former</a>.</p>
+<p><img src="/blog/img/2021-12-10-pycharm-false-positive.png" alt="Screenshot from pycharm showing a false positive warning" /></p>
+<p>Mypy out of the box doesn't play well with a zope <code>Interface</code> (nor does any other typechecker I tried). Fortunately, the excellent <a href="https://github.com/Shoobx/mypy-zope">mypy-zope</a> plugin helps here: it teaches mypy that any class like <code>Response</code> which <code>@implements(IResponse)</code>  can be passed in place of an <code>IResponse</code>.</p>
+<h3 id="tricks-of-the-trade">Tricks of the trade</h3>
+<p>At this point I'd like to share a few generic lessons about typing I'd picked up. Nothing ground-breaking here: I think these are all fairly well-known. Hopefully they're the start of a good cheat sheet for annotating—though it pales in comparison to the <a href="https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html">Mypy cheat sheet</a>.</p>
+<h4 id="annotating-decorators">Annotating decorators</h4>
+<p>Annotating decorators is fiddly, but it's also vitally important. An unannotated decorator will mask or throw away your decoratee's annotations! The way to write the annotation is best explained by the <a href="https://mypy.readthedocs.io/en/stable/generics.html#declaring-decorators">mypy docs</a>, but briefly: it involves a <code>TypeVar</code> and sometimes a <code>cast</code> too. Here's an example.</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span style="color:#9b9b9b;">from </span><span>typing </span><span style="color:#9b9b9b;">import </span><span>TypeVar, Callable, Any, cast
+</span><span>
+</span><span>F = TypeVar(</span><span style="color:#d69d85;">&quot;F&quot;</span><span>, bound=Callable[</span><span style="color:#569cd6;">...</span><span>, Any])
+</span><span>
+</span><span style="color:#569cd6;">def </span><span>decorator(input: F) -&gt; F:
+</span><span>    </span><span style="color:#569cd6;">def </span><span>wrapped(</span><span style="color:#569cd6;">*</span><span>args: Any, </span><span style="color:#569cd6;">**</span><span>kwargs: Any) -&gt; Any:
+</span><span>        print(</span><span style="color:#569cd6;">f</span><span style="color:#d69d85;">&quot;Calling </span><span>{f.__name__}</span><span style="color:#d69d85;">&quot;</span><span>)
+</span><span>        </span><span style="color:#569cd6;">return </span><span>input_func(*args, </span><span style="color:#569cd6;">**</span><span>kwargs)
+</span><span>    </span><span style="color:#569cd6;">return </span><span>cast(F, wrapped)
+</span></code></pre>
+<p>The idea here is</p>
+<ol>
+<li>Use <code>Callable[..., Any]</code> to describe a generic function with no particular signature.</li>
+<li>Use that as a bound on a type variable <code>F</code>. At each usage of <code>@decorator</code>, mypy will deduce a more specific version of <code>F</code>, e.g. <code>Callable[[int], str]</code>.</li>
+<li>Within that usage of <code>@decorator</code>, <code>F</code> is fixed to that specific type. We use <code>-&gt; F</code> to express that &quot;we return a function with the same signature as the decoratee&quot;.</li>
+<li>Unfortunately, we don't have a good way to tell <code>mypy</code> that <code>wrapped</code> also has that signature <code>F</code>. We resort to a <code>cast</code> to force mypy to accept this without proof.</li>
+</ol>
+<p>This might change in the future, e.g. when <a href="https://docs.python.org/3/library/typing.html?highlight=paramspec#typing.ParamSpec">ParamSpec</a> is <a href="https://github.com/python/mypy/issues/8645">fully understood</a> by mypy.</p>
+<h4 id="prefer-object-over-any">Prefer <code>object</code> over <code>Any</code></h4>
+<p>Both of these are general types for expressing &quot;I don't know anything about this expression&quot;. But only the former will undergo static type checks. We want those type checks to guard against bugs accidentally introduced in the future. For instance, imagine a class with an <code>Any</code> attribute.</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span style="color:#9b9b9b;">from </span><span>typing </span><span style="color:#9b9b9b;">import </span><span>Any
+</span><span style="color:#9b9b9b;">import </span><span>dataclasses
+</span><span>
+</span><span>@dataclasses.dataclass
+</span><span style="color:#569cd6;">class </span><span>C:
+</span><span>    label: Any
+</span></code></pre>
+<p>Imagine in the future we add a new method which assumes that <code>label</code> is a string:</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span>    </span><span style="color:#569cd6;">def </span><span>greeting(self) -&gt; str:
+</span><span>        </span><span style="color:#569cd6;">return </span><span style="color:#d69d85;">&quot;My name is &quot; </span><span>+ self.label
+</span></code></pre>
+<p>Mypy will consider this valid, because no type-checking is done on an <code>Any</code> value. It will complain that it can't prove that <code>greeting</code> returns a <code>str</code>, if <code>--warn-return-any</code> is enabled; but putting that aside, it can't identify the call site as a bug. The bug slips through to runtime.</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span>C(</span><span style="color:#b5cea8;">123</span><span>).greeting()  </span><span style="color:#608b4e;"># TypeError: can only concatenate str (not &quot;int&quot;) to str
+</span></code></pre>
+<p>Replacing the <code>Any</code> with <code>object</code> does allow mypy to spot the problem.</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>error: Unsupported operand types for + (&quot;str&quot; and &quot;object&quot;)  [operator]
+</span></code></pre>
+<h4 id="type-ignore-and-cast-sparingly"><code># type: ignore</code> and <code>cast</code> sparingly</h4>
+<p>There's a good chance that mypy knows better than we do, so we should only overrule it if there's no better option. There are two techniques for this. One option is to tell mypy to just silence the error, by appending a <code># type: ignore</code> comment to the erroneous line. The other is to force it to accept that a certain expression has a given type: that's what <a href="https://docs.python.org/3/library/typing.html?highlight=paramspec#typing.cast">cast</a> is for.</p>
+<p>I never like using either of these, but sometimes they're the most practical choice. I'd recommend two best practices for their use, however:</p>
+<ol>
+<li>Only ignore a specific error code, e.g. <code># type: ignore[assignment]</code>.  Those codes can be displayed by passing <code>--show-error-codes</code> to mypy.</li>
+<li>Leave a comment before every <code>#type: ignore[...]</code> and every <code>cast</code> to justify their correctness. I don't think this is a widely-held practice. I picked it up from the Rust world, where it's <a href="https://rust-lang.github.io/api-guidelines/documentation.html#function-docs-include-error-panic-and-safety-considerations-c-failure">encouraged</a> as a way to justify <code>unsafe</code> source code.</li>
+</ol>
+<h4 id="there-s-good-stuff-in-typing">There's good stuff in <code>typing</code></h4>
+<p>It's worth a read through the <a href="https://docs.python.org/3/library/typing.html">module documentation</a>—plenty of things in there I wish I'd known about sooner. There's lots in the toolkit to chose from. Some bits I use fairly often include:</p>
+<ul>
+<li><a href="https://docs.python.org/3/library/typing.html?highlight=typing%20protocol#typing.Protocol">Protocol</a>: lets you formalise duck typing. To use it, define a class that inherits from <code>Protocol</code>. Its methods and attributes are all stubs which describe what you require of objects belonging to this type. It's like an <a href="https://docs.python.org/3/library/abc.html?highlight=abc#module-abc">abstract base class</a> or interface, but purely at typecheck time.</li>
+<li><a href="https://docs.python.org/3/library/typing.html?highlight=typing%20generic#typing.Generic">Generic</a>: define your own generic types. A bit of a slippery slope to type mania!</li>
+<li>[Optional<code>](https://docs.python.org/3/library/typing.html?highlight=typing%20generic#typing.Optional): I use this all the time. It's always good to make your </code>None`s explicit!</li>
+<li><a href="https://docs.python.org/3/library/typing.html?highlight=typing%20generic#typing.NewType">NewType</a>: I haven't had a chance to use it much. As I understand it, it's a way to define a &quot;strong typedef&quot;. For example, we can use it to distinguish lengths from durations, even if they're both represented by a <code>float</code> at runtime.</li>
+</ul>
+<p>I want to call out two parts of <code>typing</code> in particular:</p>
+<h4 id="overload"><a href="https://docs.python.org/3/library/typing.html?highlight=typing%20generic#typing.overload">overload</a></h4>
+<p><code>overload</code> is a way to provide extra information about a function depending on how it's called. For instance, consider this function which takes a <code>str</code> or <code>bytes</code> as input and returns its uppercase version.</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span style="color:#569cd6;">def </span><span>upper(x: Union[bytes, str]) -&gt; Union[bytes, str]:
+</span><span>    </span><span style="color:#569cd6;">return </span><span>x.upper()
+</span></code></pre>
+<p>The problem with this annotation is that we'll have to check at every call site to see if the return value was a <code>bytes</code> or a <code>str</code> object. But we know that uppercasing a <code>str</code> gives us a <code>str</code>, and uppercasing a <code>bytes</code> gives us a <code>bytes.</code> We can use <code>overload</code> to express this.</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span style="color:#9b9b9b;">from </span><span>typing </span><span style="color:#9b9b9b;">import </span><span>overload
+</span><span>
+</span><span>@overload
+</span><span style="color:#569cd6;">def </span><span>upper(x: str) -&gt; str: </span><span style="color:#569cd6;">...
+</span><span>
+</span><span>@overload
+</span><span style="color:#569cd6;">def </span><span>upper(x: bytes) -&gt; bytes: </span><span style="color:#569cd6;">...
+</span><span>
+</span><span style="color:#569cd6;">def </span><span>upper(x: Union[bytes, str]) -&gt; Union[bytes, str]:
+</span><span>    </span><span style="color:#569cd6;">return </span><span>x.upper()
+</span></code></pre>
+<p>The first two <code>@overload</code> definitions are like stubs: they're purely used for their annotations. The actual runtime implementation is specified at the end, undecorated. (<strong>NB</strong>: this specific example is better expressed without overloads, by using <a href="https://docs.python.org/3/library/typing.html?highlight=typing%20generic#typing.AnyStr">AnyStr</a>.)</p>
+<p>I was really impressed to see how <code>mypy</code> could use this overloading information. Here's an example:</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span style="color:#9b9b9b;">from </span><span>typing </span><span style="color:#9b9b9b;">import </span><span>overload, Literal
+</span><span>
+</span><span>@overload
+</span><span style="color:#569cd6;">def </span><span>f(x: int) -&gt; Literal[</span><span style="color:#b5cea8;">1</span><span>]: </span><span style="color:#569cd6;">...
+</span><span>
+</span><span>@overload
+</span><span style="color:#569cd6;">def </span><span>f(x: str) -&gt; Literal[</span><span style="color:#b5cea8;">2</span><span>]: </span><span style="color:#569cd6;">...
+</span><span>
+</span><span style="color:#569cd6;">def </span><span>f(x: object) -&gt; int:
+</span><span>    </span><span style="color:#569cd6;">if </span><span>isinstance(x, int):
+</span><span>        </span><span style="color:#569cd6;">return </span><span style="color:#b5cea8;">1
+</span><span>    </span><span style="color:#569cd6;">elif </span><span>isinstance(x, str):
+</span><span>        </span><span style="color:#569cd6;">return </span><span style="color:#b5cea8;">2
+</span><span>    </span><span style="color:#569cd6;">return </span><span style="color:#b5cea8;">3
+</span><span>
+</span><span style="color:#569cd6;">if </span><span>f(</span><span style="color:#b5cea8;">10</span><span>) == </span><span style="color:#b5cea8;">2</span><span>:
+</span><span>    print(</span><span style="color:#d69d85;">&quot;potato&quot;</span><span>)
+</span></code></pre>
+<p>We can see that <code>f(10) == 1</code> and so the equality is always <code>False</code>: we'll never print the word &quot;potato&quot;. Mypy can reason through this too, if we ask it nicely.</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>$ mypy example.py
+</span><span>Success: no issues found in 1 source file
+</span><span>
+</span><span>$ mypy --strict-equality --warn-unreachable example.py
+</span><span>example.py:16: error: Non-overlapping equality check (left operand type: &quot;Literal[1]&quot;, right operand type: &quot;Literal[2]&quot;)
+</span><span>example.py:17: error: Statement is unreachable
+</span><span>Found 2 errors in 1 file (checked 1 source file)
+</span></code></pre>
+<h4 id="typeddict"><a href="https://docs.python.org/3/library/typing.html?highlight=typeddict#typing.TypedDict">TypedDict</a></h4>
+<p>I mentioned this <a href="https://matrix.org/blog/2021/12/03/type-coverage-for-sydent-motivation">in last week's post</a>) when talking about the missing <code>await</code> bug.
+Subclassing from <code>TypedDict</code> allows us to define a new type whose values are dictionaries with</p>
+<ul>
+<li>a fixed set of keys (some mandatory, some not), and</li>
+<li>a fixed type for each key's value.</li>
+</ul>
+<p><a href="https://www.python.org/dev/peps/pep-0589/">PEP 589</a> can best describe the motivation, but in short: there's a lot of source code out there that passes dictionaries around. <code>TypedDict</code> is a way to gradually add typechecking to that code, without having to refactor it to use e.g. a <a href="https://docs.python.org/3/library/dataclasses.html">dataclass</a> or a <a href="https://docs.python.org/3/library/typing.html#typing.NamedTuple">NamedTuple</a>. Let's have a quick example.</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span style="color:#9b9b9b;">from </span><span>typing </span><span style="color:#9b9b9b;">import </span><span>List, TypedDict
+</span><span>
+</span><span style="color:#569cd6;">class </span><span>Person(</span><span style="color:#4ec9b0;">TypedDict</span><span>):
+</span><span>    full_name: str
+</span><span>    nicknames: List[str]
+</span><span>    age: int
+</span><span>
+</span><span>p: Person = {
+</span><span>    </span><span style="color:#d69d85;">&quot;full_name&quot;</span><span>: </span><span style="color:#d69d85;">&quot;David Matthew Robertson&quot;</span><span>,
+</span><span>    </span><span style="color:#d69d85;">&quot;nicknames&quot;</span><span>: [</span><span style="color:#d69d85;">&quot;dmr&quot;</span><span>],
+</span><span>    </span><span style="color:#d69d85;">&quot;age&quot;</span><span>: </span><span style="color:#b5cea8;">29</span><span>,
+</span><span>}
+</span></code></pre>
+<p>Mypy will detect if you delete or omit a required key, or if you insert a key that's not part of the type.</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span style="color:#608b4e;"># error: Key &quot;age&quot; of TypedDict &quot;Person&quot; cannot be deleted
+</span><span style="color:#569cd6;">del </span><span>p[</span><span style="color:#d69d85;">&quot;age&quot;</span><span>]
+</span><span>
+</span><span style="color:#608b4e;"># error: Missing keys (&quot;full_name&quot;, &quot;nicknames&quot;, &quot;age&quot;) for TypedDict &quot;Person&quot;
+</span><span>p2: Person = {}
+</span><span>
+</span><span style="color:#608b4e;"># error: TypedDict &quot;Person&quot; has no key &quot;eye_colour&quot;
+</span><span>p[</span><span style="color:#d69d85;">&quot;eye_colour&quot;</span><span>] = </span><span style="color:#d69d85;">&quot;brown&quot;
+</span></code></pre>
+<p><code>TypedDict</code> is a useful tool, but there are a few important gotchas to be aware of. In my view, these are all minor and worth putting up with, to benefit from the extra type information that a <code>TypedDict</code> provides. Let's take a look.</p>
+<h5 id="typeddict-is-incompatible-with-dict"><code>TypedDict</code> is incompatible with <code>Dict</code></h5>
+<p>This one surprised me at first. Why can't I pass my <code>TypedDict</code> to a function that accepts a generic dictionary?</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span style="color:#9b9b9b;">import </span><span>json
+</span><span style="color:#9b9b9b;">from </span><span>typing </span><span style="color:#9b9b9b;">import </span><span>Dict, TypedDict
+</span><span>
+</span><span style="color:#569cd6;">class </span><span>Foo(</span><span style="color:#4ec9b0;">TypedDict</span><span>):
+</span><span>    bar: str
+</span><span>
+</span><span style="color:#569cd6;">def </span><span>print_size(d: Dict[object, object]) -&gt; </span><span style="color:#569cd6;">None</span><span>:
+</span><span>    print(len(d))
+</span><span>
+</span><span>f: Foo = {</span><span style="color:#d69d85;">&quot;bar&quot;</span><span>: </span><span style="color:#d69d85;">&quot;baz&quot;</span><span>}
+</span><span style="color:#608b4e;"># error: Argument 1 to &quot;print_size&quot; has incompatible type &quot;Foo&quot;; expected &quot;Dict[object, object]&quot;
+</span><span>print_size(f)
+</span></code></pre>
+<p>The answer is that it wouldn't be type-safe! For all we know, the function <code>print_size</code> might mutate its argument <code>d</code>. It might add a key, remove a key, or change the type of a value. Each of those would break the contract that <code>TypedDict</code> is supposed to enforce, so mypy is correct to flag this as an error. <a href="https://github.com/python/mypy/issues/4976">This GitHub issue</a> has more discussion.</p>
+<p>There are few workarounds for this kind of problem.</p>
+<ul>
+<li>The function might be able to accept a <code>TypedDict</code> directly.</li>
+<li>The function could accept a <code>Mapping</code> instead of a <code>Dict</code>. This is type-safe because the <code>Mapping</code> type does not offer mutating methods such as <code>pop</code>, <code>__setitem__</code>, <code>__del__</code>; but it only works if the function does not mutate the dictionary.</li>
+<li>A more drastic approach would discard the <code>TypedDict</code> information with a <code>cast</code> to <code>Dict[str, object]</code> or similar. If so, I'd strongly recommend a comment explaining why the cast is correct and safe.</li>
+</ul>
+<h5 id="mixing-mandatory-and-required-fields">Mixing mandatory and required fields</h5>
+<p>Secondly, defining a <code>TypedDict</code> with a mixture of optional and required keys is a little fiddly. All keys can be made optional by passing <code>total=False</code> in the class definition. To have some keys optional and others mandatory, we have to make <em>two</em> TypedDicts. Say for instance we wanted to allow a potentially-missing <code>favourite_colour</code> field to <code>Person</code>. We can't add an annotation <code>favourite_colour: Optional[str]</code> to the first class body. That's optional in a different sense: it would mean that <code>favourite_colour</code> is a mandatory field which is allowed to be <code>None</code>. Instead, we apply <code>total=False</code> to a subclass:</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span style="color:#9b9b9b;">from </span><span>typing </span><span style="color:#9b9b9b;">import </span><span>List, TypedDict
+</span><span>
+</span><span style="color:#569cd6;">class </span><span>_PersonRequired(</span><span style="color:#4ec9b0;">TypedDict</span><span>):
+</span><span>    full_name: str
+</span><span>    nicknames: List[str]
+</span><span>    age: int
+</span><span>
+</span><span style="color:#569cd6;">class </span><span>Person(</span><span style="color:#4ec9b0;">_PersonRequired</span><span>, total=</span><span style="color:#4ec9b0;">False</span><span>):
+</span><span>    favourite_colour: str
+</span></code></pre>
+<p>This means that a valid <code>Person</code> dictionary may have no <code>favourite_colour</code> key. If it is present, it must be a <code>str</code>.</p>
+<p>The syntax is unfortunately a little clunky. <a href="https://www.python.org/dev/peps/pep-0655/">PEP 655</a> acknowledges this and proposes an alternative.</p>
+<h5 id="typeddict-is-typecheck-time-only"><code>TypedDict</code> is typecheck-time only</h5>
+<p>One final note: a <code>TypedDict</code> does no validation or conversion whatsoever. If mypy can't know the keys and values a dictionary will have a typecheck-time, you'll need to validate it by hand at runtime. We see this a lot because when deserialising json objects into a dictionary. Here's an example.</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span style="color:#9b9b9b;">import </span><span>json
+</span><span style="color:#9b9b9b;">from </span><span>typing </span><span style="color:#9b9b9b;">import </span><span>TypedDict
+</span><span>
+</span><span style="color:#569cd6;">class </span><span>Foo(</span><span style="color:#4ec9b0;">TypedDict</span><span>):
+</span><span>    bar: str
+</span><span>
+</span><span style="color:#608b4e;"># note: Revealed type is &quot;Any&quot;
+</span><span>reveal_type(json.loads(</span><span style="color:#d69d85;">&quot;</span><span style="color:#b4cea8;">{}</span><span style="color:#d69d85;">&quot;</span><span>))
+</span><span style="color:#608b4e;"># no error. mypy can&#39;t do analysis on Any.
+</span><span>f: Foo = json.loads(</span><span style="color:#d69d85;">&quot;</span><span style="color:#b4cea8;">{}</span><span style="color:#d69d85;">&quot;</span><span>)
+</span></code></pre>
+<h2 id="next-time">Next time</h2>
+<p>This covers a lot of the machinery and the day-to-day process of annotating Sydent. The <a href="https://matrix.org/blog/2021/12/17/type-coverage-for-sydent-evaluation">last part of this series</a> will give us a chance to quantify our efforts and reflect on the wider typing ecosystem.</p>
+<hr />
+<p>Many thanks for reading! If you've got any corrections, comments or queries, I'm available on Matrix at <a href="https://matrix.to/#/@dmrobertson:matrix.org">@dmrobertson:matrix.org</a>.</p>
+
+        </div>
+        
+        <aside>
+            <h3>Post Contents</h3>
+
+            <ul style="list-style: none; padding-left: 0px;">
+                
+                <li>
+                    <a href="/blog/2021/12/10/type-coverage-for-sydent-annotation/#the-process-of-improving-coverage">The process of improving coverage</a>
+                    
+                    <ul>
+                        
+                        <li>
+                            <a href="/blog/2021/12/10/type-coverage-for-sydent-annotation/#you-re-at-the-mercy-of-your-dependencies">You&#x27;re at the mercy of your dependencies</a>
+                        </li>
+                        
+                        <li>
+                            <a href="/blog/2021/12/10/type-coverage-for-sydent-annotation/#annotations-when-working-with-twisted">Annotations when working with twisted</a>
+                        </li>
+                        
+                        <li>
+                            <a href="/blog/2021/12/10/type-coverage-for-sydent-annotation/#tricks-of-the-trade">Tricks of the trade</a>
+                        </li>
+                        
+                    </ul>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2021/12/10/type-coverage-for-sydent-annotation/#next-time">Next time</a>
+                    
+                </li>
+                
+            </ul>
+        </aside>
+        
+    </div>
+</article>
+
+    </main>
+
+    <footer class="site-footer">
+    <div class="internal-links">
+        
+        <a href="&#x2F;faq">FAQs</a>
+        
+        <a href="&#x2F;security-disclosure-policy">Security Disclosure Policy</a>
+        
+        <a href="&#x2F;hall-of-fame">Security Hall of Fame</a>
+        
+        <a href="&#x2F;legal&#x2F;code-of-conduct">Code of Conduct for Matrix.org</a>
+        
+        <a href="&#x2F;legal">Legal</a>
+        
+        <a href="&#x2F;contact">Contact</a>
+        
+        <a href="https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;">Site Source</a>
+        
+    </div>
+    <div class="external-links">
+        <div>
+            
+            <a href="&#x2F;code"><img src="/assets/github.svg" alt="GitHub"></a>
+            
+            <a href="https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;"><img src="/assets/gitlab.svg" alt="GitLab"></a>
+            
+            <a href="https:&#x2F;&#x2F;mastodon.matrix.org&#x2F;@matrix"><img src="/assets/mastodon.svg" alt="Mastodon"></a>
+            
+            <a href="https:&#x2F;&#x2F;twitter.com&#x2F;matrixdotorg"><img src="/assets/twitter.svg" alt="Twitter"></a>
+            
+            <a href="https:&#x2F;&#x2F;www.youtube.com&#x2F;channel&#x2F;UCVFkW-chclhuyYRbmmfwt6w"><img src="/assets/youtube.svg" alt="YouTube"></a>
+            
+        </div>
+    </div>
+    <p>© 2022 The Matrix.org Foundation C.I.C.</p>
+</footer>
+
+</body>
+
+</html>

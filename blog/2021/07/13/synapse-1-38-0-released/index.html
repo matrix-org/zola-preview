@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="twitter:widgets:csp" content="on" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta name="twitter:site" content="@matrixdotorg" />
+    <meta name="twitter:creator" content="@matrixdotorg" />
+
+    <title>Matrix.org - Synapse 1.38.0 released</title>
+    <link rel="shortcut icon" href="/assets/favicon.ico" />
+    <link rel="icon" type="image/png" href="/assets/favicon.png" />
+    <link rel="stylesheet" href="/style.css" />
+
+    
+
+
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    "headline": "Synapse 1.38.0 released",
+    "datePublished": "2021-07-13T00:00+00:00",
+    
+    "author": [
+    
+    {
+        "@type": "Person",
+        "name": "Dan Callahan",
+        "url": "//authors/dan-callahan"
+    }
+    
+    ]
+}
+</script>
+</head>
+
+<body>
+    
+    <header class="site-header">
+    <a href="/" class="brand">
+        <img src="/images/matrix-logo.svg" alt="Matrix logo">
+    </a>
+    <input id="site-header-dropdown-checkbox" type="checkbox" class="dropdown-checkbox" aria-hidden="true">
+    <label for="site-header-dropdown-checkbox" class="dropdown-button">&#xe602;</label>
+    <label for="site-header-dropdown-checkbox" class="page-overlay"></label>
+    <nav>
+        
+        
+        <a href="&#x2F;about&#x2F;" class="
+            ">
+            About
+        </a>
+        
+        
+        
+        <a href="&#x2F;blog&#x2F;" class="
+            current">
+            Blog
+        </a>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;docs&#x2F;" class="section ">
+                Documentation
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;ecosystem&#x2F;" class="section ">
+                Ecosystem
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                    <a href="&#x2F;ecosystem&#x2F;clients&#x2F;">Clients</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;servers&#x2F;">Servers</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bots&#x2F;">Bots</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bridges&#x2F;">Bridges</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;sdks&#x2F;">SDKs</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;hosting&#x2F;">Hosting</a>
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        <a href="&#x2F;podcasts&#x2F;" class="
+            ">
+            Podcasts
+        </a>
+        
+        
+        
+        <a href="https:&#x2F;&#x2F;shop.matrix.org" class="
+            ">
+            Shop
+        </a>
+        
+        
+        
+        <a href="&#x2F;try-matrix&#x2F;" class="primary
+            ">
+            Try Matrix
+        </a>
+        
+        
+    </nav>
+</header>
+
+
+    <main>
+        
+<article class="content post with-sidebar">
+    <header>
+        <h1>Synapse 1.38.0 released</h1>
+        <span>13.07.2021 00:00 — <a
+                href="/category/releases">Releases</a>
+             — <a href="/author/dan-callahan">Dan Callahan</a>
+        </span>
+        
+    </header>
+    <div class="post-main">
+        <div class="post-content">
+            <p>Synapse 1.38.0 is out now!</p>
+<blockquote>
+<p><strong>NOTE:</strong> We released Synapse 1.38.1 on Thursday, July 22nd. It <a href="https://github.com/matrix-org/synapse/issues/10456">mitigates</a> a client bug with Synapse 1.38.0's smaller sync responses which prevented new Element Android sessions from successfully participating in encrypted conversations. Server administrators are strongly encouraged to upgrade.</p>
+</blockquote>
+<h2 id="big-integers">(Big) Integers</h2>
+<p>Synapse's database schema used <code>integer</code> columns in a few places where values could potentially overflow a maximum value of 2<sup>31</sup>. One such column is <code>events.stream_ordering</code>, which surpassed 2<sup>31</sup> on matrix.org last week.</p>
+<p>To prevent overflows, Synapse 1.38 will automatically convert several <code>integer</code> columns to <code>bigint</code> as a background update. While homeservers will function normally during this task, it could result in increased disk I/O for several hours or days. Note that <strong>homeservers may need several gigabytes of free space</strong> to successfully rebuild associated database indexes and complete the upgrade.</p>
+<p>See the <a href="https://matrix-org.github.io/synapse/v1.38/upgrade.html#upgrading-to-v1380">upgrade notes</a> for more details.</p>
+<h2 id="expiring-caches">Expiring Caches</h2>
+<p>Synapse has a new configuration option, <code>caches.expiry_time</code>, which can be set to enable evicting items from caches if they go too long without being accessed. This helps servers reclaim memory used by large yet infrequently used caches.</p>
+<h2 id="smaller-sync-responses">Smaller Sync Responses</h2>
+<p>The response to <code>/sync</code> now omits optional keys when they would otherwise be empty. This can significantly reduce the size of incremental syncs, as demonstrated in <a href="https://github.com/matrix-org/synapse/issues/6579">#6579</a>. Thanks to deepbluev7 for  initially submitting this in <a href="https://github.com/matrix-org/synapse/pull/9919">#9919</a>, which made it into this release via <a href="https://github.com/matrix-org/synapse/pull/10214">#10214</a>.</p>
+<h2 id="everything-else">Everything Else</h2>
+<p>A few other items worth calling out:</p>
+<ul>
+<li>This release includes an experimental implementation of <a href="https://github.com/matrix-org/matrix-doc/pull/2918">MSC2918: Refresh tokens</a>, which adds initial support for complementary access / refresh tokens in line with OAuth best practices (<a href="https://github.com/matrix-org/synapse/pull/9450">#9450</a>).</li>
+<li>Synapse now <a href="https://github.com/matrix-org/synapse/pull/10290">ships a script</a> to review recently registered accounts, which can be useful in cleaning up servers in the wake of malicious, automated registrations like we witnessed during last month's <a href="https://matrix.org/blog/2021/06/30/security-update-synapse-1-37-1-released">spam attack</a>.</li>
+<li>We've also fixed a few rough edges (<a href="https://github.com/matrix-org/synapse/pull/10263">#10263</a>, <a href="https://github.com/matrix-org/synapse/pull/10303">#10303</a>, <a href="https://github.com/matrix-org/synapse/pull/10336">#10336</a>) in the spam mitigations from 1.37.1, and would encourage you to update.</li>
+<li>The <a href="https://matrix-org.github.io/synapse/v1.38/admin_api/user_admin_api.html">Admin API for querying user information</a> now includes information about a user's SSO identities in its response.</li>
+</ul>
+<p>These are just the highlights; please see the <a href="https://matrix-org.github.io/synapse/v1.38/upgrade.html#upgrading-to-v1380">Upgrade Notes</a> and <a href="https://github.com/matrix-org/synapse/blob/v1.38.0/CHANGES.md">Release Notes</a> for a complete list of changes in this release.</p>
+<p>Synapse is a Free and Open Source Software project, and we'd like to extend our thanks to everyone who contributed to this release, including <a href="https://github.com/deepbluev7">deepbluev7</a>, <a href="https://github.com/dklimpel">dklimpel</a>, <a href="https://github.com/fkr">fkr</a>, and <a href="https://github.com/sideshowbarker">sideshowbarker</a></p>
+
+        </div>
+        
+        <aside>
+            <h3>Post Contents</h3>
+
+            <ul style="list-style: none; padding-left: 0px;">
+                
+                <li>
+                    <a href="/blog/2021/07/13/synapse-1-38-0-released/#big-integers">(Big) Integers</a>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2021/07/13/synapse-1-38-0-released/#expiring-caches">Expiring Caches</a>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2021/07/13/synapse-1-38-0-released/#smaller-sync-responses">Smaller Sync Responses</a>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2021/07/13/synapse-1-38-0-released/#everything-else">Everything Else</a>
+                    
+                </li>
+                
+            </ul>
+        </aside>
+        
+    </div>
+</article>
+
+    </main>
+
+    <footer class="site-footer">
+    <div class="internal-links">
+        
+        <a href="&#x2F;faq">FAQs</a>
+        
+        <a href="&#x2F;security-disclosure-policy">Security Disclosure Policy</a>
+        
+        <a href="&#x2F;hall-of-fame">Security Hall of Fame</a>
+        
+        <a href="&#x2F;legal&#x2F;code-of-conduct">Code of Conduct for Matrix.org</a>
+        
+        <a href="&#x2F;legal">Legal</a>
+        
+        <a href="&#x2F;contact">Contact</a>
+        
+        <a href="https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;">Site Source</a>
+        
+    </div>
+    <div class="external-links">
+        <div>
+            
+            <a href="&#x2F;code"><img src="/assets/github.svg" alt="GitHub"></a>
+            
+            <a href="https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;"><img src="/assets/gitlab.svg" alt="GitLab"></a>
+            
+            <a href="https:&#x2F;&#x2F;mastodon.matrix.org&#x2F;@matrix"><img src="/assets/mastodon.svg" alt="Mastodon"></a>
+            
+            <a href="https:&#x2F;&#x2F;twitter.com&#x2F;matrixdotorg"><img src="/assets/twitter.svg" alt="Twitter"></a>
+            
+            <a href="https:&#x2F;&#x2F;www.youtube.com&#x2F;channel&#x2F;UCVFkW-chclhuyYRbmmfwt6w"><img src="/assets/youtube.svg" alt="YouTube"></a>
+            
+        </div>
+    </div>
+    <p>© 2022 The Matrix.org Foundation C.I.C.</p>
+</footer>
+
+</body>
+
+</html>
