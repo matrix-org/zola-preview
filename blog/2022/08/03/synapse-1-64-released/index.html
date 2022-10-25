@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="twitter:widgets:csp" content="on" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta name="twitter:site" content="@matrixdotorg" />
+    <meta name="twitter:creator" content="@matrixdotorg" />
+
+    <title>Matrix.org - Synapse 1.64 released</title>
+    <link rel="shortcut icon" href="/assets/favicon.ico" />
+    <link rel="icon" type="image/png" href="/assets/favicon.png" />
+    <link rel="stylesheet" href="/style.css" />
+
+    
+
+
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    "headline": "Synapse 1.64 released",
+    "datePublished": "2022-08-03T00:00+00:00",
+    
+    "author": [
+    
+    {
+        "@type": "Person",
+        "name": "Brendan Abolivier",
+        "url": "//authors/brendan-abolivier"
+    }
+    
+    ]
+}
+</script>
+</head>
+
+<body>
+    
+    <header class="site-header">
+    <a href="/" class="brand">
+        <img src="/images/matrix-logo.svg" alt="Matrix logo">
+    </a>
+    <input id="site-header-dropdown-checkbox" type="checkbox" class="dropdown-checkbox" aria-hidden="true">
+    <label for="site-header-dropdown-checkbox" class="dropdown-button">&#xe602;</label>
+    <label for="site-header-dropdown-checkbox" class="page-overlay"></label>
+    <nav>
+        
+        
+        <a href="&#x2F;about&#x2F;" class="
+            ">
+            About
+        </a>
+        
+        
+        
+        <a href="&#x2F;blog&#x2F;" class="
+            current">
+            Blog
+        </a>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;docs&#x2F;" class="section ">
+                Documentation
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;ecosystem&#x2F;" class="section ">
+                Ecosystem
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                    <a href="&#x2F;ecosystem&#x2F;clients&#x2F;">Clients</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;servers&#x2F;">Servers</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bots&#x2F;">Bots</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bridges&#x2F;">Bridges</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;sdks&#x2F;">SDKs</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;hosting&#x2F;">Hosting</a>
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        <a href="&#x2F;podcasts&#x2F;" class="
+            ">
+            Podcasts
+        </a>
+        
+        
+        
+        <a href="https:&#x2F;&#x2F;shop.matrix.org" class="
+            ">
+            Shop
+        </a>
+        
+        
+        
+        <a href="&#x2F;try-matrix&#x2F;" class="primary
+            ">
+            Try Matrix
+        </a>
+        
+        
+    </nav>
+</header>
+
+
+    <main>
+        
+<article class="content post with-sidebar">
+    <header>
+        <h1>Synapse 1.64 released</h1>
+        <span>03.08.2022 00:00 — <a
+                href="/category/releases">Releases</a>
+             — <a href="/author/brendan-abolivier">Brendan Abolivier</a>
+        </span>
+        
+    </header>
+    <div class="post-main">
+        <div class="post-content">
+            <p>It's that time again: there's a new Synapse release, fresh out of the oven!
+Let's take a look at what's inside <a href="https://github.com/matrix-org/synapse/releases/tag/v1.64.0">Synapse
+1.64</a>.</p>
+<h2 id="delegating-email-verification-is-now-deprecated">Delegating email verification is now deprecated</h2>
+<p><a href="https://github.com/matrix-org/synapse/releases/tag/v1.4.0">Synapse 1.4.0</a>
+introduced a configuration option (<code>account_threepid_delegates.email</code>) to allow
+homeservers to delegate validating the ownership of email addresses to an
+external identity server. This validation is used by Synapse when adding an
+email address to a Matrix account, or before performing a password reset.</p>
+<p>As of Synapse 1.64, this option is deprecated, and Synapse will print a warning
+if it is used. This is because this option relies on old API endpoints that have
+since been
+<a href="https://spec.matrix.org/v1.3/changelog/#identity-service-api-1-1">removed</a> from the
+Matrix specification.</p>
+<p>Synapse can do this validation internally provided it is configured with details
+of an SMTP server. Administrators currently relying on
+<code>account_threepid_delegates.email</code> should therefore ensure that an SMTP server
+is correctly configured, and remove the <code>account_threepid_delegates.email</code>
+option. See the <a href="https://matrix-org.github.io/synapse/v1.64/usage/configuration/config_documentation.html#email">configuration
+guide</a>
+for more information.</p>
+<p>We plan to fully remove this configuration option in Synapse 1.66, which is
+expected to be released on August 30th.</p>
+<p>Note that the equivalent option to validate the ownership of phone numbers
+(<code>account_threepid_delegates.msisdn</code>) can still be used, though we expect to
+deprecate it in a future release of Synapse.</p>
+<h2 id="improved-tls-support-for-sending-emails">Improved TLS support for sending emails</h2>
+<p>When configuring an SMTP server to use to send out emails to users, server
+administrators can configure Synapse to use TLS to communicate to that server.
+Until now, only <a href="https://en.wikipedia.org/wiki/Opportunistic_TLS">STARTTLS</a> was
+supported in this case.</p>
+<p>Synapse 1.64 introduces a new <code>force_tls</code> configuration option in the <code>email</code>
+section of the configuration file. If this new setting is set to <code>true</code> Synapse
+will use TLS for the initial connection rather than upgrading via STARTTLS.</p>
+<p>See the <a href="https://matrix-org.github.io/synapse/v1.64/usage/configuration/config_documentation.html#email">configuration
+guide</a>
+for more information.</p>
+<h2 id="memory-leak-in-frozendict">Memory leak in <code>frozendict</code></h2>
+<p>A couple of weeks ago, we
+<a href="https://github.com/Marco-Sulla/python-frozendict/issues/60">identified</a> a
+memory leak within <a href="https://pypi.org/project/frozendict/">frozendict</a>, which is
+a library that Synapse relies on. This would in turn cause Synapse instances to
+slowly leak memory when processing <code>/sync</code> requests.</p>
+<p>We highly encourage server administrators who installed Synapse via <code>pip</code> to
+upgrade their local version of <code>frozendict</code> to version 2.3.3 or later, which
+includes a fix to this issue. The Docker image <code>matrixdotorg/synapse</code> and the
+Debian packages from <code>packages.matrix.org</code> already include the updated library.</p>
+<h2 id="everything-else">Everything else</h2>
+<p>This version of Synapse introduces support for room version 10! This new room
+version enables support for the new <code>knock_restricted</code> join rule, to allow
+knocking into rooms which are otherwise restricted to members of a specific room
+(or space). See <a href="https://spec.matrix.org/v1.3/rooms/v10/">the Matrix specification about room version
+10</a> for more information.</p>
+<p>Additionally, Synapse 1.64 features a new rate limiter to limit the rate of joins to the same
+room. It is intended as a mitigation against abuse scenarios involving joining a
+lot of users from different homeservers to a room to then send spam across it.
+See the <a href="https://matrix-org.github.io/synapse/latest/usage/configuration/config_documentation.html#rc_joins_per_room">configuration
+guide</a>
+for more information.</p>
+<p>This release of Synapse also extends the <a href="https://matrix-org.github.io/synapse/latest/admin_api/rooms.html#list-room-api">List
+Rooms</a>
+and <a href="https://matrix-org.github.io/synapse/latest/admin_api/rooms.html#room-details-api">Room
+Details</a>
+admin APIs to include the type of a room in responses, allowing server
+administrators to differentiate spaces from other rooms.</p>
+<p>See the <a href="https://github.com/matrix-org/synapse/releases/tag/v1.64.0">full
+changelog</a> for a
+complete list of changes in this release. Also please have a look at the
+<a href="https://matrix-org.github.io/synapse/v1.64/upgrade#upgrading-to-v1640">upgrade
+notes</a>
+for this version.</p>
+<p>Synapse is a Free and Open Source Software project, and we'd like to extend our
+thanks to everyone who contributed to this release, including (in no particular
+order) <a href="https://www.beeper.com/">Beeper</a>,
+<a href="https://github.com/andrewdoh">andrewdoh</a>, <a href="https://github.com/thomasweston12">Thomas
+Weston</a>, <a href="https://github.com/jejo86">jejo86</a>,
+<a href="https://github.com/villepeh">villepeh</a>, <a href="https://github.com/behrmann">Jörg
+Behrmann</a> and <a href="https://github.com/Vetchu">Jacek
+Kuśnierz</a>, as well as anyone helping us make Synapse
+better by sharing their feedback and reporting issues.</p>
+
+        </div>
+        
+        <aside>
+            <h3>Post Contents</h3>
+
+            <ul style="list-style: none; padding-left: 0px;">
+                
+                <li>
+                    <a href="/blog/2022/08/03/synapse-1-64-released/#delegating-email-verification-is-now-deprecated">Delegating email verification is now deprecated</a>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2022/08/03/synapse-1-64-released/#improved-tls-support-for-sending-emails">Improved TLS support for sending emails</a>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2022/08/03/synapse-1-64-released/#memory-leak-in-frozendict">Memory leak in frozendict</a>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2022/08/03/synapse-1-64-released/#everything-else">Everything else</a>
+                    
+                </li>
+                
+            </ul>
+        </aside>
+        
+    </div>
+</article>
+
+    </main>
+
+    <footer class="site-footer">
+    <div class="internal-links">
+        
+        <a href="&#x2F;faq">FAQs</a>
+        
+        <a href="&#x2F;security-disclosure-policy">Security Disclosure Policy</a>
+        
+        <a href="&#x2F;hall-of-fame">Security Hall of Fame</a>
+        
+        <a href="&#x2F;legal&#x2F;code-of-conduct">Code of Conduct for Matrix.org</a>
+        
+        <a href="&#x2F;legal">Legal</a>
+        
+        <a href="&#x2F;contact">Contact</a>
+        
+        <a href="https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;">Site Source</a>
+        
+    </div>
+    <div class="external-links">
+        <div>
+            
+            <a href="&#x2F;code"><img src="/assets/github.svg" alt="GitHub"></a>
+            
+            <a href="https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;"><img src="/assets/gitlab.svg" alt="GitLab"></a>
+            
+            <a href="https:&#x2F;&#x2F;mastodon.matrix.org&#x2F;@matrix"><img src="/assets/mastodon.svg" alt="Mastodon"></a>
+            
+            <a href="https:&#x2F;&#x2F;twitter.com&#x2F;matrixdotorg"><img src="/assets/twitter.svg" alt="Twitter"></a>
+            
+            <a href="https:&#x2F;&#x2F;www.youtube.com&#x2F;channel&#x2F;UCVFkW-chclhuyYRbmmfwt6w"><img src="/assets/youtube.svg" alt="YouTube"></a>
+            
+        </div>
+    </div>
+    <p>© 2022 The Matrix.org Foundation C.I.C.</p>
+</footer>
+
+</body>
+
+</html>

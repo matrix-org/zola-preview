@@ -4,8 +4,961 @@
 	<link href="/category/general/atom.xml" rel="self" type="application/atom+xml"/>
   <link href="/"/>
 	<generator uri="https://www.getzola.org/">Zola</generator>
-	<updated>2021-12-22T23:27:06+00:00</updated>
+	<updated>2022-10-18T13:35:00+00:00</updated>
 	<id>/category/general/atom.xml</id>
+	<entry xml:lang="en">
+		<title>Testing faster remote room joins</title>
+		<published>2022-10-18T13:35:00+00:00</published>
+		<updated>2022-10-18T13:35:00+00:00</updated>
+		<link rel="alternate" href="/blog/2022/10/18/testing-faster-remote-room-joins/" type="text/html"/>
+		<id>/blog/2022/10/18/testing-faster-remote-room-joins/</id>
+		<content type="html">&lt;p&gt;As of &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2022&#x2F;10&#x2F;17&#x2F;synapse-1-69-released&quot;&gt;Synapse 1.69&lt;&#x2F;a&gt;, we consider &amp;quot;faster remote room joins&amp;quot; to be ready for testing by server admins.&lt;&#x2F;p&gt;
+&lt;p&gt;There are a number of caveats, which I&#x27;ll come to, but first: this is an important step in a project which we&#x27;ve been working on for 9 months. Most people who use Matrix will be familiar with the pain of joining a large room over federation: typically you are just faced with a spinner, which is eventually replaced by a cryptic error. If you&#x27;re lucky, the room eventually pops up in your room list of its own accord. The whole experience is &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;synapse&#x2F;issues&#x2F;1211&quot;&gt;one of the longest-standing open issues in Synapse&lt;&#x2F;a&gt;.&lt;&#x2F;p&gt;
+&lt;span id=&quot;continue-reading&quot;&gt;&lt;&#x2F;span&gt;
+&lt;p&gt;The &amp;quot;faster joins&amp;quot; project set out to change all this. Briefly, the reason the experience is so poor today is that there is a &lt;em&gt;lot&lt;&#x2F;em&gt; of information required to join a large room, which is slow for the &amp;quot;resident&amp;quot; server to generate, and even slower for the &amp;quot;joining&amp;quot; server to validate and store. The key insight is that we don&#x27;t really need the full membership list of a room to get started: rather, we can present the user with the basic information about the room (name, topic, space hierarchy, etc), and then populate the full details in the background. The upshot is that, whereas it used to take upwards of 12 minutes to join Matrix HQ (even assuming that your server didn&#x27;t fall over in the meantime), this is now down to about 30 seconds (and we&#x27;re confident that we can reduce this even further).&lt;&#x2F;p&gt;
+&lt;p&gt;It sounds simple enough, but in reality this has meant a lot of work on Synapse. The main problem was that huge amounts of the Synapse codebase assumed that we either had all the state for a room, or none of it. That assumption no longer holds, which meant lots of changes to the code to handle &amp;quot;partial state&amp;quot;. Along the way we&#x27;ve also had to make some other improvements: for example, we &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;synapse&#x2F;security&#x2F;advisories&#x2F;GHSA-jhjh-776m-4765&quot;&gt;found and fixed&lt;&#x2F;a&gt; some long-standing bugs in event authorisation, and implemented &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;synapse&#x2F;issues&#x2F;3528&quot;&gt;cancellation&lt;&#x2F;a&gt; for requests where the client disconnects before we finish handling the request. For an idea of the things being changed at the Matrix protocol level, take a look at &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-spec-proposals&#x2F;pull&#x2F;3902&quot;&gt;MSC3902&lt;&#x2F;a&gt;.&lt;&#x2F;p&gt;
+&lt;p&gt;The upshot of all that, is that instead of seeing a blank room with a spinner (or an error message), you can now see the basic information about the room, as well as receive incoming messages, within a few seconds of trying to join the room.&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;caveats&quot;&gt;Caveats&lt;&#x2F;h2&gt;
+&lt;p&gt;The devil, as they say, is in the detail, and unfortunately there remain a few rough edges to this work.&lt;&#x2F;p&gt;
+&lt;p&gt;Firstly, and most importantly: &lt;strong&gt;we do not yet recommend enabling faster joins on important production systems&lt;&#x2F;strong&gt;. We&#x27;ve done quite a lot of testing, but there are some fundamental changes to Synapse, and by their nature they are hard to test rigorously. We&#x27;re pretty confident it won&#x27;t eat your entire database, but stuck rooms, stuck notifications, and stuck clients, are all entirely within the realms of possibility. We&#x27;d recommend only enabling faster joins on your server if you are comfortable looking at the logs, and using the Synapse Admin API or flushing client caches to clean things up if they go wrong.&lt;&#x2F;p&gt;
+&lt;p&gt;Secondly: there&#x27;s still some &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;synapse&#x2F;issues&#x2F;12994&quot;&gt;outstanding work&lt;&#x2F;a&gt; required to support faster joins on Synapse deployments using worker processes. At present, if you try to enable them on a worker-based deployment, Synapse will refuse to start.&lt;&#x2F;p&gt;
+&lt;p&gt;Next: the faster-joins process requires some support from the resident server, and, since &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-spec-proposals&#x2F;pull&#x2F;3706&quot;&gt;those changes&lt;&#x2F;a&gt; are not yet in the stable matrix spec, it must be explicitly enabled. We have enabled this support on the &lt;code&gt;matrix.org&lt;&#x2F;code&gt; homeserver, but it generally won&#x27;t work elsewhere. In other words: for now, you&#x27;ll only see the benefit when you join a room via a &lt;code&gt;#&amp;lt;name&amp;gt;:matrix.org&lt;&#x2F;code&gt; alias (or via the &lt;code&gt;matrix.org&lt;&#x2F;code&gt; room directory).&lt;&#x2F;p&gt;
+&lt;p&gt;Finally, there are still quite a few things that don&#x27;t work properly yet. We&#x27;re tracking the list of things we need to fix as a &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;synapse&#x2F;milestone&#x2F;10&quot;&gt;milestone&lt;&#x2F;a&gt; on the Synapse project, but to name a few:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;You can&#x27;t yet send messages during the &amp;quot;resynchronisation&amp;quot; phase (&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;synapse&#x2F;issues&#x2F;12997&quot;&gt;synapse#12997&lt;&#x2F;a&gt;). Currently, you&#x27;ll just get a spinner.&lt;&#x2F;li&gt;
+&lt;li&gt;Similarly, attempts to leave the room (&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;synapse&#x2F;issues&#x2F;12802&quot;&gt;synapse#12802&lt;&#x2F;a&gt;) will block until the resync completes.&lt;&#x2F;li&gt;
+&lt;li&gt;Clients which don&#x27;t support &lt;a href=&quot;https:&#x2F;&#x2F;spec.matrix.org&#x2F;v1.4&#x2F;client-server-api&#x2F;#lazy-loading-room-members&quot;&gt;lazy-loading room members&lt;&#x2F;a&gt; will &lt;em&gt;block&lt;&#x2F;em&gt; (ie, they won&#x27;t receive any new events at all) during the resynchronisation process (&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;synapse&#x2F;issues&#x2F;12989&quot;&gt;synapse#12989&lt;&#x2F;a&gt;). Most popular clients, including Element, Hydrogen, Fractal and FluffyChat &lt;em&gt;do&lt;&#x2F;em&gt; support lazy-loading, but a few (including Nheko) do not.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;h2 id=&quot;turning-it-on&quot;&gt;Turning it on&lt;&#x2F;h2&gt;
+&lt;p&gt;With all that said: we are very excited for people to start trying it and give us feedback. If you administer a Synapse server and are as excited as we are, all you need to do to start testing faster joins is to add this to your &lt;code&gt;homeserver.yaml&lt;&#x2F;code&gt; (and then restart Synapse):&lt;&#x2F;p&gt;
+&lt;pre data-lang=&quot;yaml&quot; style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot; class=&quot;language-yaml &quot;&gt;&lt;code class=&quot;language-yaml&quot; data-lang=&quot;yaml&quot;&gt;&lt;span style=&quot;background-color:#282828;color:#569cd6;&quot;&gt;experimental_features&lt;&#x2F;span&gt;&lt;span&gt;:
+&lt;&#x2F;span&gt;&lt;span&gt;  &lt;&#x2F;span&gt;&lt;span style=&quot;background-color:#282828;color:#569cd6;&quot;&gt;faster_joins&lt;&#x2F;span&gt;&lt;span&gt;: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#569cd6;&quot;&gt;True
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;With that, any future remote room joins (or at least those going via &lt;code&gt;matrix.org&lt;&#x2F;code&gt;) will use the new faster joins algorithm. Please let us know how you get on, and file GitHub issues for any problems you might have!&lt;&#x2F;p&gt;
+</content>
+	</entry>
+	<entry xml:lang="en">
+		<title>The Matrix Summer Special 2022</title>
+		<published>2022-08-15T00:00:00+00:00</published>
+		<updated>2022-08-15T00:00:00+00:00</updated>
+		<link rel="alternate" href="/blog/2022/08/15/the-matrix-summer-special-2022/" type="text/html"/>
+		<id>/blog/2022/08/15/the-matrix-summer-special-2022/</id>
+		<content type="html">&lt;p&gt;Hi all,&lt;&#x2F;p&gt;
+&lt;p&gt;At the end of each year it’s been traditional to do a big review of everything that the Matrix core team got up to that year, and announcing our predictions for the next.  You can see the last edition in &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2021&#x2F;12&#x2F;22&#x2F;the-mega-matrix-holiday-special-2021&quot;&gt;2021 here&lt;&#x2F;a&gt; - and if you’re feeling nostalgic you can head down memory lane with the &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2020&#x2F;12&#x2F;25&#x2F;the-matrix-holiday-special-2020&quot;&gt;2020&lt;&#x2F;a&gt;, &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2019&#x2F;12&#x2F;24&#x2F;the-2019-matrix-holiday-update&quot;&gt;2019&lt;&#x2F;a&gt;, &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2018&#x2F;12&#x2F;25&#x2F;the-2018-matrix-holiday-special&quot;&gt;2018&lt;&#x2F;a&gt; ones etc too.&lt;&#x2F;p&gt;
+&lt;p&gt;This year is turning out to be slightly different, however.  Our plans for 2022 are particularly ambitious: to force a step change in improving Matrix’s performance and usability so that we firmly transition from our historical “make it work” and “make it work right” phases into “&lt;strong&gt;making it fast&lt;&#x2F;strong&gt;”.  Specifically: to succeed, Matrix &lt;strong&gt;has&lt;&#x2F;strong&gt; to succeed in powering apps which punch their weight in terms of performance and usability against the proprietary centralised alternatives of WhatsApp, Discord, Slack and friends.&lt;&#x2F;p&gt;
+&lt;p&gt;We’ve seen an absolute tonne of work happening on this so far this year… and somehow the end results all seem to be taking concrete shape at roughly the same time, despite summer traditionally being the quietest point of the year.  The progress is super exciting and we don’t want to wait until things are ready to enthuse about them, and so we thought it’d be fun to do a spontaneous Summer Special gala blog post so that everyone can follow along and see how things are going!&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;making-it-fast&quot;&gt;Making it fast&lt;&#x2F;h2&gt;
+&lt;p&gt;We have always focused on first making Matrix “work right” before we make it “work fast” - sometimes to a fault.  After all: the longer you build on a given architecture the harder it becomes to swap it out down the line, and the core architecture of Matrix has remained essentially the same since we began in 2014 - frankly it’s amazing that the initial design has lasted for as long as it has.&lt;&#x2F;p&gt;
+&lt;p&gt;Over the years we’ve done a lot of optimisation work on the core team implementations of that original architecture - whether that’s Synapse or matrix-{js,react,ios,android}-sdk and friends: for instance Synapse uses 5-10x less RAM than it used to (my personal federated server is only using 145MB of RAM atm! 🤯) and it continues to speed up in pretty much every new release (&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;synapse&#x2F;pull&#x2F;13522&quot;&gt;this PR&lt;&#x2F;a&gt; looks to give a 1000x speedup on calculating push notification actions, for instance!).  However, there are some places where Matrix’s architecture itself ends up being an embarrassingly slow bottleneck: most notably when rapidly syncing data to clients, and when joining rooms for the first time over federation.  We’re addressing these as follows…&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;sliding-sync-aka-sync-v3&quot;&gt;Sliding Sync (aka Sync v3)&lt;&#x2F;h3&gt;
+&lt;p&gt;Historically, &#x2F;sync always assumed that the client would typically want to know about all the conversations its user is in - much as an IRC client or XMPP client is aware of all your current conversations.  This provided some nice properties - such as automatically enabling perfect offline support, simplifying client and server development, and making features like “jump to room” and “tab complete” work instantly given the data is all client-side.  In the early days of Matrix, when nobody was yet a power user, this wasn’t really a problem - but as users join more conversations and join bigger rooms, it’s become one of Matrix’s biggest performance bottlenecks.  In practice, logging into a large account (~4000 rooms) can take ~10 minutes and hundreds of megabytes of network traffic, which is clearly ridiculous. Worse: if you go offline for a day or so, the incremental sync to catch back up can take minutes to calculate (and can even end up being worse than an initial sync).&lt;&#x2F;p&gt;
+&lt;p&gt;To fix this, we started work on Sliding Sync (&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-spec-proposals&#x2F;blob&#x2F;kegan&#x2F;sync-v3&#x2F;proposals&#x2F;3575-sync.md&quot;&gt;MSC3575&lt;&#x2F;a&gt;) in 2021: a complete reimagining of the &#x2F;sync API used by Matrix clients to receive data from their homeserver.  In Sliding Sync, we only send the client the data it needs to render its UI.  Most importantly, we only tell it about the subset of rooms which it is visible in the scroll window of its room list (or that it needs to display notifications about).  As the user scrolls around the room list, they slide the window up and down - hence the name “sliding sync”.  Sliding Sync was originally called Sync v3, given it’s our 3rd iteration of the sync API - it got renamed Sliding Sync given the current sync API confusingly ended up with a prefix of &#x2F;v3.&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2021&#x2F;12&#x2F;22&#x2F;the-mega-matrix-holiday-special-2021#sync-v3&quot;&gt;Back in December&lt;&#x2F;a&gt; our work on Sliding Sync was still pretty early: we had the initial MSC, an experimental proxy that converted the existing sync v2 API into Sliding Sync, and a simple proof-of-concept web client to exercise it.  Since then, however, there has been spectacular progress:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;MSC3575 has undergone some &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-spec-proposals&#x2F;pull&#x2F;3575&#x2F;commits&#x2F;bea7323c0b03dbd46600ce8fe01218d55f0de083&quot;&gt;big&lt;&#x2F;a&gt; &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-spec-proposals&#x2F;pull&#x2F;3575&#x2F;commits&#x2F;a0bf4027bcef278e43a570c6fa94f2b1bef3488b&quot;&gt;iterations&lt;&#x2F;a&gt; as we converge on the optimal API shape.&lt;&#x2F;li&gt;
+&lt;li&gt;The &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;sliding-sync&quot;&gt;sliding-sync&lt;&#x2F;a&gt; proxy has matured to be something which we’re now running in stealth against matrix.org for those dogfooding the API&lt;&#x2F;li&gt;
+&lt;li&gt;We added the concept of extensions to split out how to sync particular classes of data (to avoid the API becoming a monolithic monster) - specifically:
+&lt;ul&gt;
+&lt;li&gt;Account Data&lt;&#x2F;li&gt;
+&lt;li&gt;End-to-end Encryption&lt;&#x2F;li&gt;
+&lt;li&gt;To-device messages&lt;&#x2F;li&gt;
+&lt;li&gt;Ephemeral events (to be done)&lt;&#x2F;li&gt;
+&lt;li&gt;Presence (to be done)&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;We added support for spaces!&lt;&#x2F;li&gt;
+&lt;li&gt;We implemented it in &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-js-sdk&#x2F;pull&#x2F;2242&quot;&gt;matrix-js-sdk&lt;&#x2F;a&gt; (which merged a few weeks ago!)&lt;&#x2F;li&gt;
+&lt;li&gt;…and have a WIP implementation in &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-rust-sdk&#x2F;pull&#x2F;728&quot;&gt;matrix-rust-sdk&lt;&#x2F;a&gt; too.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;But most importantly, we’ve also been busy implementing Sliding Sync in Element Web itself so we can start using it for real.  Now, this is still a work in progress, but as of today it’s &lt;em&gt;just&lt;&#x2F;em&gt; getting to the point where one can experiment with it as a daily driver (although it’s definitely alpha and we’re still squishing bugs like crazy!) - and we can see just how well it really performs in real life.&lt;&#x2F;p&gt;
+&lt;p&gt;For instance, here’s a video of my account (4055 rooms, redacted for privacy) logging in on an entirely fresh browser via Sliding Sync - the actual sync takes roughly 1 second (at 00:18 in the video).  And if we’d started the sync operation while the user is setting up E2E encryption, it would have completed in the background before they even got to the main screen, giving instant login(!).  Given my account typically takes ~10 minutes to initial sync (plus even more time for encryption to sync up), this is at least a real-life &lt;strong&gt;600x improvement&lt;&#x2F;strong&gt;.  Moreover, the sync response is only 20KB (a ~5000x improvement) - a huge win for low-bandwidth Matrix situations.&lt;&#x2F;p&gt;
+&lt;iframe width=&quot;2056&quot; height=&quot;980&quot; src=&quot;https:&#x2F;&#x2F;www.youtube.com&#x2F;embed&#x2F;9dbM66tGK5s&quot; title=&quot;Sliding Sync Demo&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture&quot; allowfullscreen&gt;&lt;&#x2F;iframe&gt;
+&lt;p&gt;Then, having logged in, the client subsequently launches pretty much instantly, &lt;em&gt;no matter how long you’ve been offline&lt;&#x2F;em&gt;. Total launch time is roughly 4 seconds, most of which is loading the app’s assets - which in turn could well be improved by progressively loading the app.  It could also be sped up even more if we cached state locally - currently the implementation simply reloads from the server every time the app launches rather than maintaining a local cache.&lt;&#x2F;p&gt;
+&lt;p&gt;As you can see, this is palpably coming together, but there’s still a bunch of work to be done before we can encourage folks to try it, including:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Switching the RoomList to be fully backed by sliding sync (currently the v2 roomlist is jury-rigged up to the sliding sync API, causing some flakey bugs such as duplicate rooms)&lt;&#x2F;li&gt;
+&lt;li&gt;Spec and hook up typing &#x2F; receipts &#x2F; presence extensions&lt;&#x2F;li&gt;
+&lt;li&gt;Hook up favourites, low_priority, knocked and historical rooms&lt;&#x2F;li&gt;
+&lt;li&gt;Adding back in loading room members&lt;&#x2F;li&gt;
+&lt;li&gt;Apply quality-of-service to to-device messages so we prioritise ones relevant to the current sliding window&lt;&#x2F;li&gt;
+&lt;li&gt;Sync encrypted rooms in the background to search for notifications (and for indexing).&lt;&#x2F;li&gt;
+&lt;li&gt;More local caching to speed up operations which now require checking the server (e.g. Ctrl&#x2F;Cmd-K room switching)&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;We also need to determine whether it’s viable to run the sliding-sync proxy against matrix.org for general production use, or whether we’ll need native support in Synapse before we can turn it on by default for everyone.  But these are good problems to have!!&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;matrix-rust-sdk-and-element-x&quot;&gt;matrix-rust-sdk and Element X&lt;&#x2F;h3&gt;
+&lt;p&gt;Meanwhile, over in the land of Rust, we’ve been making huge progress in maturing and stabilising matrix-rust-sdk and exercising it in Element X: the codename for the next generation of native Element mobile apps.  Most excitingly, we literally just got the first (very alpha) cut of Sliding Sync working in matrix-rust-sdk and hooked up to Element X on iOS - you can see Ștefan’s demo from last week here:&lt;&#x2F;p&gt;
+&lt;iframe width=&quot;2056&quot; height=&quot;980&quot; src=&quot;https:&#x2F;&#x2F;www.youtube.com&#x2F;embed&#x2F;6KHQSeJTXm0?start=459&quot; title=&quot;Matrix Live S08E04 — Element Demos&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture&quot; allowfullscreen&gt;&lt;&#x2F;iframe&gt;
+&lt;p&gt;matrix-rust-sdk itself is now getting a &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-rust-sdk&#x2F;releases&quot;&gt;steady stream of releases&lt;&#x2F;a&gt; - including long-awaited official node bindings, providing excellent and performant encryption support via the &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2022&#x2F;05&#x2F;16&#x2F;independent-public-audit-of-vodozemac-a-native-rust-reference-implementation-of-matrix-end-to-end-encryption&#x2F;&quot;&gt;newly audited&lt;&#x2F;a&gt; vodozemac Rust implementation of Olm. It’s also great to see loads of major contributions to matrix-rust-sdk from across the wider Matrix community - particularly from Ruma, Fractal, Famedly and others - thank you!! As a result the SDK is shaping up to be much more healthy and heterogeneous than the original matrix-{js,ios,android}-sdk projects.&lt;&#x2F;p&gt;
+&lt;p&gt;On Element X itself: matrix-rust-sdk is being used first on iOS in &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;vector-im&#x2F;element-x-ios&quot;&gt;Element X iOS&lt;&#x2F;a&gt; - aiming first for launching a stable “barbecue” feature set (i.e. personal messaging) asap, followed by adding on “banquet” features (i.e. team collaboration) such as spaces and threads afterwards. We’ve shamelessly misappropriated the barbecue &amp;amp; banquet terminology from Tobias Bernard’s excellent blog post “&lt;a href=&quot;https:&#x2F;&#x2F;blogs.gnome.org&#x2F;tbernard&#x2F;2018&#x2F;05&#x2F;16&#x2F;banquets-and-barbecues&#x2F;&quot;&gt;Banquets and Barbecues&lt;&#x2F;a&gt;” - although, ironically, unlike the post, our plan is still to have a single app which incrementally discloses the banquet functionality as the user’s barbecue starts to sprawl.  We’ve just published the brand new &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-rust-sdk&#x2F;projects&#x2F;1&quot;&gt;development roadmap&lt;&#x2F;a&gt; for Element X from the rust-sdk perspective on GitHub.  Above all else, the goal of Element X is to be the fastest mobile messenger out there in terms of launch and sync time, thanks to Sliding Sync.  Not just for Matrix - but the fastest messenger, full stop :D  Watch this space to see how we do!&lt;&#x2F;p&gt;
+&lt;p&gt;Finally: Element is getting a major redesign of the core UI on both iOS and Android - both for today’s Element and Element X.  I’m not going to spoil the final result (which is looking &lt;em&gt;amazing&lt;&#x2F;em&gt;) given it’ll have a proper glossy launch in a few weeks, but you can get a rough idea based on the earlier design previewed by Amsha back in June:&lt;&#x2F;p&gt;
+&lt;iframe width=&quot;2056&quot; height=&quot;980&quot; src=&quot;https:&#x2F;&#x2F;www.youtube.com&#x2F;embed&#x2F;oxfqQ0TrTXU?start=34&quot; title=&quot;Matrix Live S07E22 — Element UI experiments, and customising Element Web with greasemonkey&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture&quot; allowfullscreen&gt;&lt;&#x2F;iframe&gt;
+&lt;p&gt;In addition to the upcoming overall redesign, Element also landed a complete rework of the login and registration flows last week on iOS and Android - you can see all about it over on the &lt;a href=&quot;https:&#x2F;&#x2F;element.io&#x2F;blog&#x2F;all-aboard-better-ftue-for-less-wtf&#x2F;&quot;&gt;Element blog&lt;&#x2F;a&gt;.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;fast-remote-joins&quot;&gt;Fast Remote Joins&lt;&#x2F;h3&gt;
+&lt;p&gt;In terms of performance, the other area that we’re reworking at the protocol level is room joins. &lt;&#x2F;p&gt;
+&lt;p&gt;One of the most glaring shortcomings of Matrix happens when a new server admin excitedly decides to join the network, installs a homeserver, tries to join a large room like #matrix:matrix.org, and then looks on in horror as it takes 10+ minutes to join the room, promptly despairs of Matrix being slow and complains bitterly about it all over HN and Reddit :)&lt;&#x2F;p&gt;
+&lt;p&gt;The reason for the current behaviour is that the Matrix rooms are replicated between the servers who participate in them - and in the initial design of the protocol we made that replication atomic. In other words, a new server joining a room picks a server from which to acquire the room (typically the one in the room’s alias), and gets sent a copy of all the state events (i.e. structural data) about the room, as well as the last 20 or so messages.  For a big room like Matrix HQ, this can be massive - right now, there are 79,969 state events in the room - and 126,510 auth_chain events (i.e. the events used to justify the existence of the state events).  The reason there are so many is typically that the act of a user joining or parting the room is described by a state event - and in the naive implementation, the server needs to know all current state events in the room (e.g. including parted users), in order to keep in sync with the other servers in the room and faithfully authorise each new event which they receive for that room.&lt;&#x2F;p&gt;
+&lt;p&gt;However, each event is typically around 500 bytes in size, and so the act of joining a big room could require generating, transmitting, receiving, authenticating and storing up to 100MB of JSON 😱. This is why joining big rooms for the first time is so painfully slow.&lt;&#x2F;p&gt;
+&lt;p&gt;Happily, there is an answer: much as Sliding Sync lets clients synchronise with the bare minimum of data required to render their UI, we’ve created &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-spec-proposals&#x2F;blob&#x2F;rav&#x2F;proposal&#x2F;partial_state_on_join&#x2F;proposals&#x2F;3706-partial-state-in-send-join.md&quot;&gt;MSC3706&lt;&#x2F;a&gt; (and its precursor &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-spec-proposals&#x2F;blob&#x2F;matthew&#x2F;msc2775&#x2F;proposals&#x2F;2775-lazy-loading-over-federation.md&quot;&gt;MSC2775&lt;&#x2F;a&gt;) in order to rework the protocol to let servers receive the bare minimum of state needed to join a room in order to participate.  Practically speaking, we only really care about events relevant to the users who are currently participating in the room; the 40,000 other lurkers can be incrementally synced in the background so that our membership list is accurate - but it shouldn’t block us from being able to join or read (or peek) the room.  We already have membership lazyloading in the client-server API to support incrementally loaded membership data, after all.&lt;&#x2F;p&gt;
+&lt;p&gt;The problem with this change is that Synapse was written from the outset to assume that each room’s state should be atomically complete: in other words, room state shouldn’t  incrementally load in the background.  So the work for Faster Joins has been an exercise in auditing the entirety of Synapse for this assumption, and generally reviewing and hardening the whole state management system.  This has been &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;synapse&#x2F;pulls?q=is%3Apr+%22faster+joins%22+is%3Aclosed+&quot;&gt;loads of work&lt;&#x2F;a&gt; that has been going on since the end of last year - but the end is in sight: you can see the remaining issues &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;synapse&#x2F;milestone&#x2F;8&quot;&gt;here&lt;&#x2F;a&gt;.&lt;&#x2F;p&gt;
+&lt;p&gt;As of right now, faster joins work (although aren’t enabled by default) - with the main proviso that you can’t speak in the room yet until the background sync has completed, and the new implementation has not yet been optimised.  However, thanks to all the preparation work, this should be relatively straightforward, so the end is in sight on this one too.&lt;&#x2F;p&gt;
+&lt;p&gt;In terms of performance: right now, joining Matrix HQ via the unoptimised implementation of faster joins completes on a fresh server in roughly 30 seconds - so a &lt;strong&gt;~25x improvement&lt;&#x2F;strong&gt; over the ~12 minutes we’ve seen previously.  However, the really exciting news is that this only requires synchronising 45 state events and 107 auth_chain events to the new server - a &lt;strong&gt;~1400x improvement&lt;&#x2F;strong&gt;!  So there should be significant scope for further optimising the calculation of these 152 events, given 30 seconds to come up with 152 events is definitely on the high side.  In our ideal world, we’d be getting joins down to sub-second performance, no matter how big the room is - once again, watch this space to see how we do. &lt;&#x2F;p&gt;
+&lt;p&gt;Finally, alongside faster remote joins, we’re also working on faster local joins.  This work overlaps a bit with the optimisation needed to speed up the faster remote join logic - given we are seeing relatively simple operations unexpectedly taking tens of seconds in both instances. Some of this is needing to batch database activity more intelligently, but we also have some unknown pauses which we’re currently tracking down.  Profiling is afoot, as well as copious Jaeger and OpenTracing instrumentation - the hunt is on!&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;ratcheting-up-testing&quot;&gt;Ratcheting up testing&lt;&#x2F;h3&gt;
+&lt;p&gt;All the work above describes some pretty bold changes to speed up Matrix and improve usability - but in order to land these changes with confidence, avoiding regressions both now and in future, we have really levelled up our testing this year.&lt;&#x2F;p&gt;
+&lt;p&gt;Looking at matrix-react-sdk as used by Element Web&#x2F;Desktop: all PRs made to matrix-js-sdk must now pass 80% unit test coverage for new code (measured using &lt;a href=&quot;https:&#x2F;&#x2F;sonarcloud.io&#x2F;project&#x2F;overview?id=matrix-js-sdk&quot;&gt;Sonarqube&lt;&#x2F;a&gt;, enforced as a GitHub PR check). All matrix-react-sdk PRs must be accompanied by a mix of unit tests, end-to-end tests (via &lt;a href=&quot;https:&#x2F;&#x2F;www.cypress.io&#x2F;&quot;&gt;Cypress&lt;&#x2F;a&gt;) and screenshot tests (via &lt;a href=&quot;https:&#x2F;&#x2F;percy.io&#x2F;&quot;&gt;percy.io&lt;&#x2F;a&gt;). All regressions (in both nightly and stable) are retro’d to ensure fixed things stay fixed (usually via writing new tests), and we have converted &lt;a href=&quot;https:&#x2F;&#x2F;arewetsyet.bit.ovh&#x2F;&quot;&gt;fully to typescript&lt;&#x2F;a&gt; for full type safety.&lt;&#x2F;p&gt;
+&lt;p&gt;Concretely, since May, we’ve increased js-sdk unit test coverage by ~10% globally, increased react-sdk coverage by ~17%, and added ever more Cypress integration tests to cover the broad strokes.  Cypress now &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-react-sdk&#x2F;pull&#x2F;9104&quot;&gt;completely replaces&lt;&#x2F;a&gt; our old Puppeteer-based end-to-end tests, and Sliding Sync work in matrix-react-sdk is being extensively tested by Cypress from the outset (the Sliding Sync PR literally comes with a Cypress test suite).&lt;&#x2F;p&gt;
+&lt;p&gt;In mobile land, the situation is more complex given our long-term strategy is to deprecate matrix-ios-sdk and matrix-android-sdk2 in favour of matrix-rust-sdk. matrix-rust-sdk has always had &lt;a href=&quot;https:&#x2F;&#x2F;app.codecov.io&#x2F;gh&#x2F;matrix-org&#x2F;matrix-rust-sdk&quot;&gt;excellent coverage&lt;&#x2F;a&gt;, and in particular, adopting the crypto module in the current matrix-{js,ios,android}-sdk will represent a night and day improvement for quality (not to mention perf!). We’ll also be adopting &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;vector-im&#x2F;element-x-ios&#x2F;pull&#x2F;50&quot;&gt;PR checks&lt;&#x2F;a&gt;, and screenshot testing for the mobile SDKs.&lt;&#x2F;p&gt;
+&lt;p&gt;On the backend, we continue to build out test cases for our new integration tester &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;complement&quot;&gt;Complement&lt;&#x2F;a&gt; (in Golang), alongside the original &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;sytest&quot;&gt;sytest&lt;&#x2F;a&gt; integration test suite (in Perl). In particular, we can now test Synapse in worker mode. The intention with Complement is that it should be homeserver agnostic so that &lt;em&gt;any&lt;&#x2F;em&gt; homeserver implementation can benefit. Indeed the project was initiated by Kegan wearing his Dendrite hat. &lt;&#x2F;p&gt;
+&lt;p&gt;Finally, we’ve had a huge breakthrough with true multi-client end-to-end testing in the form of Michael Kaye’s brand new &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;trafficlight&quot;&gt;Traffic Light&lt;&#x2F;a&gt; project. For the first time, we can fully test things like cross signing and verification and VoIP calls end-to-end across completely different platforms and different clients. It’s early days yet, but this really will be a game changer, especially for crypto and VoIP. &lt;&#x2F;p&gt;
+&lt;p&gt;Next up, we will turn our attention to a performance testing framework so that we can reliably track performance improvements and regressions in an automated fashion - heavily inspired by Safari’s &lt;a href=&quot;https:&#x2F;&#x2F;www.goodreads.com&#x2F;quotes&#x2F;9844796-don-was-the-one-who-figured-out-how-we-would&quot;&gt;Page Load Test&lt;&#x2F;a&gt; approach. This will be essential as we build out new clients like Element X.&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;a-whole-new-world&quot;&gt;A whole new world&lt;&#x2F;h2&gt;
+&lt;p&gt;All the stuff above is focused on improving the core performance and usability of Matrix - but in parallel we have also been making enormous progress on entirely new features and capabilities. The following isn’t a comprehensive list, but we wanted to highlight a few of the areas where new development is progressing at a terrifying rate…&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;native-voip-conferencing&quot;&gt;Native VoIP Conferencing&lt;&#x2F;h3&gt;
+&lt;p&gt;2022 is turning out to be the year that Matrix finally gets fully native voice&#x2F;video conferencing. After speccing &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-spec-proposals&#x2F;blob&#x2F;matthew&#x2F;group-voip&#x2F;proposals&#x2F;3401-group-voip.md&quot;&gt;MSC3401&lt;&#x2F;a&gt; at the end of last year, &lt;a href=&quot;https:&#x2F;&#x2F;element.io&#x2F;blog&#x2F;introducing-native-matrix-voip-with-element-call&#x2F;&quot;&gt;Element Call Beta 1&lt;&#x2F;a&gt; launched as a reference implementation back in March, followed by enabling E2EE, spatial audio and walkie-talkie mode in &lt;a href=&quot;https:&#x2F;&#x2F;element.io&#x2F;blog&#x2F;element-call-beta-2-encryption-spatial-audio-walkie-talkie-mode-and-more&#x2F;&quot;&gt;Element Call Beta 2&lt;&#x2F;a&gt; in June.&lt;&#x2F;p&gt;
+&lt;p&gt;However, the catch was that Element Call beta 1 and 2 only ever implemented “full mesh” conferencing - where every participant calls every other participant simultaneously, limiting the size of the conference to ~7 participants on typical hardware, and wasting lots of bandwidth (given you end up sending the same upstream multiple times over for all the other participants).  Element Call has been working surprisingly well in spite of this, but the design of MSC3401 was always to have “foci” (the plural of ‘focus’ - i.e. conference servers) to optionally sit alongside homeservers in order to aggregate the participating calls, a bit like this:&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;img src=&quot;&#x2F;blog&#x2F;img&#x2F;2022-08-15-msc3401.jpg&quot; alt=&quot;MSC3401 Architecture&quot; &#x2F;&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;With foci, clients only need to send their upstream to their local focus, rather than replicating it across all the other participants - and the focus can then fan it out to other foci or clients as required.  In fact, if no other clients are even watching your upstream, then your client can skip sending an upstream to its focus entirely!&lt;&#x2F;p&gt;
+&lt;p&gt;Most importantly, foci are decentralised, just like Matrix: there is no single conference server as a single point of control or failure responsible for powering the group call - users connect to whichever focus is closest to them, and so you automatically get a standards-based heterogeneous network-split-resilient geographically distributed cascading conferencing system with end-to-end-encryption, powered by a potentially infinite number of different implementations.  To the best of our knowledge, this is the first time someone’s proposed an approach like this for decentralised group calling (watch out, Zoom, we’re coming for you!)&lt;&#x2F;p&gt;
+&lt;p&gt;Now, the VoIP team have been busy polishing Element Call (e.g. chasing down end-to-end encryption edge cases and reliability), and also figuring out how to embed it into Element and other Matrix clients as a quick way to get excellent group VoIP (more on that later).  As a result, work on building out foci for scalable conferencing had to be pushed down the line.&lt;&#x2F;p&gt;
+&lt;p&gt;But in the last few months this completely changed, thanks to an &lt;strong&gt;amazing&lt;&#x2F;strong&gt; open source contribution from Sean DuBois, project lead over at &lt;a href=&quot;https:&#x2F;&#x2F;pion.ly&#x2F;&quot;&gt;Pion&lt;&#x2F;a&gt; - the excellent Golang WebRTC implementation.  Inspired by our &lt;a href=&quot;https:&#x2F;&#x2F;2021.commcon.xyz&#x2F;talks&#x2F;extending-matrix-s-e2ee-calls-to-multiparty&quot;&gt;initial talk&lt;&#x2F;a&gt; about MSC3401 at CommCon, Sean independently decided to see how hard it’d be to build a Selective Forwarding Unit (SFU) focus that implemented MSC3401 semantics using Pion - and published it at &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;sean-der&#x2F;sfu-to-sfu&quot;&gt;https:&#x2F;&#x2F;github.com&#x2F;sean-der&#x2F;sfu-to-sfu&lt;&#x2F;a&gt; (subsequently donated to github.com&#x2F;matrix-org).  In many ways this was a flag day for Matrix: it’s the first time that a core MSC from the core team has been first implemented from outside the core team (let alone outside the Matrix community!).  It’s the VoIP equivalent of Synapse starting off life as a community contribution rather than being written by the core team.&lt;&#x2F;p&gt;
+&lt;p&gt;Either way: Sean’s SFU work has opened the floodgates to making native Matrix conferencing actually scale, with Šimon Brandner and I jumping in to &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-js-sdk&#x2F;pull&#x2F;2423&quot;&gt;implement SFU support&lt;&#x2F;a&gt; in matrix-js-sdk… and as of a few weeks ago we did the first ever SFU-powered Matrix call - which worked impressively well for 12 participants!&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;img src=&quot;&#x2F;blog&#x2F;img&#x2F;2022-08-15-sfu.jpg&quot; alt=&quot;12 person Element Call&quot; &#x2F;&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;Now, this isn’t released yet, and there is still work to be done, including:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;We actually need to select the subset of streams we care about from the focus&lt;&#x2F;li&gt;
+&lt;li&gt;We need to support thumbnail streams as well as high-res streams&lt;&#x2F;li&gt;
+&lt;li&gt;We need rate control to ensure clients on bad connections don’t get swamped&lt;&#x2F;li&gt;
+&lt;li&gt;We need to hook up cascading between foci (although the SFU already supports it!)&lt;&#x2F;li&gt;
+&lt;li&gt;We need E2EE via insertable streams&lt;&#x2F;li&gt;
+&lt;li&gt;Faster signalling for switching between streams&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;You can see the full todo list for basic and future features over on GitHub.  However, we’re making good progress thanks to Šimon’s work and Sean’s help - but with any luck beta 3 of Element Call might showcase SFU support!&lt;&#x2F;p&gt;
+&lt;p&gt;Meanwhile it’s worth noting that Element Call is not the only MSC3401 implementation out there - the Hydrogen team has added native support to Hydrogen SDK too (skipping over the old 1:1 calling), so expect to see Element &amp;lt;-&amp;gt; Hydrogen calling in the near future. The Hydrogen implementation is also what powers Third Room (see below…)&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;matryoshka-voip-embedding&quot;&gt;Matryoshka VoIP Embedding&lt;&#x2F;h3&gt;
+&lt;p&gt;Elsewhere on VoIP, we’ve also been hard at work figuring out how to embed Element Call into Matrix clients in general, starting with Element Web, iOS &amp;amp; Android.  Given MSC3401 is effectively a superset of native 1:1 Matrix VoIP calling, we’d ideally like to replace the current 1:1-only VoIP implementation in Element with an embedded instance of Element Call (not least so we don’t have to maintain it in triplicate over Web&#x2F;iOS&#x2F;Android, and because WebRTC-in-a-webview really isn’t very different to native WebRTC).  To do this efficiently however, the embedded Element Call needs to share the same underlying Matrix client as the parent Element client (otherwise you end up wasting resources and devices and E2EE overhead between the two).  Effectively Element Call ends up needing to parasite off the parent’s client.  We call this approach “matryoshka embedding”, given it resembles nested Russian dolls. 🪆&lt;&#x2F;p&gt;
+&lt;p&gt;In practice, we do this by extending the Widget API to let Matrix clients within the widget share the parent’s Matrix client for operations such as sending and receiving to-device messages and accessing TURN servers (c.f. &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-spec-proposals&#x2F;blob&#x2F;travis&#x2F;msc&#x2F;widgets-send-recv-toDevice&#x2F;proposals&#x2F;3819-to-device-messages-for-widgets.md&quot;&gt;MSC3819&lt;&#x2F;a&gt; and &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;robintown&#x2F;matrix-doc&#x2F;blob&#x2F;widget-turn-servers&#x2F;proposals&#x2F;3846-widget-turn-servers.md&quot;&gt;MSC3846&lt;&#x2F;a&gt;).  This in turn has been &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-widget-api&#x2F;pull&#x2F;57&quot;&gt;implemented&lt;&#x2F;a&gt; in the matrix-widget-api helper library for widget implementers - and then a few days ago Robin demonstrated the world’s first ever matryoshka embedded Element Call call, looking like this:&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;img src=&quot;&#x2F;blog&#x2F;img&#x2F;2022-08-15-matryoshka.jpg&quot; alt=&quot;Matryoshka embedded Element Call&quot; &#x2F;&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;Note that the MSC3401 events are happening in the actual room where the widget has been added, sent by the right users from Element Web rather than from Element Call, and so are subject to all the normal Matrix access control and encryption semantics.  This is a &lt;em&gt;huge&lt;&#x2F;em&gt; step forwards from embedding Jitsi widgets, where the subsequent call membership and signalling happens in an entirely separate system (XMPP via Prosody, ironically) - instead: this is proper native Matrix calling at last.&lt;&#x2F;p&gt;
+&lt;p&gt;Moreover, the same trick could be used to efficiently embed other exotic Matrix clients such as Third Room or &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;toger5&#x2F;TheBoard&quot;&gt;TheBoard&lt;&#x2F;a&gt; - giving the user the choice either to use the app standalone or within the context of their existing Matrix client. Another approach could be to use OIDC scopes to transparently log the embedded client in using the parent’s identity; this has the advantage of no code changes being needed on the embedded client - but has the disadvantage that you needlessly end up running two Matrix clients for the same account side by side, and adding another device to your account, which isn’t ideal for a performance sensitive app like Element Call or Third Room.&lt;&#x2F;p&gt;
+&lt;p&gt;Matryoshka embedding isn’t live yet, but between scalable calls via SFU and native Element Call in Element Web&#x2F;iOS&#x2F;Android, the future is looking incredibly exciting for native Matrix VoIP.  We hope to finish embedding Element Call in Element Web&#x2F;iOS&#x2F;Android in Sept&#x2F;Oct - and if we get lucky perhaps the SFU will be ready too and then Element Call can exit beta!&lt;&#x2F;p&gt;
+&lt;p&gt;Finally, we also added Video Rooms to Element Web - adding the user interface for an “always on” video room that you can hop into whenever you want.  You can read about it over on the &lt;a href=&quot;https:&#x2F;&#x2F;element.io&#x2F;blog&#x2F;drop-in-drop-out-chats-with-video-rooms-and-a-new-search-experience&#x2F;&quot;&gt;Element blog&lt;&#x2F;a&gt; - the initial implementation uses Jitsi, but once Element Call and Matryoshka embedding is ready, we’ll switch over to using Element Call instead (and add Voice Rooms too!)&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;img src=&quot;&#x2F;blog&#x2F;img&#x2F;2022-08-15-video-rooms.jpg&quot; alt=&quot;Video Rooms&quot; &#x2F;&gt;&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;third-room&quot;&gt;Third Room&lt;&#x2F;h3&gt;
+&lt;p&gt;Just as MSC3401 and Element Call natively adds decentralised voice&#x2F;video conferences to boring old textual Matrix chatrooms, &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-spec-proposals&#x2F;pull&#x2F;3815&quot;&gt;MSC3815&lt;&#x2F;a&gt; and &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;thirdroom&#x2F;blob&#x2F;main&#x2F;README.md&quot;&gt;Third Room&lt;&#x2F;a&gt; go the whole enchilada and adds a full decentralised 3D spatial collaboration environment into your Matrix room - letting you turn your Matrix rooms into a full blown interconnected virtual world.&lt;&#x2F;p&gt;
+&lt;p&gt;I can’t overstate how exciting this is: one of the key origins of Matrix was back in Oct 2013 when Amandine and myself found ourselves in Berlin after TechCrunch Disrupt, debating why Second Life hadn’t been more successful - and wondering what you’d have to do to build an immersive 3D social environment which would be as positive and successful as a wildly popular chat network.  Our conclusion was that the first key ingredient you’d need would be a kick-ass open decentralised communication protocol to build it on - providing truly open communication primitives that anyone could build on, much like the open web… and that was what got us thinking about how to build Matrix.&lt;&#x2F;p&gt;
+&lt;p&gt;Fast forward 9 years, and Third Room is making &lt;em&gt;spectacular&lt;&#x2F;em&gt; progress in building out this dream, thanks to the incredibly hard work of Robert, Nate and Ajay. The goal of Third Room is to be an open platform layered directly on Matrix for spatial collaboration of any kind: effectively a blank canvas to let folks create freeform collaborative 3D (and in future 2D, VR or AR) experiences, either by using existing assets or building their own user-generated content and functionality. Just like the open web itself, this unlocks a literally infinite range of possibilities, but some of the obvious uses include: spatial telepresence, social VR, 3D visualisation of GIS or weather data, 3D simulated environments, search and rescue and disaster response operations (imagine streaming LIDAR from a drone surveying hurricane devastation into Third Room, where you can then overlay and collaborate on GIS data in realtime), and of course 3D gaming in all its various forms.&lt;&#x2F;p&gt;
+&lt;p&gt;Now, we’re hoping to give Third Room a proper launch in a few weeks, so I’m not going to spoil too much right now - but the final pieces which are currently coming together include:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Finalising the initial version of &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;thirdroom&#x2F;tree&#x2F;main&#x2F;src&#x2F;engine&quot;&gt;Manifold&lt;&#x2F;a&gt;, the multi-threaded game engine which powers Third Room (built on &lt;a href=&quot;https:&#x2F;&#x2F;threejs.org&#x2F;&quot;&gt;Three.JS&lt;&#x2F;a&gt;, &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;NateTheGreatt&#x2F;bitECS&quot;&gt;bitECS&lt;&#x2F;a&gt; and &lt;a href=&quot;https:&#x2F;&#x2F;rapier.rs&#x2F;&quot;&gt;Rapier&lt;&#x2F;a&gt;), using SharedArrayBuffers as triple-buffers to synchronise between the various threads.  See &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;thirdroom&#x2F;discussions&#x2F;47#discussion-4033099&quot;&gt;this update&lt;&#x2F;a&gt; for a bit more detail on how the engine works.&lt;&#x2F;li&gt;
+&lt;li&gt;Finalising the Matrix client interface itself, powered by &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;vector-im&#x2F;hydrogen-web&#x2F;blob&#x2F;master&#x2F;doc&#x2F;SDK.md&quot;&gt;Hydrogen SDK&lt;&#x2F;a&gt; in order to be as lightweight as possible&lt;&#x2F;li&gt;
+&lt;li&gt;Adding in full spatial audio and game networking via MSC3401 and Hydrogen SDK (currently full mesh, but will go SFU as soon as SFUs land!)&lt;&#x2F;li&gt;
+&lt;li&gt;Adding in animated avatars (currently using &lt;a href=&quot;https:&#x2F;&#x2F;www.mixamo.com&#x2F;&quot;&gt;Mixamo&lt;&#x2F;a&gt; animations)&lt;&#x2F;li&gt;
+&lt;li&gt;Adding in name tags and object labels&lt;&#x2F;li&gt;
+&lt;li&gt;Adding in 3D Tile support in order to incrementally load 3D map tiles à la Google Earth&lt;&#x2F;li&gt;
+&lt;li&gt;Building an asset pipeline from Unity and Blender through to the glTF assets which Third Room uses.&lt;&#x2F;li&gt;
+&lt;li&gt;Initial framework for an in-world direct-manipulation &lt;a href=&quot;https:&#x2F;&#x2F;twitter.com&#x2F;matrixdotorg&#x2F;status&#x2F;1550534909089189888&quot;&gt;editor&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;Lightmap support for beautiful high-performance static lighting and shadows&lt;&#x2F;li&gt;
+&lt;li&gt;Full post-processing pipeline (bloom, depth-of-field, anti-aliasing etc)&lt;&#x2F;li&gt;
+&lt;li&gt;Integrating with OIDC for login, registration, and account management (see OIDC below)&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;As a quick teaser - here’s an example of a &lt;a href=&quot;https:&#x2F;&#x2F;assetstore.unity.com&#x2F;packages&#x2F;3d&#x2F;environments&#x2F;sci-fi&#x2F;3d-scifi-kit-vol-3-121447&quot;&gt;Unity asset&lt;&#x2F;a&gt; exported into Third Room, showing off lightmaps (check out the light and shadows cast by the strip lighting inside, or the shadow on the ground outside).  Ignore the blurry HDR environment map of Venice in the background, which is just there to give the metals something to reflect.  Check out the stats on the right-hand side: on Robert’s M1 Macbook Pro we’re getting a solid 60fps at 2000x1244px, with 13.12ms of unused gametime available for every 16.67ms frame, despite already showing a relatively complicated asset!&lt;&#x2F;p&gt;
+&lt;iframe width=&quot;2056&quot; height=&quot;980&quot; src=&quot;https:&#x2F;&#x2F;www.youtube.com&#x2F;embed&#x2F;xvjMyYxZbmM&quot; title=&quot;Third Room prototype demo 1&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture&quot; allowfullscreen&gt;&lt;&#x2F;iframe&gt;
+&lt;p&gt;Meanwhile, here are some shots of Robert and Nate chasing each other around the UK City demo environment (also exported from &lt;a href=&quot;https:&#x2F;&#x2F;assetstore.unity.com&#x2F;packages&#x2F;3d&#x2F;environments&#x2F;urban&#x2F;city-builder-london-214943&quot;&gt;Unity&lt;&#x2F;a&gt;), showing off blended Mixamo animations and throwing around crates thanks to the Rapier physics engine.&lt;&#x2F;p&gt;
+&lt;iframe width=&quot;2056&quot; height=&quot;980&quot; src=&quot;https:&#x2F;&#x2F;www.youtube.com&#x2F;embed&#x2F;y2mU19QwZPg&quot; title=&quot;Third Room prototype demo 2&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture&quot; allowfullscreen&gt;&lt;&#x2F;iframe&gt;
+&lt;iframe width=&quot;2056&quot; height=&quot;980&quot; src=&quot;https:&#x2F;&#x2F;www.youtube.com&#x2F;embed&#x2F;QEt80wvO4yY&quot; title=&quot;Third Room prototype demo 3&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture&quot; allowfullscreen&gt;&lt;&#x2F;iframe&gt;
+&lt;br&#x2F;&gt;
+&lt;p&gt;And don&#x27;t forget, it&#x27;s just a Matrix client - with no infrastructure required other than a normal Matrix server:&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;img src=&quot;&#x2F;blog&#x2F;img&#x2F;2022-08-15-thirdroom-overlay.jpg&quot; alt=&quot;Third Room Overlay&quot; &#x2F;&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;As you can see, we are rapidly approaching the point where we’ll need support from technical artists to help create beautiful scenes and avatars and assets in order to make it all come to life - especially once the Blender and Unity pipelines, and&#x2F;or the Third Room editor are finished. If you’re interested in getting involved come chat at &lt;a href=&quot;https:&#x2F;&#x2F;matrix.to&#x2F;#&#x2F;#thirdroom:matrix.org&quot;&gt;#thirdroom:matrix.org&lt;&#x2F;a&gt;!&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;wysiwyg&quot;&gt;WYSIWYG&lt;&#x2F;h3&gt;
+&lt;p&gt;Back in the real world, a recent new project that we haven’t spoken about much yet is adding consistent WYSIWYG (What You See Is What You Get) editing to the message composer in matrix-{react,ios,android}-sdk as used by Element Web&#x2F;iOS&#x2F;Android - as well as publishing the resulting WYSIWYG editor for the greater glory of the wider ecosystem.&lt;&#x2F;p&gt;
+&lt;p&gt;This is a bit of a contentious area, because we’ve tried several times over the years to add a rich text editor to matrix-react-sdk - firstly with the &lt;a href=&quot;https:&#x2F;&#x2F;draftjs.org&#x2F;&quot;&gt;Draft.js&lt;&#x2F;a&gt; &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-react-sdk&#x2F;pull&#x2F;292&quot;&gt;implementation&lt;&#x2F;a&gt; by Aviral (which we abandoned after Facebook de-staffed Draft), and then later with a &lt;a href=&quot;https:&#x2F;&#x2F;www.slatejs.org&quot;&gt;Slate&lt;&#x2F;a&gt; &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-react-sdk&#x2F;pull&#x2F;1890&quot;&gt;implementation&lt;&#x2F;a&gt; by me (which we abandoned thanks to the maintenance burden of keeping up with Slate’s API changes).  Finally, burnt by the experience with third party solutions, Bruno wrote his own editor called &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-react-sdk&#x2F;blob&#x2F;develop&#x2F;docs&#x2F;ciderEditor.md&quot;&gt;CIDER&lt;&#x2F;a&gt;, which was a great success and is what Element Web uses today to author messages including ‘pills’ for structured rooms&#x2F;users etc… but this deliberately didn’t provide full WYSIWYG functionality.  Meanwhile, Slack added WYSIWYG, forced it on, and &lt;a href=&quot;https:&#x2F;&#x2F;quuxplusone.github.io&#x2F;blog&#x2F;2019&#x2F;11&#x2F;20&#x2F;slack-rich-text-box&#x2F;&quot;&gt;screwed it up&lt;&#x2F;a&gt; - and apps like WhatsApp and Discord seem to get by fine without WYSIWYG. &lt;&#x2F;p&gt;
+&lt;p&gt;However, given that users are now used to WYSIWYG in Teams and Slack, we’ve now decided to have another go at it, inspired by CIDER’s success - and with the novel twist that the heavy lifting of modelling and versioning the document and handling Unicode + CJK voodoo will be provided by a cross-platform native library written in Rust, ensuring that matrix-{react,ios,android}-sdk (and in future matrix-rust-sdk-based apps like Element X) all have precisely the same consistent semantics, and we don’t spend our lives fixing per-platform WYSIWYG bugs unless it really is a platform-specific issue with the user interface provided on that particular platform.&lt;&#x2F;p&gt;
+&lt;p&gt;The project is fairly young but developing fast, and lives over at &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-wysiwyg&quot;&gt;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-wysiwyg&lt;&#x2F;a&gt; (better name suggestions welcome ;) - we’re aiming to get it into clients by the end of October.  The editor itself is not Matrix specific at all, so it’ll be interesting to see if other projects pick it up at all - and meanwhile, if we’ve done a good job, it’ll be interesting to see if this can be used to power Matrix-backed collaborative-editing solutions in future…&lt;&#x2F;p&gt;
+&lt;iframe width=&quot;2056&quot; height=&quot;980&quot; src=&quot;https:&#x2F;&#x2F;www.youtube.com&#x2F;embed&#x2F;9_UhNBKUk7A&quot; title=&quot;WYSIWYG teaser on Android&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture&quot; allowfullscreen&gt;&lt;&#x2F;iframe&gt;
+&lt;p&gt;&lt;strong&gt;Update&lt;&#x2F;strong&gt;: we should have mentioned that the WYSIWYG editor project is being built out by staff at Element, who very kindly have been sponsored to work on it by one of Element&#x27;s Big Public Sector Customers in order to get to parity with Teams.  Thank you!!&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;are-we-oidc-yet&quot;&gt;Are We OIDC Yet?&lt;&#x2F;h3&gt;
+&lt;p&gt;On the other hand, a project we recently &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2022&#x2F;08&#x2F;10&#x2F;areweoidcyet-com-matrix-and-open-id-connect&quot;&gt;yelled about&lt;&#x2F;a&gt; a lot is Matrix’s transition to Open ID Connect for standards-based authentication and account management.  We announced this at the &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2021&#x2F;12&#x2F;22&#x2F;the-mega-matrix-holiday-special-2021#openid-connect&quot;&gt;end of the year&lt;&#x2F;a&gt; and the project has built up huge momentum subsequently, culminating with the release of &lt;a href=&quot;https:&#x2F;&#x2F;areweoidcyet.com&quot;&gt;https:&#x2F;&#x2F;areweoidcyet.com&lt;&#x2F;a&gt; last week to track the progress and remaining work.&lt;&#x2F;p&gt;
+&lt;p&gt;Our plan is to use native OIDC in production for the first time to provide all the login, registration and account management for Third Room when it launches in a few weeks (using a branded Keycloak instance as the identity provider, for convenience).  After all, the last thing we wanted to do was to waste time building fiddly Matrix-specific login&#x2F;registration UI in Third Room when we’re about to move to OIDC!  This will be an excellent case study to see how it works, and how it feels, and inform the rest of the great OIDC experiment and proposed migration.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;dendrite-p2p&quot;&gt;Dendrite + P2P&lt;&#x2F;h3&gt;
+&lt;p&gt;Meanwhile, the Next Generation team has continued to focus on their mission to make Dendrite as efficient and usable as possible. Within recent months, Dendrite has matured dramatically, with a considerable list of bugs fixed, performance significantly improved and new features added - push notifications, history visibility and presence to name a few notable additions.&lt;&#x2F;p&gt;
+&lt;p&gt;Neil Alexander, Kegan and Till have continued to streamline the Dendrite architecture and to refactor areas of the codebase which have long needed attention, as well as moving from Kafka to NATS JetStream, an all-new caching model and some other fairly major architectural changes. We’ve also seen an increase of code contributions from the community and outside organisations, which is exciting, and the &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;gomatrixserverlib&quot;&gt;gomatrixserverlib&lt;&#x2F;a&gt; library which underpins much of Dendrite is also seeing more active development and attention thanks to its use in the &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;complement&quot;&gt;Complement&lt;&#x2F;a&gt; integration testing suite.&lt;&#x2F;p&gt;
+&lt;p&gt;With the most recent &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;dendrite&#x2F;releases&quot;&gt;0.9.3 release&lt;&#x2F;a&gt;, we are proud to announce that &lt;strong&gt;Dendrite now&lt;&#x2F;strong&gt; &lt;strong&gt;passes 90% of Client-Server API tests and 95% of Server-Server API tests&lt;&#x2F;strong&gt; and has support for all specced room versions in use today. We have a growing community of users who are (quite successfully) trialling using Dendrite homeservers day-to-day, as well as our own public &lt;code&gt;dendrite.matrix.org&lt;&#x2F;code&gt; homeserver, which is open to the public for registration for anyone who wants to experiment with Dendrite without running their own deployment.&lt;&#x2F;p&gt;
+&lt;p&gt;Dendrite plays an important role in our future strategy as it is also the homeserver implementation used for embedded homeservers, P2P development and experimentation. In addition to being able to scale up, we have also successfully scaled down, with the Element P2P demos proving that an embedded Dendrite homeserver can run comfortably on an iOS or Android device.&lt;&#x2F;p&gt;
+&lt;p&gt;Research on the &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;pinecone&#x2F;&quot;&gt;Pinecone&lt;&#x2F;a&gt; overlay network for P2P Matrix has also continued, with Devon and Neil having experimented with a number of protocol iterations and spent considerable time bringing the &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;pinecone&#x2F;tree&#x2F;main&#x2F;cmd&#x2F;pineconesim&quot;&gt;Pinecone Simulator&lt;&#x2F;a&gt; up to scratch to help us to test our designs more rapidly. Our work in this area is helping us to form a better direction and strategy for P2P Matrix as a whole, which is moving more towards a hybridised model with the current Matrix federation — a little different to our original vision, but will hopefully result in a much smoother transition path for existing users whilst solving some potential scaling problems. The &lt;a href=&quot;https:&#x2F;&#x2F;arewep2pyet.com&quot;&gt;arewep2pyet.com&lt;&#x2F;a&gt; site is a living page which contains a high level overview of our goals and all the progress being made.&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;what-s-left&quot;&gt;What’s left?&lt;&#x2F;h2&gt;
+&lt;p&gt;Comparing all of the above with the &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2021&#x2F;12&#x2F;22&#x2F;the-mega-matrix-holiday-special-2021#2022&quot;&gt;predictions for 2022&lt;&#x2F;a&gt; section of the end-of-year blog post, we’re making very strong progress in a tonne of areas - and the list above isn’t comprehensive.  For instance, we haven’t called out all the work that the Trust &amp;amp; Safety team are doing to roll out advanced moderation features by default to all communities - or the work that Eric has been doing to close the remaining gap between Gitter and Matrix by creating new static archives throughout Matrix.  Hydrogen has also been beavering away to provide a tiny but perfectly formed web client suitable for embedding, including the new embeddable Hydrogen SDK. We haven’t spoken about the work that the Cryptography team have been doing to adopt vodozemac and matrix-rust-sdk-crypto throughout matrix-{js,ios,android}-sdk, or improve encryption stability and security throughout.  We’ve also not spoken about the new initiative to fix long-term chronic bugs (outside of the work above) in general - or all the work being done around &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2022&#x2F;03&#x2F;30&#x2F;technical-faq-on-the-digital-markets-act&quot;&gt;Digital Markets Act interoperability&lt;&#x2F;a&gt;…&lt;&#x2F;p&gt;
+&lt;p&gt;Other things left on the menu for this year include getting Threads out of beta: we’ve had a bit of an adventure here figuring out how to get the right semantics for notification badges and unread state in rooms with threads (especially if you use a mix of clients which support and don’t support threads), and once that’s done we’ll be returning to Spaces (performance, group permissions etc).&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;matrix-2-0&quot;&gt;Matrix 2.0?&lt;&#x2F;h2&gt;
+&lt;p&gt;Looking through this post (and congratulations if you’re still reading it at this point ;P), it really feels that Matrix is on the verge of shifting into a new phase.  Much as MacOS X started off as a promising but distinctly unoptimised operating system, and then subsequently got unrecognisably faster year by year (even on the same hardware!) as Apple diligently worked away optimising the kernel… similarly: we are now landing the architectural changes to completely transform how Matrix performs.&lt;&#x2F;p&gt;
+&lt;p&gt;Between protocol changes like Sliding Sync, Faster Joins, native OIDC and native VoIP conferencing all landing at roughly the same time - and alongside new implementations like matrix-rust-sdk and vodozemac, let alone Third Room - it feels unquestionably like we have an unrecognisable step change on the horizon.  Our aim is to land as much of this as possible by the end of the year, and if we pull it off, I’m tempted to suggest we call the end result Matrix 2.0.&lt;&#x2F;p&gt;
+&lt;p&gt;To the future! 🚀&lt;&#x2F;p&gt;
+&lt;p&gt;Matthew, Amandine &amp;amp; the whole core team.&lt;&#x2F;p&gt;
+</content>
+	</entry>
+	<entry xml:lang="en">
+		<title>areweoidcyet.com - Matrix and OpenID Connect</title>
+		<published>2022-08-10T16:23:17+00:00</published>
+		<updated>2022-08-10T16:23:17+00:00</updated>
+		<link rel="alternate" href="/blog/2022/08/10/areweoidcyet-com-matrix-and-open-id-connect/" type="text/html"/>
+		<id>/blog/2022/08/10/areweoidcyet-com-matrix-and-open-id-connect/</id>
+		<content type="html">&lt;p&gt;TL;DR: we’ve just launched &lt;a href=&quot;https:&#x2F;&#x2F;areweoidcyet.com&quot;&gt;areweoidcyet.com&lt;&#x2F;a&gt; to track the project to adopt OpenID Connect (OIDC) as &lt;em&gt;the&lt;&#x2F;em&gt; authentication method used by Matrix. It has a load of useful resources (&lt;a href=&quot;https:&#x2F;&#x2F;areweoidcyet.com&#x2F;#faqs&quot;&gt;FAQs&lt;&#x2F;a&gt;, &lt;a href=&quot;https:&#x2F;&#x2F;areweoidcyet.com&#x2F;#when&quot;&gt;status&lt;&#x2F;a&gt; etc.) so do please check it out!&lt;&#x2F;p&gt;
+&lt;p&gt;Hey folks,&lt;&#x2F;p&gt;
+&lt;p&gt;As you may know, there is a &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-spec-proposals&#x2F;pull&#x2F;3861&quot;&gt;proposal&lt;&#x2F;a&gt; and project afoot to change the way authentication is done in Matrix…&lt;&#x2F;p&gt;
+&lt;p&gt;Currently Matrix uses a &lt;a href=&quot;https:&#x2F;&#x2F;spec.matrix.org&#x2F;v1.3&#x2F;client-server-api&#x2F;#client-authentication&quot;&gt;custom authentication protocol&lt;&#x2F;a&gt; baked into the Matrix spec. This poses a number of drawbacks. To overcome these drawbacks the project proposes migrating to use the industry standard authentication protocol OpenID Connect (OIDC) instead.&lt;&#x2F;p&gt;
+&lt;p&gt;In terms of why this is a good idea: &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-spec-proposals&#x2F;blob&#x2F;hughns&#x2F;delegated-oidc-architecture&#x2F;proposals&#x2F;3861-delegated-oidc-architecture.md&quot;&gt;MSC3861&lt;&#x2F;a&gt; has all the details - please check it out! &lt;&#x2F;p&gt;
+&lt;p&gt;The bottom line is that Matrix should focus on being a decentralised communication protocol - &lt;strong&gt;not&lt;&#x2F;strong&gt; an authentication protocol… and by adopting a dedicated authentication protocol we can benefit from all sorts of goodies such as easy 2FA and MFA, passwordless-auth via WebAuthn, Login via QR-code, alternative CAPTCHAs and so much more.&lt;&#x2F;p&gt;
+&lt;p&gt;In support of this the proposal extends to the Matrix.org Foundation joining the OpenID Foundation as a non-profit member to support the work that the OpenID Foundation is doing to build a robust and audited ecosystem for open authentication.&lt;&#x2F;p&gt;
+&lt;p&gt;Whilst this project proposes a significant change to the Matrix ecosystem that would take some time to migrate to, we believe that it will better support the continued growth and adoption of Matrix in the years to come.&lt;&#x2F;p&gt;
+&lt;p&gt;Today we are launching the &lt;a href=&quot;https:&#x2F;&#x2F;areweoidcyet.com&#x2F;&quot;&gt;areweoidcyet.com&lt;&#x2F;a&gt; website which is packed with information and resources on the project:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;What? Why? When?&lt;&#x2F;li&gt;
+&lt;li&gt;MSC proposals&lt;&#x2F;li&gt;
+&lt;li&gt;Status of homeservers, clients, auth servers (OIDC Providers&#x2F;OPs)&lt;&#x2F;li&gt;
+&lt;li&gt;A client implementation guide&lt;&#x2F;li&gt;
+&lt;li&gt;Links to the Matrix OIDC Playground environment where you can try out the latest progress&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;Please do take a look and come join us at &lt;a href=&quot;https:&#x2F;&#x2F;matrix.to&#x2F;#&#x2F;#matrix-auth:matrix.org&quot;&gt;#matrix-auth:matrix.org&lt;&#x2F;a&gt;!&lt;&#x2F;p&gt;
+&lt;p&gt;Best wishes,&lt;&#x2F;p&gt;
+&lt;p&gt;Hugh &amp;amp; Quentin&lt;&#x2F;p&gt;
+</content>
+	</entry>
+	<entry xml:lang="en">
+		<title>Welcoming Rocket.Chat to Matrix!</title>
+		<published>2022-05-30T19:04:12+00:00</published>
+		<updated>2022-05-30T16:16:53+00:00</updated>
+		<link rel="alternate" href="/blog/2022/05/30/welcoming-rocket-chat-to-matrix/" type="text/html"/>
+		<id>/blog/2022/05/30/welcoming-rocket-chat-to-matrix/</id>
+		<content type="html">&lt;div style=&quot;text-align: center&quot;&gt;
+&lt;img src=&quot;&#x2F;blog&#x2F;img&#x2F;rocketchat.png&quot; alt=&quot;Rocket.Chat ♥️ Matrix&quot;&#x2F;&gt;
+&lt;&#x2F;div&gt;
+&lt;p&gt;Hi folks,&lt;&#x2F;p&gt;
+&lt;p&gt;We just wanted to take a moment to welcome &lt;a href=&quot;https:&#x2F;&#x2F;rocket.chat&quot;&gt;Rocket.Chat&lt;&#x2F;a&gt; to Matrix, given the &lt;a href=&quot;https:&#x2F;&#x2F;rocket.chat&#x2F;press-releases&#x2F;rocket-chat-leverages-matrix-protocol-for-decentralized-and-interoperable-communications&quot;&gt;recent announcement&lt;&#x2F;a&gt; that they are switching to using Matrix for standards-based interoperable federation!  This is incredible news: Rocket.Chat is one of the leading open source collaboration platforms with &lt;a href=&quot;https:&#x2F;&#x2F;rocket.chat&#x2F;company&#x2F;about-us&quot;&gt;over 12 million users&lt;&#x2F;a&gt;, and they will all shortly have the option to natively interoperate with the wider Matrix network: the feature has already landed (in alpha) in &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;RocketChat&#x2F;Rocket.Chat&#x2F;releases&#x2F;tag&#x2F;4.7.0&quot;&gt;Rocket.Chat 4.7.0&lt;&#x2F;a&gt;!&lt;&#x2F;p&gt;
+&lt;p&gt;We’d like to thank the whole Rocket.Chat team for putting their faith in Matrix and joining the network: the whole idea of Matrix is that by banding together, different independent organisations can build an open decentralised network which is far stronger and more vibrant than any closed communication platform.  The more organisations that join Matrix, the &lt;a href=&quot;https:&#x2F;&#x2F;en.wikipedia.org&#x2F;wiki&#x2F;Metcalfe%27s_law&quot;&gt;more useful and valuable&lt;&#x2F;a&gt; the network becomes for everyone, and the more momentum there is to further refine and improve the protocol.  Our intention is that Matrix will grow into a massive open ecosystem and industry, akin to the open Web itself… and that every organisation participating, be that Rocket.Chat, Element, Gitter, Beeper, Famedly or anyone else will benefit from being part of it. We are stronger together!&lt;&#x2F;p&gt;
+&lt;p&gt;Rocket.Chat’s implementation follows the “&lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2020&#x2F;12&#x2F;07&#x2F;gitter-now-speaks-matrix#how-do-you-make-an-existing-chat-system-talk-matrix&quot;&gt;How do you make an existing chat system talk Matrix?&lt;&#x2F;a&gt;” approach we published based on our experiences of linking Gitter into Matrix. Looking at the initial &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;RocketChat&#x2F;Rocket.Chat&#x2F;pull&#x2F;23688&quot;&gt;pull request&lt;&#x2F;a&gt;, the implementation lets Rocket.Chat act as a Matrix Application Service, effectively acting as a bridge to talk to an appropriate Matrix homeserver.  From chatting with the team, it sounds like next steps will involve adding in encryption via our upcoming &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-rust-sdk&#x2F;issues&#x2F;699&quot;&gt;matrix-sdk-crypto node bindings&lt;&#x2F;a&gt; - and then looking at ways to transparently embed a homeserver like Dendrite, sharing data as much as possible between RC and Matrix, so Rocket.Chat deployments can transparently sprout Matrix interoperability without having to run a separate homeserver.  Super exciting!&lt;&#x2F;p&gt;
+&lt;p&gt;You can see a quick preview of a Rocket.Chat user chatting away with an Element user on matrix.org via Matrix here:&lt;&#x2F;p&gt;
+&lt;div style=&quot;text-align: center; width: 100%&quot;&gt;
+&lt;video src=&quot;&#x2F;blog&#x2F;img&#x2F;164530391-e8b17ecd-a4d0-4ef8-a8b7-81230c1773d3.mp4&quot; controls&#x2F;&gt;
+&lt;br&#x2F;&gt;
+&lt;br&#x2F;&gt;
+&lt;&#x2F;div&gt;
+&lt;p&gt;So, exciting times ahead - needless to say we’ll be doing everything we can to support Rocket.Chat and ensure their Matrix integration is a success.  And at this rate, they might be distinctly ahead of the curve if they start shipping Dendrite!  Meanwhile, we have to wonder who will be next? Nextcloud? Mattermost? Place your bets… ;)&lt;&#x2F;p&gt;
+&lt;p&gt;--Matthew&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;update&quot;&gt;Update&lt;&#x2F;h3&gt;
+&lt;p&gt;Aaron from Rocket.Chat just published an &lt;a href=&quot;https:&#x2F;&#x2F;geekgonecrazy.com&#x2F;2022&#x2F;05&#x2F;30&#x2F;rocketchat-and-the-matrix-protocol&#x2F;&quot;&gt;excellent guide &amp;amp; video tour&lt;&#x2F;a&gt; for how to actually set up your Rocket.Chat instance with Dendrite to get talking Matrix!&lt;&#x2F;p&gt;
+&lt;div style=&quot;text-align: center&quot;&gt;
+&lt;iframe width=&quot;680&quot; height=&quot;383&quot; src=&quot;https:&#x2F;&#x2F;www.youtube.com&#x2F;embed&#x2F;oQhIH8kql9I&quot; title=&quot;YouTube video player&quot; frameborder=&quot;0&quot; allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture&quot; allowfullscreen&gt;&lt;&#x2F;iframe&gt;
+&lt;&#x2F;div&gt;
+</content>
+	</entry>
+	<entry xml:lang="en">
+		<title>Independent public audit of Vodozemac, a native Rust reference implementation of Matrix end-to-end encryption</title>
+		<published>2022-05-16T17:04:16+00:00</published>
+		<updated>2022-05-16T16:02:17+00:00</updated>
+		<link rel="alternate" href="/blog/2022/05/16/independent-public-audit-of-vodozemac-a-native-rust-reference-implementation-of-matrix-end-to-end-encryption/" type="text/html"/>
+		<id>/blog/2022/05/16/independent-public-audit-of-vodozemac-a-native-rust-reference-implementation-of-matrix-end-to-end-encryption/</id>
+		<content type="html">&lt;p&gt;Hi all,&lt;&#x2F;p&gt;
+&lt;p&gt;It’s been &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2016&#x2F;11&#x2F;21&#x2F;matrixs-olm-end-to-end-encryption-security-assessment-released-and-implemented-cross-platform-on-riot-at-last&quot;&gt;quite a while&lt;&#x2F;a&gt; since our last independent E2EE review, and so we’re incredibly proud to present an &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;media&#x2F;Least%20Authority%20-%20Matrix%20vodozemac%20Final%20Audit%20Report.pdf&quot;&gt;entirely new independent security audit&lt;&#x2F;a&gt; of &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;vodozemac&quot;&gt;vodozemac&lt;&#x2F;a&gt;, our next generation native Rust implementation of Matrix’s &lt;a href=&quot;https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;matrix-org&#x2F;olm&#x2F;blob&#x2F;master&#x2F;docs&#x2F;olm.md&quot;&gt;Olm&lt;&#x2F;a&gt; and &lt;a href=&quot;https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;matrix-org&#x2F;olm&#x2F;blob&#x2F;master&#x2F;docs&#x2F;megolm.md&quot;&gt;Megolm&lt;&#x2F;a&gt; E2EE protocols.  The audit has been conducted by &lt;a href=&quot;https:&#x2F;&#x2F;leastauthority.com&#x2F;&quot;&gt;Least Authority&lt;&#x2F;a&gt;, who specialise in &lt;a href=&quot;https:&#x2F;&#x2F;leastauthority.com&#x2F;security-consulting&#x2F;published-audits&#x2F;&quot;&gt;comprehensive audits&lt;&#x2F;a&gt; of security-sensitive decentralized technologies - and we are very grateful to &lt;a href=&quot;https:&#x2F;&#x2F;www.gematik.de&#x2F;anwendungen&#x2F;ti-messenger&quot;&gt;gematik&lt;&#x2F;a&gt;, who kindly shared the costs of funding the audit as part of their &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2021&#x2F;07&#x2F;21&#x2F;germanys-national-healthcare-system-adopts-matrix&quot;&gt;commitment to Matrix for healthcare in Germany&lt;&#x2F;a&gt;.&lt;&#x2F;p&gt;
+&lt;p&gt;This audit was a bit of a whirlwind, as while we were clearly overdue an audit of Matrix’s E2EE implementations, we decided quite late in the day to focus on bringing vodozemac to auditable production quality rather than simply doing a refresh of the original &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2016&#x2F;11&#x2F;21&#x2F;matrixs-olm-end-to-end-encryption-security-assessment-released-and-implemented-cross-platform-on-riot-at-last&quot;&gt;libolm audit&lt;&#x2F;a&gt;.  However, we got there in time, thanks to a monumental sprint from &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;vodozemac&#x2F;graphs&#x2F;contributors&quot;&gt;Damir and Denis&lt;&#x2F;a&gt; over Christmas.  The reason we went this route is that vodozemac is an enormous step change forwards in quality over &lt;a href=&quot;https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;matrix-org&#x2F;olm&quot;&gt;libolm&lt;&#x2F;a&gt;, and vodozemac is now the reference Matrix E2EE implementation going forward.  Just as libolm went live with NCC’s security review back in 2016, similarly we’re kicking off the first stable release of vodozemac today with Least Authority’s audit.  In fact, vodozemac just shipped as the default E2EE library in &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-rust-sdk&#x2F;releases&#x2F;tag&#x2F;matrix-sdk-0.5.0&quot;&gt;matrix-rust-sdk 0.5&lt;&#x2F;a&gt;, released at the end of last week!&lt;&#x2F;p&gt;
+&lt;p&gt;The main advantages of vodozemac over libolm include:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Native Rust - type, memory and thread safety is preserved both internally, and within the context of larger Rust programs (such as those building on matrix-rust-sdk).  This is particularly important given the &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2021&#x2F;06&#x2F;14&#x2F;adventures-in-fuzzing-libolm&quot;&gt;memory bugs&lt;&#x2F;a&gt; which libolm sprouted, despite our best efforts to the contrary.&lt;&#x2F;li&gt;
+&lt;li&gt;Performance - vodozemac benchmarks roughly 5-6x faster than libolm on typical hardware&lt;&#x2F;li&gt;
+&lt;li&gt;Better primitives - vodozemac is built on the best practice cryptographic primitives from the Rust community, rather than the generic Brad Conte primitives used by libolm.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;Also, we’ve finally fixed one of the biggest problems with libolm - which was that the hardest bit of implementing E2EE in Matrix wasn’t necessarily the encryption protocol implementation itself, but how you glue it into your Matrix client’s SDK.  It turns out ~80% of the code and complexity needed to securely implement encryption ends up being in the SDK rather than the Olm implementation - and each client SDK ended up implementing its own independent state machine and glue for E2EE, leading to a needlessly large attack &amp;amp; bug surface.&lt;&#x2F;p&gt;
+&lt;p&gt;To address this problem, vodozemac is designed to plug into &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-rust-sdk&#x2F;tree&#x2F;main&#x2F;crates&#x2F;matrix-sdk-crypto&quot;&gt;matrix-sdk-crypto&lt;&#x2F;a&gt; - an SDK-independent Rust library which abstracts away the complexities and risks of implementing E2EE, designed to plug into existing SDKs in any language.  For instance, Element Android already &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;vector-im&#x2F;element-android&#x2F;pull&#x2F;3209&quot;&gt;supports&lt;&#x2F;a&gt; delegating its encryption to matrix-sdk-crypto; Element iOS got this working too last week, and we’re &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;Hywan&#x2F;matrix-rust-sdk&#x2F;commits&#x2F;feat-crypto-wasm&quot;&gt;hard at work&lt;&#x2F;a&gt; adding it to Element Web too.  (This set of projects is codenamed Element R).  Meanwhile, &lt;a href=&quot;https:&#x2F;&#x2F;youtu.be&#x2F;chsyOWKvne4&quot;&gt;Element X&lt;&#x2F;a&gt; (the project to switch Element iOS and Element Android to use matrix-rust-sdk entirely) obviously benefits from it too, as matrix-rust-sdk now leans on matrix-sdk-crypto for its encryption.&lt;&#x2F;p&gt;
+&lt;p&gt;Therefore we highly recommend that developers using libolm migrate over to vodozemac - ideally by switching to matrix-sdk-crypto as a way of managing the interface between Matrix and the E2EE implementation.  Vodozemac does also provides a similar API to libolm with &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;vodozemac-bindings&quot;&gt;bindings for JS and Python&lt;&#x2F;a&gt; (and C++ in progress) if you want to link directly against it - e.g. if you’re using libolm for something other than Matrix, for example XMPP, ActivityPub or Jitsi.  We’ll continue to support and maintain libolm for now though, at least until the majority of folks have switched to vodozemac.&lt;&#x2F;p&gt;
+&lt;p&gt;In terms of the audit itself - we recommend &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;media&#x2F;Least%20Authority%20-%20Matrix%20vodozemac%20Final%20Audit%20Report.pdf&quot;&gt;reading it yourself&lt;&#x2F;a&gt;, but the main takeaway is that Least Authority identified 10 valid concerns, of which we addressed 8 during the audit process. The remaining two are valid but lower priority, and we’ll fix them as part of our maintenance backlog.  All the issues identified are excellent valid points, and we’re very glad that Least Authority have added huge value here by highlighting some subtle gotchas which we’d missed.  (If you write Rust, you’ll particularly want to check out their zeroisation comments).&lt;&#x2F;p&gt;
+&lt;p&gt;So: exciting times!  Vodozemac should be landing in a Matrix client near you in the near future - we’ll yell about it loudly once Element switches over.  In the meantime, if you have any questions, please head over to &lt;a href=&quot;https:&#x2F;&#x2F;matrix.to&#x2F;#&#x2F;#e2ee:matrix.org&quot;&gt;#e2ee:matrix.org&lt;&#x2F;a&gt;.&lt;&#x2F;p&gt;
+&lt;p&gt;Thanks again to gematik for helping fund the audit, and to Least Authority for doing an excellent job - and being patient and accommodating beyond the call of duty when we suddenly switched the scope from libolm to vodozemac at the last minute ;)&lt;&#x2F;p&gt;
+&lt;p&gt;Next up: we’re going to get the Rust matrix-sdk-crypto independently audited (once &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-rust-sdk&#x2F;milestone&#x2F;1&quot;&gt;this burndown&lt;&#x2F;a&gt; is complete) so that everyone using the matrix-sdk-crypto state machine for Matrix E2EE can have some independent reassurance too - a huge step forward from the wild west of E2EE SDK implementations today!&lt;&#x2F;p&gt;
+&lt;p&gt;– Matthew&lt;&#x2F;p&gt;
+</content>
+	</entry>
+	<entry xml:lang="en">
+		<title>Technical FAQ on the Digital Markets Act</title>
+		<published>2022-03-30T14:13:00+00:00</published>
+		<updated>2022-03-30T14:13:00+00:00</updated>
+		<link rel="alternate" href="/blog/2022/03/30/technical-faq-on-the-digital-markets-act/" type="text/html"/>
+		<id>/blog/2022/03/30/technical-faq-on-the-digital-markets-act/</id>
+		<content type="html">&lt;p&gt;Hi all,&lt;&#x2F;p&gt;
+&lt;p&gt;We&#x27;ve been flooded with questions about the &lt;a href=&quot;https:&#x2F;&#x2F;www.europarl.europa.eu&#x2F;news&#x2F;en&#x2F;press-room&#x2F;20220315IPR25504&#x2F;&quot;&gt;DMA&lt;&#x2F;a&gt;
+since it was announced last week, and have spotted some of the
+gatekeepers jumping to the wrong conclusions about what it might entail.
+Just in case you don&#x27;t want to wade through
+yesterday&#x27;s &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2022&#x2F;03&#x2F;29&#x2F;how-do-you-implement-interoperability-in-a-dma-world&#x2F;&quot;&gt;sprawling blog post&lt;&#x2F;a&gt;,
+we&#x27;ve put together a quick FAQ to cover the most important points based on
+our understanding.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;what-does-dma-mean-for-the-gatekeepers&quot;&gt;What does DMA mean for the gatekeepers?&lt;&#x2F;h3&gt;
+&lt;p&gt;The gatekeepers will have to open and document their existing APIs, so that
+alternative clients and&#x2F;or bridges can connect to their service. The DMA
+requires that the APIs &lt;em&gt;must&lt;&#x2F;em&gt; expose the same level of privacy for remote
+users as for local users. So, if their service is end-to-end-encrypted
+(E2EE), the APIs must expose the same E2EE semantics (e.g. so that an
+alternative client connecting would have to implement E2EE too). For
+E2EE-capable APIs to work, the gatekeeper will likely have to model remote
+users as if they were local in their system. In the short term (one year
+horizon) this applies only to 1:1 chats and file transfers. In the long term
+(three year horizon) this applies to group chats and voip calls&#x2F;conferences
+too.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;who-counts-as-a-gatekeeper&quot;&gt;Who counts as a “gatekeeper”?&lt;&#x2F;h3&gt;
+&lt;p&gt;The DMA defines any tech company worth over €75B or with over €7.5B of
+turnover as a gatekeeper, who must open their communication APIs. This means
+only the tech giants are in scope (e.g. as of today that includes Meta,
+Apple, Google, Microsoft, Salesforce&#x2F;Slack - not Signal, Telegram, Discord,
+Twitter).&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;does-this-mean-the-gatekeepers-are-being-forced-to-implement-an-open-standard-such-as-matrix-or-xmpp&quot;&gt;Does this mean the gatekeepers are being forced to implement an open standard such as Matrix or XMPP?&lt;&#x2F;h3&gt;
+&lt;p&gt;No. They can keep their existing implementations and APIs. For
+interoperability with other service providers, they will need to use a
+bridge (which could bridge via a common language such as Matrix or XMPP).&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;are-bridges-secure&quot;&gt;Are bridges secure?&lt;&#x2F;h3&gt;
+&lt;p&gt;If the service lacks end-to-end-encryption (Slack, Teams, Google Chat,
+non-secret chats on Facebook Messenger, Instagram, Google Messages etc) then
+the bridge does not reduce security or privacy, beyond the fact that bridged
+conversations by definition will be visible to the bridge and to the service
+you are interoperating with.&lt;&#x2F;p&gt;
+&lt;p&gt;If the service has E2EE (WhatsApp, iMessage, secret chats on Messenger) then
+the bridge will necessarily have to decrypt (and reencrypt, where possible)
+the data when passing it to the other service. This means the conversation is
+no longer E2EE, and thus less secure (the bridge could be compromised and
+inspect or reroute their messages) - and so gatekeepers must warn the user
+that their conversation is leaving their platform and is no longer E2EE with
+something like this:&lt;&#x2F;p&gt;
+&lt;div style=&quot;text-align: center&quot;&gt;
+&lt;img src=&quot;&#x2F;blog&#x2F;img&#x2F;2022-03-29-warning.jpg&quot; width=&quot;430&quot;&#x2F;&gt;
+&lt;&#x2F;div&gt;
+&lt;br&#x2F;&gt;
+&lt;h3 id=&quot;why-is-the-dma-good&quot;&gt;Why is the DMA good?&lt;&#x2F;h3&gt;
+&lt;p&gt;The upside is that the user has the freedom to use an infinite number of
+services (bots, virtual assistants, CRMs, translation services, etc) as well
+as speak to any other user in the world, regardless what platform they use.&lt;&#x2F;p&gt;
+&lt;p&gt;It also puts much-needed pressure on the gatekeepers to innovate and
+differentiate rather than rely on their network effects to attract new
+users - creating a much more vibrant, open, competitive marketplace for
+users.&lt;&#x2F;p&gt;
+&lt;p&gt;See &amp;quot;&lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2022&#x2F;03&#x2F;29&#x2F;how-do-you-implement-interoperability-in-a-dma-world#whats-driven-the-dma&quot;&gt;What&#x27;s driven the DMA?&lt;&#x2F;a&gt;&amp;quot;
+for more details.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;if-the-dma-requires-that-remote-users-have-the-same-security-as-local-users-how-can-bridges-work&quot;&gt;If the DMA requires that remote users have the same security as local users, how can bridges work?&lt;&#x2F;h3&gt;
+&lt;p&gt;The DMA requires that the &lt;em&gt;APIs&lt;&#x2F;em&gt; expose the same level of security as for
+local users - ie E2EE must be exposed. If the users in a conversation choose
+to use a bridge and thus reencrypt the messages, then it is their choice to
+tradeoff encryption in favour of interoperability for a given conversation.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;does-this-undermine-the-gatekeepers-current-encryption&quot;&gt;Does this undermine the gatekeepers’ current encryption?&lt;&#x2F;h3&gt;
+&lt;p&gt;Absolutely not. Users talking to other users within the same E2EE-capable
+gatekeeper will still be E2EE (assuming the gatekeeper doesn’t pull that rug
+from under its users) - and in fact it gives the gatekeepers an excellent way
+to advertise the selling point that E2EE is only guaranteed when you speak to
+other users on the same platform.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;but-why-do-we-need-bridges-if-everyone-spoke-a-common-protocol-you-wouldn-t-ever-have-to-decrypt-messages-to-convert-them-between-protocols&quot;&gt;But why do we need bridges? If everyone spoke a common protocol, you wouldn’t ever have to decrypt messages to convert them between protocols.&lt;&#x2F;h3&gt;
+&lt;p&gt;Practically speaking, we don’t expect the gatekeepers to throw away their
+existing stacks (or implement multihead messengers that also speak open
+protocols). It’s true that if they natively spoke Matrix or XMPP then the
+reencryption problem would go away, but it’s more realistic to focus on
+opening the existing APIs than interpret the legislation as a mandate to
+speak Matrix. Perhaps in future players will adopt Matrix of their own
+volition.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;where-do-these-bridges-come-from&quot;&gt;Where do these bridges come from?&lt;&#x2F;h3&gt;
+&lt;p&gt;There is already a vibrant community of developers who build unofficial
+bridges to the gatekeepers - eg Element, Beeper and hundreds of open source
+developers in the Matrix and XMPP communities. Historically these bridges
+have been hampered by having to use unofficial and private APIs, making them
+a second class citizen - but with open documented APIs guaranteed by the DMA
+we eagerly anticipate an explosion of high quality transparent bridges which
+will be invisible to the end user.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;can-you-run-e2ee-bridges-clientside-to-make-them-safer&quot;&gt;Can you run E2EE bridges clientside to make them safer?&lt;&#x2F;h3&gt;
+&lt;p&gt;Maybe. For instance, current iMessage bridges work by running iMessage on a
+local iPhone or Mac and then reencrypting the messages there for
+interoperability. Given the messages are already exposed on the client
+anyway, this means that E2EE is not broken - and avoids decrypting them on a
+server. There is lots of development in this space currently, and with open
+APIs guaranteed by DMA the pace should speed up significantly.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;how-can-you-tell-what-service-you-should-use-to-talk-to-a-given-remote-user&quot;&gt;How can you tell what service you should use to talk to a given remote user?&lt;&#x2F;h3&gt;
+&lt;p&gt;For 1:1 chats this is easy: you can simply ask the user which service they
+want to use to talk to a given user, if that user is not already on that
+service.&lt;&#x2F;p&gt;
+&lt;p&gt;For group chats it is harder, and this is why the deadline for group chats is
+years away. The problem is that you need a way to verify the identity of
+arbitrary numbers of remote users on  different platforms - effectively
+looking up their identity in a secure manner which stops services from
+maliciously spoofing identities.&lt;&#x2F;p&gt;
+&lt;p&gt;One possible way to solve this would be for users to explicitly link their
+identity on one service with that on the gatekeeper’s service - eg “Alice on
+AliceChat is talking in the same room as Bob on BobChat; Bob will be asked to
+prove to AliceChat that he is the real Bob” - and so if AliceChat has already
+validated Bob’s identity, then this can be used to spot him popping up on
+other services. It also gives Bob a way to block themselves from ever being
+unwittingly bridged to AliceChat.&lt;&#x2F;p&gt;
+&lt;p&gt;There are many other approaches too - and the onus is on the industry to
+figure out the best solution for decentralised identity in the next 3-4 years
+in order to realise the most exciting benefits of the DMA.&lt;&#x2F;p&gt;
+&lt;hr &#x2F;&gt;
+&lt;p&gt;For a much deeper dive into the above, please check out our post at &amp;quot;&lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2022&#x2F;03&#x2F;29&#x2F;how-do-you-implement-interoperability-in-a-dma-world&quot;&gt;How do you implement interoperability in a DMA world?&lt;&#x2F;a&gt;&amp;quot;&lt;&#x2F;p&gt;
+</content>
+	</entry>
+	<entry xml:lang="en">
+		<title>How do you implement interoperability in a DMA world?</title>
+		<published>2022-03-29T17:57:10+00:00</published>
+		<updated>2022-03-29T09:23:58+00:00</updated>
+		<link rel="alternate" href="/blog/2022/03/29/how-do-you-implement-interoperability-in-a-dma-world/" type="text/html"/>
+		<id>/blog/2022/03/29/how-do-you-implement-interoperability-in-a-dma-world/</id>
+		<content type="html">&lt;p&gt;With last week’s revelation that the &lt;a href=&quot;https:&#x2F;&#x2F;www.europarl.europa.eu&#x2F;news&#x2F;en&#x2F;press-room&#x2F;20220315IPR25504&#x2F;deal-on-digital-markets-act-ensuring-fair-competition-and-more-choice-for-users&quot;&gt;EU Digital Markets Act&lt;&#x2F;a&gt;
+will require tech gatekeepers (companies valued at over $75B or with over
+$7.5B of turnover) to open their communication APIs for the purposes of
+interoperability, there’s been a lot of speculation on what this could mean
+in practice, To try to ground the conversation a bit, we’ve had a go at
+outlining some concrete proposals for how it could work.&lt;&#x2F;p&gt;
+&lt;p&gt;However, before we jump in, we should review how the DMA has come to pass.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;what-s-driven-the-dma&quot;&gt;What’s driven the DMA?&lt;&#x2F;h3&gt;
+&lt;p&gt;Today’s gatekeepers all began with a great product, which got more and more
+popular until it grew to such a size that one of the biggest reasons to use
+the service is not necessarily the product any more, but the benefits of
+being able to talk to a large network of users. This rapidly becomes
+anti-competitive, however: the user becomes locked into the network and can’t
+switch even if they want to.  Even when people have a &lt;strong&gt;really&lt;&#x2F;strong&gt; good reason
+to move provider (e.g. &lt;a href=&quot;https:&#x2F;&#x2F;www.theregister.com&#x2F;2021&#x2F;01&#x2F;06&#x2F;whatsapp_privacy_policy_demand&#x2F;&quot;&gt;WhatsApp’s terms of use changing&lt;&#x2F;a&gt; to
+share user data with Facebook, &lt;a href=&quot;https:&#x2F;&#x2F;blog.elcomsoft.com&#x2F;2021&#x2F;01&#x2F;apple-scraps-end-to-end-encryption-of-icloud-backups&#x2F;&quot;&gt;Apple doing a 180 on end-to-end encrypting iCloud backups&lt;&#x2F;a&gt;,
+or &lt;a href=&quot;https:&#x2F;&#x2F;www.wired.co.uk&#x2F;article&#x2F;telegram-encryption-end-to-end-features&quot;&gt;Telegram not actually being end-to-end encrypted&lt;&#x2F;a&gt;),
+in practice &lt;a href=&quot;https:&#x2F;&#x2F;medium.com&#x2F;@carlagriggio&#x2F;the-great-messaging-app-migration-that-didnt-really-happen-56af637bc5d8&quot;&gt;hardly anything changes&lt;&#x2F;a&gt; -
+because the users are socially obligated to keep using the service in order
+to talk to the rest of the users on it.&lt;&#x2F;p&gt;
+&lt;p&gt;As a result, it’s literally harmful to the users. Even if a new service
+launches with a shiny new feature, there is enormous inertia that must be
+overcome for users to switch, thanks to the pull of their existing network -
+and even if they do, they’ll just end up with their conversations haphazardly
+fragmented over multiple apps. This isn’t accepted for email; it isn’t
+accepted for the phone network; it isn’t accepted on the Internet itself -
+and it shouldn’t be accepted for messaging apps either.&lt;&#x2F;p&gt;
+&lt;p&gt;Similarly: the closed networks of today’s gatekeepers put a completely
+arbitrary limit on how users can extend and enrich their own conversations.
+On email, if you want to use a fancy new client like Superhuman - you can. If
+you want to hook up a digital assistant or translation service to help you
+wrangle your email - you can.  If you want to hook up your emails to a CRM to
+help you run your business - you can.  But with today’s gatekeepers, you have
+literally no control: you’re completely at the mercy of the service
+provider - and for something like WhatsApp or iMessage the options are
+limited at best.&lt;&#x2F;p&gt;
+&lt;p&gt;Finally - all the users’ conversation metadata for that service (who talks to
+who, and when) ends up centralised in the gatekeepers’ databases, which then
+become an incredibly valuable and sensitive treasure trove, at risk of abuse.
+And if the service provider identifies users by phone number, the user is
+forced to disclose their phone number (a deeply sensitive personal
+identifier) to participate, whether they want to or not.  Meanwhile the user
+is massively incentivised not to move away: effectively they are held hostage
+by the pull of the service’s network of users.&lt;&#x2F;p&gt;
+&lt;p&gt;So, the DMA exists as a strategy to improve the situation for users and
+service providers alike by building a healthier dynamic ecosystem for
+communication apps; encouraging products to win by producing the best quality
+product rather than the biggest network. To quote Cédric O (Secretary of
+State for the Digital Sector of France), the strategy of the legislation came
+from Washington advice to address the anticompetitive behaviour of the
+gatekeepers “not by breaking them up… but by breaking them open.”  By
+requiring the gatekeepers to open their APIs, the door has at last been
+opened to give users the option to pick whatever service they prefer to use,
+to choose who they trust with their data and control their conversations as
+they wish - without losing the ability to talk to their wider audience.&lt;&#x2F;p&gt;
+&lt;p&gt;However, something as groundbreaking as this is never going to be completely
+straightforward.  Of course while some basic use cases (i.e. non-E2EE chat)
+are easy to implement, they initially may not have a UX as smooth as a closed
+network which has ingested all your address book; and other use cases(eg E2EE
+support) may require some compromises at first.  It’s up to the industry to
+figure out how to make the most of that challenge, and how to do it in a way
+which minimises the impact on privacy - especially for end-to-end encrypted
+services.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;what-problems-need-to-be-solved&quot;&gt;What problems need to be solved?&lt;&#x2F;h3&gt;
+&lt;p&gt;We’ve &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2022&#x2F;03&#x2F;25&#x2F;interoperability-without-sacrificing-privacy-matrix-and-the-dma&quot;&gt;already written about this&lt;&#x2F;a&gt;
+from a Matrix perspective, but to recap - the main challenge is the trade-off
+between interoperability and privacy for gatekeepers who provide end-to-end
+encryption, which at a rough estimate means: WhatsApp, iMessage, secret chats
+in Facebook Messenger, and Google Messages.  The problem is that even with
+open APIs which correctly expose the end-to-end encrypted semantics (as DMA
+requires), the point where you interoperate with a different system
+inevitably means that you’ll have to re-encrypt the messages for that system,
+unless they speak precisely the same protocol - and by definition you end up
+trusting the different system to keep the messages safe.  Therefore this
+increases the attack surface on the conversations, putting the end-to-end
+encryption at risk.&lt;&#x2F;p&gt;
+&lt;p&gt;Alex Stamos (ex-CISO at Facebook) said that “&lt;a href=&quot;https:&#x2F;&#x2F;twitter.com&#x2F;alexstamos&#x2F;status&#x2F;1507366543360897028&quot;&gt;WhatsApp rolling out mandatory
+end-to-end encryption was the largest improvement in communications privacy
+in human history&lt;&#x2F;a&gt;” – and we agree.
+Guaranteed end-to-end encrypted conversations on WhatsApp is amazing, and
+should be protected at all costs. If users are talking to other users on
+WhatsApp (or any set of users communicating within the same E2EE messenger),
+E2EE should and must be maintained - and there is nothing in the DMA which says otherwise.&lt;&#x2F;p&gt;
+&lt;p&gt;But what if the user consciously wants to prioritise interoperability over
+encryption?  What if the user wants to hook their WhatsApp messages into a
+CRM, or run them through a machine translation service, or try to start a
+migration to an alternative service because they don’t trust Meta?  Should
+privacy really come so spectacularly at the expense of user freedom?&lt;&#x2F;p&gt;
+&lt;p&gt;We also have the problem of figuring out how to reference users on other
+platforms.  Say that I want to talk to a user with a given phone number, but
+they’re not on my platform - how do I locate them?  What if my platform only
+knows about phone numbers, but you’re trying to talk to a user on a platform
+which uses a different format for identifiers?&lt;&#x2F;p&gt;
+&lt;p&gt;Finally, we have the problem of mitigating abuse: opening up APIs makes it
+easier for bad actors to try to spam or phish or otherwise abuse users within
+the gatekeepers. There are going to have to be changes in anti-abuse
+services&#x2F;software, and some signals that the gatekeeper platforms currently
+use are going to go away or be less useful, but that doesn&#x27;t mean the whole
+thing is intractable. It will require changes and innovative thinking, but
+we’ve been making steady progress (e.g. the work done by &lt;a href=&quot;https:&#x2F;&#x2F;element.io&#x2F;blog&#x2F;moderation-needs-a-radical-change&#x2F;&quot;&gt;Element’s trust and
+safety team&lt;&#x2F;a&gt;). Meanwhile, the
+gatekeepers already have massive anti-abuse systems in place to handle the
+billions of users within their walled gardens, and unofficial APIs are
+already widespread: adding official APIs does not change the landscape
+significantly (assuming interoperability is implemented in such a way that
+the existing anti-abuse mechanisms still apply).&lt;&#x2F;p&gt;
+&lt;p&gt;In the past, gatekeepers dismissed the effort of interop as not being
+worthwhile - after all, the default course of action is to build a walled
+garden, and having built one, the temptation is to try to trap as many users
+as possible.  It was also not always clear that there were services worth
+interoperating with (thanks to the chilling effects of the gatekeepers
+themselves, in terms of stifling innovation for communication startups).
+Nowadays this situation has fundamentally changed however: there is a vibrant
+ecosystem of open communication startups out there, and a huge appetite to
+build a vibrant open ecosystem for interoperable communication, but like the
+open web itself.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;what-are-the-requirements&quot;&gt;What are the requirements?&lt;&#x2F;h3&gt;
+&lt;p&gt;Before going further in considering solutions, we need to review the actual
+requirements of the DMA.  Our best understanding at this point is that the
+DMA will mandate that:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Gatekeepers will have to provide open and documented APIs to their services, on request, in order to facilitate interoperability (i.e. so that other services can communicate with their users).&lt;&#x2F;li&gt;
+&lt;li&gt;These APIs must preserve the same level of end-to-end encryption (if any) to remote users as is available to local users.&lt;&#x2F;li&gt;
+&lt;li&gt;This applies to 1:1 messaging and file transfer in the short term, and group messaging, file-transfer, 1:1 VoIP and group VoIP in the longer term.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;h3 id=&quot;so-what-could-this-actually-look-like&quot;&gt;So, what could this actually look like?&lt;&#x2F;h3&gt;
+&lt;p&gt;The DMA legislation deliberately doesn’t focus on implementation, instead
+letting the industry figure out how this could actually work in practice.
+There are many different possible approaches, and so from our point of view
+as Matrix we’ve tried to sketch out some options to make the discussion more
+concrete. Please note these are preliminary thoughts, and are far from
+perfect - but hopefully useful as a starting point for discussion.&lt;&#x2F;p&gt;
+&lt;h4 id=&quot;finding-bob&quot;&gt;Finding Bob&lt;&#x2F;h4&gt;
+&lt;p&gt;Imagine that you have a user Alice on an existing gatekeeper, which we’ll call
+AliceChat, who runs an E2EE messaging service which identifies users using
+phone numbers.  Say that they want to start a 1-to-1 conversation with Bob,
+who doesn’t use AliceChat, but Alice knows he is a keen user of BobChat.
+Today, you’d have no choice but to send them an SMS and nag them to join
+AliceChat (sucks to be them if they don’t want to use that service, or if
+they’re unable to for whatever reason - e.g. their platform isn’t supported,
+or their government has blocked access, etc), or join BobChat yourself.&lt;&#x2F;p&gt;
+&lt;div style=&quot;text-align: center&quot;&gt;
+&lt;img src=&quot;&#x2F;blog&#x2F;img&#x2F;2022-03-29-bob-invite.jpg&quot; width=&quot;430&quot;&#x2F;&gt;&amp;nbsp;
+&lt;img src=&quot;&#x2F;blog&#x2F;img&#x2F;2022-03-29-bob-invite-b.png&quot; width=&quot;430&quot;&#x2F;&gt;
+&lt;&#x2F;div&gt;
+&lt;br&#x2F;&gt;
+&lt;p&gt;However, imagine if instead the gatekeeper app had a user experience where the
+app prompted you to talk to the user via a different platform instead.  It’d
+be no different to your operating system prompting you to pick which app to
+use to open a given file extension (rather than the OS vendor hardcoding it
+to one of their own apps - another win for user rights &lt;a href=&quot;https:&#x2F;&#x2F;en.wikipedia.org&#x2F;wiki&#x2F;Microsoft_Corp._v._Commission&quot;&gt;led by the EU&lt;&#x2F;a&gt;!).&lt;&#x2F;p&gt;
+&lt;div style=&quot;text-align: center&quot;&gt;
+&lt;img src=&quot;&#x2F;blog&#x2F;img&#x2F;2022-03-29-bob-invite2.jpg&quot; width=&quot;430&quot;&#x2F;&gt;
+&lt;&#x2F;div&gt;
+&lt;br&#x2F;&gt;
+&lt;p&gt;Now, the simplest approach in the short term would be for each gatekeeper to
+pre-provision a set of options of possible alternative networks.  (The DMA
+says that, on request, other service providers can ask to have access to the
+gatekeeper’s APIs for the purposes of interoperability, so the gatekeeper
+knows who the alternative networks may be).  “Bob is not on AliceChat - do
+you want to try to reach him instead on BobChat, CharlieChat, DaveChat
+(etc)”.&lt;&#x2F;p&gt;
+&lt;p&gt;Much like users can configure their preferred applications for file extensions
+in an operating system today, users would also be able to add their own
+preferred service providers - simply specifying their domain name.&lt;&#x2F;p&gt;
+&lt;h4 id=&quot;connecting-to-bob&quot;&gt;Connecting to Bob&lt;&#x2F;h4&gt;
+&lt;p&gt;Now, AliceChat itself needs to figure out how to query the remote service
+provider to see if Bob actually exists there.  Given the DMA requires that
+gatekeepers provide open APIs with the same level of security to remote users
+as their local ones using today’s private APIs - and very deliberately
+doesn’t mandate specific protocols for interoperability - they will need to
+locate a bridge which can connect to the other system.&lt;&#x2F;p&gt;
+&lt;p&gt;In this thought experiment, the bridge used would be up to the destination
+provider.  For instance, bobchat.com could announce that AliceChat users
+should connect to it via alicechat-bridge.bobchat.com using the AliceChat
+protocol(or matrix-bridge.bobchat.com via Matrix or xmpp-bridge.bobchat.com
+via XMPP) by a simple HTTP API or even a .well-known URL.  Users might also
+be able to override the bridge used to connect to them (e.g. to point instead
+at a client-side bridge), and could sign the advertisement to prove that it
+hadn’t been tampered with.&lt;&#x2F;p&gt;
+&lt;p&gt;AliceChat would then connect to the discovered bridge using AliceChat’s
+vendor-specific newly opened API, and would then effectively treat Bob as if
+they were a real AliceChat user and client to all intents and purposes.  In
+other words, Bob would effectively be a “ghost user” on AliceChat, and
+subject to all their existing anti-abuse mechanisms.&lt;&#x2F;p&gt;
+&lt;p&gt;Meanwhile, the other side of the bridge converts through to whatever the
+target system is - be that XMPP, Matrix, a different proprietary API, etc.
+For Matrix, it’d be chatting away to a homeserver via the &lt;a href=&quot;https:&#x2F;&#x2F;spec.matrix.org&#x2F;latest&#x2F;application-service-api&#x2F;&quot;&gt;Application Service
+API&lt;&#x2F;a&gt; (using
+&lt;a href=&quot;https:&#x2F;&#x2F;docs.mau.fi&#x2F;bridges&#x2F;general&#x2F;end-to-bridge-encryption.html&quot;&gt;End-to-Bridge Encryption&lt;&#x2F;a&gt; via
+&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-spec-proposals&#x2F;blob&#x2F;travis&#x2F;msc&#x2F;otk-dl-appservice&#x2F;proposals&#x2F;3202-encrypted-appservices.md&quot;&gt;MSC3202&lt;&#x2F;a&gt;).
+It’s also worth noting that the target might not even be a bridge - it could
+be a system which already natively speaks AliceChat’s end-to-end encrypted
+API, thus preserving end-to-end encryption without any need to re-encrypt.
+It’s also worth noting that while historically bridges have had a bad
+reputation as being a second class (often a second class afterthought),
+Matrix has shown that by considering them as a first class citizen and really
+focusing on mapping the highest common denominator between services rather
+than lowest common denominator, it’s possible for them to work transparently
+in practice.  &lt;a href=&quot;https:&#x2F;&#x2F;beeper.com&quot;&gt;Beeper&lt;&#x2F;a&gt; is a great example of Matrix
+bridging being used for real in the wild (rather amusingly they just
+&lt;a href=&quot;https:&#x2F;&#x2F;twitter.com&#x2F;ericmigi&#x2F;status&#x2F;1507827177374445569&quot;&gt;shipped emoji reactions for WhatsApp&lt;&#x2F;a&gt; on iOS via their
+WhatsApp&amp;lt;-&amp;gt;Matrix bridge before WhatsApp themselves did…)&lt;&#x2F;p&gt;
+&lt;p&gt;Architecturally, it could look like this:&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;img src=&quot;&#x2F;blog&#x2F;img&#x2F;2022-03-29-alice-bob.jpg&quot; alt=&quot;&quot; &#x2F;&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;Or, more likely (given a dedicated bridge between two proprietary services
+would be a bit of a special case, and you’d have to solve the dilemma of who
+hosts the bridge), both services could run a bridge to a common open standard
+protocol like Matrix or XMPP instead (thus immediately enabling
+interoperability with everyone else connected to that network):&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;img src=&quot;&#x2F;blog&#x2F;img&#x2F;2022-03-29-alice-bob-bridged.jpg&quot; alt=&quot;&quot; &#x2F;&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;Please note that while these examples show server-side bridges, in practice it
+would be infinitely preferable to use client-side bridges when connecting to
+E2EE services - meaning that decrypted message data would only ever be
+exposed on the client (which obviously has access to the decrypted data
+already).  Client-side bridges are currently complicated by OS limits on
+background tasks and push notification semantics (on mobile, at least), but
+one could envisage a scenario where you install a little stub AliceChat
+client on your phone which auths you with AliceChat and then sits in the
+background receiving messages and bridging them through to Matrix or XMPP,
+like this:&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;img src=&quot;&#x2F;blog&#x2F;img&#x2F;2022-03-29-alice-bob-clientside.jpg&quot; alt=&quot;&quot; &#x2F;&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;Another possible architecture could be for the E2EE gatekeeper to expose their
+open APIs on the clients, rather than the server.  DMA allows this, to the
+best of our knowledge - and would allow other apps on the device to access
+the message data locally (with appropriate authorisation, of course) - effectively
+doing a form of realtime
+&lt;a href=&quot;https:&#x2F;&#x2F;en.wikipedia.org&#x2F;wiki&#x2F;Google_Data_Liberation_Front&quot;&gt;data liberation&lt;&#x2F;a&gt;
+from the closed service to an open system, looking something like this:&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;img src=&quot;&#x2F;blog&#x2F;img&#x2F;2022-03-29-alice-bob-clientside-apis.jpg&quot; alt=&quot;&quot; &#x2F;&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;Finally, it&#x27;s worth noting that when peer-to-peer decentralised protocols
+like &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2020&#x2F;06&#x2F;02&#x2F;introducing-p-2-p-matrix&#x2F;&quot;&gt;P2P Matrix&lt;&#x2F;a&gt;
+enter production, clientside bridges could bridge directly into a local
+communication server running on the handset - thus avoiding metadata being
+exposed on Matrix or XMPP servers providing a common language between the
+service providers.&lt;&#x2F;p&gt;
+&lt;h4 id=&quot;locating-users&quot;&gt;Locating users&lt;&#x2F;h4&gt;
+&lt;p&gt;Now, the above describes the simplest and most naive directory lookup system
+imaginable - the problem of deciding which provider to use to connect to each
+user is shouldered by the users.  This isn’t that unreasonable - after all,
+users may have strong feelings about what providers to use to talk to a given
+user.  Alice might be quite happy to talk to Bob via BobChat, but might be
+very deliberately avoiding talking to him on DaveChat, for whatever ominous
+reasons.&lt;&#x2F;p&gt;
+&lt;p&gt;However, it’s likely in future we will also see other directory services
+appear in order to map phone numbers (or other identities) to providers -
+whether these piggyback on top of existing identity providers
+(gatekeepers, DNS, telcos, SSO providers, governments) or are decentralised
+through some other mechanism.  For instance, Bob could send AliceChat a
+blinded proof that he authorises them to automatically route traffic to him
+over at BobChat, with BobChat maintaining a matching proof that Bob is who he
+claims to be (having gone through BobChat’s auth process) - and the proofs
+could be linked using a temporary key such that Bob doesn’t even need to
+maintain a long-term one. (Thanks to James Monaghan for suggesting this one!)&lt;&#x2F;p&gt;
+&lt;p&gt;Another alternative to having the user decide where to find each other could
+be to use a decentralised Keybase-style identity system to track verified
+mappings of identities (phone numbers, email addresses etc) through to
+service providers - perhaps something like &lt;a href=&quot;https:&#x2F;&#x2F;idx.xyz&#x2F;&quot;&gt;IDX&lt;&#x2F;a&gt; might fit
+the bill?  While this decentralised identity lookups have historically been a
+hard problem, there is a &lt;em&gt;lot&lt;&#x2F;em&gt; of promising work happening in this space
+currently and the future looks promising.&lt;&#x2F;p&gt;
+&lt;h4 id=&quot;talking-to-bob&quot;&gt;Talking to Bob&lt;&#x2F;h4&gt;
+&lt;p&gt;Meanwhile, Alice still needs to talk to Bob. As already discussed, unless
+everyone speaks the same end-to-end encrypted protocol (be it Matrix,
+WhatsApp or anything else), we inevitably have a trade-off here between
+interoperability and privacy if Bob is not on the same system as Alice
+(assuming AliceChat is end-to-end encrypted) - and we will need to clearly
+warn Alice that the conversation is no longer end-to-end encrypted:&lt;&#x2F;p&gt;
+&lt;div style=&quot;text-align: center&quot;&gt;
+&lt;img src=&quot;&#x2F;blog&#x2F;img&#x2F;2022-03-29-warning.jpg&quot; width=&quot;430&quot;&#x2F;&gt;
+&lt;&#x2F;div&gt;
+&lt;br&#x2F;&gt;
+&lt;p&gt;To be clear: right now, today, if Bob were on AliceChat, he could be
+copy-pasting all your messages into (say) Google Translate in a frantic
+effort to workaround the fact that his closed E2EE chat platform has no way
+to do machine translation.  However, in a DMA world, Bob could legitimately
+loop a translation bot into the conversation… and Alice would be warned that
+the conversation was no longer secure (given the data is now being bridged
+over to Google).&lt;&#x2F;p&gt;
+&lt;p&gt;This is a clear improvement in user experience and transparency.  Likewise, if
+I’m talking to a bridged user today on one of these platforms, I have no way
+of telling that they have chosen to prioritise interop over E2EE - which is
+frankly terrifying.  If I’m talking to someone on WhatsApp today I blindly
+assume that they are E2EE as they are on the same platform - and if they’re
+using an unofficial app or bridge, I have no way to tell.  Whereas in a DMA
+world, you would expect the gatekeeper to transparently expose it.&lt;&#x2F;p&gt;
+&lt;p&gt;If anything, this is good news for the gatekeeper in that it consciously
+advertises a big selling point for them: that for full E2EE, users need to
+talk to other users in the same walled garden (unless of course the platform
+speaks the same protocol).  No more need for bus shelter adverts to remind
+everywhere that WhatsApp is E2EE - instead they can remind the user every
+time they talk to someone outside the walled garden!&lt;&#x2F;p&gt;
+&lt;p&gt;Just to spell it out: the DMA does not require or encourage any reduction in
+end-to-end encryption for WhatsApp or similar: full end-to-end encryption
+will still be there for users in the same platform, including through to
+users on custom clients (assuming the gatekeeper doesn’t flex and turn it off
+for other reasons).&lt;&#x2F;p&gt;
+&lt;p&gt;Obviously, this flow only considers the simple case of Alice inviting Bob. The
+flow is of course symmetrical for Bob inviting Alice; AliceChat will need to
+advertise bridges which can be used to connect to its users.  As Bob pops up
+from BobChat, the bridge would use AliceChat’s newly open APIs to provision a
+user for him, authing him as per any other user (thus ensuring that AliceChat
+doesn’t need to have trusted BobChat to have authenticated the user).  The
+bridge then sends&#x2F;receives messages on Bob’s behalf within AliceChat.&lt;&#x2F;p&gt;
+&lt;h4 id=&quot;group-communication&quot;&gt;Group communication&lt;&#x2F;h4&gt;
+&lt;p&gt;This is all very well for 1:1 chats - which are the initial scope of the DMA.
+However, over the coming years, we expect group chats to also be in scope.
+The good news is that the same general architecture works for group chats
+too.  We need a better source of identity though: AliceChat can’t possibly
+independently authenticate all the new users which might be joining via group
+conversations on other servers (especially if they join indirectly via
+another server).  This means adopting one of the decentralised identity
+lookup approaches outlined earlier to determine whether Charlie on
+CharlieChat is the real Charlie or an imposter.&lt;&#x2F;p&gt;
+&lt;p&gt;Another problem which emerges with group chats which span multiple service
+providers is that of indirect routing, especially if the links between the
+providers use different protocols.  What if AliceChat has a direct bridge to
+BobChat (a bit like AIM and ICQ both spoke OSCAR), BobChat and CharlieChat
+are connected by Matrix bridges, and AliceChat and CharlieChat are connected
+via XMPP bridges?  We need a way for the bridges to decide who forwards
+traffic for each network, and who bridges the users for which network.  If
+they were all on Matrix or XMPP this would happen automatically, but with
+mixed protocols we’d probably have to extend the lookup protocol to establish
+a spanning tree for each conversation to prevent forwarding loops.&lt;&#x2F;p&gt;
+&lt;p&gt;Here’s a deliberately twisty example to illustrate the above thought experiment:&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;img src=&quot;&#x2F;blog&#x2F;img&#x2F;2022-03-29-alice-bob-charlie.jpg&quot; alt=&quot;&quot; &#x2F;&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;There is also a risk of bridge proliferation here - in the worst case, every
+service would have to source bridges to directly connect to every other
+service who came along, creating a nightmarish n-by-m problem.  But in
+practice, we expect direct proprietary-to-proprietary bridges to be rare:
+instead, we already have open standard communication protocols like Matrix
+and XMPP which provide a common language between bridges - so in practice,
+you could just end up in a world where each service has to find a
+them-to-Matrix or them-to-XMPP bridge (which could be run by them, or
+whatever trusted party they delegate to).&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;conclusion&quot;&gt;Conclusion&lt;&#x2F;h3&gt;
+&lt;p&gt;A mesh of bridges which connect together the open APIs of proprietary vendors
+by converting them into open standards may seem unwieldy at first - but it’s
+precisely the sort of ductwork which links both phone networks and the
+Internet together in practice.  As long as the bridging provides for highest
+common denominator fidelity at the best impedance ratio, then it’s
+conceptually no different to converting circuit switched phone calls to VoIP,
+or wired to wireless Ethernet, or any of the other bridges which we take
+entirely for granted in our lives thanks to their transparency.&lt;&#x2F;p&gt;
+&lt;p&gt;Meanwhile, while this means a bit more user interface in the communication
+apps in order to select networks and warn about trustedness, the benefits to
+users are enormous as they put the user squarely back in control of their
+conversations. And the UX will improve as the tech evolves.&lt;&#x2F;p&gt;
+&lt;p&gt;The bottom line is, we should not be scared of interoperability, just because
+we’ve grown used to a broken world where nothing can interconnect.  There are
+tractable ways to solve it in a way that empowers and informs the user - and
+the DMA has now given the industry the opportunity to demonstrate that it can
+work.&lt;&#x2F;p&gt;
+</content>
+	</entry>
+	<entry xml:lang="en">
+		<title>Interoperability without sacrificing privacy: Matrix and the DMA</title>
+		<published>2022-03-25T22:39:46+00:00</published>
+		<updated>2022-03-25T18:01:39+00:00</updated>
+		<link rel="alternate" href="/blog/2022/03/25/interoperability-without-sacrificing-privacy-matrix-and-the-dma/" type="text/html"/>
+		<id>/blog/2022/03/25/interoperability-without-sacrificing-privacy-matrix-and-the-dma/</id>
+		<content type="html">&lt;p&gt;Yesterday the EU Parliament &amp;amp; Council agreed on the contents of the Digital
+Markets Act - new legislation from the EU intended to limit anticompetitive
+behaviour from tech “gatekeepers”, i.e. big tech companies (those with market
+share larger than €75B or with more than €7.5B a year of revenue).&lt;&#x2F;p&gt;
+&lt;p&gt;This is absolutely landmark legislation, where the EU has decided not to break
+the gatekeepers up in order to create a more competitive marketplace - but
+instead to “break them open”.  This is unbelievably good news for the open
+Internet, as it is obligating the gatekeepers to provide open APIs for their
+communication services.  In other words: no longer will the tech giants be
+able to arbitrarily lock their users inside their walled gardens - there will
+be a legal requirement for them to expose APIs to other services.&lt;&#x2F;p&gt;
+&lt;p&gt;While the formal outcomes of yesterday’s agreement haven’t been published yet
+(beyond &lt;a href=&quot;https:&#x2F;&#x2F;www.europarl.europa.eu&#x2F;news&#x2F;en&#x2F;press-room&#x2F;20220315IPR25504&#x2F;deal-on-digital-markets-act-ensuring-fair-competition-and-more-choice-for-users&quot;&gt;this press release&lt;&#x2F;a&gt;),
+our understanding is that the DMA will mandate:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Gatekeepers will have to provide open and documented APIs to their
+services, on request, in order to facilitate interoperability (i.e. so
+that other services can communicate with their users).&lt;&#x2F;li&gt;
+&lt;li&gt;These APIs must preserve the same level of end-to-end encryption (if any)
+to remote users as is available to local users.&lt;&#x2F;li&gt;
+&lt;li&gt;This applies to 1:1 messaging and file transfer in the short term, and
+group messaging, file-transfer, 1:1 VoIP and group VoIP in the longer
+term.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;This is the best possible outcome imaginable for the open internet.  Never
+again will a big tech company be able to hold their users hostage in a walled
+garden, or arbitrarily close down or sabotage their APIs.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;so-what-s-the-catch&quot;&gt;So, what’s the catch?&lt;&#x2F;h3&gt;
+&lt;p&gt;Since the DMA announcement on Thursday, there’s been &lt;a href=&quot;https:&#x2F;&#x2F;twitter.com&#x2F;alexstamos&#x2F;status&#x2F;1507145126006587411&quot;&gt;quite a lot&lt;&#x2F;a&gt;
+of &lt;a href=&quot;https:&#x2F;&#x2F;twitter.com&#x2F;AlecMuffett&#x2F;status&#x2F;1507366934412734491&quot;&gt;yelling&lt;&#x2F;a&gt; from some very
+experienced voices that mandating interoperability via open APIs is going to
+irrevocably undermine end-to-end encrypted messengers like WhatsApp.  This
+seems to mainly be born out of a concern that the DMA is somehow trying to
+subvert end-to-end encryption, despite the fact that the DMA explicitly
+mandates that the APIs must expose the same level of security, including
+end-to-end encryption, that local users are using. (N.B. Signal doesn’t
+qualify as a gatekeeper, so none of this is relevant to Signal).&lt;&#x2F;p&gt;
+&lt;p&gt;So, for WhatsApp, it means that the API would expose both the message-passing
+interface as well as the key management APIs required to interoperate with
+WhatsApp using your own end-to-end-encrypted WhatsApp client - E2EE would be
+preserved.&lt;&#x2F;p&gt;
+&lt;p&gt;However, this does mean that if you were to actively interoperate between
+providers (e.g. if Matrix turned up and asked WhatsApp, post DMA, to expose
+an API we could use to write bridges against), then that bridge would need to
+convert between WhatsApp’s E2EE’d payloads and Matrix’s E2EE’d payloads.
+(Even though both WhatsApp and Matrix use the Double Ratchet, the actual
+payloads within the encryption are completely different and would need to be
+converted).  Therefore such a bridge has to re-encrypt the traffic - which
+means that the plaintext is exposed on the bridge, putting it at risk and
+breaking the end-to-end encryption guarantee.&lt;&#x2F;p&gt;
+&lt;p&gt;There are solutions to this, however:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;We could run the bridge somewhere relatively safe - e.g. the user’s client.
+There’s a bunch of work going on already in Matrix to run clientside
+bridges, so that your laptop or phone effectively maintains a connection
+over to iMessage or WhatsApp or whatever as if it were logged in… but then
+relays the messages into Matrix once re-encrypted.  By decentralising the
+bridges and spreading them around the internet, you avoid them becoming a
+single honeypot that bad actors might look to attack: instead it becomes
+more a question of endpoint compromise (which is already a risk today).&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;The gatekeeper could switch to a decentralised end-to-end encrypted protocol
+like Matrix to preserve end-to-end encryption throughout.  This is
+obviously significant work on the gatekeeper’s side, but we shouldn’t rule
+it out.  For instance, making the transition for a non-encrypted service is
+impressively little work, as &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2020&#x2F;12&#x2F;07&#x2F;gitter-now-speaks-matrix#how-do-you-make-an-existing-chat-system-talk-matrix&quot;&gt;we proved with Gitter&lt;&#x2F;a&gt;.
+(We’d ideally need to figure out decentralised&#x2F;federated identity-lookup
+first though, to avoid switching from one centralised identity database
+to another).&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;
+&lt;p&gt;Worst case, we could flag to the user that their conversation is insecure
+(the chat equivalent of a scary TLS certificate warning).  Honestly, this
+is something communication apps (including Matrix-based ones!) should be
+doing anyway: as a user you should be able to tell what 3rd parties
+(bots, integrations etc) have been added to a given conversation.  Adding
+this sort of semantic actually opens up a much richer set of communication
+interactions, by giving the user the flexibility over who to trust with
+their data, even if it breaks the platonic ideal of pure E2E encryption.&lt;&#x2F;p&gt;
+&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;On balance, we think that the benefits of mandating open APIs outweigh the
+risks that someone is going to run a vulnerable large-scale bridge and
+undermine everyone’s E2EE.  It’s better to have the option to be able to get
+at your data in the first place than be held hostage in a walled garden.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;other-considerations&quot;&gt;Other considerations&lt;&#x2F;h3&gt;
+&lt;p&gt;One other complaint which has come up a bunch is around speed of innovation:
+the idea that WhatsApp or similar would be seriously slowed down by having
+to (effectively) maintain stable documented federation APIs, and figure out
+how to do backwards compatibility for new features.  It’s true that this will
+take a bit more effort (similar to how adding GDPR compliance takes some
+effort), but the ends make it more than worth it.  Plus, if the rag-tag
+Matrix ecosystem can do it, it doesn’t seem unreasonable to think that a
+$600B company like Meta can figure it out too...&lt;&#x2F;p&gt;
+&lt;p&gt;Another consideration is that it might make it too easy to build malicious 3rd
+party clients - e.g. building your own &amp;quot;special&amp;quot; version of Signal which
+connects to the official service, but deliberately or otherwise has security
+flaws.  The fact is that we&#x27;re already in this position though: there are
+illicit alternative clients flying around all over the place, and the onus is
+on the app stores to protect their users from installing malware.  This isn&#x27;t
+reason to throw the baby of interoperability out with the bathwater of
+bootleg clients.&lt;&#x2F;p&gt;
+&lt;p&gt;The final complaint is about moderation and abuse: while open APIs are good
+news for consumer choice, they can also be used by spammers, phishers and
+other miscreants to cause problems for the users within the gatekeeper.  Much
+like a mediaeval citadel; opening up your walled garden means that both good
+and bad people can turn up.  And much like real life, this is a solvable problem,
+even if it’s unfortunate: the benefits of free trade massively outweigh the
+downsides of having to police strangers more effectively.  Frankly,
+moderation and anti-abuse approaches on the Internet today are infamously
+broken, with centralised moderation by gatekeepers producing increasingly
+erratic results.  By opening the walled gardens, we are forcing a much-needed
+opportunity to review how to empower users and admins to filter unwanted
+content on their own terms.  There’s a recent write-up of the proposed
+approach for Matrix at
+&lt;a href=&quot;https:&#x2F;&#x2F;element.io&#x2F;blog&#x2F;moderation-needs-a-radical-change&#x2F;&quot;&gt;https:&#x2F;&#x2F;element.io&#x2F;blog&#x2F;moderation-needs-a-radical-change&#x2F;&lt;&#x2F;a&gt;,
+which outlines one strategy - but there are many others.  Honestly, having to improve
+moderation tooling is a worthwhile price to pay for the benefits of open
+APIs.&lt;&#x2F;p&gt;
+&lt;p&gt;So, there you have it. Hopefully you’ll agree that the benefits here outweigh
+the risks: without open APIs we wouldn&#x27;t even have the &lt;em&gt;option&lt;&#x2F;em&gt; to talk about
+interoperability.  We should be celebrating a new dawn for open access,
+rather than fearing that the sky is falling and this is nefarious attempt to
+undermine end-to-end encryption.&lt;&#x2F;p&gt;
+</content>
+	</entry>
+	<entry xml:lang="en">
+		<title>Hosting FOSDEM 2022 on Matrix</title>
+		<published>2022-02-07T00:00:00+00:00</published>
+		<updated>2022-02-07T00:00:00+00:00</updated>
+		<link rel="alternate" href="/blog/2022/02/07/hosting-fosdem-2022-on-matrix/" type="text/html"/>
+		<id>/blog/2022/02/07/hosting-fosdem-2022-on-matrix/</id>
+		<content type="html">&lt;p&gt;Last year was the first time FOSDEM was hosted on Matrix, and it was generally a huge success - and so the FOSDEM team trusted us again this year and we’re happy to say that it seems to have gone really well! This year’s FOSDEM was massive once again, featuring 654 speakers, 731 events, and 103 tracks.&lt;&#x2F;p&gt;
+&lt;p&gt;This year hosting the event went smoother than last year, the only significant issue was some of the Q&amp;amp;A Jitsis not being broadcast to the devrooms on Saturday before 10:15 UTC, for which we offer our apologies to the speakers impacted. This turned out to be a problem with the Matrix&amp;lt;-&amp;gt;Jitsi access control sync system which hadn’t showed up during earlier testing, but we patched around it rapidly on the day.&lt;&#x2F;p&gt;
+&lt;p&gt;The most notable difference between this year and the previous year has been the usage of a “attendees.fosdem.org” instance in addition to the original “fosdem.org” one, specifically for attendees. The graphs speak for themselves: Synapse could handle the load of the 23K users (13K joined users and 10K lurkers) spread across a total number of 941 rooms. The real eye-opener however is that of the 13K joined users, only 4K came came from the FOSDEM attendee server, and 1K from Libera Chat, meaning that ~70% of the Matrix participants were already on Matrix and came in from existing servers! 🤯 That means the vast majority of people attended over federation. Decentralisation at work, people! It works! We didn’t host the conference… you did!!&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;img src=&quot;&#x2F;blog&#x2F;img&#x2F;2022-07-02-fosdem_attendees_heatmap.png&quot; alt=&quot;FOSDEM attendees heatmap&quot; &#x2F;&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;But not only did the backend handle the load smoothly: the general user experience felt tightly integrated. People were welcomed by a tailor-made home page in Element to help them navigate through all the tracks and stands:.&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;img src=&quot;&#x2F;blog&#x2F;img&#x2F;2022-07-02-fosdem_homescreen.png&quot; alt=&quot;Homescreen of chat.fosdem.org&quot; &#x2F;&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;One of the great things is it doesn’t require heavy modifications to Element: anyone who installs their own instance of Element can use a simple html file to display relevant information to their audience.&lt;&#x2F;p&gt;
+&lt;p&gt;New this year, we also generated a space hierarchy for the whole conference at &lt;a href=&quot;https:&#x2F;&#x2F;matrix.to&#x2F;#&#x2F;#fosdem2022:fosdem.org&quot;&gt;#fosdem2022:fosdem.org&lt;&#x2F;a&gt; to help navigate the maze of rooms, making it even easier for users on their own servers to jump in:&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;img src=&quot;&#x2F;blog&#x2F;img&#x2F;2022-07-02-fosdem_space.png&quot; alt=&quot;FOSDEM Space listing all the FOSDEM rooms&quot; &#x2F;&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;Another greatly appreciated feature was the famous “maximised widgets” I (Thib) &lt;a href=&quot;https:&#x2F;&#x2F;www.youtube.com&#x2F;c&#x2F;Matrixdotorg&quot;&gt;keep telling you about in Matrix Live episodes&lt;&#x2F;a&gt;. Attendees and speakers could give the conference the central attention it deserved while simultaneously keeping an eye on what was happening in the chat. &lt;&#x2F;p&gt;
+&lt;p&gt;&lt;img src=&quot;&#x2F;blog&#x2F;img&#x2F;2022-07-02-fosdem_stand.png&quot; alt=&quot;FOSDEM stand with maximised widget view&quot; &#x2F;&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;From the speaker&#x27;s perspective, we tried to streamline the user journey as much as possible: a bot invited them to a backstage room, in which they joined a Jitsi widget while their talk was being played in the track or devroom. They could see the most upvoted questions by the audience in a dedicated widget. A few minutes before their pre-recorded talk was over, a countdown (new this year!) could be displayed to tell them and the host they were about to go live. At the end of the countdown, the backstage Jitsi was broadcasted to the track so the speaker could answer the questions.&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;img src=&quot;&#x2F;blog&#x2F;img&#x2F;2022-07-02-fosdem_backstage.png&quot; alt=&quot;Backstage room where the speaker and host could talk and see the questions&quot; &#x2F;&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;If you want to have an in-depth look at the backend’s architecture, it didn’t change much from last year. You can have a look at &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2021&#x2F;02&#x2F;15&#x2F;how-we-hosted-fosdem-2021-on-matrix#how-was-it-built&quot;&gt;last year’s blog post for the details on the setup&lt;&#x2F;a&gt;. Most of the heavy lifting was around &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;conference-bot&quot;&gt;the conference bot&lt;&#x2F;a&gt; used to set rooms up, create the spaces, populate them with widgets, arrange layouts and trigger countdowns before going live…&lt;&#x2F;p&gt;
+&lt;p&gt;Finally we are immensely proud that we had our first ever Matrix Devroom! Not only does it mean the staff of a large international open source conference thinks it’s worth having a track of our own, it also means our community has grown to the point where we could have &lt;a href=&quot;https:&#x2F;&#x2F;fosdem.org&#x2F;2022&#x2F;schedule&#x2F;track&#x2F;matrixorg_foundation_and_community&#x2F;&quot;&gt;8 hours of back to back Matrix content&lt;&#x2F;a&gt;! Here’s a link to &lt;a href=&quot;https:&#x2F;&#x2F;www.youtube.com&#x2F;playlist?list=PLl5dnxRMP1hW7HxlJiHSox02MK9_KluLH&quot;&gt;the YouTube playlists to which we are going to add the videos of FOSDEM&lt;&#x2F;a&gt; as they’re being published.&lt;&#x2F;p&gt;
+&lt;p&gt;Huge thanks to the FOSDEM team for trusting us, massive shout-out to &lt;a href=&quot;https:&#x2F;&#x2F;ems.element.io&#x2F;&quot;&gt;Element Matrix Services&lt;&#x2F;a&gt; and Element’s Ops and infrastructure team for their fantastic job in setting everything up and making sure everything was ready in time, a sincere thank you to all the fantastic speakers who shared awesome content, and finally to all the attendees. What a weekend!&lt;&#x2F;p&gt;
+</content>
+	</entry>
+	<entry xml:lang="en">
+		<title>Digital Markets Act and interoperability: Debunking the gatekeepers&#x27; myths</title>
+		<published>2022-02-03T00:00:00+00:00</published>
+		<updated>2022-02-03T00:00:00+00:00</updated>
+		<link rel="alternate" href="/blog/2022/02/03/digital-markets-act-and-interoperability-myth-debunking-of-the-gatekeepers-arguments/" type="text/html"/>
+		<id>/blog/2022/02/03/digital-markets-act-and-interoperability-myth-debunking-of-the-gatekeepers-arguments/</id>
+		<content type="html">&lt;p&gt;Today the European Parliament, the European Council and the European Commission will meet again for a discussion about the Digital Markets Act (DMA). This is the second of three of these meetings, appropriately called trilogues, where each party exposes their stance on a proposed law and the group tries to agree on the final version.&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;a href=&quot;https:&#x2F;&#x2F;ec.europa.eu&#x2F;info&#x2F;strategy&#x2F;priorities-2019-2024&#x2F;europe-fit-digital-age&#x2F;digital-markets-act-ensuring-fair-and-open-digital-markets_en&quot;&gt;The DMA&lt;&#x2F;a&gt; is a groundbreaking step forward in shaking the hold a few gatekeepers have on users and the market, in particular because it looks to (among others):&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Require gatekeepers to allow other services to interoperate with their services&lt;&#x2F;li&gt;
+&lt;li&gt;Prevent them to treat their own services and products more favourably (for example by ranking) &lt;&#x2F;li&gt;
+&lt;li&gt;Require them to allow users to uninstall any pre-installed software or app&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;The interoperability obligation is obviously the one on which we’ve kept a particularly close eye, as if it lands well it could take the success of Matrix to the next level completely overnight.&lt;&#x2F;p&gt;
+&lt;p&gt;However, whilst in our mind interoperability automatically implies “open standard”, there are actually different ways of implementing it, depending on how far one wants to go. Typical debates here have been between whether to force gatekeepers to maintain open and well documented APIs, or whether to go full swing and mandate an open standard, and every shade in between.&lt;&#x2F;p&gt;
+&lt;p&gt;We’ve been lucky to have had the opportunity to talk to policy advisors from different European member states, and it has been pretty fascinating to realise that it was always the same arguments which were being presented back at us, straight from the gatekeepers partyline.&lt;&#x2F;p&gt;
+&lt;p&gt;We’ve ended up just listing them in a quick, high level, Myth Debunking exercise and thought it would be useful to actually publish them for everyone to access, so here they are!&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;MYTH #1 -&lt;&#x2F;strong&gt; &amp;quot;It is impossible to have a standard that is open, decentralized and secure at the same time&amp;quot;&lt;br &#x2F;&gt;
+⇒ &lt;strong&gt;false&lt;&#x2F;strong&gt;: HTTPS did it, Matrix did it.&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;strong&gt;MYTH #2 -&lt;&#x2F;strong&gt;&amp;quot;It is difficult and expensive to make existing services compatible with a standard&amp;quot;&lt;br &#x2F;&gt;
+⇒ &lt;strong&gt;false&lt;&#x2F;strong&gt;: &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2020&#x2F;12&#x2F;07&#x2F;gitter-now-speaks-matrix#how-do-you-make-an-existing-chat-system-talk-matrix&quot;&gt;Gitter was integrated into Matrix in less than a month&lt;&#x2F;a&gt;, with a single developer&lt;&#x2F;li&gt;
+&lt;li&gt;**MYTH #3 - **&amp;quot;Interoperability is incompatible with end-to-end encryption&amp;quot;&lt;br &#x2F;&gt;
+⇒ &lt;strong&gt;false&lt;&#x2F;strong&gt;: services just have to speak the same language, email has proved this with S&#x2F;MIME and PGP - where different vendors can and do interoperate with E2EE. It’s even better when the protocol is E2EE by default.&lt;&#x2F;li&gt;
+&lt;li&gt;**MYTH #4 - **&amp;quot;It may work for messaging, but less so for social networks&amp;quot;&lt;br &#x2F;&gt;
+⇒ &lt;strong&gt;false&lt;&#x2F;strong&gt;: it&#x27;s still about managing content and users. Even though social networks have more varied content, it is already well modelled for their own APIs, ready to be expressed in a common language. The key is in the fallback option on unsupported features, as well as the ability to have moderation tools (more on that later).&lt;&#x2F;li&gt;
+&lt;li&gt;**MYTH #5 - **“Interoperability is not compatible with data privacy”&lt;br &#x2F;&gt;
+⇒ &lt;strong&gt;false&lt;&#x2F;strong&gt;: Interoperability gives the ability to users to choose who is hosting their data and as such choose providers they trust. Besides, the DMA doesn’t live in a vacuum: it will exist alongside horizontal regulations like the GDPR and the Data Act, which give people sufficient control over their data to rectify their choices if they are not happy. Because the possibility of interoperability is there, it does not mean it will become mandatory for users to use it: they will still have their own threat models and will make decisions accordingly, just as they do today. But enshrining interoperability in law will at least ensure gatekeepers need to provide recourse for people to have further control over their data, which will be an improvement from the landscape today. &lt;&#x2F;li&gt;
+&lt;li&gt;**MYTH #6 - **&amp;quot;There is no user need&amp;quot;&lt;br &#x2F;&gt;
+⇒ &lt;strong&gt;false&lt;&#x2F;strong&gt;: most haven&#x27;t had a taste of interoperable chat&#x2F;social media (but they know email), others are demanding bridges between services: &lt;a href=&quot;https:&#x2F;&#x2F;www.dailymail.co.uk&#x2F;sciencetech&#x2F;article-10451559&#x2F;One-four-people-struggle-friends-using-apps.html&quot;&gt;25% users of 2 communication apps lose contact with friends because they are using too many apps&lt;&#x2F;a&gt;. And this figure doubles for people using more than 5 apps. There was no demand for cars when they were created: people only wanted faster horses.&lt;&#x2F;li&gt;
+&lt;li&gt;**MYTH #7 - **&amp;quot;There is no demand from European companies&amp;quot;&lt;br &#x2F;&gt;
+⇒ &lt;strong&gt;false&lt;&#x2F;strong&gt;: The fact it is so hard for European companies to remain competitive enough to stay alive means there are few of them to complain about what is killing them! However these companies are gathering to push for interoperability (like the &lt;a href=&quot;https:&#x2F;&#x2F;competitivedigitalmarkets.eu&#x2F;&quot;&gt;Coalition for Competitive Digital Markets&lt;&#x2F;a&gt;). It will enable them to be more innovative in the product they develop by benefiting from an existing open network rather than being slowed down by having to build one from scratch. Companies will compete on the value they add rather than the size of their network. An open standard also gives an open field for innovation from a business model perspective. The Web is an excellent example of how much an open network fuels innovation and growth.&lt;&#x2F;li&gt;
+&lt;li&gt;**MYTH #8 - **&amp;quot;It is better to require providers to have open and stable APIs than define a single open standard&amp;quot;&lt;br &#x2F;&gt;
+⇒ &lt;strong&gt;false&lt;&#x2F;strong&gt;: this is the best way to leave gatekeepers at the center of the ecosystem as it means that each player has to multiply its effort to interface with every single other player, but every player will only have the resources to interface with a few of its counterparts and will logically default to the bigger ones, effectively not solving the problem. In addition, if providers are not aligned on which encryption to use it will just break end-to-end encryption and create risk for the user in every bridge. In practice the DMA is about forcing the gatekeepers to interoperate only, but we strongly believe that &lt;em&gt;everyone&lt;&#x2F;em&gt; should be interoperating if we are about improving the user’s experience and control, and giving more space to companies to innovate. Limiting it to the gatekeepers is a first step, but only a defensive one.&lt;&#x2F;li&gt;
+&lt;li&gt;**MYTH #9 - **“An open standard limits innovation if it defines a lowest common denominator”&lt;br &#x2F;&gt;
+⇒ &lt;strong&gt;false&lt;&#x2F;strong&gt;: the lowest common denominator should match what users consider as table stakes in a messaging or social media app. Providers can innovate on top by providing different features which go beyond table stakes, for example by targeting niche use cases, like messaging services focused on elderly and disabled users, or focused on healthcare, warehouse workers, or integrated in a CRM for call centers, or creatives…  Providers also can implement a profile of the standard which is a subset of its full scope, ensuring the standard remains a highest common denominator..&lt;&#x2F;li&gt;
+&lt;li&gt;**MYTH #10 - **“It will be impossible to moderate social networks built on an open standard”&lt;br &#x2F;&gt;
+⇒ &lt;strong&gt;false&lt;&#x2F;strong&gt;: decentralised networks actually have driven the adoption of much more sophisticated moderation techniques than the coarse approaches of centralised silos. Appropriate moderation means have to be part of the open standard definition, and some are already used in Matrix. It would also empower victims who today have no choice but get in touch with providers one by one. Each provider will also have control over their own users, and users can select providers whose T&amp;amp;Cs are aligned with their ethics. The world is not black and white, unlike what Silicon Valley tries to make us believe.&lt;&#x2F;li&gt;
+&lt;li&gt;**MYTH #11 - **“It will take years before being able to define an open standard”&lt;br &#x2F;&gt;
+⇒ &lt;strong&gt;you don’t have to&lt;&#x2F;strong&gt;: You could leverage existing technologies which are being used by the industry. Matrix, XMPP and ActivityPub exist today. For instance, Matrix has been managed by its own standard body (The Matrix Foundation) and could be ratified by a more established one like IETF, ETSI or W3C if needed.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;Obviously the devil will be in the details of the way the final text is formulated, as well as the limits, obligations and controls put in place, but overall it should be an improvement for all European users and companies and we’re looking forward to seeing how today’s trilogue goes!&lt;&#x2F;p&gt;
+</content>
+	</entry>
 	<entry xml:lang="en">
 		<title>The Mega Matrix Holiday Special 2021</title>
 		<published>2021-12-22T23:27:06+00:00</published>
