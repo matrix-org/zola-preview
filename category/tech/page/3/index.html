@@ -117,7 +117,7 @@
     <div class="content">
         <header>
             <h1>Tech</h1>
-            52 posts tagged with "Tech" <a href="/category">(See all Category)</a>
+            54 posts tagged with "Tech" <a href="/category">(See all Category)</a>
             
             <h2>
                 <small><a href="/category/tech/atom.xml">Atom Feed</a></small>
@@ -125,6 +125,94 @@
             
         </header>
 
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2017&#x2F;03&#x2F;15&#x2F;dendrite-receives-its-first-messages&#x2F;" title="Dendrite receives its first messages!!!">Dendrite receives its first messages!!!</a></h2>
+                <span>
+                    15.03.2017 00:00
+                    —
+                    <a href="/category/tech">
+                        Tech
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Hi all,</p>
+<p>We hit a major milestone today on <a href="https://github.com/matrix-org/dendrite">Dendrite</a>, our next-generation golang homeserver: <b>Dendrite received its first messages!!</b></p>
+<p>Before you get too excited, please understand that Dendrite is still a pre-alpha work in progress - whilst we successfully created some rooms on an instance and sent a bunch of messages into them via the Client-Server API, most other functionality (e.g. receiving messages via /sync, logging in, registering, federation etc) is yet to exist. <b>It cannot yet be used as a homeserver</b>.  However, this is still a huge step in the right direction, as it demonstrates the core DAG functionality of Matrix is intact, and the beginnings of a usable Client-Server API are hooked up.</p>
+<p>The architecture of Dendrite is genuinely interesting - please check out the <a href="https://github.com/matrix-org/dendrite/blob/master/WIRING.md">wiring diagram</a> if you haven't already.  The idea is that the server is broken down into a series of components which process streams of data stored in Kafka-style append-only logs.  Each component scales horizontally (you can have as many as required to handle load), which is an enormous win over Synapse's monolithic design.  Each component is also decoupled from each other by the logs, letting them run on entirely different machines as required.  Please note that whilst the initial implementation is using Kafka for convenience, the actual append-only log mechanism is abstracted away - in future we expect to see configurations of Dendrite which operate entirely from within a single go executable (using go channels as the log mechanism), as well as alternatives to Kafka for distributed solutions.</p>
+<p>The components which have taken form so far are the central <a href="https://github.com/matrix-org/dendrite/tree/master/src/github.com/matrix-org/dendrite/roomserver">roomserver</a> service, which is responsible (as the name suggests) for maintaining the state and integrity of one or more rooms - authorizing events into the room DAG; storing them in postgres, tracking the auth chain of events where needed; etc.  Much of the core matrix DAG logic of the roomserver is provided by <a href="https://github.com/matrix-org/gomatrixserverlib">gomatrixserverlib</a>.  The roomserver receives events sent by users via the 'client room send' component (and 'federation backfill' component, when that exists).  The 'client room send' component (and in future also 'client sync') is provided by the <a href="https://github.com/matrix-org/dendrite/tree/master/src/github.com/matrix-org/dendrite/clientapi">clientapi</a> service - which is what as of today is successfully creating rooms and events and relaying them to the roomserver!</p>
+<p>The actual events we've been testing with are the history of the Matrix Core room: around 10k events.  Right now the roomserver (and the postgres DB that backs it) are the main bottleneck in the pipeline rather than clientapi, so it's been interesting to see how rapidly the roomserver can consume its log of events.  As of today's benchmark, on a generic dev workstation and an entirely unoptimised roomserver (i.e. no caching whatsoever) running on a single core, we're seeing it ingest the room history at over <b>350 events per second</b>.  The vast majority of this work is going into encoding/decoding JSON or waiting for postgres: with a simple event cache to avoid repeatedly hitting the DB for every auth and state event, we expect this to increase significantly.  And then as we increase the number of cores, kafka partitions and roomserver instances it should scale fairly arbitrarily(!)</p>
+<p>For context, the main synapse process for Matrix.org currently maxes out persisting events at around 15 and 20 per second (although it is also spending a bunch of time relaying events to the various worker processes, and other miscellanies).  As such, an initial benchmark for Dendrite of 350 msgs/s really does look incredibly promising.</p>
+<p>You may be wondering where this leaves Synapse?  Well, a major driver for implementing Dendrite has been to support the growth of the main matrix.org server, which currently persists around 10 events/s (whilst emitting around 1500 events/s).  We have exhausted most of the low-hanging fruit for optimising Synapse, and have got to point where the architectural fixes required are of similar shape and size to the work going into Dendrite.  So, whilst Synapse is going to be around for a while yet, we're putting the majority of our long-term plans into Dendrite, with a distinct degree of urgency as we race against the ever-increasing traffic levels on the Matrix.org server!</p>
+<p>Finally, you may be wondering what happened to <a href="https://github.com/matrix-org/dendron">Dendron</a>, our original experiment in Golang servers.  Well: Dendron was an attempt at a <a href="https://www.martinfowler.com/bliki/StranglerApplication.html">strangler pattern</a> rewrite of Synapse, acting as an shim in front of Synapse which could gradually swap out endpoints with their golang implementations.  In practice, the operational complexity it introduced, as well as the amount of room for improvement (at the time) we had in Synapse, and the relatively tight coupling to Synapse's existing architecture, storage &amp; schema, meant that it was far from a clear win - and effectively served as an excuse to learn Go.  As such, we've finally formally killed it off as of last week - Matrix.org is now running behind a normal haproxy, and Dendron is dead.  Meanwhile, Dendrite (aka Dendron done Right ;) is very much alive, progressing fast, free from the shackles of Synapse.</p>
+<p>We'll try to keep the blog updated with progress on Dendrite as it continues to grow!</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2017&#x2F;03&#x2F;11&#x2F;how-do-i-bridge-thee-let-me-count-the-ways&#x2F;" title="How do I bridge thee?  Let me count the ways...">How do I bridge thee?  Let me count the ways...</a></h2>
+                <span>
+                    11.03.2017 00:00
+                    —
+                    <a href="/category/tech">
+                        Tech
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p><a href="https://xkcd.com/1810"><img class="aligncenter wp-image-2297" src="/blog/wp-content/uploads/2017/03/xkcd1810-matrixified-v2-1024x842.png" width="753" height="619" /></a></p>
+<p id="types-of-bridging">Bridges come in many flavours, and we need consistent terminology within the Matrix community to ensure everyone (users, developers, core team) is on the same page. This post is primarily intended for bridge developers to refer to when building bridges.</p>
+<em>The most recent version of this document is <a href="/docs/guides/types-of-bridging.html">here</a> (<a href="https://github.com/matrix-org/matrix-doc/blob/master/supporting-docs/guides/2017-03-11-types-of-bridging.md">source</a>) but we're also posting it as a blog post for visibility.</em>
+<h3 id="types-of-rooms">Types of rooms</h3>
+<h4>Portal rooms</h4>
+Bridges can register themselves as controlling chunks of room aliases namespace, letting Matrix users join remote rooms transparently if they `/join #freenode_#wherever:matrix.org` or similar. The resulting Matrix room is typically automatically bridged to the single target remote room. Access control for Matrix users is typically managed by the remote network's side of the room. This is called a portal room, and is useful for jumping into remote rooms without any configuration needed whatsoever - using Matrix as a ‘bouncer' for the remote network.
+<h4 id="plumbed-rooms">Plumbed rooms</h4>
+Alternatively, an existing Matrix room can be can plumbed into one or more specific remote rooms by configuring a bridge (which can be run by anyone). For instance, #matrix:matrix.org is plumbed into #matrix on Freenode, matrixdotorg/#matrix on Slack, etc. Access control for Matrix users is necessarily managed by the Matrix side of the room. This is useful for using Matrix to link together different communities.
+<p>Migrating rooms between a portal &amp; plumbed room is currently a bit of a mess, as there's not yet a way for users to remove portal rooms once they're created, so you can end up with a mix of portal &amp; plumbed users bridged into a room, which looks weird from both the Matrix and non-Matrix viewpoints. https://github.com/matrix-org/matrix-appservice-irc/issues/387 tracks this.</p>
+<h3 id="types-of-bridges-simplest-first">Types of bridges (simplest first):</h3>
+<h4 id="bridgebot-based-bridges">Bridgebot-based bridges</h4>
+The simplest way to exchange messages with a remote network is to have the bridge log into the network using one or more predefined users called bridge bots - typically called MatrixBridge or MatrixBridge[123] etc. These relay traffic on behalf of the users on the other side, but it's a terrible experience as all the metadata about the messages and senders is lost. This is how the <a href="https://github.com/SijmenSchoon/telematrix">telematrix</a> matrix&lt;-&gt;telegram bridge currently works.
+<h4 id="bot-api-aka-virtual-user-based-bridges">Bot-API (aka Virtual user) based bridges</h4>
+Some remote systems support the idea of injecting messages from ‘fake' or ‘virtual' users, which can be used to represent the Matrix-side users as unique entities in the remote network. For instance, Slack's inbound webhooks lets remote bots be created on demand, letting Matrix users be shown cosmetically correctly in the timeline as virtual users. However, the resulting virtual users aren't real users on the remote system, so don't have presence/profile and can't be tab-completed or direct-messaged etc. They also have no way to receive typing notifs or other richer info which may not be available via bot APIs. This is how the current <a href="https://github.com/matrix-org/matrix-appservice-slack">matrix-appservice-slack</a> bridge works.
+<h4 id="one-way-puppeted-bridge">Simple puppeted bridge</h4>
+This is a richer form of bridging, where the bridge logs into the remote service as if it were a real 3rd party client for that service. As a result, the Matrix user has to already have a valid account on the remote system. In exchange, the Matrix user ‘puppets' their remote user, such that other users on the remote system aren't even aware they are speaking to a user via Matrix. The full semantics of the remote system are available to the bridge to expose into Matrix. However, the bridge has to handle the authentication process to log the user into the remote bridge.
+<p>This is essentially how the current <a href="https://github.com/matrix-org/matrix-appservice-irc">matrix-appservice-irc</a> bridge works (if you configure it to log into the remote IRC network as your ‘real' IRC nickname). <a href="https://github.com/matrix-org/matrix-appservice-gitter">matrix-appservice-gitter</a> is being extended to support both puppeted and bridgebot-based operation. It's how the experimental <a href="https://github.com/matrix-org/matrix-appservice-tg">matrix-appservice-tg</a> bridge works.</p>
+<p>Going forwards we're aiming for all bridges to be at least simple puppeted, if not double-puppeted.</p>
+<h4 id="two-way-puppeted-bridge">Double-puppeted bridge</h4>
+A simple ‘puppeted bridge' allows the Matrix user to control their account on their remote network. However, ideally this puppeting should work in both directions, so if the user logs into (say) their native telegram client and starts conversations, sends messages etc, these should be reflected back into Matrix as if the user had done them there. This requires the bridge to be able to puppet the Matrix side of the bridge on behalf of the user.
+<p>This is the holy-grail of bridging; <a href="https://github.com/matrix-hacks/matrix-puppet-bridge">matrix-puppet-bridge</a> is a community project that tries to facilitate development of double puppeted bridges, having done so for <a href="https://github.com/matrix-hacks/matrix-puppet-bridge#examples">several networks</a>. The main obstacle is working out an elegant way of having the bridge auth with Matrix as the matrix user (which requires some kind of scoped access_token delegation).</p>
+<h4 id="server-to-server-bridging">Server-to-server bridging</h4>
+Some remote protocols (IRC, XMPP, SIP, SMTP, NNTP, GnuSocial etc) support federation - either open or closed. The most elegant way of bridging to these protocols would be to have the bridge participate in the federation as a server, directly bridging the entire namespace into Matrix.
+<p>We're not aware of anyone who's done this yet.</p>
+<h4 id="sidecar-bridge">Sidecar bridge</h4>
+Finally: the types of bridging described above assume that you are synchronising the conversation history of the remote system into Matrix, so it may be decentralised and exposed to multiple users within the wider Matrix network.
+<p>This can cause problems where the remote system may have arbitrarily complicated permissions (ACLs) controlling access to the history, which will then need to be correctly synchronised with Matrix's ACL model, without introducing security issues such as races. We already see some problems with this on the IRC bridge, where history visibility for +i and +k channels have to be carefully synchronised with the Matrix rooms.</p>
+<p>You can also hit problems with other network-specific features not yet having equivalent representation in the Matrix protocol (e.g. ephemeral messages, or op-only messages - although arguably that's a type of ACL).</p>
+<p>One solution could be to support an entirely different architecture of bridging, where the Matrix client-server API is mapped directly to the remote service, meaning that ACL decisions are delegated to the remote service, and conversations are not exposed into the wider Matrix. This is effectively using the bridge purely as a 3rd party client for the network (similar to Bitlbee). The bridge is only available to a single user, and conversations cannot be shared with other Matrix users as they aren't actually Matrix rooms. (Another solution could be to use Active Policy Servers at last as a way of centralising and delegating ACLs for a room)</p>
+<p>This is essentially an entirely different product to the rest of Matrix, and whilst it could be a solution for some particularly painful ACL problems, we're focusing on non-sidecar bridges for now.</p>
+
+                
+            </div>
+        </article>
         
         <article class="post">
             <header>
@@ -630,192 +718,6 @@ Bug fixes:
 	<li>Fix bug in <code>/sync</code> where timeline order was incorrect for backfilled events (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/635" data-url="https://github.com/matrix-org/synapse/issues/635" data-id="139635294" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#635</a>)</li>
 </ul>
 </div>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2016&#x2F;02&#x2F;10&#x2F;synapse-0-13-released&#x2F;" title="Synapse 0.13 released!">Synapse 0.13 released!</a></h2>
-                <span>
-                    10.02.2016 00:00
-                    —
-                    <a href="/category/tech">
-                        Tech
-                    </a>
-                    —
-                    <a
-                        href="/author/matthew-hodgson">
-                        Matthew Hodgson
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Hi all,</p>
-<p>Synapse 0.13 was released this afternoon, bringing a new wave of features, bug fixes and performance fixes.  The main headlines include: huge performance increases (big catchup /syncs that were taking 20s now take 0.3s!), support for server-side per-room unread message and notification badge counts, ability for guest accounts to upgrade into fully-fledged accounts, change default push rules back to notifying for group chats, and loads of bug fixes.  This release incorporates what-was 0.12.1-rc1.</p>
-<p><b>Please note that on first launch after upgrading a pre-0.13 server to 0.13 or later, synapse will add a large database index which may take several minutes to complete.  Whilst the index is added the service will be unresponsive.</b></p>
-<p>Please get the new release from <a href="https://github.com/matrix-org/synapse">https://github.com/matrix-org/synapse</a> and have fun!</p>
-<p>Matthew</p>
-<p>Full release notes:</p>
-<code>
-Changes in synapse v0.13.1 (2016-02-10)
-=======================================
-<ul>
-<li>Bump matrix-angular-sdk (matrix web console) dependency to 0.6.8 to
-pull in the fix for SYWEB-361 so that the default client can display
-HTML messages again(!)</li>
-</ul>
-<h1 id="changes-in-synapse-v0-13-0-2016-02-10">Changes in synapse v0.13.0 (2016-02-10)</h1>
-<p>This version includes an upgrade of the schema, specifically adding an index to
-the <code>events</code> table. This may cause synapse to pause for several minutes the
-first time it is started after the upgrade.</p>
-<p>Changes:</p>
-<ul>
-<li>Improve general performance (PR #540, #543. #544, #54, #549, #567)</li>
-<li>Change guest user ids to be incrementing integers (PR #550)</li>
-<li>Improve performance of public room list API (PR #552)</li>
-<li>Change profile API to omit keys rather than return null (PR #557)</li>
-<li>Add <code>/media/r0</code> endpoint prefix, which is equivalent to <code>/media/v1/</code>
-(PR #595)</li>
-</ul>
-<p>Bug fixes:</p>
-<ul>
-<li>Fix bug with upgrading guest accounts where it would fail if you opened the
-registration email on a different device (PR #547)</li>
-<li>Fix bug where unread count could be wrong (PR #568)</li>
-</ul>
-<h1 id="changes-in-synapse-v0-12-1-rc1-2016-01-29">Changes in synapse v0.12.1-rc1 (2016-01-29)</h1>
-<p>Features:</p>
-<ul>
-<li>Add unread notification counts in <code>/sync</code> (PR #456)</li>
-<li>Add support for inviting 3pids in <code>/createRoom</code> (PR #460)</li>
-<li>Add ability for guest accounts to upgrade (PR #462)</li>
-<li>Add <code>/versions</code> API (PR #468)</li>
-<li>Add <code>event</code> to <code>/context</code> API (PR #492)</li>
-<li>Add specific error code for invalid user names in <code>/register</code> (PR #499)</li>
-<li>Add support for push badge counts (PR #507)</li>
-<li>Add support for non-guest users to peek in rooms using <code>/events</code> (PR #510)</li>
-</ul>
-<p>Changes:</p>
-<ul>
-<li>Change <code>/sync</code> so that guest users only get rooms they've joined (PR #469)</li>
-<li>Change to require unbanning before other membership changes (PR #501)</li>
-<li>Change default push rules to notify for all messages (PR #486)</li>
-<li>Change default push rules to not notify on membership changes (PR #514)</li>
-<li>Change default push rules in one to one rooms to only notify for events that
-are messages (PR #529)</li>
-<li>Change <code>/sync</code> to reject requests with a <code>from</code> query param (PR #512)</li>
-<li>Change server manhole to use SSH rather than telnet (PR #473)</li>
-<li>Change server to require AS users to be registered before use (PR #487)</li>
-<li>Change server not to start when ASes are invalidly configured (PR #494)</li>
-<li>Change server to require ID and <code>as_token</code> to be unique for AS's (PR #496)</li>
-<li>Change maximum pagination limit to 1000 (PR #497)</li>
-</ul>
-<p>Bug fixes:</p>
-<ul>
-<li>Fix bug where <code>/sync</code> didn't return when something under the leave key
-changed (PR #461)</li>
-<li>Fix bug where we returned smaller rather than larger than requested
-thumbnails when <code>method=crop</code> (PR #464)</li>
-<li>Fix thumbnails API to only return cropped thumbnails when asking for a
-cropped thumbnail (PR #475)</li>
-<li>Fix bug where we occasionally still logged access tokens (PR #477)</li>
-<li>Fix bug where <code>/events</code> would always return immediately for guest users
-(PR #480)</li>
-<li>Fix bug where <code>/sync</code> unexpectedly returned old left rooms (PR #481)</li>
-<li>Fix enabling and disabling push rules (PR #498)</li>
-<li>Fix bug where <code>/register</code> returned 500 when given unicode username
-(PR #513)</li>
-</ul>
-</code>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2016&#x2F;01&#x2F;04&#x2F;synapse-0-12-released&#x2F;" title="Synapse 0.12 released!">Synapse 0.12 released!</a></h2>
-                <span>
-                    04.01.2016 00:00
-                    —
-                    <a href="/category/tech">
-                        Tech
-                    </a>
-                    —
-                    <a
-                        href="/author/matthew-hodgson">
-                        Matthew Hodgson
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Happy 2016 everyone!</p>
-<p>To greet the new year, we bring you all new Synapse 0.12. The focus here has been a wide range of polishing, bugfixes, performance improvements and feature tweaks. The biggest news are that the 'v2' sync APIs are now production ready; the search APIs now work much better; 3rd party ID invites now work; and we now mount the whole client-server API under the <code>/_matrix/client/r0</code> URI prefix, as per the <a href="/docs/spec/r0.0.0/client_server.html">r0.0.0 release of the Client Server API</a> from a few weeks ago. The <code>r0</code> release unifies what were previously the somewhat confusing mix of 'v1' and 'v2' APIs as a single set of endpoints which play nice together.</p>
-<p>We highly recommend all homeservers upgrading to v0.12.0 as soon as possible. Get it now from <a href="https://github.com/matrix-org/synapse/">https://github.com/matrix-org/synapse/</a> or via our shiny new Debian packages at <a href="/packages/debian/">https://matrix.org/packages/debian/</a>.</p>
-<p> </p>
-<p>Full changelog follows:</p>
-<h3>Changes in synapse v0.12.0 (2016-01-04)</h3>
-<ul>
-    <li>Expose <code>/login</code> under <code>r0</code> (PR #459)</li>
-</ul>
-<a name="user-content-changes-in-synapse-v0-12-0-rc3-2015-12-23"></a>
-<h3><a id="user-content-changes-in-synapse-v0120-rc3-2015-12-23" class="anchor" href="https://github.com/matrix-org/synapse/blob/master/CHANGES.rst#changes-in-synapse-v0120-rc3-2015-12-23"></a>Changes in synapse v0.12.0-rc3 (2015-12-23)</h3>
-<ul>
-    <li>Allow guest accounts access to <code>/sync</code> (PR #455)</li>
-    <li>Allow filters to include/exclude rooms at the room level rather than just from the components of the sync for each room. (PR #454)</li>
-    <li>Include urls for room avatars in the response to <code>/publicRooms</code> (PR #453)</li>
-    <li>Don't set a identicon as the avatar for a user when they register (PR #450)</li>
-    <li>Add a <code>display_name</code> to third-party invites (PR #449)</li>
-    <li>Send more information to the identity server for third-party invites so that it can send richer messages to the invitee (PR #446)</li>
-    <li>Cache the responses to <code>/initialSync</code> for 5 minutes. If a client retries a request to <code>/initialSync</code> before the a response was computed to the first request then the same response is used for both requests (PR #457)</li>
-    <li>Fix a bug where synapse would always request the signing keys of remote servers even when the key was cached locally (PR #452)</li>
-    <li>Fix 500 when pagination search results (PR #447)</li>
-    <li>Fix a bug where synapse was leaking raw email address in third-party invites (PR #448)</li>
-</ul>
-<a name="user-content-changes-in-synapse-v0-12-0-rc2-2015-12-14"></a>
-<h3><a id="user-content-changes-in-synapse-v0120-rc2-2015-12-14" class="anchor" href="https://github.com/matrix-org/synapse/blob/master/CHANGES.rst#changes-in-synapse-v0120-rc2-2015-12-14"></a>Changes in synapse v0.12.0-rc2 (2015-12-14)</h3>
-<ul>
-    <li>Add caches for whether rooms have been forgotten by a user (PR #434)</li>
-    <li>Remove instructions to use <code>--process-dependency-link</code> since all of the dependencies of synapse are on PyPI (PR #436)</li>
-    <li>Parallelise the processing of <code>/sync</code> requests (PR #437)</li>
-    <li>Fix race updating presence in <code>/events</code> (PR #444)</li>
-    <li>Fix bug back-populating search results (PR #441)</li>
-    <li>Fix bug calculating state in <code>/sync</code> requests (PR #442)</li>
-</ul>
-<a name="user-content-changes-in-synapse-v0-12-0-rc1-2015-12-10"></a>
-<h3><a id="user-content-changes-in-synapse-v0120-rc1-2015-12-10" class="anchor" href="https://github.com/matrix-org/synapse/blob/master/CHANGES.rst#changes-in-synapse-v0120-rc1-2015-12-10"></a>Changes in synapse v0.12.0-rc1 (2015-12-10)</h3>
-<ul>
-    <li>Host the client APIs released as r0 by <a href="/docs/spec/r0.0.0/client_server.html">https://matrix.org/docs/spec/r0.0.0/client_server.html</a> on paths prefixed by<code>/_matrix/client/r0</code>. (PR #430, PR #415, PR #400)</li>
-    <li>Updates the client APIs to match r0 of the matrix specification.
-<ul>
-    <li>All APIs return events in the new event format, old APIs also include the fields needed to parse the event using the old format for compatibility. (PR #402)</li>
-    <li>Search results are now given as a JSON array rather than a JSON object (PR #405)</li>
-    <li>Miscellaneous changes to search (PR #403, PR #406, PR #412)</li>
-    <li>Filter JSON objects may now be passed as query parameters to <code>/sync</code> (PR #431)</li>
-    <li>Fix implementation of <code>/admin/whois</code> (PR #418)</li>
-    <li>Only include the rooms that user has left in <code>/sync</code> if the client requests them in the filter (PR #423)</li>
-    <li>Don't push for <code>m.room.message</code> by default (PR #411)</li>
-    <li>Add API for setting per account user data (PR #392)</li>
-    <li>Allow users to forget rooms (PR #385)</li>
-</ul>
-</li>
-    <li>Performance improvements and monitoring:
-<ul>
-    <li>Add per-request counters for CPU time spent on the main python thread. (PR #421, PR #420)</li>
-    <li>Add per-request counters for time spent in the database (PR #429)</li>
-    <li>Make state updates in the C+S API idempotent (PR #416)</li>
-    <li>Only fire <code>user_joined_room</code> if the user has actually joined. (PR #410)</li>
-    <li>Reuse a single http client, rather than creating new ones (PR #413)</li>
-</ul>
-</li>
-    <li>Fixed a bug upgrading from older versions of synapse on postgresql (PR #417)</li>
-</ul>
 
                 
             </div>

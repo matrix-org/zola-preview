@@ -117,7 +117,7 @@
     <div class="content">
         <header>
             <h1>Tutorials</h1>
-            6 posts tagged with "Tutorials" <a href="/category">(See all Category)</a>
+            8 posts tagged with "Tutorials" <a href="/category">(See all Category)</a>
             
             <h2>
                 <small><a href="/category/tutorials/atom.xml">Atom Feed</a></small>
@@ -125,6 +125,235 @@
             
         </header>
 
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2019&#x2F;07&#x2F;03&#x2F;usage-of-matrix-nio&#x2F;" title="Usage of matrix-nio (Python Sans IO)">Usage of matrix-nio (Python Sans IO)</a></h2>
+                <span>
+                    03.07.2019 00:00
+                    —
+                    <a href="/category/tutorials">
+                        Tutorials
+                    </a>
+                    —
+                    <a
+                        href="/author/ben-parsons">
+                        Ben Parsons
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p><em>Canonical version of this article at <a href="https://matrix.org/docs/guides/usage-of-matrix-nio">https://matrix.org/docs/guides/usage-of-matrix-nio</a></em></p>
+<p>This article concerns <a href="https://github.com/poljar/matrix-nio">matrix-nio</a>, and <a href="https://docs.python.org/3/library/asyncio.html">asyncio</a>. We'll build a simple &quot;echo bot&quot;, meaning a bot which replies to messages with the text it has just read. Note that this article does not cover E2EE with matrix-nio.</p>
+<h2 id="instantiation-and-login">Instantiation and Login</h2>
+<p>First create a new venv, and install matrix-nio via <code>pip</code>. On the command line, run:</p>
+<pre data-lang="sh" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-sh "><code class="language-sh" data-lang="sh"><span>python3 -m venv env
+</span><span>source env/bin/activate
+</span><span>pip install matrix-nio
+</span></code></pre>
+<p>Next, create a new Python file, and open it for editing. We'll import everything we require for this tutorial:</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span style="color:#9b9b9b;">from </span><span>importlib </span><span style="color:#9b9b9b;">import </span><span>util
+</span><span style="color:#9b9b9b;">import </span><span>asyncio
+</span><span style="color:#9b9b9b;">from </span><span>nio </span><span style="color:#9b9b9b;">import </span><span>(AsyncClient, SyncResponse, RoomMessageText)
+</span></code></pre>
+<p>We're importing asyncio so we can use the <code>AsyncClient</code> class from matrix-nio.</p>
+<p>Create a new instance of <code>AsyncClient</code> by passing the homeserver and username as arguments:</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span>async_client = AsyncClient(
+</span><span>    </span><span style="color:#d69d85;">&quot;https://matrix.org&quot;</span><span>, </span><span style="color:#d69d85;">&quot;</span><span style="color:#b4cea8;">%%</span><span style="color:#d69d85;">YOUR-USERNAME-HERE</span><span style="color:#b4cea8;">%%</span><span style="color:#d69d85;">&quot;
+</span><span>)
+</span></code></pre>
+<p>Then login, and await the response:</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span>response = </span><span style="color:#569cd6;">await </span><span>async_client.login(</span><span style="color:#d69d85;">&quot;</span><span style="color:#b4cea8;">%%</span><span style="color:#d69d85;">YOUR-PASSWORD-HERE</span><span style="color:#b4cea8;">%%</span><span style="color:#d69d85;">&quot;</span><span>)
+</span><span>print(response)
+</span></code></pre>
+<p>Of course, we are using an async client, and awaiting the response. Because of this, we must call the <code>async_client.login()</code> from an async method, like so:</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span style="color:#569cd6;">async def </span><span>main():
+</span><span>    response = </span><span style="color:#569cd6;">await </span><span>async_client.login(</span><span style="color:#d69d85;">&quot;</span><span style="color:#b4cea8;">%%</span><span style="color:#d69d85;">YOUR-PASSWORD-HERE</span><span style="color:#b4cea8;">%%</span><span style="color:#d69d85;">&quot;</span><span>)
+</span><span>    print(response)
+</span><span>
+</span><span>asyncio.run(main())
+</span></code></pre>
+<p>Note that for versions of Python before 3.7 the asyncio syntax must be:</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span style="color:#569cd6;">async def </span><span>main():
+</span><span>    response = </span><span style="color:#569cd6;">await </span><span>async_client.login(</span><span style="color:#d69d85;">&quot;</span><span style="color:#b4cea8;">%%</span><span style="color:#d69d85;">YOUR-PASSWORD-HERE</span><span style="color:#b4cea8;">%%</span><span style="color:#d69d85;">&quot;</span><span>)
+</span><span>    print(response)
+</span><span>
+</span><span>loop = asyncio.get_event_loop()
+</span><span>loop.run_until_complete(main())
+</span></code></pre>
+<p>The remainder of this tutorial assumes you are running everything from an <code>async</code> method.</p>
+<p>The response string should look like:</p>
+<pre data-lang="sh" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-sh "><code class="language-sh" data-lang="sh"><span>Logged in as @pyconweb-bot:matrix.org, device id: ZBLAJHLKVP.
+</span></code></pre>
+<h2 id="get-into-a-sync-loop">Get into a <code>/sync</code> loop</h2>
+<p>To get updates from a Matrix homeserver to the client, the client makes a request to the <code>/sync</code> endpoint. In the matrix-nio AsyncClient, this is wrapped by the <code>sync()</code> method. We can get the latest updates:</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span>sync_response = </span><span style="color:#569cd6;">await </span><span>async_client.sync(</span><span style="color:#b5cea8;">30000</span><span>)
+</span></code></pre>
+<p>30000 means we will wait up to 30 seconds before returning. <code>sync_response</code> will now contain a Python object containing a mapping of the (JSON) <a href="https://matrix.org/docs/spec/client_server/latest#get-matrix-client-r0-sync">response from the Matrix homeserver</a>. We'll inspect this response in the next section.</p>
+<p>In fact, we expect there to be updates regularly, so let's create a very simple loop:</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span style="color:#569cd6;">while </span><span>(</span><span style="color:#569cd6;">True</span><span>):
+</span><span>    sync_response = </span><span style="color:#569cd6;">await </span><span>async_client.sync(</span><span style="color:#b5cea8;">30000</span><span>)
+</span><span>    print(sync_response) </span><span style="color:#608b4e;"># note that this could be LARGE!
+</span><span>    </span><span style="color:#608b4e;"># do some reading from sync_response
+</span></code></pre>
+<p>In this way, every time there is a response (i.e. new events) from the homeserver, they are made available in <code>sync_response</code> for processing, and we loop again.</p>
+<h2 id="explore-the-sync-response-object">Explore the sync response object</h2>
+<p><code>sync_response</code> <a href="https://matrix.org/docs/spec/client_server/latest#get-matrix-client-r0-sync">can contain multitudes</a>, depending on the rooms this user is part of, or has been part of. <code>sync_response.rooms.join</code> contains updates for the rooms which the current user is &quot;joined to&quot; (meaning, is a member of.)</p>
+<p>Of these joined rooms, we are (perhaps!) most interested in the events on the timeline. These are stored in <code>timeline.events</code>, see below:</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span style="color:#569cd6;">if </span><span>len(sync_response.rooms.join) &gt; </span><span style="color:#b5cea8;">0</span><span>:
+</span><span>
+</span><span>    joins = sync_response.rooms.join
+</span><span>    </span><span style="color:#569cd6;">for </span><span>room_id </span><span style="color:#569cd6;">in </span><span>joins:
+</span><span>        </span><span style="color:#569cd6;">for </span><span>event </span><span style="color:#569cd6;">in </span><span>joins[room_id].timeline.events:
+</span><span>            print(event)
+</span></code></pre>
+<p><em>Message events</em> are a specific type of event which contain an Instant Messenger message. We can check the type before proceeding:</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span style="color:#569cd6;">for </span><span>event </span><span style="color:#569cd6;">in </span><span>joins[room_id].timeline.events:
+</span><span>    </span><span style="color:#569cd6;">if </span><span>isinstance(event, RoomMessageText):
+</span><span>        print (event.body)
+</span></code></pre>
+<p>In these cases, where the event is a message to a room, the <code>body</code> field will contain the message text.</p>
+<h2 id="isolate-specific-message-event-objects">Isolate specific message event objects</h2>
+<p>Knowing that we can get the message text from an event, we can read it to determine a response. Let's make a new variable and have it store some string we'll check for:</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span>response_string = </span><span style="color:#d69d85;">&quot;!replybot&quot;
+</span></code></pre>
+<p>Now let's suppose we're in our <code>/sync</code> loop, and just received an event. We can filter messages that are meant for our bot as follows:</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span style="color:#569cd6;">if </span><span>len(sync_response.rooms.join) &gt; </span><span style="color:#b5cea8;">0</span><span>:
+</span><span>    joins = sync_response.rooms.join
+</span><span>    </span><span style="color:#569cd6;">for </span><span>room_id </span><span style="color:#569cd6;">in </span><span>joins:
+</span><span>        </span><span style="color:#569cd6;">for </span><span>event </span><span style="color:#569cd6;">in </span><span>joins[room_id].timeline.events:
+</span><span>            </span><span style="color:#569cd6;">if </span><span>hasattr(event, </span><span style="color:#d69d85;">&#39;body&#39;</span><span>) </span><span style="color:#569cd6;">and </span><span>event.body.startswith(response_string):
+</span><span>                print(event)
+</span></code></pre>
+<h2 id="use-room-send">Use <code>room_send</code></h2>
+<p>To send messages, matrix-nio provides a <code>room_send()</code> method. There are three arguments:</p>
+<ul>
+<li>the room_id</li>
+<li>the message type, we will use &quot;m.room.message&quot;</li>
+<li>a JSON object representing the content of the message</li>
+</ul>
+<p>Let's improve the example above, by sending back a message to echo the ones we isolated above:</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span>joins = sync_response.rooms.join
+</span><span style="color:#569cd6;">for </span><span>room_id </span><span style="color:#569cd6;">in </span><span>joins:
+</span><span>    </span><span style="color:#569cd6;">for </span><span>event </span><span style="color:#569cd6;">in </span><span>joins[room_id].timeline.events:
+</span><span>        </span><span style="color:#569cd6;">if </span><span>hasattr(event, </span><span style="color:#d69d85;">&#39;body&#39;</span><span>) </span><span style="color:#569cd6;">and </span><span>event.body.startswith(response_string):
+</span><span>            response_body = event.body.replace(response_string, </span><span style="color:#d69d85;">&quot;&quot;</span><span>).strip()
+</span><span>            content = {
+</span><span>               </span><span style="color:#d69d85;">&quot;body&quot;</span><span>: response_body,
+</span><span>               </span><span style="color:#d69d85;">&quot;msgtype&quot;</span><span>: </span><span style="color:#d69d85;">&quot;m.text&quot;
+</span><span>            }
+</span><span>            </span><span style="color:#569cd6;">await </span><span>async_client.room_send(room_id, </span><span style="color:#d69d85;">&#39;m.room.message&#39;</span><span>, content)
+</span></code></pre>
+<p>Now whenever the bot receives a message &quot;!replybot <em>some message</em>&quot; it will send back &quot;some message&quot;.</p>
+<h2 id="use-of-sync-next-batch-tokens">Use of /sync next_batch tokens</h2>
+<p>Finally, let's consider the importance of <code>next_batch</code> tokens. Whenever you receive a response from the <code>/sync</code> endpoint, the response will contain a &quot;next_batch&quot; field, which you then pass on the next request to ensure you have the latest messages. matrix-nio keeps track of this automatically, so it doesn't get repeated messages. However, when you stop the program and call the <code>.sync()</code> method again, how can you tell it where to start from? First let's get the latest <code>next_batch</code> token:</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span style="color:#569cd6;">async def </span><span>main():
+</span><span>    response = </span><span style="color:#569cd6;">await </span><span>async_client.login(</span><span style="color:#d69d85;">&quot;</span><span style="color:#b4cea8;">%%</span><span style="color:#d69d85;">YOUR-USERNAME-HERE</span><span style="color:#b4cea8;">%%</span><span style="color:#d69d85;">&quot;</span><span>, </span><span style="color:#d69d85;">&quot;&quot;</span><span>)
+</span><span>
+</span><span>    </span><span style="color:#569cd6;">while </span><span>(</span><span style="color:#569cd6;">True</span><span>):
+</span><span>        sync_response = </span><span style="color:#569cd6;">await </span><span>async_client.sync(</span><span style="color:#b5cea8;">30000</span><span>)
+</span><span>        print(sync_response.next_batch) </span><span style="color:#608b4e;"># this is the token
+</span></code></pre>
+<p>Then we'll write the token to a file:</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span style="color:#569cd6;">async def </span><span>main():
+</span><span>    response = </span><span style="color:#569cd6;">await </span><span>async_client.login(</span><span style="color:#d69d85;">&quot;</span><span style="color:#b4cea8;">%%</span><span style="color:#d69d85;">YOUR-USERNAME-HERE</span><span style="color:#b4cea8;">%%</span><span style="color:#d69d85;">&quot;</span><span>, </span><span style="color:#d69d85;">&quot;&quot;</span><span>)
+</span><span>
+</span><span>    </span><span style="color:#569cd6;">while </span><span>(</span><span style="color:#569cd6;">True</span><span>):
+</span><span>        sync_response = </span><span style="color:#569cd6;">await </span><span>async_client.sync(</span><span style="color:#b5cea8;">30000</span><span>)
+</span><span>
+</span><span>        </span><span style="color:#608b4e;"># we write the token to a file here
+</span><span>        </span><span style="color:#569cd6;">with </span><span>open(</span><span style="color:#d69d85;">&quot;next_batch&quot;</span><span>,</span><span style="color:#d69d85;">&quot;w&quot;</span><span>) </span><span style="color:#569cd6;">as </span><span>next_batch_token:
+</span><span>            next_batch_token.write(sync_response.next_batch)
+</span></code></pre>
+<p>Once that token is written, we know we can re-use it for the first <code>/sync/</code> request next time:</p>
+<pre data-lang="python" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-python "><code class="language-python" data-lang="python"><span style="color:#569cd6;">async def </span><span>main():
+</span><span>    response = </span><span style="color:#569cd6;">await </span><span>async_client.login(</span><span style="color:#d69d85;">&quot;</span><span style="color:#b4cea8;">%%</span><span style="color:#d69d85;">YOUR-USERNAME-HERE</span><span style="color:#b4cea8;">%%</span><span style="color:#d69d85;">&quot;</span><span>, </span><span style="color:#d69d85;">&quot;&quot;</span><span>)
+</span><span>
+</span><span>    </span><span style="color:#608b4e;"># we read the previously-written token...
+</span><span>    </span><span style="color:#569cd6;">with </span><span>open (</span><span style="color:#d69d85;">&quot;next_batch&quot;</span><span>,</span><span style="color:#d69d85;">&quot;r&quot;</span><span>) </span><span style="color:#569cd6;">as </span><span>next_batch_token:
+</span><span>        </span><span style="color:#608b4e;"># ... and well async_client to use it
+</span><span>        async_client.next_batch = next_batch_token.read()
+</span><span>
+</span><span>    </span><span style="color:#569cd6;">while </span><span>(</span><span style="color:#569cd6;">True</span><span>):
+</span><span>        sync_response = </span><span style="color:#569cd6;">await </span><span>async_client.sync(</span><span style="color:#b5cea8;">30000</span><span>)
+</span><span>        </span><span style="color:#569cd6;">with </span><span>open(</span><span style="color:#d69d85;">&quot;next_batch&quot;</span><span>,</span><span style="color:#d69d85;">&quot;w&quot;</span><span>) </span><span style="color:#569cd6;">as </span><span>next_batch_token:
+</span><span>            next_batch_token.write(sync_response.next_batch)
+</span></code></pre>
+<h2 id="conclusion">Conclusion</h2>
+<p>With this, you can see that in very few lines, it's possible to write a working Matrix bot in Python, using <a href="https://github.com/poljar/matrix-nio">matrix-nio</a>.</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2019&#x2F;02&#x2F;26&#x2F;bridging-matrix-with-whatsapp-running-on-a-vm&#x2F;" title="Bridging Matrix with WhatsApp running on a VM">Bridging Matrix with WhatsApp running on a VM</a></h2>
+                <span>
+                    26.02.2019 00:00
+                    —
+                    <a href="/category/tutorials">
+                        Tutorials
+                    </a>
+                    —
+                    <a
+                        href="/author/ben-parsons">
+                        Ben Parsons
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>This guide will live with the documentation at <a href="/docs/guides/whatsapp-bridging-mautrix-whatsapp">https://matrix.org/docs/guides/whatsapp-bridging-mautrix-whatsapp</a>, but you can find the text below.</p>
+<hr />
+<p>Matrix is:</p>
+<blockquote>an open standard for <em>interoperable</em>, <em>decentralised</em>, <em>real-time communication</em>.</blockquote>
+In this article we'll benefit from all three of these attributes:
+<ul>
+ 	<li><em>interoperable:</em> we'll see how Matrix can be made to interact with WhatsApp</li>
+ 	<li><em>decentralised</em>: you can perform this on your own server while still enjoying the benefits of being connected to the rest of the Matrix federation</li>
+ 	<li><em>real-time communication</em>: we'll see how to send and receive messages in real-time</li>
+</ul>
+<h2 id="installyourhomeserverandinstallmautrixwhatsappthewhatsappbridge">Install your homeserver and install mautrix-whatsapp, the WhatsApp bridge</h2>
+Firstly, you need to have a Matrix homeserver installed. If you don't currently have one, take a look at the instructions at <a href="/docs/guides/installing-synapse">Installing Synapse</a>, and also in the <a href="https://github.com/matrix-org/synapse">Synapse README</a>.
+<p>Next, install <a href="https://github.com/tulir/mautrix-whatsapp">mautrix-whatsapp</a> by following the instructions at <a href="https://github.com/tulir/mautrix-whatsapp/wiki">mautrix-whatsapp/wiki</a>.</p>
+<p>If you are starting from scratch, I suggest you take a look at <a href="https://github.com/spantaleev/matrix-docker-ansible-deploy/">matrix-docker-ansible-deploy</a>, as this project will enable you to deploy Synapse, <a href="https://github.com/tulir/mautrix-whatsapp">mautrix-whatsapp</a> and other components easily.</p>
+<p>For example, if you have an existing deployment using <a href="https://github.com/spantaleev/matrix-docker-ansible-deploy/">matrix-docker-ansible-deploy</a>, you can add <a href="https://github.com/tulir/mautrix-whatsapp">mautrix-whatsapp</a> simply by adding the following line to your configuration file:</p>
+<pre><code class="yaml language-yaml">matrix_mautrix_whatsapp_enabled: true
+</code></pre>
+<p>... and re-running the setup:</p>
+<pre><code class="unix language-unix">ansible-playbook -i inventory/hosts setup.yml --tags=setup-all
+</code></pre>
+<p>Either way, you will soon have a functioning Matrix Synapse homeserver and <a href="https://github.com/tulir/mautrix-whatsapp">mautrix-whatsapp</a> installed with it. Next, we will set up an Android VM.</p>
+<h2 id="setupanandroidvm">Set up an Android VM</h2>
+The best way to run an Android Virtual Machine is to use the Android Studio tools from Google. First, <a href="https://developer.android.com/studio/install">install Android Studio</a>, making sure to follow the post-install steps, as they will install additional tools we need, including AVD Manager.
+<p>Once installed, run AVD manager by choosing <code>Tools -&gt; AVD Manager</code> from the menu.</p>
+<p>Follow the steps to create a new virtual machine, in this example I have a Nexus 5X running Android 9, but almost any configuration is fine here. Make sure that you give the device access to the Play Store.</p>
+<img src="/docs/img/avd.png" alt="" />
+<h2 id="installwhatsappandsignin">Install WhatsApp and sign-in</h2>
+Launch the Virtual Device, the open the Play Store and sign in. Now use the Play Store to install WhatsApp on the Virtual Device.
+<p>You will be asked to verify your phone number, use your number on another device to complete this step.</p>
+<center>
+<img src="/docs/img/nexus5.png" /></center>
+<h2 id="setupmautrixwhatsappbridge">Setup mautrix-whatsapp bridge</h2>
+Now that you have WhatsApp working in a VM, and Matrix working on your server, it's time to bridge them together!
+<p>Per the instructions at <a href="https://github.com/tulir/mautrix-whatsapp/wiki">mautrix-whatsapp/wiki</a>, you must start a new chat with <strong>@whatsappbot:<em>&lt;yourdomain</em>&gt;</strong>. Type <code>login</code> to begin the authentication process.</p>
+<p>mautrix-whatsapp operates by using the WhatsApp Web feature of WhatsApp - which means it uses a QR code that you must now scan on the device running WhatsApp - which in your case is the AVD. In order to scan the presented QR code, set your AVD camera to passthrough the camera device on your host machine - see the images below.</p>
+<img src="/docs/img/camera1.png" alt="" />
+<img src="/docs/img/camera2.png" alt="" />
+<p>Once this is complete, you can type <code>sync</code>, to start bridging contacts, and <code>sync --create</code> to automatically create room invites.</p>
+<p>And that's it! You may need to take a little time to watch the sync happen, particularly if you have a very large number of chats on the WhatsApp side, but there is no further configuration needed.</p>
+<h2 id="demo">Demo!</h2>
+&nbsp;
+<div class="video-container"><iframe src="https://www.youtube.com/embed/edSgP2dEZ1o" width="960" height="540" frameBorder="0" allowFullScreen="allowfullscreen"></iframe></div>
+<p> </p>
+
+                
+            </div>
+        </article>
         
         <article class="post">
             <header>

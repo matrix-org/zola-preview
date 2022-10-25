@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="twitter:widgets:csp" content="on" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta name="twitter:site" content="@matrixdotorg" />
+    <meta name="twitter:creator" content="@matrixdotorg" />
+
+    <title>Matrix.org - Qt-based clients end-to-end encryption support -- final report (GSoC 2019)</title>
+    <link rel="shortcut icon" href="/assets/favicon.ico" />
+    <link rel="icon" type="image/png" href="/assets/favicon.png" />
+    <link rel="stylesheet" href="/style.css" />
+
+    
+
+
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    "headline": "Qt-based clients end-to-end encryption support -- final report (GSoC 2019)",
+    "datePublished": "2019-09-20T02:10+00:00",
+    
+    "author": [
+    
+    {
+        "@type": "Person",
+        "name": "Alexey Andreyev",
+        "url": "//authors/alexey-andreyev"
+    }
+    
+    ]
+}
+</script>
+</head>
+
+<body>
+    
+    <header class="site-header">
+    <a href="/" class="brand">
+        <img src="/images/matrix-logo.svg" alt="Matrix logo">
+    </a>
+    <input id="site-header-dropdown-checkbox" type="checkbox" class="dropdown-checkbox" aria-hidden="true">
+    <label for="site-header-dropdown-checkbox" class="dropdown-button">&#xe602;</label>
+    <label for="site-header-dropdown-checkbox" class="page-overlay"></label>
+    <nav>
+        
+        
+        <a href="&#x2F;about&#x2F;" class="
+            ">
+            About
+        </a>
+        
+        
+        
+        <a href="&#x2F;blog&#x2F;" class="
+            current">
+            Blog
+        </a>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;docs&#x2F;" class="section ">
+                Documentation
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;ecosystem&#x2F;" class="section ">
+                Ecosystem
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                    <a href="&#x2F;ecosystem&#x2F;clients&#x2F;">Clients</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;servers&#x2F;">Servers</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bots&#x2F;">Bots</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bridges&#x2F;">Bridges</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;sdks&#x2F;">SDKs</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;hosting&#x2F;">Hosting</a>
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        <a href="&#x2F;podcasts&#x2F;" class="
+            ">
+            Podcasts
+        </a>
+        
+        
+        
+        <a href="https:&#x2F;&#x2F;shop.matrix.org" class="
+            ">
+            Shop
+        </a>
+        
+        
+        
+        <a href="&#x2F;try-matrix&#x2F;" class="primary
+            ">
+            Try Matrix
+        </a>
+        
+        
+    </nav>
+</header>
+
+
+    <main>
+        
+<article class="content post with-sidebar">
+    <header>
+        <h1>Qt-based clients end-to-end encryption support -- final report (GSoC 2019)</h1>
+        <span>20.09.2019 02:10 — <a
+                href="/category/gsoc">GSOC</a>
+             — <a href="/author/alexey-andreyev">Alexey Andreyev</a>
+        </span>
+        
+    </header>
+    <div class="post-main">
+        <div class="post-content">
+            <h2 id="overview">Overview</h2>
+<p>*<em>libQMatrixClient was <a href="https://github.com/quotient-im/libQuotient/issues/325">renamed</a> to libQuotient</em></p>
+<p>The project aimed at adding end-to-end encryption to <a href="https://github.com/quotient-im/libQuotient">libQuotient</a> for future support in Qt/libQuotient-based clients like <a href="https://matrix.org/docs/projects/client/quaternion">Quaternion</a> and <a href="https://matrix.org/docs/projects/client/spectral">Spectal</a>, or even <a href="https://github.com/TelepathyIM/telepathy-tank">Telepathy IM</a>.</p>
+<h2 id="the-work-done">The work done</h2>
+<p>Regarding my initial <a href="https://github.com/quotient-im/libQuotient/wiki/_GSoC-2019-E2EE-proposal">proposal</a>, I’ve completed tasks enough for message receiving, and not finished tasks related to message sending.</p>
+<p>Focused on libQuotient, I've also <a href="https://github.com/quotient-im/Quaternion/commits/aa13q-e2ee">added changes to Quaternion client</a> to support the proposed API and test the results.
+I've reused libQtOlm, which is a Qt wrapper to the matrix olm library and <a href="https://gitlab.com/b0/libqtolm/merge_requests?scope=all&amp;utf8=%E2%9C%93&amp;state=all&amp;author_username=aa13q">contributed to provide better compatibility during its building and deployment</a>.
+This also required to dive into the olm library itself and provide <a href="https://gitlab.matrix.org/matrix-org/olm/commit/aa0c9ab6b51d182cb78ab4cc75c81c0054765bde">minor patch</a> for the olm CMake files too.</p>
+<p>So, the basic structure of the project changed a bit, libQtOlm was added as a dependency to support libolm:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>                              +--------------------------------------------+
+</span><span>                              |   Quaternion/Spectral/Telepathy|Tank/etc   |
+</span><span>+------------------+          +--------------------------------------------+
+</span><span>|      CS API      |  &lt;----&gt;  |                  libQuotient               |
+</span><span>+------------------+          +-------------------------------+------------+
+</span><span>|Synapse homeserver|          |               Qt              |  libQtOlm  |
+</span><span>+------------------+          +--------------------------------------------+
+</span><span>                                                              |   libolm   |
+</span><span>                                                              +------------+
+</span></code></pre>
+<p>During the coding period, I've resorted to <a href="https://matrix.org/docs/spec/client_server/latest">the specification</a>, <a href="https://matrix.org/docs/guides/end-to-end-encryption-implementation-guide">the guide</a> and the <a href="https://github.com/Zil0/matrix-python-sdk/wiki">last year GSoC python implementation</a> actively. And added <a href="https://github.com/matrix-org/matrix-doc/pull/2157">minor fix for the documentation</a> about names constants at the documentation examples.</p>
+<h2 id="demonstration">Demonstration</h2>
+<p><a href="https://youtu.be/gGykLh4mVDg"><img src="https://i.imgur.com/BKmhvni.jpg" alt="Imgur" /></a></p>
+<h2 id="future-work">Future work</h2>
+<p>Talking about future work, the status is going to be captured at <a href="https://github.com/quotient-im/libQuotient/projects">libQuotient project board</a>. Next steps are:</p>
+<ul>
+<li>Managing devices list for users in the room</li>
+<li>Sending encrypted messages</li>
+</ul>
+<p>While olm account management architecture and <code>device_one_time_keys_count</code> sync data handling is here, such tasks as session management after a restart and device verification still requires additional efforts. After that encrypted attachments support and key backups could also be added.</p>
+<p>I'm going to take care about that, but it definitely will be harder as just a side project. I still have enthusiasm though :)</p>
+<h2 id="conclusion">Conclusion</h2>
+<p>To take part in the Google Summer of Code project was my dream. I'm very happy I've managed to took part this year, since it was the last year of my study, while I had doubts about my personal results until I've received final confirmation and the review.</p>
+<p>From the beginning of the project, I've realized I'm very lucky since I've got all the chances to provide perfect results. <a href="https://github.com/Kaffeine">@Kaffeine</a> helped me a lot with my TelepathyIM contribution. He helped me to evolve my CMake, git and Qt/C++ skills and that's how I've started contributing to the libQuotient before GSoC. After that, it turns out that I've accepted and received even two mentors. <a href="https://github.com/uhoreg">@uhoreg</a> from the Matrix team, who helped me with End-to-End Encryption logic and olm/megolm understanding. And <a href="https://github.com/KitsuneRal">@kitsune</a> from the Quotient project, who helped me a lot with the code review, with the architecture decisions and the library logic, and even with the time management (he was the one who watched carefully about my results). The last year GSoC python implementation and guide from <a href="https://github.com/Zil0">@Zil0</a> were also here, and it turns out that Spectral developer <a href="https://github.com/encombhat">@BHat</a> provided QtOlm wrapper right before GSoC stated.</p>
+<p>However, planning and updating the plan were my weak points, where I've made key mistakes, such as poor combination with my regular part-time job. And I definitely should have reserved a small vacation at least for the final period of the project to handle tasks better.</p>
+<p>In the end, I've managed to debug the mistakes and provided encrypted messages receiving that could already be used at the clients. Also, I evolved my skills and dived into the megolm E2EE subject. I'm willing to continue my contribution to develop libQuotient as full-featured Qt-based Matrix library. </p>
+<p>In general, I am not disappointed. I'm wishing luck to all the future students who are reading this. I'm happy to receive support and contribute to an international open project not only for myself, but also for the other developers and users.</p>
+<h2 id="appendix-additional-links">Appendix: Additional links</h2>
+<p><strong>GSoC project page</strong>: <a href="https://summerofcode.withgoogle.com/organizations/6624344617254912/#5821516577505280">link</a></p>
+<p><strong>Mentors</strong>: <a href="https://matrix.to/#/@kitsune:matrix.org">Alexey Rusakov</a>, <a href="https://matrix.to/#/@uhoreg:matrix.org">Hubert Chathi</a></p>
+<p><strong>GSoC Matrix room</strong>: <a href="https://matrix.to/#/#gsoc:matrix.org">link</a></p>
+<p><strong>Contribution</strong>: <a href="https://github.com/quotient-im/libQuotient/issues?q=author%3Aa-andreyev+label%3AGSoC2019">libQuotient GSoC E2EE PRs list</a>, <a href="https://github.com/quotient-im/libQuotient/wiki/_GSoC-2019-E2EE-final-evaluation">full final report at the project wiki</a></p>
+
+        </div>
+        
+        <aside>
+            <h3>Post Contents</h3>
+
+            <ul style="list-style: none; padding-left: 0px;">
+                
+                <li>
+                    <a href="/blog/2019/09/20/qt-based-clients-end-to-end-encryption-support-final-report-g-so-c-2019/#overview">Overview</a>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2019/09/20/qt-based-clients-end-to-end-encryption-support-final-report-g-so-c-2019/#the-work-done">The work done</a>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2019/09/20/qt-based-clients-end-to-end-encryption-support-final-report-g-so-c-2019/#demonstration">Demonstration</a>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2019/09/20/qt-based-clients-end-to-end-encryption-support-final-report-g-so-c-2019/#future-work">Future work</a>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2019/09/20/qt-based-clients-end-to-end-encryption-support-final-report-g-so-c-2019/#conclusion">Conclusion</a>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2019/09/20/qt-based-clients-end-to-end-encryption-support-final-report-g-so-c-2019/#appendix-additional-links">Appendix: Additional links</a>
+                    
+                </li>
+                
+            </ul>
+        </aside>
+        
+    </div>
+</article>
+
+    </main>
+
+    <footer class="site-footer">
+    <div class="internal-links">
+        
+        <a href="&#x2F;faq">FAQs</a>
+        
+        <a href="&#x2F;security-disclosure-policy">Security Disclosure Policy</a>
+        
+        <a href="&#x2F;hall-of-fame">Security Hall of Fame</a>
+        
+        <a href="&#x2F;legal&#x2F;code-of-conduct">Code of Conduct for Matrix.org</a>
+        
+        <a href="&#x2F;legal">Legal</a>
+        
+        <a href="&#x2F;contact">Contact</a>
+        
+        <a href="https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;">Site Source</a>
+        
+    </div>
+    <div class="external-links">
+        <div>
+            
+            <a href="&#x2F;code"><img src="/assets/github.svg" alt="GitHub"></a>
+            
+            <a href="https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;"><img src="/assets/gitlab.svg" alt="GitLab"></a>
+            
+            <a href="https:&#x2F;&#x2F;mastodon.matrix.org&#x2F;@matrix"><img src="/assets/mastodon.svg" alt="Mastodon"></a>
+            
+            <a href="https:&#x2F;&#x2F;twitter.com&#x2F;matrixdotorg"><img src="/assets/twitter.svg" alt="Twitter"></a>
+            
+            <a href="https:&#x2F;&#x2F;www.youtube.com&#x2F;channel&#x2F;UCVFkW-chclhuyYRbmmfwt6w"><img src="/assets/youtube.svg" alt="YouTube"></a>
+            
+        </div>
+    </div>
+    <p>© 2022 The Matrix.org Foundation C.I.C.</p>
+</footer>
+
+</body>
+
+</html>

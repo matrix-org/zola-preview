@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="twitter:widgets:csp" content="on" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta name="twitter:site" content="@matrixdotorg" />
+    <meta name="twitter:creator" content="@matrixdotorg" />
+
+    <title>Matrix.org - Matrix.org Team</title>
+    <link rel="shortcut icon" href="/assets/favicon.ico" />
+    <link rel="icon" type="image/png" href="/assets/favicon.png" />
+    <link rel="stylesheet" href="/style.css" />
+
+    
+<link rel="alternate" type="application/rss+xml" title="RSS" href="/author/matrix-org-team/atom.xml">
+</head>
+
+<body>
+    
+    <header class="site-header">
+    <a href="/" class="brand">
+        <img src="/images/matrix-logo.svg" alt="Matrix logo">
+    </a>
+    <input id="site-header-dropdown-checkbox" type="checkbox" class="dropdown-checkbox" aria-hidden="true">
+    <label for="site-header-dropdown-checkbox" class="dropdown-button">&#xe602;</label>
+    <label for="site-header-dropdown-checkbox" class="page-overlay"></label>
+    <nav>
+        
+        
+        <a href="&#x2F;about&#x2F;" class="
+            ">
+            About
+        </a>
+        
+        
+        
+        <a href="&#x2F;blog&#x2F;" class="
+            ">
+            Blog
+        </a>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;docs&#x2F;" class="section ">
+                Documentation
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;ecosystem&#x2F;" class="section ">
+                Ecosystem
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                    <a href="&#x2F;ecosystem&#x2F;clients&#x2F;">Clients</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;servers&#x2F;">Servers</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bots&#x2F;">Bots</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bridges&#x2F;">Bridges</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;sdks&#x2F;">SDKs</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;hosting&#x2F;">Hosting</a>
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        <a href="&#x2F;podcasts&#x2F;" class="
+            ">
+            Podcasts
+        </a>
+        
+        
+        
+        <a href="https:&#x2F;&#x2F;shop.matrix.org" class="
+            ">
+            Shop
+        </a>
+        
+        
+        
+        <a href="&#x2F;try-matrix&#x2F;" class="primary
+            ">
+            Try Matrix
+        </a>
+        
+        
+    </nav>
+</header>
+
+
+    <main>
+        
+<div id="taxonomy-single">
+    <div class="content">
+        <header>
+            <h1>Matrix.org Team</h1>
+            3 posts tagged with "Matrix.org Team" <a href="/author">(See all Author)</a>
+            
+        </header>
+
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2019&#x2F;04&#x2F;18&#x2F;security-update-sydent-1-0-2&#x2F;" title="Security Update: Sydent 1.0.2">Security Update: Sydent 1.0.2</a></h2>
+                <span>
+                    18.04.2019 00:00
+                    —
+                    <a href="/category/general">
+                        General
+                    </a>
+                    —
+                    <a
+                        href="/author/matrix-org-team">
+                        Matrix.org Team
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <h2 id="overview">Overview</h2>
+<p>We became aware today of a flaw in <a href="https://github.com/matrix-org/sydent">sydent</a>’s validation of email addresses which can lead to a failure to correctly limit registration to a given email domain.  <strong>This only affects people who run their own sydent, and are relying on allowed_local_3pid in their synapse config.</strong> We’d like to thank <a href="https://twitter.com/fs0c131y">@fs0c131y</a> for bringing it to our attention on <a href="https://twitter.com/fs0c131y/status/1118791420624687104">Twitter</a> this morning.  We are not aware of this being exploited in the wild other than the initial report.</p>
+<p><strong>If you are running your own sydent, and limiting signup for your server using the <code>allowed_local_3pids</code> configuration option, then you need to upgrade your sydent immediately to Sydent 1.0.2.</strong></p>
+<p>Meanwhile, if you have been relying on the <code>allowed_local_3pids</code> configuration option to restrict access to your homeserver, you may wish to check your homeserver’s user_threepids table for malformed email addresses and your sydent’s database as follows:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>$ sqlite3 sydent.db 
+</span><span>sqlite&gt; select count(*) from global_threepid_associations where address like &#39;%@%@%&#39;;
+</span><span>0
+</span><span>
+</span><span>$ psql matrix
+</span><span>matrix=&gt; select count(*) from user_threepids where address like &#39;%@%@%&#39;;
+</span><span> count 
+</span><span>-------
+</span><span>     0
+</span></code></pre>
+<p>If the queries return more than 0 results, please let us know at <a href="mailto:security@matrix.org">security@matrix.org</a> - otherwise you are fine.</p>
+<h2 id="details">Details</h2>
+<p>A flaw existed in sydent whereby it was possible to bypass the requirement specified in synapse’s <code>allowed_local_3pids</code> option, which restricts that users may only register with an email address matching a specific format.</p>
+<p>This relied on two things:</p>
+<ol>
+<li>sydent uses python's email.utils.parseaddr function to parse the input email address before sending validation mail to it, but it turns out that if you hand parseaddr an malformed email address of form a@b.com@c.com, it silently discards the @c.com prefix without error.  The result of this is that if one requested a validation token for 'a@malicious.org@important.com', the token would be sent to 'a@malicious.org', but the address 'a@malicious.org@important.com' would be marked as validated.  This release fixes this behaviour by asserting that the parsed email address is the same as the input email address.</li>
+<li>synapse's checking of email addresses relies on regular expressions in the home server configuration file. synapse does not validate email addresses before checking them against these regular expressions, so naive regular expressions will detect the second domain in email addresses such as the above, causing them to pass the check.</li>
+</ol>
+<p>You can get sydent 1.0.2 from <a href="https://github.com/matrix-org/sydent/releases/tag/v1.0.2">https://github.com/matrix-org/sydent/releases/tag/v1.0.2</a>.</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2019&#x2F;04&#x2F;18&#x2F;this-week-in-matrix-2019-04-18&#x2F;" title="This Week in Matrix 2019-04-18">This Week in Matrix 2019-04-18</a></h2>
+                <span>
+                    18.04.2019 00:00
+                    —
+                    <a href="/category/this-week-in-matrix">
+                        This Week in Matrix
+                    </a>
+                    —
+                    <a
+                        href="/author/matrix-org-team">
+                        Matrix.org Team
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <h2 id="welcome-to-the-new-blog">Welcome to the new blog!</h2>
+<p>Check out the new digs! We're happy with this newly deployed blog, and all the old and loveable content is right down there. If you find issues, <a href="https://matrix.to/#/@benpa:matrix.org">let me know</a>. You may remember Nad, from previous editions of Matrix Live - huge thanks to him for his work on the design and upkeep of this new deployment.</p>
+<h2 id="notes-from-the-downtimes">Notes from the downtimes</h2>
+<h3 id="github-tokens">Github tokens</h3>
+<p>jaywink:</p>
+<blockquote>
+<p>Due to the security incident, all GitHub access tokens for the Scalar GitHub integration were cleared. This means that if you have a GitHub bot in the channel and want to use the !github bot commands, you need to re-login to github via the integration manager menu. Note, existing webhooks are untouched and should work fine without re-authenticating.</p>
+</blockquote>
+<h3 id="bridges">Bridges</h3>
+<p><a href="https://matrix.to/#/@Half-Shot:half-shot.uk">Half-Shot</a>:</p>
+<blockquote>
+<p>From the matrix.org bridge team, we are resurrecting bridges as fast as possible. Currently running are the freenode, slack, gitter and gimpnet (now hosted on gnome.org) with more to come today and next week.<br />
+We have the snoonet and oftc irc bridges back. Mozilla is coming soon hopefully this weekend too!</p>
+</blockquote>
+<p>Whoop! Mozilla is actually up now!</p>
+<h2 id="pattle-new-release-on-f-droid">Pattle new release on F-Droid</h2>
+<p><a href="https://matrix.to/#/@wilko:matrix.org">Wilko</a>:</p>
+<blockquote>
+<p>A big release of Pattle has just been pushed to the F-droid repo! Changes include:</p>
+<ul>
+<li>Display names are now shown</li>
+<li>You can now click on chats and view them!</li>
+<li>Messages are grouped by time and sender (see screenshots)</li>
+<li>Add fancy transition animation and ripples to chat messages (see video)</li>
+<li>Use Sentry for error reporting (only Android version and device model is sent, along with the stacktrace of the error)</li>
+</ul>
+<p>Also, please note that if you have a matrix.org you probably have reinstall the app if you're logged in because of the recent matrix.org incident (because there's no logout button yet and no detection for invalidated access tokens)</p>
+</blockquote>
+<p>There has actually been a release since, which includes:</p>
+<blockquote>
+<p>message sending and viewing image history!</p>
+</blockquote>
+<p><img src="/blog/pattle.2019-04-18.png" alt="" /></p>
+<h2 id="libqmatrixclient-0-5-1-2-quaternion-0-0-9-4">libQMatrixClient 0.5.1.2 &amp;&amp; Quaternion 0.0.9.4</h2>
+<p><a href="https://matrix.to/#/@kitsune:matrix.org">kitsune</a> is talking about the long road to 0.0.9.4:</p>
+<blockquote>
+<p><a href="https://github.com/QMatrixClient/libqmatrixclient">libQMatrixClient</a> 0.5.1.2 has been released, with all the remaining bugfixes for Quaternion 0.0.9.4 that's coming any day soon now. The release notes are here: <a href="https://github.com/QMatrixClient/libqmatrixclient/releases/tag/0.5.1.2">https://github.com/QMatrixClient/libqmatrixclient/releases/tag/0.5.1.2</a></p>
+</blockquote>
+<blockquote>
+<p>Quaternion 0.0.9.4 RC3, the last one before the release that will happen in the nearest days, is out. Release notes can be found at https://github.com/QMatrixClient/Quaternion/releases/tag/0.0.9.4-rc3. Translators, you literally have hours to add your translations for 0.0.9.4!</p>
+</blockquote>
+<h2 id="neo">neo</h2>
+<blockquote>
+<p>I reimplemented the matrix sdk into Neo, so it works nicer. Colors and font look nicer (base16-tomorrow, Open Sans), and there's text message sending, with localecho!<br />
+I also fixed a bug where react would recycle displayname-components across rooms, attributing them to the wrong messages</p>
+</blockquote>
+<p><img src="/blog/neo.2019-04-18.png" alt="" /></p>
+<blockquote>
+<p>a video at https://lain.haus/_matrix/media/v1/download/lain.haus/VfshWRfaNUnpGQbdkyYczxvd</p>
+</blockquote>
+<p>Go test Neo at: https://neo.lain.haus/neo</p>
+<h2 id="matrix-registration-update">matrix-registration update</h2>
+<p><a href="https://matrix.to/#/@zeratax:dmnd.sh">ZerataX</a>:</p>
+<blockquote>
+<p>it's been a long while, but I've finally come around to improving on matrix-registration<br />
+For those of you, who have forgotten what this project is about, it basically lets you invite people to your homeserver with tokens, e.g. https://homeserver.tld/register?token=DoubleWizardSky<br />
+This whole update was about making the project more user friendly.<br />
+I made a new default registration page that requires 0 setup and you can install the project right from pypi with pip, so you don't even need to clone the repo any longer.<br />
+check a live example  here: https://chat.dmnd.sh/register<br />
+and to play around with the api you can can go over to the github page: https://zeratax.github.io/matrix-registration/demo.html?token=ColorWhiskeyExpand<br />
+channel: <a href="https://matrix.to/#/#matrix-registration:dmnd.sh">#matrix-registration:dmnd.sh</a><br />
+github: https://github.com/zeratax/matrix-registration</p>
+</blockquote>
+<p><a href="https://matrix.org/_matrix/media/v1/download/dmnd.sh/UKGgpbHRdFXzKywxjjbfHAsI">Video available here.</a></p>
+<h2 id="matrix-media-repo-now-has-s3-support">matrix-media-repo now has s3 support</h2>
+<p><a href="https://github.com/turt2live">TravisR</a>:</p>
+<blockquote>
+<p><a href="https://github.com/turt2live/matrix-media-repo">matrix-media-repo</a> now has s3 (and s3-like) support, making it easier to archive older media or use minimal disk space. See the new datastores option in the config and the admin docs ( https://github.com/turt2live/matrix-media-repo/blob/master/docs/admin.md#datastore-management ) for more information.</p>
+</blockquote>
+<h2 id="dimension">Dimension</h2>
+<p><a href="https://github.com/turt2live">TravisR</a>:</p>
+<blockquote>
+<p>Dimension has been updated to more safely handle when upstream integration managers (like Scalar) are offline. Instead of crashing or breaking in various ways, it'll report which integrations are not accessible.<br />
+As well, due to recent events, if you use matrix.org bots or bridges in Dimension then go the the admin section and log everyone out using the red button. Dimension caches upstream tokens and isn't smart enough to realize that they are no longer valid, which means they need clearing. Clients should automatically handle getting new tokens in the background.</p>
+</blockquote>
+<h2 id="riot-ios">Riot iOS</h2>
+<blockquote>
+<ul>
+<li>Interactive device verification is still in progress</li>
+<li>Update WebRTC and Jitsi libs (in progress)</li>
+</ul>
+</blockquote>
+<h2 id="riot-android">Riot Android</h2>
+<blockquote>
+<p>*We are finalizing SAS device verification feature
+*We are preparing a release to fix some issues</p>
+</blockquote>
+<h2 id="riotx-android">RiotX (Android)</h2>
+<blockquote>
+<ul>
+<li>We can now clear the cache of the application (Riot legacy feature)</li>
+<li>Sync filter has been implemented</li>
+<li>François is working on thumbnail of video (upload and preview) in the timeline</li>
+</ul>
+</blockquote>
+<h2 id="that-s-all-i-know">That's all I know</h2>
+<p>See you next week, and be sure to stop by <a href="https://matrix.to/#/#TWIM:matrix.org">#twim:matrix.org</a> with your updates!</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2019&#x2F;04&#x2F;11&#x2F;we-have-discovered-and-addressed-a-security-breach-updated-2019-04-12&#x2F;" title="We have discovered and addressed a security breach. (Updated 2019-04-12)">We have discovered and addressed a security breach. (Updated 2019-04-12)</a></h2>
+                <span>
+                    11.04.2019 00:00
+                    —
+                    <a href="/category/general">
+                        General
+                    </a>
+                    —
+                    <a
+                        href="/author/matrix-org-team">
+                        Matrix.org Team
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p><b>Update: for the full story here, please see <a href="https://matrix.org/blog/2019/05/08/post-mortem-and-remediations-for-apr-11-security-incident">the post mortem</a>.</b>
+<br/></p>
+<h2 id="toc_1">Here&#39;s what you need to know.</h2>
+<p><strong>TL;DR:</strong> An attacker gained access to the servers hosting Matrix.org. The intruder had access to the production databases, potentially giving them access to unencrypted message data, password hashes and access tokens. As a precaution, if you&#39;re a matrix.org user you should <strong>change your password now</strong>.</p>
+<p>The matrix.org homeserver has been rebuilt and is running securely; bridges and other ancillary services (e.g. this blog) will follow as soon as possible. Modular.im homeservers have not been affected by this outage.</p>
+<h3 id="toc_2">The security breach is not a Matrix issue.</h3>
+<p>The hacker exploited a vulnerability in our production infrastructure (specifically a slightly outdated version of Jenkins). <strong>Homeservers other than matrix.org are unaffected.</strong></p>
+<h3 id="toc_3">How does this affect me?</h3>
+<p>We have invalidated all of the active access tokens for users on Matrix.org - all users have been logged out.</p>
+<p>Users with <strong>Matrix.org accounts</strong> should:</p>
+<ul>
+<li><strong>Change your password now</strong> - no plaintext Matrix passwords were leaked, but weak passwords could still be cracked from the hashed passwords</li>
+<li><strong>Change your NickServ password (if you&#39;re using IRC bridging)</strong> - there&#39;s no evidence bridge credentials were compromised, but if you have given the IRC bridges credentials to your NickServ account we would recommend changing this password</li>
+</ul>
+<p>And as a reminder, it&#39;s good practice to:</p>
+<ul>
+<li><strong>Review your device list regularly</strong> - make sure you recognise all of the devices connected to your account</li>
+<li><strong>Always make sure you enable E2E encryption for private conversations</strong></li>
+</ul>
+<h3 id="toc_4">What user data has been accessed?</h3>
+<p>Forensics are ongoing; so far we&#39;ve found no evidence of large quantities of data being downloaded. The attacker did have access to the production database, so unencrypted content (including private messages, password hashes and access tokens) may be compromised. </p>
+<h3 id="toc_5">What has not been affected?</h3>
+<ul>
+<li>Source code and packages have not been impacted based on our initial investigations.  However, we will be replacing signing keys as a precaution.</li>
+<li>Modular.im servers are not affected, based on our initial analysis</li>
+<li>Identity server data does not appear to have been compromised</li>
+</ul>
+<p>The target appeared to be internal credentials for onward exploits, not end user information from the matrix.org homeserver.</p>
+<h3 id="toc_6">You might have lost access to your encrypted messages.</h3>
+<p>As we had to log out all users from matrix.org, if you do not have backups of your encryption keys you will not be able to read your encrypted conversation history.  However, if you use server-side encryption key backup (the default in Riot these days) or take manual key backups, you’ll be okay. </p>
+<p>This was a difficult choice to make. We weighed the risk of some users losing access to encrypted messages against that of all users&#39; accounts being vulnerable to hijack via the compromised access tokens. We hope you can see why we made the decision to prioritise account integrity over access to encrypted messages, but we&#39;re sorry for the inconvenience this may have caused.</p>
+<h2 id="toc_7">What happened?</h2>
+<p>We were using Jenkins for continuous integration (automatically testing our software). The version of Jenkins we were using had a vulnerability (<a href="https://nvd.nist.gov/vuln/detail/CVE-2019-1003000">CVE-2019-1003000</a>, <a href="https://nvd.nist.gov/vuln/detail/CVE-2019-1003001">CVE-2019-1003001</a>, <a href="https://nvd.nist.gov/vuln/detail/CVE-2019-1003002">CVE-2019-1003002</a>) which allowed an attacker to hijack credentials (forwarded ssh keys), giving access to our production infrastructure. Thanks to <a href="https://twitter.com/jaikeysarraf">@jaikeysarraf</a> for drawing this to our attention.</p>
+<h3 id="toc_8">Timeline</h3>
+<p>March 13th <b>Updated 2019-04-12 11:00 UTC</b></p>
+<ul>
+<li>Attacker compromises Jenkins CI server</li>
+</ul>
+<p>April 4th <b>Updated 2019-04-12 11:00 UTC</b></p>
+<ul>
+<li>Attacker gains access to production infrastructure by hijacking a forwarded SSH agent logging into the compromised Jenkins worker</li>
+</ul>
+<p>April 9th</p>
+<ul>
+<li>Jenkins vulnerability brought to our attention by <a href="https://twitter.com/jaikeysarraf">@jaikeysarraf</a></li>
+</ul>
+<p>April 10th</p>
+<ul>
+<li>Investigation identified the compromised machines and the full scope of the attack</li>
+<li>Jenkins was removed</li>
+<li>Attacker&#39;s access to compromised machines was removed</li>
+</ul>
+<p>April 11th</p>
+<ul>
+<li>Matrix.org was taken offline and production infrastructure fully rebuilt</li>
+<li>Having fully flushed out the attacker, external communication was published informing users and advising on next steps</li>
+<li>Matrix.org homeserver restored, with bridges and ancillary services (e.g. this blog) following as soon as possible</li>
+</ul>
+<h2>Update 2019-04-12</h2>
+<p>
+At around 5am UTC on Apr 12, the attacker used a cloudflare API key to repoint DNS for matrix.org to a defacement website (https://github.com/matrixnotorg/matrixnotorg.github.io).
+The API key was known compromised in the original attack, and during the rebuild the key was theoretically replaced.  However, unfortunately
+only personal keys were rotated, enabling the defacement.  We are currently doublechecking that all compromised secrets have been rotated.
+</p>
+<p>
+The rebuilt infrastructure itself is secure, however, and the DNS issue has been solved without further abuse.
+If you have already changed your password, you do not need to do so again.
+</p>
+<p>
+The defacement confirms that encrypted password hashes were exfiltrated from the production database, so <b>it is even more important
+for everyone to change their password</b>.  We will shortly be messaging and emailing all users to announce the breach and advise them
+to change their passwords.  We will also look at ways of non-destructively forcing a password reset at next login.
+</p>
+<p>
+The attacker has also posted github issues detailing some of their actions and suggested remediations at
+https://github.com/matrix-org/matrix.org/issues/created_by/matrixnotorg.
+</p>
+<p>
+This confirms that GPG keys used for signing packages were compromised.  These keys are used for signing
+the synapse debian repository (AD0592FE47F0DF61), and releases of Riot/Web (E019645248E8F4A1).
+Both keys have now been revoked.  The window of compromise for the keys started from April 4th; there have
+been no Synapse releases since then.  There has been one release of Riot/Web (1.0.7), however as the key
+was passphrased and based on our initial analysis of the release, we believe it to be secure.
+</p>
+<h2 id="toc_9">What are we doing to prevent this in future?</h2>
+<p>Once things are back up and running we will retrospect on this incident in detail to identify the changes we need to make. We will provide a proper postmortem, including follow-up steps; meanwhile we are obviously going to take measures to improve the security of our production infrastructure, including patching services more aggressively and more regular vulnerability scans.</p>
+
+                
+            </div>
+        </article>
+        
+        <nav class="pagination">
+    <div class="prev">
+        
+    </div>
+    <span class="page-number">1 / 1</span>
+    <div class="prev">
+        
+    </div>
+</nav>
+
+    </div>
+</div>
+
+    </main>
+
+    <footer class="site-footer">
+    <div class="internal-links">
+        
+        <a href="&#x2F;faq">FAQs</a>
+        
+        <a href="&#x2F;security-disclosure-policy">Security Disclosure Policy</a>
+        
+        <a href="&#x2F;hall-of-fame">Security Hall of Fame</a>
+        
+        <a href="&#x2F;legal&#x2F;code-of-conduct">Code of Conduct for Matrix.org</a>
+        
+        <a href="&#x2F;legal">Legal</a>
+        
+        <a href="&#x2F;contact">Contact</a>
+        
+        <a href="https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;">Site Source</a>
+        
+    </div>
+    <div class="external-links">
+        <div>
+            
+            <a href="&#x2F;code"><img src="/assets/github.svg" alt="GitHub"></a>
+            
+            <a href="https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;"><img src="/assets/gitlab.svg" alt="GitLab"></a>
+            
+            <a href="https:&#x2F;&#x2F;mastodon.matrix.org&#x2F;@matrix"><img src="/assets/mastodon.svg" alt="Mastodon"></a>
+            
+            <a href="https:&#x2F;&#x2F;twitter.com&#x2F;matrixdotorg"><img src="/assets/twitter.svg" alt="Twitter"></a>
+            
+            <a href="https:&#x2F;&#x2F;www.youtube.com&#x2F;channel&#x2F;UCVFkW-chclhuyYRbmmfwt6w"><img src="/assets/youtube.svg" alt="YouTube"></a>
+            
+        </div>
+    </div>
+    <p>© 2022 The Matrix.org Foundation C.I.C.</p>
+</footer>
+
+</body>
+
+</html>

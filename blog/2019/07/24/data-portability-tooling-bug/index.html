@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="twitter:widgets:csp" content="on" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta name="twitter:site" content="@matrixdotorg" />
+    <meta name="twitter:creator" content="@matrixdotorg" />
+
+    <title>Matrix.org - Data Portability Tooling Bug</title>
+    <link rel="shortcut icon" href="/assets/favicon.ico" />
+    <link rel="icon" type="image/png" href="/assets/favicon.png" />
+    <link rel="stylesheet" href="/style.css" />
+
+    
+
+
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    "headline": "Data Portability Tooling Bug",
+    "datePublished": "2019-07-24T00:00+00:00",
+    
+    "author": [
+    
+    {
+        "@type": "Person",
+        "name": "Thomas Lant",
+        "url": "//authors/thomas-lant"
+    }
+    
+    ]
+}
+</script>
+</head>
+
+<body>
+    
+    <header class="site-header">
+    <a href="/" class="brand">
+        <img src="/images/matrix-logo.svg" alt="Matrix logo">
+    </a>
+    <input id="site-header-dropdown-checkbox" type="checkbox" class="dropdown-checkbox" aria-hidden="true">
+    <label for="site-header-dropdown-checkbox" class="dropdown-button">&#xe602;</label>
+    <label for="site-header-dropdown-checkbox" class="page-overlay"></label>
+    <nav>
+        
+        
+        <a href="&#x2F;about&#x2F;" class="
+            ">
+            About
+        </a>
+        
+        
+        
+        <a href="&#x2F;blog&#x2F;" class="
+            current">
+            Blog
+        </a>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;docs&#x2F;" class="section ">
+                Documentation
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;ecosystem&#x2F;" class="section ">
+                Ecosystem
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                    <a href="&#x2F;ecosystem&#x2F;clients&#x2F;">Clients</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;servers&#x2F;">Servers</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bots&#x2F;">Bots</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bridges&#x2F;">Bridges</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;sdks&#x2F;">SDKs</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;hosting&#x2F;">Hosting</a>
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        <a href="&#x2F;podcasts&#x2F;" class="
+            ">
+            Podcasts
+        </a>
+        
+        
+        
+        <a href="https:&#x2F;&#x2F;shop.matrix.org" class="
+            ">
+            Shop
+        </a>
+        
+        
+        
+        <a href="&#x2F;try-matrix&#x2F;" class="primary
+            ">
+            Try Matrix
+        </a>
+        
+        
+    </nav>
+</header>
+
+
+    <main>
+        
+<article class="content post with-sidebar">
+    <header>
+        <h1>Data Portability Tooling Bug</h1>
+        <span>24.07.2019 00:00 — <a
+                href="/category/privacy">Privacy</a>
+             — <a href="/author/thomas-lant">Thomas Lant</a>
+        </span>
+        
+    </header>
+    <div class="post-main">
+        <div class="post-content">
+            <p>It was drawn to our attention this afternoon that there is a bug in our GDPR data portability tooling that resulted in the data dump including some events that should not have been included.</p>
+<p>This tooling has recently been updated (<a href="https://github.com/matrix-org/synapse/blob/baf081cd3b040926e2d14dfd1c555307bba59245/synapse/handlers/admin.py#L98">here is the new code</a>), and the bug only affects reports generated with the updated tool. So far we have generated one report using the updated tooling.</p>
+<p>The bug affects events which:</p>
+<ul>
+<li>were sent in rooms in which, at the point at which the message was sent, the message visibility was set to 'shared' or 'world readable', and</li>
+<li>were pulled in over federation from another server after the data subject left the room</li>
+</ul>
+<p>As a reminder, 'shared' message visibility means <em>anyone in the room can view the message, from the point in time at which visibility was set to 'shared'</em> and 'world readable' means <em>anyone can read the messages without joining the room, from the point in time at which visibility was set to 'world readable'</em>.</p>
+<p>Events are pulled onto a homeserver over federation when a user on that homeserver tries to access events which, for whatever reason, their homeserver does not already have a local copy. This most often happens when their homeserver is offline for any period of time, but can also happen when a user is the first user from their homeserver to join a room with active participants on other homeservers.</p>
+<p>We're still analysing the data but so far it looks like the bug resulted in only a small number of events that were not publicly-accessible being shared (there were also publicly-accessible events mistakenly included). At this stage we have identified 19 events from 4 users across 2 rooms (the dump contained ~3.5 million events). This is not to diminish the severity of the bug - just to reassure that the scale of its impact appears to be extremely limited.</p>
+<p>It is also worth noting that any encrypted events erroneously included in the dump will not have been decryptable (since the data subject would not have had access to the keys).</p>
+<h3 id="update-2019-08-06">Update (2019-08-06)</h3>
+<blockquote>
+<p>In our original analysis we stated that 19 events were shared erroneously. On closer analysis we missed 5 other timeline events - the correct figure is 24 timeline events originating from 4 users over 2 rooms. However, this figure focused on timeline data and does not take into account all state events (such as user joins, parts, topic changes etc). When considering these too, a further 56 state events were erroneously shared, referencing 64 users across these 2 rooms (mainly detailing when users had joined/left the room after the requesting user themselves had left). These membership events contained avatar &amp; display name details which may not have been public (but in practice, the vast majority appear to be public data).</p>
+<p>Aside from the events referenced above, the full dump contained ~20,000 events that also ought not to have been included; however <strong>these events were already publicly accessible due to being part of publicly accessible rooms</strong> (eg Matrix HQ) and so we do not consider them a breach of data.</p>
+</blockquote>
+<h2 id="what-caused-the-bug">What caused the bug?</h2>
+<p>Events that are pulled in over federation are assigned a negative 'stream ordering' ID. This is designed to avoid their being sent down the sync (where they would likely be out of sequence). In normal operation (accessing your homeserver via a Matrix client) these events would be appropriately filtered, but a bug in the data dump tooling caused them to be included.</p>
+<p>The bug was introduced as a result of two factors:</p>
+<ul>
+<li>The event filtering code assumes that the user is currently in the room - this was not intuitive, and was not called out in the documentation</li>
+<li>When we fetched the events from the database, we tried to limit to events sent before the user left the room. On reflection, we used the wrong ordering mechanism (stream ordering instead of topological ordering), resulting in the inclusion of events that were fetched from a remote server after the data subject had left</li>
+</ul>
+<p>We are working to fix the bug, and we'll update here when it is resolved. As a reminder, please do report security bugs responsibly as per the <a href="https://matrix.org/security-disclosure-policy/">Security Disclosure Policy</a> so we can validate the issue and mitigate abuse.</p>
+<p>As is standard practice for any data breach, we have notified the ICO.</p>
+
+        </div>
+        
+        <aside>
+            <h3>Post Contents</h3>
+
+            <ul style="list-style: none; padding-left: 0px;">
+                
+                <li>
+                    <a href="/blog/2019/07/24/data-portability-tooling-bug/#update-2019-08-06">Update (2019-08-06)</a>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2019/07/24/data-portability-tooling-bug/#what-caused-the-bug">What caused the bug?</a>
+                    
+                </li>
+                
+            </ul>
+        </aside>
+        
+    </div>
+</article>
+
+    </main>
+
+    <footer class="site-footer">
+    <div class="internal-links">
+        
+        <a href="&#x2F;faq">FAQs</a>
+        
+        <a href="&#x2F;security-disclosure-policy">Security Disclosure Policy</a>
+        
+        <a href="&#x2F;hall-of-fame">Security Hall of Fame</a>
+        
+        <a href="&#x2F;legal&#x2F;code-of-conduct">Code of Conduct for Matrix.org</a>
+        
+        <a href="&#x2F;legal">Legal</a>
+        
+        <a href="&#x2F;contact">Contact</a>
+        
+        <a href="https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;">Site Source</a>
+        
+    </div>
+    <div class="external-links">
+        <div>
+            
+            <a href="&#x2F;code"><img src="/assets/github.svg" alt="GitHub"></a>
+            
+            <a href="https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;"><img src="/assets/gitlab.svg" alt="GitLab"></a>
+            
+            <a href="https:&#x2F;&#x2F;mastodon.matrix.org&#x2F;@matrix"><img src="/assets/mastodon.svg" alt="Mastodon"></a>
+            
+            <a href="https:&#x2F;&#x2F;twitter.com&#x2F;matrixdotorg"><img src="/assets/twitter.svg" alt="Twitter"></a>
+            
+            <a href="https:&#x2F;&#x2F;www.youtube.com&#x2F;channel&#x2F;UCVFkW-chclhuyYRbmmfwt6w"><img src="/assets/youtube.svg" alt="YouTube"></a>
+            
+        </div>
+    </div>
+    <p>© 2022 The Matrix.org Foundation C.I.C.</p>
+</footer>
+
+</body>
+
+</html>

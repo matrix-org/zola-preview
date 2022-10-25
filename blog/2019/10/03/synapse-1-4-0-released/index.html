@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="twitter:widgets:csp" content="on" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta name="twitter:site" content="@matrixdotorg" />
+    <meta name="twitter:creator" content="@matrixdotorg" />
+
+    <title>Matrix.org - Synapse 1.4.0 released</title>
+    <link rel="shortcut icon" href="/assets/favicon.ico" />
+    <link rel="icon" type="image/png" href="/assets/favicon.png" />
+    <link rel="stylesheet" href="/style.css" />
+
+    
+
+
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    "headline": "Synapse 1.4.0 released",
+    "datePublished": "2019-10-03T00:00+00:00",
+    
+    "author": [
+    
+    {
+        "@type": "Person",
+        "name": "Neil Johnson",
+        "url": "//authors/neil-johnson"
+    }
+    
+    ]
+}
+</script>
+</head>
+
+<body>
+    
+    <header class="site-header">
+    <a href="/" class="brand">
+        <img src="/images/matrix-logo.svg" alt="Matrix logo">
+    </a>
+    <input id="site-header-dropdown-checkbox" type="checkbox" class="dropdown-checkbox" aria-hidden="true">
+    <label for="site-header-dropdown-checkbox" class="dropdown-button">&#xe602;</label>
+    <label for="site-header-dropdown-checkbox" class="page-overlay"></label>
+    <nav>
+        
+        
+        <a href="&#x2F;about&#x2F;" class="
+            ">
+            About
+        </a>
+        
+        
+        
+        <a href="&#x2F;blog&#x2F;" class="
+            current">
+            Blog
+        </a>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;docs&#x2F;" class="section ">
+                Documentation
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;ecosystem&#x2F;" class="section ">
+                Ecosystem
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                    <a href="&#x2F;ecosystem&#x2F;clients&#x2F;">Clients</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;servers&#x2F;">Servers</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bots&#x2F;">Bots</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bridges&#x2F;">Bridges</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;sdks&#x2F;">SDKs</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;hosting&#x2F;">Hosting</a>
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        <a href="&#x2F;podcasts&#x2F;" class="
+            ">
+            Podcasts
+        </a>
+        
+        
+        
+        <a href="https:&#x2F;&#x2F;shop.matrix.org" class="
+            ">
+            Shop
+        </a>
+        
+        
+        
+        <a href="&#x2F;try-matrix&#x2F;" class="primary
+            ">
+            Try Matrix
+        </a>
+        
+        
+    </nav>
+</header>
+
+
+    <main>
+        
+<article class="content post with-sidebar">
+    <header>
+        <h1>Synapse 1.4.0 released</h1>
+        <span>03.10.2019 00:00 — <a
+                href="/category/releases">Releases</a>
+             — <a href="/author/neil-johnson">Neil Johnson</a>
+        </span>
+        
+    </header>
+    <div class="post-main">
+        <div class="post-content">
+            <p>Wheyhey as I live and breathe 1.4.0 is here!</p>
+<p>1.4.0 should be considered ‘The Privacy Release’ and is the cumulation of a huge body of work spanning multiple projects to improve data privacy in the matrix ecosystem. You can read more about the <a href="https://matrix.org/blog/2019/09/27/privacy-improvements-in-synapse-1-4-and-riot-1-4">full project here</a>.</p>
+<p>While we consider 1.4.0 to be a huge leap forward in terms of data privacy, it is really important to note that it contains breaking changes.</p>
+<ul>
+<li>If you currently rely on email or SMS delivery via an identity server you must modify your Synapse configuration.</li>
+<li>If you have configured custom templates, then eight new templates must be added to your templates directory.</li>
+</ul>
+<p>If either apply to you failure to act will break your installation. Full details can be found in the <a href="https://github.com/matrix-org/synapse/blob/master/UPGRADE.rst#upgrading-to-v140">upgrade notes</a>.</p>
+<h2 id="so-what-has-changed">So what has changed?</h2>
+<p>It is possible for a user to associate an email address or phone number with their account, for a number of reasons:</p>
+<ul>
+<li>For use when logging in, as an alternative to the user id.</li>
+<li>In the case of email, as an alternative contact to help with account recovery.</li>
+<li>In the case of email, to receive notifications of missed messages.</li>
+</ul>
+<p>Before an email address or phone number can be added to a user's account, or before such an address is used to carry out a password-reset, Synapse must confirm the operation with the owner of the email address or phone number. It does this by sending an email or text giving the user a link or token to confirm receipt. This process is known as '3pid verification'. ('3pid', or 'threepid', stands for third-party identifier, and we use it to refer to external identifiers such as email addresses and phone numbers.)</p>
+<p>Previous versions of Synapse delegated the task of 3pid verification to an identity server by default. In most cases this server is vector.im or matrix.org.</p>
+<p>In Synapse 1.4.0, for security and privacy reasons, the homeserver will no longer delegate this task to an identity server by default. Instead, the server administrator will need to explicitly decide how they would like the verification messages to be sent.</p>
+<p>In the medium term, the vector.im and matrix.org identity servers will disable support for delegated 3pid verification entirely. However, in order to ease the transition, they will retain the capability for a limited period. Delegated email verification will be disabled on Monday 2nd December 2019 (giving roughly 2 months notice). Disabling delegated SMS verification will follow some time after that once SMS verification support lands in Synapse.</p>
+<p>Once delegated 3pid verification support has been disabled in the vector.im and matrix.org identity servers, all Synapse versions that depend on those instances will be unable to verify email and phone numbers through them. There are no imminent plans to remove delegated 3pid verification from Sydent generally. (Sydent is the identity server project that backs the vector.im and matrix.org instances).</p>
+<h2 id="why-is-this-necessary">Why is this necessary?</h2>
+<p>Prior to 1.4.0, the identity server was providing two related-but-separate functions:</p>
+<p>a directory for users to publish their contact details and to look up their contacts by their email addresses and phone numbers.
+a &quot;trusted third party communications network delegate&quot;, providing SMS- and email-sending functionality to all homeservers for registration and password reset.</p>
+<p>The intention behind the identity server's providing 2. was one of convenience: to save homeserver admins the burden of configuring their homeservers to send email, as well as sparing us the effort of writing generic SMS-gateway integration that would allow any homeserver admin to configure their homeserver to send SMS via their chosen SMS aggregator.</p>
+<p>By exposing this 'trusted email/sms delegate' functionality, however, and by including references to the New Vector identity servers in the default configuration for both Synapse and Riot, we created a situation in which users on non-New Vector run homeservers (who had never seen our privacy notice) could easily end up sharing their email addresses and phone numbers with a New Vector identity server.</p>
+<p>Using identity servers for registration and password reset introduced yet further complexity - since password reset is a sensitive operation, it was important that the homeserver only use 'trusted' identity servers for this purpose (with the trust being configured by the homeserver admin in the homeserver config). But this created ambiguity over who was ultimately responsible for the choice of identity server and when they could make that choice - the client could present a default identity server at login/registration/password reset time, which the user could choose to override before logging in, but unless the identity server ultimately selected were on the homeserver admin's 'trusted identity servers' list, any identity server operations that were proxied via the homeserver would have been blocked by the homeserver. However, not all identity server operations initiated by the client were proxied via the homeserver - some were sent directly from the client to the identity server, and would not have been filtered.</p>
+<p>The best way to solve this problem is to have individual homeservers take ownership for their own email and SMS needs. In the case of email this means configuring details of an appropriate SMTP server or continuing to delegate through an identity server that will allow it to do so. If a homeserver admin makes the active choice to use New Vector's identity servers for delegation (up until 1st December), they should make their own users aware through their privacy notice.</p>
+<p>This delegation is entirely separate from the user's choice of identity server for user directory services. As of right now the user is free to choose and trust whichever identity server they wish, or to choose not to use an identity server at all.</p>
+<h2 id="are-there-any-other-data-privacy-features">Are there any other data privacy features?</h2>
+<p>Yes, 1.4.0 now <a href="https://github.com/matrix-org/synapse/issues/1287">automatically garbage collects redacted messages</a> (defaults to 7 days) and removes <a href="https://github.com/matrix-org/synapse/pull/6098/files">unused IP and user agent information</a> stored in the user_ips table (defaults to 30 days). Finally, Synapse now <a href="https://github.com/matrix-org/synapse/pull/6090/files">warns in its logs</a> if you are using matrix.org as a trusted key server, in case you wish to use a different server to help discover other servers’ keys.</p>
+<h2 id="anything-else">Anything else?</h2>
+<p>Aside from privacy, we’ve expanded our OpenTracing support and fixed a host of bugs. However the thing that is most exciting is switching on our solution for <a href="https://github.com/matrix-org/synapse/issues/5319">mitigating forward extremities build up</a>’ by default.</p>
+<p>In some cases rooms can accumulate ‘forward extremities’, which are simply an artefact of attempting to resolve the room state over multiple servers. Forward extremities are necessary to ensure that each server can independently arrive at the same view of the room eventually, however processing these extremities can be <a href="https://github.com/matrix-org/synapse/issues/1760">computationally expensive and degrade server performance overall</a>.</p>
+<p>Originally it was an experimental config option but we now feel confident to turn it on by default for all instances - it should make a big difference for the CPU of servers in fragmented rooms.</p>
+<p>So that’s it folks, thanks for making it this far. As ever, you can get the new update <a href="https://github.com/matrix-org/synapse/releases/tag/v1.4.0">here</a> or any of the sources mentioned at <a href="https://github.com/matrix-org/synapse">https://github.com/matrix-org/synapse</a>. Also, check out our <a href="https://matrix.org/docs/guides/installing-synapse">Synapse installation guide page</a></p>
+<p>The changelog since 1.3.1 follows:</p>
+<h1 id="synapse-1-4-0-2019-10-03">Synapse 1.4.0 (2019-10-03)</h1>
+<h2 id="bugfixes">Bugfixes</h2>
+<ul>
+<li>Redact <code>client_secret</code> in server logs. (<a href="https://github.com/matrix-org/synapse/issues/6158">#6158</a>)</li>
+</ul>
+<h1 id="synapse-1-4-0rc2-2019-10-02">Synapse 1.4.0rc2 (2019-10-02)</h1>
+<h2 id="bugfixes-1">Bugfixes</h2>
+<ul>
+<li>Fix bug in background update that adds last seen information to the <code>devices</code> table, and improve its performance on Postgres. (<a href="https://github.com/matrix-org/synapse/issues/6135">#6135</a>)</li>
+<li>Fix bad performance of censoring redactions background task. (<a href="https://github.com/matrix-org/synapse/issues/6141">#6141</a>)</li>
+<li>Fix fetching censored redactions from DB, which caused APIs like initial sync to fail if it tried to include the censored redaction. (<a href="https://github.com/matrix-org/synapse/issues/6145">#6145</a>)</li>
+<li>Fix exceptions when storing large retry intervals for down remote servers. (<a href="https://github.com/matrix-org/synapse/issues/6146">#6146</a>)</li>
+</ul>
+<h2 id="internal-changes">Internal Changes</h2>
+<ul>
+<li>Fix up sample config entry for <code>redaction_retention_period</code> option. (<a href="https://github.com/matrix-org/synapse/issues/6117">#6117</a>)</li>
+</ul>
+<h1 id="synapse-1-4-0rc1-2019-09-26">Synapse 1.4.0rc1 (2019-09-26)</h1>
+<p>Note that this release includes significant changes around 3pid verification. Administrators are reminded to review the <a href="UPGRADE.rst#upgrading-to-v140">upgrade notes</a>.</p>
+<h2 id="features">Features</h2>
+<ul>
+<li>Changes to 3pid verification:
+<ul>
+<li>Add the ability to send registration emails from the homeserver rather than delegating to an identity server. (<a href="https://github.com/matrix-org/synapse/issues/5835">#5835</a>, <a href="https://github.com/matrix-org/synapse/issues/5940">#5940</a>, <a href="https://github.com/matrix-org/synapse/issues/5993">#5993</a>, <a href="https://github.com/matrix-org/synapse/issues/5994">#5994</a>, <a href="https://github.com/matrix-org/synapse/issues/5868">#5868</a>)</li>
+<li>Replace <code>trust_identity_server_for_password_resets</code> config option with <code>account_threepid_delegates</code>, and make the <code>id_server</code> parameteter optional on <code>*/requestToken</code> endpoints, as per <a href="https://github.com/matrix-org/matrix-doc/pull/2263">MSC2263</a>. (<a href="https://github.com/matrix-org/synapse/issues/5876">#5876</a>, <a href="https://github.com/matrix-org/synapse/issues/5969">#5969</a>, <a href="https://github.com/matrix-org/synapse/issues/6028">#6028</a>)</li>
+<li>Switch to using the v2 Identity Service <code>/lookup</code> API where available, with fallback to v1. (Implements <a href="https://github.com/matrix-org/matrix-doc/pull/2134">MSC2134</a> plus <code>id_access_token authentication</code> for v2 Identity Service APIs from <a href="https://github.com/matrix-org/matrix-doc/pull/2140">MSC2140</a>). (<a href="https://github.com/matrix-org/synapse/issues/5897">#5897</a>)</li>
+<li>Remove <code>bind_email</code> and <code>bind_msisdn</code> parameters from <code>/register</code> ala <a href="https://github.com/matrix-org/matrix-doc/pull/2140">MSC2140</a>. (<a href="https://github.com/matrix-org/synapse/issues/5964">#5964</a>)</li>
+<li>Add <code>m.id_access_token</code> to <code>unstable_features</code> in <code>/versions</code> as per <a href="https://github.com/matrix-org/matrix-doc/pull/2264">MSC2264</a>. (<a href="https://github.com/matrix-org/synapse/issues/5974">#5974</a>)</li>
+<li>Use the v2 Identity Service API for 3PID invites. (<a href="https://github.com/matrix-org/synapse/issues/5979">#5979</a>)</li>
+<li>Add <code>POST /_matrix/client/unstable/account/3pid/unbind</code> endpoint from <a href="https://github.com/matrix-org/matrix-doc/pull/2140">MSC2140</a> for unbinding a 3PID from an identity server without removing it from the homeserver user account. (<a href="https://github.com/matrix-org/synapse/issues/5980">#5980</a>, <a href="https://github.com/matrix-org/synapse/issues/6062">#6062</a>)</li>
+<li>Use <code>account_threepid_delegate.email</code> and <code>account_threepid_delegate.msisdn</code> for validating threepid sessions. (<a href="https://github.com/matrix-org/synapse/issues/6011">#6011</a>)</li>
+<li>Allow homeserver to handle or delegate email validation when adding an email to a user's account. (<a href="https://github.com/matrix-org/synapse/issues/6042">#6042</a>)</li>
+<li>Implement new Client Server API endpoints <code>/account/3pid/add</code> and <code>/account/3pid/bind</code> as per <a href="https://github.com/matrix-org/matrix-doc/pull/2290">MSC2290</a>. (<a href="https://github.com/matrix-org/synapse/issues/6043">#6043</a>)</li>
+<li>Add an unstable feature flag for separate add/bind 3pid APIs. (<a href="https://github.com/matrix-org/synapse/issues/6044">#6044</a>)</li>
+<li>Remove <code>bind</code> parameter from Client Server POST <code>/account</code> endpoint as per <a href="https://github.com/matrix-org/matrix-doc/pull/2290/">MSC2290</a>. (<a href="https://github.com/matrix-org/synapse/issues/6067">#6067</a>)</li>
+<li>Add <code>POST /add_threepid/msisdn/submit_token</code> endpoint for proxying submitToken on an <code>account_threepid_handler</code>. (<a href="https://github.com/matrix-org/synapse/issues/6078">#6078</a>)</li>
+<li>Add <code>submit_url</code> response parameter to <code>*/msisdn/requestToken</code> endpoints. (<a href="https://github.com/matrix-org/synapse/issues/6079">#6079</a>)</li>
+<li>Add <code>m.require_identity_server</code> flag to /version's unstable_features. (<a href="https://github.com/matrix-org/synapse/issues/5972">#5972</a>)</li>
+</ul>
+</li>
+<li>Enhancements to OpenTracing support:
+<ul>
+<li>Make OpenTracing work in worker mode. (<a href="https://github.com/matrix-org/synapse/issues/5771">#5771</a>)</li>
+<li>Pass OpenTracing contexts between servers when transmitting EDUs. (<a href="https://github.com/matrix-org/synapse/issues/5852">#5852</a>)</li>
+<li>OpenTracing for device list updates. (<a href="https://github.com/matrix-org/synapse/issues/5853">#5853</a>)</li>
+<li>Add a tag recording a request's authenticated entity and corresponding servlet in OpenTracing. (<a href="https://github.com/matrix-org/synapse/issues/5856">#5856</a>)</li>
+<li>Add minimum OpenTracing for client servlets. (<a href="https://github.com/matrix-org/synapse/issues/5983">#5983</a>)</li>
+<li>Check at setup that OpenTracing is installed if it's enabled in the config. (<a href="https://github.com/matrix-org/synapse/issues/5985">#5985</a>)</li>
+<li>Trace replication send times. (<a href="https://github.com/matrix-org/synapse/issues/5986">#5986</a>)</li>
+<li>Include missing OpenTracing contexts in outbout replication requests. (<a href="https://github.com/matrix-org/synapse/issues/5982">#5982</a>)</li>
+<li>Fix sending of EDUs when OpenTracing is enabled with an empty whitelist. (<a href="https://github.com/matrix-org/synapse/issues/5984">#5984</a>)</li>
+<li>Fix invalid references to None while OpenTracing if the log context slips. (<a href="https://github.com/matrix-org/synapse/issues/5988">#5988</a>, <a href="https://github.com/matrix-org/synapse/issues/5991">#5991</a>)</li>
+<li>OpenTracing for room and e2e keys. (<a href="https://github.com/matrix-org/synapse/issues/5855">#5855</a>)</li>
+<li>Add OpenTracing span over HTTP push processing. (<a href="https://github.com/matrix-org/synapse/issues/6003">#6003</a>)</li>
+</ul>
+</li>
+<li>Add an admin API to purge old rooms from the database. (<a href="https://github.com/matrix-org/synapse/issues/5845">#5845</a>)</li>
+<li>Retry well-known lookups if we have recently seen a valid well-known record for the server. (<a href="https://github.com/matrix-org/synapse/issues/5850">#5850</a>)</li>
+<li>Add support for filtered room-directory search requests over federation (<a href="https://github.com/matrix-org/matrix-doc/pull/2197">MSC2197</a>, in order to allow upcoming room directory query performance improvements. (<a href="https://github.com/matrix-org/synapse/issues/5859">#5859</a>)</li>
+<li>Correctly retry all hosts returned from SRV when we fail to connect. (<a href="https://github.com/matrix-org/synapse/issues/5864">#5864</a>)</li>
+<li>Add admin API endpoint for setting whether or not a user is a server administrator. (<a href="https://github.com/matrix-org/synapse/issues/5878">#5878</a>)</li>
+<li>Enable cleaning up extremities with dummy events by default to prevent undue build up of forward extremities. (<a href="https://github.com/matrix-org/synapse/issues/5884">#5884</a>)</li>
+<li>Add config option to sign remote key query responses with a separate key. (<a href="https://github.com/matrix-org/synapse/issues/5895">#5895</a>)</li>
+<li>Add support for config templating. (<a href="https://github.com/matrix-org/synapse/issues/5900">#5900</a>)</li>
+<li>Users with the type of &quot;support&quot; or &quot;bot&quot; are no longer required to consent. (<a href="https://github.com/matrix-org/synapse/issues/5902">#5902</a>)</li>
+<li>Let synctl accept a directory of config files. (<a href="https://github.com/matrix-org/synapse/issues/5904">#5904</a>)</li>
+<li>Increase max display name size to 256. (<a href="https://github.com/matrix-org/synapse/issues/5906">#5906</a>)</li>
+<li>Add admin API endpoint for getting whether or not a user is a server administrator. (<a href="https://github.com/matrix-org/synapse/issues/5914">#5914</a>)</li>
+<li>Redact events in the database that have been redacted for a week. (<a href="https://github.com/matrix-org/synapse/issues/5934">#5934</a>)</li>
+<li>New prometheus metrics:
+<ul>
+<li><code>synapse_federation_known_servers</code>: represents the total number of servers your server knows about (i.e. is in rooms with), including itself. Enable by setting <code>metrics_flags.known_servers</code> to True in the configuration.(<a href="https://github.com/matrix-org/synapse/issues/5981">#5981</a>)</li>
+<li><code>synapse_build_info</code>: exposes the Python version, OS version, and Synapse version of the running server. (<a href="https://github.com/matrix-org/synapse/issues/6005">#6005</a>)</li>
+</ul>
+</li>
+<li>Give appropriate exit codes when synctl fails. (<a href="https://github.com/matrix-org/synapse/issues/5992">#5992</a>)</li>
+<li>Apply the federation blacklist to requests to identity servers. (<a href="https://github.com/matrix-org/synapse/issues/6000">#6000</a>)</li>
+<li>Add <code>report_stats_endpoint</code> option to configure where stats are reported to, if enabled. Contributed by @Sorunome. (<a href="https://github.com/matrix-org/synapse/issues/6012">#6012</a>)</li>
+<li>Add config option to increase ratelimits for room admins redacting messages. (<a href="https://github.com/matrix-org/synapse/issues/6015">#6015</a>)</li>
+<li>Stop sending federation transactions to servers which have been down for a long time. (<a href="https://github.com/matrix-org/synapse/issues/6026">#6026</a>)</li>
+<li>Make the process for mapping SAML2 users to matrix IDs more flexible. (<a href="https://github.com/matrix-org/synapse/issues/6037">#6037</a>)</li>
+<li>Return a clearer error message when a timeout occurs when attempting to contact an identity server. (<a href="https://github.com/matrix-org/synapse/issues/6073">#6073</a>)</li>
+<li>Prevent password reset's submit_token endpoint from accepting trailing slashes. (<a href="https://github.com/matrix-org/synapse/issues/6074">#6074</a>)</li>
+<li>Return 403 on <code>/register/available</code> if registration has been disabled. (<a href="https://github.com/matrix-org/synapse/issues/6082">#6082</a>)</li>
+<li>Explicitly log when a homeserver does not have the <code>trusted_key_servers</code> config field configured. (<a href="https://github.com/matrix-org/synapse/issues/6090">#6090</a>)</li>
+<li>Add support for pruning old rows in <code>user_ips</code> table. (<a href="https://github.com/matrix-org/synapse/issues/6098">#6098</a>)</li>
+</ul>
+<h2 id="bugfixes-2">Bugfixes</h2>
+<ul>
+<li>Don't create broken room when <code>power_level_content_override.users</code> does not contain <code>creator_id</code>. (<a href="https://github.com/matrix-org/synapse/issues/5633">#5633</a>)</li>
+<li>Fix database index so that different backup versions can have the same sessions. (<a href="https://github.com/matrix-org/synapse/issues/5857">#5857</a>)</li>
+<li>Fix Synapse looking for config options <code>password_reset_failure_template</code> and <code>password_reset_success_template</code>, when they are actually <code>password_reset_template_failure_html</code>, <code>password_reset_template_success_html</code>. (<a href="https://github.com/matrix-org/synapse/issues/5863">#5863</a>)</li>
+<li>Fix stack overflow when recovering an appservice which had an outage. (<a href="https://github.com/matrix-org/synapse/issues/5885">#5885</a>)</li>
+<li>Fix error message which referred to <code>public_base_url</code> instead of <code>public_baseurl</code>. Thanks to @aaronraimist for the fix! (<a href="https://github.com/matrix-org/synapse/issues/5909">#5909</a>)</li>
+<li>Fix 404 for thumbnail download when <code>dynamic_thumbnails</code> is <code>false</code> and the thumbnail was dynamically generated. Fix reported by rkfg. (<a href="https://github.com/matrix-org/synapse/issues/5915">#5915</a>)</li>
+<li>Fix a cache-invalidation bug for worker-based deployments. (<a href="https://github.com/matrix-org/synapse/issues/5920">#5920</a>)</li>
+<li>Fix admin API for listing media in a room not being available with an external media repo. (<a href="https://github.com/matrix-org/synapse/issues/5966">#5966</a>)</li>
+<li>Fix list media admin API always returning an error. (<a href="https://github.com/matrix-org/synapse/issues/5967">#5967</a>)</li>
+<li>Fix room and user stats tracking. (<a href="https://github.com/matrix-org/synapse/issues/5971">#5971</a>, <a href="https://github.com/matrix-org/synapse/issues/5998">#5998</a>, <a href="https://github.com/matrix-org/synapse/issues/6029">#6029</a>)</li>
+<li>Return a <code>M_MISSING_PARAM</code> if <code>sid</code> is not provided to <code>/account/3pid</code>. (<a href="https://github.com/matrix-org/synapse/issues/5995">#5995</a>)</li>
+<li><code>federation_certificate_verification_whitelist</code> now will not cause <code>TypeErrors</code> to be raised (a regression in 1.3). Additionally, it now supports internationalised domain names in their non-canonical representation. (<a href="https://github.com/matrix-org/synapse/issues/5996">#5996</a>)</li>
+<li>Only count real users when checking for auto-creation of auto-join room. (<a href="https://github.com/matrix-org/synapse/issues/6004">#6004</a>)</li>
+<li>Ensure support users can be registered even if MAU limit is reached. (<a href="https://github.com/matrix-org/synapse/issues/6020">#6020</a>)</li>
+<li>Fix bug where login error was shown incorrectly on SSO fallback login. (<a href="https://github.com/matrix-org/synapse/issues/6024">#6024</a>)</li>
+<li>Fix bug in calculating the federation retry backoff period. (<a href="https://github.com/matrix-org/synapse/issues/6025">#6025</a>)</li>
+<li>Prevent exceptions being logged when extremity-cleanup events fail due to lack of user consent to the terms of service. (<a href="https://github.com/matrix-org/synapse/issues/6053">#6053</a>)</li>
+<li>Remove POST method from password-reset <code>submit_token</code> endpoint until we implement <code>submit_url</code> functionality. (<a href="https://github.com/matrix-org/synapse/issues/6056">#6056</a>)</li>
+<li>Fix logcontext spam on non-Linux platforms. (<a href="https://github.com/matrix-org/synapse/issues/6059">#6059</a>)</li>
+<li>Ensure query parameters in email validation links are URL-encoded. (<a href="https://github.com/matrix-org/synapse/issues/6063">#6063</a>)</li>
+<li>Fix a bug which caused SAML attribute maps to be overridden by defaults. (<a href="https://github.com/matrix-org/synapse/issues/6069">#6069</a>)</li>
+<li>Fix the logged number of updated items for the <code>users_set_deactivated_flag</code> background update. (<a href="https://github.com/matrix-org/synapse/issues/6092">#6092</a>)</li>
+<li>Add <code>sid</code> to <code>next_link</code> for email validation. (<a href="https://github.com/matrix-org/synapse/issues/6097">#6097</a>)</li>
+<li>Threepid validity checks on msisdns should not be dependent on <code>threepid_behaviour_email</code>. (<a href="https://github.com/matrix-org/synapse/issues/6104">#6104</a>)</li>
+<li>Ensure that servers which are not configured to support email address verification do not offer it in the registration flows. (<a href="https://github.com/matrix-org/synapse/issues/6107">#6107</a>)</li>
+</ul>
+<h2 id="updates-to-the-docker-image">Updates to the Docker image</h2>
+<ul>
+<li>Avoid changing <code>UID/GID</code> if they are already correct. (<a href="https://github.com/matrix-org/synapse/issues/5970">#5970</a>)</li>
+<li>Provide <code>SYNAPSE_WORKER</code> envvar to specify python module. (<a href="https://github.com/matrix-org/synapse/issues/6058">#6058</a>)</li>
+</ul>
+<h2 id="improved-documentation">Improved Documentation</h2>
+<ul>
+<li>Convert documentation to markdown (from rst) (<a href="https://github.com/matrix-org/synapse/issues/5849">#5849</a>)</li>
+<li>Update <code>INSTALL.md</code> to say that Python 2 is no longer supported. (<a href="https://github.com/matrix-org/synapse/issues/5953">#5953</a>)</li>
+<li>Add developer documentation for using SAML2. (<a href="https://github.com/matrix-org/synapse/issues/6032">#6032</a>)</li>
+<li>Add some notes on rolling back to v1.3.1. (<a href="https://github.com/matrix-org/synapse/issues/6049">#6049</a>)</li>
+<li>Update the upgrade notes. (<a href="https://github.com/matrix-org/synapse/issues/6050">#6050</a>)</li>
+</ul>
+<h2 id="deprecations-and-removals">Deprecations and Removals</h2>
+<ul>
+<li>Remove shared-secret registration from <code>/_matrix/client/r0/register</code> endpoint. Contributed by Awesome Technologies Innovationslabor GmbH. (<a href="https://github.com/matrix-org/synapse/issues/5877">#5877</a>)</li>
+<li>Deprecate the <code>trusted_third_party_id_servers</code> option. (<a href="https://github.com/matrix-org/synapse/issues/5875">#5875</a>)</li>
+</ul>
+<h2 id="internal-changes-1">Internal Changes</h2>
+<ul>
+<li>Lay the groundwork for structured logging output. (<a href="https://github.com/matrix-org/synapse/issues/5680">#5680</a>)</li>
+<li>Retry well-known lookup before the cache expires, giving a grace period where the remote well-known can be down but we still use the old result. (<a href="https://github.com/matrix-org/synapse/issues/5844">#5844</a>)</li>
+<li>Remove log line for debugging issue #5407. (<a href="https://github.com/matrix-org/synapse/issues/5860">#5860</a>)</li>
+<li>Refactor the Appservice scheduler code. (<a href="https://github.com/matrix-org/synapse/issues/5886">#5886</a>)</li>
+<li>Compatibility with v2 Identity Service APIs other than /lookup. (<a href="https://github.com/matrix-org/synapse/issues/5892">#5892</a>, <a href="https://github.com/matrix-org/synapse/issues/6013">#6013</a>)</li>
+<li>Stop populating some unused tables. (<a href="https://github.com/matrix-org/synapse/issues/5893">#5893</a>, <a href="https://github.com/matrix-org/synapse/issues/6047">#6047</a>)</li>
+<li>Add missing index on <code>users_in_public_rooms</code> to improve the performance of directory queries. (<a href="https://github.com/matrix-org/synapse/issues/5894">#5894</a>)</li>
+<li>Improve the logging when we have an error when fetching signing keys. (<a href="https://github.com/matrix-org/synapse/issues/5896">#5896</a>)</li>
+<li>Add support for database engine-specific schema deltas, based on file extension. (<a href="https://github.com/matrix-org/synapse/issues/5911">#5911</a>)</li>
+<li>Update Buildkite pipeline to use plugins instead of buildkite-agent commands. (<a href="https://github.com/matrix-org/synapse/issues/5922">#5922</a>)</li>
+<li>Add link in sample config to the logging config schema. (<a href="https://github.com/matrix-org/synapse/issues/5926">#5926</a>)</li>
+<li>Remove unnecessary parentheses in return statements. (<a href="https://github.com/matrix-org/synapse/issues/5931">#5931</a>)</li>
+<li>Remove unused <code>jenkins/prepare_sytest.sh</code> file. (<a href="https://github.com/matrix-org/synapse/issues/5938">#5938</a>)</li>
+<li>Move Buildkite pipeline config to the pipelines repo. (<a href="https://github.com/matrix-org/synapse/issues/5943">#5943</a>)</li>
+<li>Remove unnecessary return statements in the codebase which were the result of a regex run. (<a href="https://github.com/matrix-org/synapse/issues/5962">#5962</a>)</li>
+<li>Remove left-over methods from v1 registration API. (<a href="https://github.com/matrix-org/synapse/issues/5963">#5963</a>)</li>
+<li>Cleanup event auth type initialisation. (<a href="https://github.com/matrix-org/synapse/issues/5975">#5975</a>)</li>
+<li>Clean up dependency checking at setup. (<a href="https://github.com/matrix-org/synapse/issues/5989">#5989</a>)</li>
+<li>Update OpenTracing docs to use the unified <code>trace</code> method. (<a href="https://github.com/matrix-org/synapse/issues/5776">#5776</a>)</li>
+<li>Small refactor of function arguments and docstrings in<code> RoomMemberHandler</code>. (<a href="https://github.com/matrix-org/synapse/issues/6009">#6009</a>)</li>
+<li>Remove unused <code>origin</code> argument on <code>FederationHandler.add_display_name_to_third_party_invite</code>. (<a href="https://github.com/matrix-org/synapse/issues/6010">#6010</a>)</li>
+<li>Add a <code>failure_ts</code> column to the <code>destinations</code> database table. (<a href="https://github.com/matrix-org/synapse/issues/6016">#6016</a>, <a href="https://github.com/matrix-org/synapse/issues/6072">#6072</a>)</li>
+<li>Clean up some code in the retry logic. (<a href="https://github.com/matrix-org/synapse/issues/6017">#6017</a>)</li>
+<li>Fix the structured logging tests stomping on the global log configuration for subsequent tests. (<a href="https://github.com/matrix-org/synapse/issues/6023">#6023</a>)</li>
+<li>Clean up the sample config for SAML authentication. (<a href="https://github.com/matrix-org/synapse/issues/6064">#6064</a>)</li>
+<li>Change mailer logging to reflect Synapse doesn't just do chat notifications by email now. (<a href="https://github.com/matrix-org/synapse/issues/6075">#6075</a>)</li>
+<li>Move last-seen info into devices table. (<a href="https://github.com/matrix-org/synapse/issues/6089">#6089</a>)</li>
+<li>Remove unused parameter to <code>get_user_id_by_threepid</code>. (<a href="https://github.com/matrix-org/synapse/issues/6099">#6099</a>)</li>
+<li>Refactor the user-interactive auth handling. (<a href="https://github.com/matrix-org/synapse/issues/6105">#6105</a>)</li>
+<li>Refactor code for calculating registration flows. (<a href="https://github.com/matrix-org/synapse/issues/6106">#6106</a>)</li>
+</ul>
+
+        </div>
+        
+        <aside>
+            <h3>Post Contents</h3>
+
+            <ul style="list-style: none; padding-left: 0px;">
+                
+                <li>
+                    <a href="/blog/2019/10/03/synapse-1-4-0-released/#so-what-has-changed">So what has changed?</a>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2019/10/03/synapse-1-4-0-released/#why-is-this-necessary">Why is this necessary?</a>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2019/10/03/synapse-1-4-0-released/#are-there-any-other-data-privacy-features">Are there any other data privacy features?</a>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2019/10/03/synapse-1-4-0-released/#anything-else">Anything else?</a>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2019/10/03/synapse-1-4-0-released/#synapse-1-4-0-2019-10-03">Synapse 1.4.0 (2019-10-03)</a>
+                    
+                    <ul>
+                        
+                        <li>
+                            <a href="/blog/2019/10/03/synapse-1-4-0-released/#bugfixes">Bugfixes</a>
+                        </li>
+                        
+                    </ul>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2019/10/03/synapse-1-4-0-released/#synapse-1-4-0rc2-2019-10-02">Synapse 1.4.0rc2 (2019-10-02)</a>
+                    
+                    <ul>
+                        
+                        <li>
+                            <a href="/blog/2019/10/03/synapse-1-4-0-released/#bugfixes-1">Bugfixes</a>
+                        </li>
+                        
+                        <li>
+                            <a href="/blog/2019/10/03/synapse-1-4-0-released/#internal-changes">Internal Changes</a>
+                        </li>
+                        
+                    </ul>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2019/10/03/synapse-1-4-0-released/#synapse-1-4-0rc1-2019-09-26">Synapse 1.4.0rc1 (2019-09-26)</a>
+                    
+                    <ul>
+                        
+                        <li>
+                            <a href="/blog/2019/10/03/synapse-1-4-0-released/#features">Features</a>
+                        </li>
+                        
+                        <li>
+                            <a href="/blog/2019/10/03/synapse-1-4-0-released/#bugfixes-2">Bugfixes</a>
+                        </li>
+                        
+                        <li>
+                            <a href="/blog/2019/10/03/synapse-1-4-0-released/#updates-to-the-docker-image">Updates to the Docker image</a>
+                        </li>
+                        
+                        <li>
+                            <a href="/blog/2019/10/03/synapse-1-4-0-released/#improved-documentation">Improved Documentation</a>
+                        </li>
+                        
+                        <li>
+                            <a href="/blog/2019/10/03/synapse-1-4-0-released/#deprecations-and-removals">Deprecations and Removals</a>
+                        </li>
+                        
+                        <li>
+                            <a href="/blog/2019/10/03/synapse-1-4-0-released/#internal-changes-1">Internal Changes</a>
+                        </li>
+                        
+                    </ul>
+                    
+                </li>
+                
+            </ul>
+        </aside>
+        
+    </div>
+</article>
+
+    </main>
+
+    <footer class="site-footer">
+    <div class="internal-links">
+        
+        <a href="&#x2F;faq">FAQs</a>
+        
+        <a href="&#x2F;security-disclosure-policy">Security Disclosure Policy</a>
+        
+        <a href="&#x2F;hall-of-fame">Security Hall of Fame</a>
+        
+        <a href="&#x2F;legal&#x2F;code-of-conduct">Code of Conduct for Matrix.org</a>
+        
+        <a href="&#x2F;legal">Legal</a>
+        
+        <a href="&#x2F;contact">Contact</a>
+        
+        <a href="https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;">Site Source</a>
+        
+    </div>
+    <div class="external-links">
+        <div>
+            
+            <a href="&#x2F;code"><img src="/assets/github.svg" alt="GitHub"></a>
+            
+            <a href="https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;"><img src="/assets/gitlab.svg" alt="GitLab"></a>
+            
+            <a href="https:&#x2F;&#x2F;mastodon.matrix.org&#x2F;@matrix"><img src="/assets/mastodon.svg" alt="Mastodon"></a>
+            
+            <a href="https:&#x2F;&#x2F;twitter.com&#x2F;matrixdotorg"><img src="/assets/twitter.svg" alt="Twitter"></a>
+            
+            <a href="https:&#x2F;&#x2F;www.youtube.com&#x2F;channel&#x2F;UCVFkW-chclhuyYRbmmfwt6w"><img src="/assets/youtube.svg" alt="YouTube"></a>
+            
+        </div>
+    </div>
+    <p>© 2022 The Matrix.org Foundation C.I.C.</p>
+</footer>
+
+</body>
+
+</html>

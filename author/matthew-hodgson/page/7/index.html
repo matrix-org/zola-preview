@@ -117,16 +117,16 @@
     <div class="content">
         <header>
             <h1>Matthew Hodgson</h1>
-            96 posts tagged with "Matthew Hodgson" <a href="/author">(See all Author)</a>
+            114 posts tagged with "Matthew Hodgson" <a href="/author">(See all Author)</a>
             
         </header>
 
         
         <article class="post">
             <header>
-                <h2><a href="&#x2F;blog&#x2F;2016&#x2F;02&#x2F;10&#x2F;synapse-0-13-released&#x2F;" title="Synapse 0.13 released!">Synapse 0.13 released!</a></h2>
+                <h2><a href="&#x2F;blog&#x2F;2017&#x2F;03&#x2F;11&#x2F;how-do-i-bridge-thee-let-me-count-the-ways&#x2F;" title="How do I bridge thee?  Let me count the ways...">How do I bridge thee?  Let me count the ways...</a></h2>
                 <span>
-                    10.02.2016 00:00
+                    11.03.2017 00:00
                     —
                     <a href="/category/tech">
                         Tech
@@ -141,167 +141,145 @@
             </header>
             <div>
                 
-                <p>Hi all,</p>
-<p>Synapse 0.13 was released this afternoon, bringing a new wave of features, bug fixes and performance fixes.  The main headlines include: huge performance increases (big catchup /syncs that were taking 20s now take 0.3s!), support for server-side per-room unread message and notification badge counts, ability for guest accounts to upgrade into fully-fledged accounts, change default push rules back to notifying for group chats, and loads of bug fixes.  This release incorporates what-was 0.12.1-rc1.</p>
-<p><b>Please note that on first launch after upgrading a pre-0.13 server to 0.13 or later, synapse will add a large database index which may take several minutes to complete.  Whilst the index is added the service will be unresponsive.</b></p>
-<p>Please get the new release from <a href="https://github.com/matrix-org/synapse">https://github.com/matrix-org/synapse</a> and have fun!</p>
+                <p><a href="https://xkcd.com/1810"><img class="aligncenter wp-image-2297" src="/blog/wp-content/uploads/2017/03/xkcd1810-matrixified-v2-1024x842.png" width="753" height="619" /></a></p>
+<p id="types-of-bridging">Bridges come in many flavours, and we need consistent terminology within the Matrix community to ensure everyone (users, developers, core team) is on the same page. This post is primarily intended for bridge developers to refer to when building bridges.</p>
+<em>The most recent version of this document is <a href="/docs/guides/types-of-bridging.html">here</a> (<a href="https://github.com/matrix-org/matrix-doc/blob/master/supporting-docs/guides/2017-03-11-types-of-bridging.md">source</a>) but we're also posting it as a blog post for visibility.</em>
+<h3 id="types-of-rooms">Types of rooms</h3>
+<h4>Portal rooms</h4>
+Bridges can register themselves as controlling chunks of room aliases namespace, letting Matrix users join remote rooms transparently if they `/join #freenode_#wherever:matrix.org` or similar. The resulting Matrix room is typically automatically bridged to the single target remote room. Access control for Matrix users is typically managed by the remote network's side of the room. This is called a portal room, and is useful for jumping into remote rooms without any configuration needed whatsoever - using Matrix as a ‘bouncer' for the remote network.
+<h4 id="plumbed-rooms">Plumbed rooms</h4>
+Alternatively, an existing Matrix room can be can plumbed into one or more specific remote rooms by configuring a bridge (which can be run by anyone). For instance, #matrix:matrix.org is plumbed into #matrix on Freenode, matrixdotorg/#matrix on Slack, etc. Access control for Matrix users is necessarily managed by the Matrix side of the room. This is useful for using Matrix to link together different communities.
+<p>Migrating rooms between a portal &amp; plumbed room is currently a bit of a mess, as there's not yet a way for users to remove portal rooms once they're created, so you can end up with a mix of portal &amp; plumbed users bridged into a room, which looks weird from both the Matrix and non-Matrix viewpoints. https://github.com/matrix-org/matrix-appservice-irc/issues/387 tracks this.</p>
+<h3 id="types-of-bridges-simplest-first">Types of bridges (simplest first):</h3>
+<h4 id="bridgebot-based-bridges">Bridgebot-based bridges</h4>
+The simplest way to exchange messages with a remote network is to have the bridge log into the network using one or more predefined users called bridge bots - typically called MatrixBridge or MatrixBridge[123] etc. These relay traffic on behalf of the users on the other side, but it's a terrible experience as all the metadata about the messages and senders is lost. This is how the <a href="https://github.com/SijmenSchoon/telematrix">telematrix</a> matrix&lt;-&gt;telegram bridge currently works.
+<h4 id="bot-api-aka-virtual-user-based-bridges">Bot-API (aka Virtual user) based bridges</h4>
+Some remote systems support the idea of injecting messages from ‘fake' or ‘virtual' users, which can be used to represent the Matrix-side users as unique entities in the remote network. For instance, Slack's inbound webhooks lets remote bots be created on demand, letting Matrix users be shown cosmetically correctly in the timeline as virtual users. However, the resulting virtual users aren't real users on the remote system, so don't have presence/profile and can't be tab-completed or direct-messaged etc. They also have no way to receive typing notifs or other richer info which may not be available via bot APIs. This is how the current <a href="https://github.com/matrix-org/matrix-appservice-slack">matrix-appservice-slack</a> bridge works.
+<h4 id="one-way-puppeted-bridge">Simple puppeted bridge</h4>
+This is a richer form of bridging, where the bridge logs into the remote service as if it were a real 3rd party client for that service. As a result, the Matrix user has to already have a valid account on the remote system. In exchange, the Matrix user ‘puppets' their remote user, such that other users on the remote system aren't even aware they are speaking to a user via Matrix. The full semantics of the remote system are available to the bridge to expose into Matrix. However, the bridge has to handle the authentication process to log the user into the remote bridge.
+<p>This is essentially how the current <a href="https://github.com/matrix-org/matrix-appservice-irc">matrix-appservice-irc</a> bridge works (if you configure it to log into the remote IRC network as your ‘real' IRC nickname). <a href="https://github.com/matrix-org/matrix-appservice-gitter">matrix-appservice-gitter</a> is being extended to support both puppeted and bridgebot-based operation. It's how the experimental <a href="https://github.com/matrix-org/matrix-appservice-tg">matrix-appservice-tg</a> bridge works.</p>
+<p>Going forwards we're aiming for all bridges to be at least simple puppeted, if not double-puppeted.</p>
+<h4 id="two-way-puppeted-bridge">Double-puppeted bridge</h4>
+A simple ‘puppeted bridge' allows the Matrix user to control their account on their remote network. However, ideally this puppeting should work in both directions, so if the user logs into (say) their native telegram client and starts conversations, sends messages etc, these should be reflected back into Matrix as if the user had done them there. This requires the bridge to be able to puppet the Matrix side of the bridge on behalf of the user.
+<p>This is the holy-grail of bridging; <a href="https://github.com/matrix-hacks/matrix-puppet-bridge">matrix-puppet-bridge</a> is a community project that tries to facilitate development of double puppeted bridges, having done so for <a href="https://github.com/matrix-hacks/matrix-puppet-bridge#examples">several networks</a>. The main obstacle is working out an elegant way of having the bridge auth with Matrix as the matrix user (which requires some kind of scoped access_token delegation).</p>
+<h4 id="server-to-server-bridging">Server-to-server bridging</h4>
+Some remote protocols (IRC, XMPP, SIP, SMTP, NNTP, GnuSocial etc) support federation - either open or closed. The most elegant way of bridging to these protocols would be to have the bridge participate in the federation as a server, directly bridging the entire namespace into Matrix.
+<p>We're not aware of anyone who's done this yet.</p>
+<h4 id="sidecar-bridge">Sidecar bridge</h4>
+Finally: the types of bridging described above assume that you are synchronising the conversation history of the remote system into Matrix, so it may be decentralised and exposed to multiple users within the wider Matrix network.
+<p>This can cause problems where the remote system may have arbitrarily complicated permissions (ACLs) controlling access to the history, which will then need to be correctly synchronised with Matrix's ACL model, without introducing security issues such as races. We already see some problems with this on the IRC bridge, where history visibility for +i and +k channels have to be carefully synchronised with the Matrix rooms.</p>
+<p>You can also hit problems with other network-specific features not yet having equivalent representation in the Matrix protocol (e.g. ephemeral messages, or op-only messages - although arguably that's a type of ACL).</p>
+<p>One solution could be to support an entirely different architecture of bridging, where the Matrix client-server API is mapped directly to the remote service, meaning that ACL decisions are delegated to the remote service, and conversations are not exposed into the wider Matrix. This is effectively using the bridge purely as a 3rd party client for the network (similar to Bitlbee). The bridge is only available to a single user, and conversations cannot be shared with other Matrix users as they aren't actually Matrix rooms. (Another solution could be to use Active Policy Servers at last as a way of centralising and delegating ACLs for a room)</p>
+<p>This is essentially an entirely different product to the rest of Matrix, and whilst it could be a solution for some particularly painful ACL problems, we're focusing on non-sidecar bridges for now.</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2017&#x2F;02&#x2F;21&#x2F;synapse-0-19-2-is-out&#x2F;" title="Synapse 0.19.2 is out">Synapse 0.19.2 is out</a></h2>
+                <span>
+                    21.02.2017 00:00
+                    —
+                    <a href="/category/general">
+                        General
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>We just pushed <a href="https://github.com/matrix-org/synapse/releases">Synapse 0.19.2</a>, which contains a single but important fix for protecting event visibility when accessed via the <code>/context</code> API. Please upgrade from <a href="https://github.com/matrix-org/synapse">https://github.com/matrix-org/synapse</a>!</p>
+<div class="markdown-body">
+<h3></h3>
+<h3>Changes in synapse v0.19.2 (2017-02-20)</h3>
+<ul>
+ 	<li>Fix bug with event visibility check in /context/ API. Thanks to Tokodomo for pointing it out! (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1929" data-url="https://github.com/matrix-org/synapse/issues/1929" data-id="208902437" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1929</a>)</li>
+</ul>
+</div>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2017&#x2F;02&#x2F;17&#x2F;load-problems-on-the-matrix-org-homeserver&#x2F;" title="Load problems on the Matrix.org homeserver">Load problems on the Matrix.org homeserver</a></h2>
+                <span>
+                    17.02.2017 00:00
+                    —
+                    <a href="/category/general">
+                        General
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Hi folks,</p>
+<p>Since FOSDEM we've seen even more interest in Matrix than normal, and we've been having some problems getting the Matrix.org homeserver to keep up with demand.  This has resulted in performance being slightly slower than normal at peak times, but the main impact has been the additional traffic exacerbating outages on the homeserver - either by revealing new failure modes, or making it harder to recover rapidly after something goes wrong.</p>
+<p>Specifically: on Friday afternoon we had a service disruption caused by someone sending an unusual event into Matrix HQ.  It turns out that both matrix-android-sdk and matrix-ios-sdk based clients (e.g. Riot/Android and iOS) handled this naively by simply resyncing the room state... which has been fine in the past, but not when you have several hundred clients actively syncing the room, and resulted in a thundering herd effect which overloaded the server for ~10 mins or so whilst they all resynced the room (which, in turn, nowadays, involves calculating and syncing several MB of JSON state to each client).  The traffic load was then high enough that it took the server a further 10-20 minutes for the server to fully catch up and recover after the herd had dissipated.  We then had a repeat performance on Monday morning of the same failure mode.</p>
+<p>Similarly, we had disruption last night after a user who hadn't used the service for ages logged on for the first time and rapidly caught up on a few rooms which literally had <em>millions</em> of unread messages in them.  Generally this would be okay, but the combination of loaded DB and the sheer number of notifications being deleted ended up with 4 long-running DB deletes in parallel.  This seems to have caused postgres to lock the event_actions_table more aggressively than we'd expect, blocking other queries which were trying to access it... causing most requests to block until the deletes were over.  At the current traffic volumes this meant that the main synapse process tried to serve thousands of simultaneous requests as they stacked up and ran out of filehandles within about 10 minutes and wedged the whole synapse solid before the DB could unblock.  Irritatingly, it turns out our end-to-end monitoring has a bug where it in turn can crash on receiving a 500 from synapse, so despite having PagerDuty all set up and running (and having been receiving pages for traffic delays over the last few weeks)... we didn't get paged when we got actual failed traffic rather than slow traffic, which delayed resolving the issue.  Finally, whilst rolling out a fix this afternoon, we again hit issues with the traffic load causing more problems than we were expecting, making a routine redeploy distinctly more disruptive.</p>
+<p>So, what are we doing about this?</p>
+<ol>
+ 	<li>Fix the root causes:
+<ul>
+ 	<li>The 'android/iOS thundering herd' bug is being worked on both the android/iOS side (fixing the naive behaviour) and the server side.  A temporary mitigation is in now place which moves the server-side code to worker processes so that worst case it can't take out the main synapse process and can scale better.</li>
+ 	<li>The 'event_push_actions table is inefficient' bug had <a href="https://github.com/matrix-org/synapse/pull/1916">already been fixed</a> - so this was a matter of rushing through the hotfix to matrix.org before we saw a recurrence.</li>
+</ul>
+</li>
+ 	<li>Move to faster hardware.  Our current DB master is a "fast when we bought it 5 years ago" machine whose IO is simply starting to saturate (6x 300GB 10krpm disks in RAID5, fwiw), which is maxing out at around 500IOPS and 20MB/s of random access, and acting as a *very* hard limit to the current synapse performance.  We're currently in the process of evaluating SSD-backed IO for the DB (in fact, we're already running a DB slave), and assuming this tests out okay we're hoping to migrate next week, which should give us a 10x-20x speed up on disk IO and buy considerable headroom.  Watch this space for details.</li>
+ 	<li>Make synapse faster.  We're continuing to plug away at optimisations (e.g. <a href="https://github.com/matrix-org/synapse/pull/1923">stuff like this</a>), but these are reaching the point of diminishing returns, especially relative to the win from faster hardware.</li>
+ 	<li>Fix the end-to-end monitoring.  <a href="https://github.com/matrix-org/matrixmon/commit/9481da67b87c1d5142dbc76d9e4b6eb29c56398b">This already happened</a>.</li>
+ 	<li>Load-test before deploying.  This is hard, as you really need to test against precisely the same traffic profile as live traffic, and that's hard to simulate.  We're thinking about ways of fixing this, but the best solution is probably going to be clustering and being able to do incremental redeploys to gradually test new changes.  On which note:</li>
+ 	<li>Fix synapse's architectural deficiencies to support clustering, allowing for rolling zero-downtime redeploys, and better horizontal scalability to handle traffic spikes like this.  We're choosing not to fix this in synapse, but we are currently in full swing implementing <a href="https://github.com/matrix-org/dendrite">dendrite</a> as a next-generation homeserver in Golang, architected from the outset for clustering and horizontal scalability.  N.B. most of the exciting stuff is happening on <a href="https://github.com/matrix-org/dendrite/branches">feature branches</a> and <a href="https://github.com/matrix-org/gomatrixserverlib">gomatrixserverlib</a> atm. Also, we're deliberately taking the time to try to get it right this time, unlike bits of synapse which were something of a rush job.  It'll be a few weeks before dendrite is functional enough to even send a message (let alone finish the implementation), but hopefully faster hardware will give the synapse deployment on matrix.org enough headroom for us to get dendrite ready to take over when the time comes!</li>
+</ol>
+The good news of course is that you can run your own synapse today to avoid getting caught up in this operational fun &amp; games, and unless you're planning to put tens of thousands of daily active users on the server you should be okay!
+<p>Meanwhile, please accept our apologies for the instability and be assured that we're doing everything we can to get out this turbulence as rapidly as possible.</p>
 <p>Matthew</p>
-<p>Full release notes:</p>
-<code>
-Changes in synapse v0.13.1 (2016-02-10)
-=======================================
-<ul>
-<li>Bump matrix-angular-sdk (matrix web console) dependency to 0.6.8 to
-pull in the fix for SYWEB-361 so that the default client can display
-HTML messages again(!)</li>
-</ul>
-<h1 id="changes-in-synapse-v0-13-0-2016-02-10">Changes in synapse v0.13.0 (2016-02-10)</h1>
-<p>This version includes an upgrade of the schema, specifically adding an index to
-the <code>events</code> table. This may cause synapse to pause for several minutes the
-first time it is started after the upgrade.</p>
-<p>Changes:</p>
-<ul>
-<li>Improve general performance (PR #540, #543. #544, #54, #549, #567)</li>
-<li>Change guest user ids to be incrementing integers (PR #550)</li>
-<li>Improve performance of public room list API (PR #552)</li>
-<li>Change profile API to omit keys rather than return null (PR #557)</li>
-<li>Add <code>/media/r0</code> endpoint prefix, which is equivalent to <code>/media/v1/</code>
-(PR #595)</li>
-</ul>
-<p>Bug fixes:</p>
-<ul>
-<li>Fix bug with upgrading guest accounts where it would fail if you opened the
-registration email on a different device (PR #547)</li>
-<li>Fix bug where unread count could be wrong (PR #568)</li>
-</ul>
-<h1 id="changes-in-synapse-v0-12-1-rc1-2016-01-29">Changes in synapse v0.12.1-rc1 (2016-01-29)</h1>
-<p>Features:</p>
-<ul>
-<li>Add unread notification counts in <code>/sync</code> (PR #456)</li>
-<li>Add support for inviting 3pids in <code>/createRoom</code> (PR #460)</li>
-<li>Add ability for guest accounts to upgrade (PR #462)</li>
-<li>Add <code>/versions</code> API (PR #468)</li>
-<li>Add <code>event</code> to <code>/context</code> API (PR #492)</li>
-<li>Add specific error code for invalid user names in <code>/register</code> (PR #499)</li>
-<li>Add support for push badge counts (PR #507)</li>
-<li>Add support for non-guest users to peek in rooms using <code>/events</code> (PR #510)</li>
-</ul>
-<p>Changes:</p>
-<ul>
-<li>Change <code>/sync</code> so that guest users only get rooms they've joined (PR #469)</li>
-<li>Change to require unbanning before other membership changes (PR #501)</li>
-<li>Change default push rules to notify for all messages (PR #486)</li>
-<li>Change default push rules to not notify on membership changes (PR #514)</li>
-<li>Change default push rules in one to one rooms to only notify for events that
-are messages (PR #529)</li>
-<li>Change <code>/sync</code> to reject requests with a <code>from</code> query param (PR #512)</li>
-<li>Change server manhole to use SSH rather than telnet (PR #473)</li>
-<li>Change server to require AS users to be registered before use (PR #487)</li>
-<li>Change server not to start when ASes are invalidly configured (PR #494)</li>
-<li>Change server to require ID and <code>as_token</code> to be unique for AS's (PR #496)</li>
-<li>Change maximum pagination limit to 1000 (PR #497)</li>
-</ul>
-<p>Bug fixes:</p>
-<ul>
-<li>Fix bug where <code>/sync</code> didn't return when something under the leave key
-changed (PR #461)</li>
-<li>Fix bug where we returned smaller rather than larger than requested
-thumbnails when <code>method=crop</code> (PR #464)</li>
-<li>Fix thumbnails API to only return cropped thumbnails when asking for a
-cropped thumbnail (PR #475)</li>
-<li>Fix bug where we occasionally still logged access tokens (PR #477)</li>
-<li>Fix bug where <code>/events</code> would always return immediately for guest users
-(PR #480)</li>
-<li>Fix bug where <code>/sync</code> unexpectedly returned old left rooms (PR #481)</li>
-<li>Fix enabling and disabling push rules (PR #498)</li>
-<li>Fix bug where <code>/register</code> returned 500 when given unicode username
-(PR #513)</li>
-</ul>
-</code>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2016&#x2F;01&#x2F;04&#x2F;synapse-0-12-released&#x2F;" title="Synapse 0.12 released!">Synapse 0.12 released!</a></h2>
-                <span>
-                    04.01.2016 00:00
-                    —
-                    <a href="/category/tech">
-                        Tech
-                    </a>
-                    —
-                    <a
-                        href="/author/matthew-hodgson">
-                        Matthew Hodgson
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Happy 2016 everyone!</p>
-<p>To greet the new year, we bring you all new Synapse 0.12. The focus here has been a wide range of polishing, bugfixes, performance improvements and feature tweaks. The biggest news are that the 'v2' sync APIs are now production ready; the search APIs now work much better; 3rd party ID invites now work; and we now mount the whole client-server API under the <code>/_matrix/client/r0</code> URI prefix, as per the <a href="/docs/spec/r0.0.0/client_server.html">r0.0.0 release of the Client Server API</a> from a few weeks ago. The <code>r0</code> release unifies what were previously the somewhat confusing mix of 'v1' and 'v2' APIs as a single set of endpoints which play nice together.</p>
-<p>We highly recommend all homeservers upgrading to v0.12.0 as soon as possible. Get it now from <a href="https://github.com/matrix-org/synapse/">https://github.com/matrix-org/synapse/</a> or via our shiny new Debian packages at <a href="/packages/debian/">https://matrix.org/packages/debian/</a>.</p>
 <p> </p>
-<p>Full changelog follows:</p>
-<h3>Changes in synapse v0.12.0 (2016-01-04)</h3>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2017&#x2F;02&#x2F;14&#x2F;synapse-0-19-1-released&#x2F;" title="Synapse 0.19.1 released">Synapse 0.19.1 released</a></h2>
+                <span>
+                    14.02.2017 00:00
+                    —
+                    <a href="/category/general">
+                        General
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Hi folks,</p>
+<p>We're a little late with this, but Synapse 0.19.1 was released last week. The only change is a bugfix to a regression in room state replication that snuck in during the performance improvements that landed in 0.19.0. Please upgrade if you haven't already. We've also fixed the Debian repository to make installing Synapse easier on Jessie by including backported packages for stuff like Twisted where we're forced to use the latest releases.</p>
+<p>You can grab it from <a href="https://github.com/matrix-org/synapse/">https://github.com/matrix-org/synapse/</a> as always.</p>
+<h3></h3>
+<h3>Changes in synapse v0.19.1 (2017-02-09)</h3>
 <ul>
-    <li>Expose <code>/login</code> under <code>r0</code> (PR #459)</li>
-</ul>
-<a name="user-content-changes-in-synapse-v0-12-0-rc3-2015-12-23"></a>
-<h3><a id="user-content-changes-in-synapse-v0120-rc3-2015-12-23" class="anchor" href="https://github.com/matrix-org/synapse/blob/master/CHANGES.rst#changes-in-synapse-v0120-rc3-2015-12-23"></a>Changes in synapse v0.12.0-rc3 (2015-12-23)</h3>
-<ul>
-    <li>Allow guest accounts access to <code>/sync</code> (PR #455)</li>
-    <li>Allow filters to include/exclude rooms at the room level rather than just from the components of the sync for each room. (PR #454)</li>
-    <li>Include urls for room avatars in the response to <code>/publicRooms</code> (PR #453)</li>
-    <li>Don't set a identicon as the avatar for a user when they register (PR #450)</li>
-    <li>Add a <code>display_name</code> to third-party invites (PR #449)</li>
-    <li>Send more information to the identity server for third-party invites so that it can send richer messages to the invitee (PR #446)</li>
-    <li>Cache the responses to <code>/initialSync</code> for 5 minutes. If a client retries a request to <code>/initialSync</code> before the a response was computed to the first request then the same response is used for both requests (PR #457)</li>
-    <li>Fix a bug where synapse would always request the signing keys of remote servers even when the key was cached locally (PR #452)</li>
-    <li>Fix 500 when pagination search results (PR #447)</li>
-    <li>Fix a bug where synapse was leaking raw email address in third-party invites (PR #448)</li>
-</ul>
-<a name="user-content-changes-in-synapse-v0-12-0-rc2-2015-12-14"></a>
-<h3><a id="user-content-changes-in-synapse-v0120-rc2-2015-12-14" class="anchor" href="https://github.com/matrix-org/synapse/blob/master/CHANGES.rst#changes-in-synapse-v0120-rc2-2015-12-14"></a>Changes in synapse v0.12.0-rc2 (2015-12-14)</h3>
-<ul>
-    <li>Add caches for whether rooms have been forgotten by a user (PR #434)</li>
-    <li>Remove instructions to use <code>--process-dependency-link</code> since all of the dependencies of synapse are on PyPI (PR #436)</li>
-    <li>Parallelise the processing of <code>/sync</code> requests (PR #437)</li>
-    <li>Fix race updating presence in <code>/events</code> (PR #444)</li>
-    <li>Fix bug back-populating search results (PR #441)</li>
-    <li>Fix bug calculating state in <code>/sync</code> requests (PR #442)</li>
-</ul>
-<a name="user-content-changes-in-synapse-v0-12-0-rc1-2015-12-10"></a>
-<h3><a id="user-content-changes-in-synapse-v0120-rc1-2015-12-10" class="anchor" href="https://github.com/matrix-org/synapse/blob/master/CHANGES.rst#changes-in-synapse-v0120-rc1-2015-12-10"></a>Changes in synapse v0.12.0-rc1 (2015-12-10)</h3>
-<ul>
-    <li>Host the client APIs released as r0 by <a href="/docs/spec/r0.0.0/client_server.html">https://matrix.org/docs/spec/r0.0.0/client_server.html</a> on paths prefixed by<code>/_matrix/client/r0</code>. (PR #430, PR #415, PR #400)</li>
-    <li>Updates the client APIs to match r0 of the matrix specification.
-<ul>
-    <li>All APIs return events in the new event format, old APIs also include the fields needed to parse the event using the old format for compatibility. (PR #402)</li>
-    <li>Search results are now given as a JSON array rather than a JSON object (PR #405)</li>
-    <li>Miscellaneous changes to search (PR #403, PR #406, PR #412)</li>
-    <li>Filter JSON objects may now be passed as query parameters to <code>/sync</code> (PR #431)</li>
-    <li>Fix implementation of <code>/admin/whois</code> (PR #418)</li>
-    <li>Only include the rooms that user has left in <code>/sync</code> if the client requests them in the filter (PR #423)</li>
-    <li>Don't push for <code>m.room.message</code> by default (PR #411)</li>
-    <li>Add API for setting per account user data (PR #392)</li>
-    <li>Allow users to forget rooms (PR #385)</li>
-</ul>
-</li>
-    <li>Performance improvements and monitoring:
-<ul>
-    <li>Add per-request counters for CPU time spent on the main python thread. (PR #421, PR #420)</li>
-    <li>Add per-request counters for time spent in the database (PR #429)</li>
-    <li>Make state updates in the C+S API idempotent (PR #416)</li>
-    <li>Only fire <code>user_joined_room</code> if the user has actually joined. (PR #410)</li>
-    <li>Reuse a single http client, rather than creating new ones (PR #413)</li>
-</ul>
-</li>
-    <li>Fixed a bug upgrading from older versions of synapse on postgresql (PR #417)</li>
+ 	<li>Fix bug where state was incorrectly reset in a room when synapse received an event over federation that did not pass auth checks (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1892" data-url="https://github.com/matrix-org/synapse/issues/1892" data-id="206218885" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1892</a>)</li>
 </ul>
 
                 
@@ -310,12 +288,12 @@ cropped thumbnail (PR #475)</li>
         
         <article class="post">
             <header>
-                <h2><a href="&#x2F;blog&#x2F;2015&#x2F;12&#x2F;25&#x2F;the-matrix-holiday-special&#x2F;" title="The Matrix Holiday Special!">The Matrix Holiday Special!</a></h2>
+                <h2><a href="&#x2F;blog&#x2F;2017&#x2F;02&#x2F;06&#x2F;fosdem-2017-report&#x2F;" title="FOSDEM 2017 report">FOSDEM 2017 report</a></h2>
                 <span>
-                    25.12.2015 00:00
+                    06.02.2017 00:00
                     —
-                    <a href="/category/events">
-                        Events
+                    <a href="/category/general">
+                        General
                     </a>
                     —
                     <a
@@ -328,124 +306,18 @@ cropped thumbnail (PR #475)</li>
             <div>
                 
                 <p>Hi all,</p>
-<p>We've been pretty bad at updating the blog over the last few months with all the progress that's been happening with Matrix.  Whilst Matrix rooms like #matrix:matrix.org and #matrix-dev:matrix.org have been very active (and our <a href="https://twitter.com/matrixdotorg">twitter account</a> too), in general we've ended up spending way too much time actually writing software and not enough time talking about it, at least here. When a blog goes quiet it normally means that either the authors have got bored, or they're too busy building cool stuff to keep it updated. I'm happy to say that option 2 is the case here!</p>
-<p>As a result, there's a huge backlog of really cool stuff we should have talked about. Hopes of writing an Advent Calendar series of blog posts also went out the window as we set Christmas as an arbitrary deadline for loads of work on Synapse, the Matrix Spec and matrix-react-sdk.</p>
-<p>So, to try to break the impasse, here's a slightly unorthodox whistle-stop tour of all the amazing blogposts we <em>would</em> have written if we'd had time. And perhaps some of them will actually expand into full write-ups when we have more time to spare in the future :)</p>
-<h2>End to End Encryption Update</h2>
-<p>One of the great promises of Matrix is to provide End-to-end encryption as part of the baseline standard (configurable per-room). In practice, our progress has been a little non-linear - we started writing an <a href="https://github.com/trevp/axolotl/wiki">Axolotl</a> ratchet implementation in C++14 (with a pure C API) named <a href="/git/olm">Olm</a> back in February, and then finished it off and wired a basic 1:1 proof-of-concept implementation into matrix-react-sdk in June. We then announced Olm back at the wonderful <a href="https://jardin-entropique.eu.org/">Jardin Entropique</a> conference in Rennes:</p>
-<img class="aligncenter size-large wp-image-1426" src="/blog/wp-content/uploads/2015/12/je-1024x768.jpg" alt="Jardin Entropique" width="1024" height="768" />
-<p>You can read the full presentation that we gave at <a href="/~matthew/2015-06-26 Matrix Jardin Entropique.pdf">https://matrix.org/~matthew/2015-06-26 Matrix Jardin Entropique.pdf</a> - and you can even play with a very basic test jig at <a href="/~markjh/olm/javascript/demo.html">https://matrix.org/~markjh/olm/javascript/demo.html</a> which uses an emscripten compiled version of Olm in the browser to put the ratchet through its paces.</p>
-<p>Things then stalled for a bit, but as of this month they're moving again, and if you're interested in the progress you can read all about it at:</p>
-<ul>
-<li><a href="/jira/browse/SPEC-162">https://matrix.org/jira/browse/SPEC-162</a></li>
-<li>and a full draft spec at <a href="http://matrix.org/speculator/spec/drafts%2Fe2e/client_server.html#end-to-end-encryption">http://matrix.org/speculator/spec/drafts%2Fe2e/client_server.html#end-to-end-encryption</a></li>
-<li>the Olm git repo at <a href="http://matrix.org/git/olm/about/">http://matrix.org/git/olm/about/</a></li>
-<li>and the formal Olm spec at <a href="/docs/spec/olm.html">https://matrix.org/docs/spec/olm.html</a></li>
-</ul>
-<p>The main stuff remaining is basically key management (in Synapse and the matrix spec), group conversation ratchets, and UX for wiring it properly into various Matrix clients.  We expect to make progress on this over the next few months :)</p>
-<p>Meanwhile, huge kudos to Tor who was crazy enough to <a href="https://github.com/torhve/weechat-matrix-protocol-script#encryption">add the basic 1:1 Olm ratchet</a> to Weechat before we'd even finished writing our test jig!</p>
-<h2>Lean DUS</h2>
-<p>A few days after Jardin Entropique we made it to <a href="https://www.leandus.de/">Lean DUS</a> - a great tech meetup in Düsseldorf organised by <a href="http://sipgate.de">Sipgate</a>, who were kind enough to invite us to speak.  This was a chance to give a full update on Matrix (as of July!) and talk some more about Olm and plans for end-to-end encryption.  This one got recorded - and you can see it below.  There's also an official page with full videos, slide deck and photos up at <a href="https://www.leandus.de/2015/08/weil-und-hodgson/">https://www.leandus.de/2015/08/weil-und-hodgson/</a>.</p>
-<iframe src="https://player.vimeo.com/video/134821506" width="500" height="281" frameBorder="0" webkitallowfullscreen mozallowfullscreen allowFullScreen></iframe>
-<p><a href="https://vimeo.com/134821506">Lean Dus #9 - End to end encryption for decentralised communication mit Matthew Hodgson</a> from <a href="https://vimeo.com/sipgate">sipgate</a> on <a href="https://vimeo.com">Vimeo</a>.</p>
-<h2>New Matrix Bridges</h2>
-<p>Somehow we've failed to blog about the amazing <a href="https://github.com/matrix-org/matrix-appservice-bridge">matrix-appservice-bridge</a> Node framework which we've built as general purpose infrastructure for building Matrix Application Services which act as bridges between existing networks and comms solutions and Matrix.  The architecture here looks something like this:</p>
-<img src="/blog/wp-content/uploads/2015/12/bridge.jpg" alt="matrix-appservice-bridge" width="720" height="540" class="aligncenter size-full wp-image-1429" />
-<p>...and the goal is to end up with something like this:</p>
-<img src="/blog/wp-content/uploads/2015/12/bridge2.jpg" alt="bridge2" width="720" height="540" class="aligncenter size-full wp-image-1430" />
-<p>matrix-appservice-bridge is still in development, but there are a bunch of really cool bridges already using it - and a great howto that shows how you can use it to <a href="https://github.com/matrix-org/matrix-appservice-bridge/blob/master/HOWTO.md">write a Matrix{'&lt;-&gt;'}Slack bridge in under 100 lines of code</a>.</p>
-<ul>
-  <li><a href="https://github.com/matrix-org/matrix-appservice-verto">the Matrix/Verto Bridge</a> uses it to hook FreeSWITCH up to Matrix - currently used to provide multiway video and voice conferencing for <a href="https://vector.im">Vector</a>.  It could be easily extended to do generic Matrix{'<->'}SIP or Matrix{'<->'}anything-that-FreeSWITCH-can-speak though.</li>
-  <li><a href="https://github.com/matrix-org/matrix-appservice-slack">a basic Matrix/Slack Bridge</a>, which works well enough for hardcoding bridges between specific Matrix and Slack rooms.</li>
-  <li><a href="https://github.com/matrix-org/matrix-appservice-respoke">matrix-appservice-respoke</a> - a crazy experiment that bridges Asterisk to Matrix by implementing the Respoke API such that Asterisk can connect to Matrix using chan_respoke.</li>
-  <li><a href="https://github.com/matrix-org/node-purple/tree/master/appservice">matrix-appservice-purple</a> - another crazy experiment that hooks libpurple up to matrix-appservice-bridge such that *any* network that libpurple can talk to can be bridged into Matrix.  So far we've experimented with Lync, Skype and Facebook (and AIM(!)) and it works - but it needs a lot more love to be usable other than as a toy.</li>
-</ul>
-<p>Meanwhile, there's also:</p>
-<ul>
- <li><a href="https://github.com/matrix-org/matrix-appservice-irc">the Matrix/IRC Bridge</a>, which doesn't actually use it yet, but will do soon.</li>
- <li><a href="https://github.com/illicitonion/slackbridge">an experimental Golang Matrix/Slack Bridge</a>, which looks at whether we should be doing this all in Golang rather than Node.</li>
-</ul>
-<p>As of right now our work on bridging has been on hiatus for a month or so, and we would <em>love</em> support from the community in advancing and extending the stuff we've built so far.  Otherwise we'll get back to it ourselves in the new year.</p>
-<h2>Astricon 2015</h2>
-<p>We had a lot of fun in Orlando in October at <a href="http://www.asterisk.org/community/astricon-user-conference/sessions/bridging-asterisk-matrix-ecosystem">Astricon 2015</a> - we put together <a href="https://github.com/matrix-org/matrix-appservice-respoke">matrix-appservice-respoke</a> (see above) for our talk and Dangerous Demo in a desperate 24 hour hack and it even worked!  The judges were kind enough to give us the &quot;Swan Award&quot; prize in the dangerous demo shoot-out for the glossiest demo :)</p>
-<img src="/blog/wp-content/uploads/2015/12/2015-10-15-Matrix-Astricon.jpg" alt="2015-10-15 Matrix Astricon" width="720" height="540" class="aligncenter size-full wp-image-1433" />
-<img src="/blog/wp-content/uploads/2015/12/swan-1024x768.jpg" alt="swan award" width="1024" height="768" class="aligncenter size-large wp-image-1432" />
-<p>The slides for our 'Bridging Asterisk to the Matrix Ecosystem' talk are <a href="/~matthew/2015-10-15 Matrix Astricon.pdf">downloadable here</a>.</p>
-<h2>Pidgin!</h2>
-<p>We also implemented a basic libpurple plugin for Matrix - adding Matrix support to any app like Pidgin or Bitlbee that uses libpurple.  (You could in theory even use it with matrix-appservice-purple to bridge from Matrix to Matrix, but that'd be silly :).  It supports basic functionality and uses the new 'v2' APIs for syncing to Matrix.  Adventurous libpurplers can go check it out and experiment with it from <a href="https://github.com/matrix-org/purple-matrix">https://github.com/matrix-org/purple-matrix</a> - feedback welcome.</p>
-<h2>OpenWebRTC Support on iOS</h2>
-<p>We went and hooked <a href="http://openwebrtc.org">OpenWebRTC</a> up to <a href="https://github.com/matrix-org/matrix-ios-sdk">matrix-ios-sdk</a> so that iOS Matrix apps can use the OpenWebRTC stack from Ericsson Research for VoIP and Video.  Apparently we haven't written it up fully yet, but you can find the code at <a href="https://github.com/matrix-org/matrix-ios-openwebrtc-wrapper">https://github.com/matrix-org/matrix-ios-openwebrtc-wrapper</a> for those interested in using OWR with Matrix!</p>
-<h2>Debian Repository for Synapse</h2>
-<p>We built a 3rd party Debian package repository for Synapse... and then forgot to tell anyone about it, other than buried in the Synapse readme!  Well, it exists, and intrepid debianers should go check it out at <a href="http://matrix.org/packages/debian/">http://matrix.org/packages/debian/</a>.</p>
-<h2>TADSummit</h2>
-<p>In November we attended <a href="http://tadsummit.com/2015/">TADSummit</a> in Lisbon - a great event for folks hacking on telco applications and the telcos themselves.  Apparently we failed to do a writeup, but we had a wonderful time: highlights included sitting down with Maarten Ectors from Canonical to wrap up Synapse as an <a href="https://uappexplorer.com/app/matrix.mectors">Ubuntu Snappy app</a> such that anyone in the Ubuntu Core ecosystem can trivially run a Matrix homeserver, and demoing it as part of the Dangerous Demos track there.  We also gave a 'Matrix: One Year In' talk to summarise what we got up to in 2015.</p>
-<img src="/blog/wp-content/uploads/2015/12/ubuntu-768x1024.jpg" alt="Matthew &amp; Maarten" width="768" height="1024" class="aligncenter size-large wp-image-1435" />
-<img src="/blog/wp-content/uploads/2015/12/2015-11-17-Matrix-TADSummit.jpg" alt="2015-11-17 Matrix TADSummit" width="720" height="540" class="aligncenter size-full wp-image-1434" />
-<h2>WebRTC Paris</h2>
-<p>Whilst on the subject of conferences that we forgot to write up - we just got back from WebRTC Paris, where we demoed the latest &amp; greatest Matrix clients and bridges, hung out with the OpenWebRTC guys and gave another ecosystem update.  You can see the slides at <a href="/~daniel/Matrix- One-year Status Report.pdf">https://matrix.org/~daniel/Matrix- One-year Status Report.pdf</a>.</p>
-<img src="/blog/wp-content/uploads/2015/12/paris-1024x768.jpg" alt="WebRTC Paris" width="1024" height="768" class="aligncenter size-large wp-image-1436" />
-<h2>New Clients and App Services</h2>
-<p>There have been a flurry of really interesting new clients and other projects which certainly deserve whole blog posts of their own!</p>
-<p>There's <a href="https://github.com/davidar/tensor">Tensor</a> from David A Roberts - a multiplatform <b>native</b> client written in QML that heavily leverages the matrix-js-sdk:</p>
-<img src="/blog/wp-content/uploads/2015/12/tensor-1024x789.png" alt="tensor" width="1024" height="789" class="aligncenter size-large wp-image-1438" />
-<p>There's <a href="http://fort.kickass.systems:10082/cgit/personal/rrix/pub/matrix.el.git/">matrix.el</a> from Ryan Rix - a native Matrix client for Emacs! You can read all about the whys and wherefores <a href="http://whatthefuck.computer/blog/2015/10/26/mclient/">here</a>.</p>
-<img src="/blog/wp-content/uploads/2015/10/mclient1-1024x346.png" alt="mclient" width="1024" height="346" class="aligncenter size-large wp-image-1355" />
-<p>There's also loads of cool stuff that Ryan's been doing with Matrix on <a href="http://whatthefuck.computer/blog/">his blog</a> - including <a href="http://whatthefuck.computer/blog/2015/12/06/polynomial-a-decentralized-webring/">Polynomial - a decentralised webring</a> built on Matrix (yes, webrings were and are cool, ok!?!), and his Matrix-powered <a href="http://whatthefuck.computer/blog/2015/11/22/body-computing-system-continuations/">Body Computing System</a>.  Also, some <a href="http://whatthefuck.computer/blog/2015/11/01/on-the-balkinization-of-my-chat-communities/">philosophical</a> <a href="http://whatthefuck.computer/blog/2015/12/19/matrix-and-indieweb/">posts</a> on the benefits of Matrix which give us some hope that we're on the right track!</p>
-<p>Then there's <a href="https://github.com/tdfischer/pto">Power Take-Off</a> from Torrie Fischer - an early lets-IRC-clients-connect-to-Matrix project in Rust...</p>
-<p>...and there's <a href="https://github.com/Xe/morpheus">Morpheus</a> from Christine Dodrill (Xena) - a Matrix client and bot framework for Haskell; part of a more over-arching IRC{'&lt;-&gt;'}Matrix unification project.  Xena also wrote <a href="https://christine.website/blog/matrix-has-u-2015-11-27">a great call to arms for Matrix</a> :)</p>
-<p>Very recently there's the <a href="https://github.com/ruma/ruma">Ruma</a> project from Jimmy Cuadra - an ambitious mission to build Matrix components (up to and including a homeserver) in Rust!</p>
-<p>Other stuff includes a <a href="https://github.com/davidar/hubot-matrix/">Hubot adaptor</a> from davidar, <a href="https://github.com/DylanGriffith/bender">Bender</a>: an Elixir client and bot library from Dylan Griffith, Jon Frederickson's <a href="https://github.com/jfrederickson/matrix-xmpp-bridge">matrix-xmpp-bridge</a>, rzr's <a href="http://www.element14.com/community/people/rzr/blog/2015/11/24/how-to-setup-a-webrtc-gateway-using-matrix-on-minnowmax">guide to installing synapse on a minnowmax</a>, and I'm sure many others we don't know about or have missed!</p>
-<p>Finally, Tor has done an amazing job on <a href="https://github.com/torhve/weechat-matrix-protocol-script">weechat-matrix-protocol-script</a> in implementing features like V2 Sync and E2E crypto faster than we've managed to add them in the official client SDKs!</p>
-<h2>Release Zero of the Matrix Specification</h2>
-<p>We have made some major improvements to <a href="/spec">the spec</a> over the last few months: adding in feature profiles and spec modules to better structure the document, and most recently splitting it up explicitly into separate Client-Server, Server-Server and Application-Server APIs, each with a well-defined single global 'release' number for versioning.  We started this with a 'r0.0.0' release of the Client-Server API, which consolidates the horrible mess of 'v1' and 'v2' APIs we had previously flying around into a single well-defined version of the spec.  Meanwhile the spec is now entirely consolidated into a set of JSON schema and Swagger 2 API descriptors, with a bunch of ReStructured Text for the verbiage - you can find it all at <a href="https://github.com/matrix-org/matrix-doc">https://github.com/matrix-org/matrix-doc</a>.</p>
-<p>The r0.0.0 changelog is exciting stuff - you can see it in its entirety at <a href="http://matrix.org/docs/spec/r0.0.0/client_server.html#changelog">http://matrix.org/docs/spec/r0.0.0/client_server.html#changelog</a>.  Synapse itself will support the full r0 API set in 0.12, which will be released any day now.</p>
-<p>We've also switched the Swagger-based API viewer over to Swagger 2.0: <a href="http://matrix.org/docs/api">http://matrix.org/docs/api</a>.  We also rejigged the Matrix documentation website entirely, generating it via Jekyll and adding in a new <a href="http://matrix.org/docs/guides/">guides section</a>.</p>
-<p>Also, we should have mentioned the existence of <a href="/speculator">Speculator</a> - a golang helper app (<a href="https://github.com/matrix-org/matrix-doc/tree/master/scripts/speculator">source here</a>) which, as the name suggests, renders out copies of the spec as HTML from different branches and pull requests for ease of previewing.</p>
-<h2>Dendron</h2>
-<p>Over the last few months we've also started an entirely new project, codenamed Dendron.  Dendron is the project to evolve Synapse from the current single-threaded Python/Twisted monolithic homeserver into something with a lot more type-safety, horizontal scalability and high availability.  We've mainly been experimenting with different ways of doing this, but the current plan is to split Synapse itself up into multiple services which can each scale independently, and then rewrite some/all of them in languages with better type safety and/or performance or profiling tools.</p>
-<p>Some folks may remember a survey that we posted a few months ago asking for the community's thoughts on what languages they'd like their ideal homeserver to be written in, from the perspectives of someone running it as well as hacking on it.  Whilst we haven't (at all) based our decisions for Dendron purely on the survey, it was still quite an interesting exercise.  And here are the results (maximum 'score' is 5, not 10):</p>
-<img src="/blog/wp-content/uploads/2015/12/Screen-Shot-2015-12-25-at-01.58.55-1024x964.png" alt="language survey 1" width="1024" height="964" class="aligncenter size-large wp-image-1439" />
-<img src="/blog/wp-content/uploads/2015/12/Screen-Shot-2015-12-25-at-01.59.17-1024x968.png" alt="language survey 2" width="1024" height="968" class="aligncenter size-large wp-image-1440" />
-<p>The basic feedback was that from the existing community: folks dislike running Java or Node servers; are okayish with Python, but would prefer native or near-native code (be that C, Rust or Go). Meanwhile, for contributing code, there's slightly more interest in the (relatively) new shinies of Go and Rust.  And of course, everyone wanted to plug their own special snowflake language in the 'Others' section, which was mainly a mix of Erlang, Elixir, Haskell, Lisp and Perl :)</p>
-<p>This reinforced the choices we were looking at anyway - either Rust (for its safety), or Go (for its simplicity, python-likeness, and concurrency).  (We'd also consider Java, but have to concede that the FOSS community doesn't like running it.)</p>
-<p>So we looked at the dependencies that Synapse currently has, and the Rust equivalents, and concluded that the Rust ecosystem unfortunately isn't quite mature enough yet to reliably handle the rather large set of complicated deps that we need in a homeserver.  Also, nobody on the core team is really a Rust guru yet.  Meanwhile, we have at least one ex-Google Go expert in the core team, and in practice it has the edge in terms of maturity.  So, right now, we're looking at switching chunks of Dendron to Go where it makes sense.  (This is subject to change though depending on how we get on).  You should expect to hear a lot more about Dendron in 2016 :)</p>
-<h2>matrix-react-sdk, Vector, and latest Matrix features</h2>
-<p>Last but not least: huge amounts of our time over the last year has gone into building <a href="https://github.com/matrix-org/matrix-react-sdk">matrix-react-sdk</a> - a full set of glossy Web UI components for building super-high quality glossy apps based on Matrix, built on the <a href="https://github.com/matrix-org/matrix-js-sdk">matrix-js-sdk</a>.  This is basically a reaction against the original <a href="https://github.com/matrix-org/matrix-angular-sdk">matrix-angular-sdk</a> and Matrix Console app that we launched Matrix with back in 2014 - which had minimal attention to UI/UX and suffered from major performance problems; it was built purely as the fastest possible way we knew to prototype and demo Matrix in the first place.  matrix-react-sdk however has been built for both performance and quality of UI/UX, as well as obviously using all the latest and greatest Matrix APIs.  (In fact, the transition from matrix-angular-sdk to matrix-react-sdk is pretty similar to the Synapse to Dendron transition on the horizon - although the latter should be more incremental and less 'rewrite the world').</p>
-<p>Meanwhile, as part of our commercial work at our day job (i.e. <b>not</b> as Matrix.org) we've been helping on a glossy FOSS app called <a href="https://github.com/vector-im/vector-web">Vector</a> which is layered on top of matrix-react-sdk as a thin 'skin' layer of CSS and a few custom components.  The intention for Vector is to ensure that Matrix has a flagship glossy client: which it clearly needs, in order to gain credibility and drive uptake of the Matrix standard, and also ensure that the Matrix standard actually does indeed fit the needs for a state-of-the-art collaboration tool.</p>
-<p>matrix-react-sdk (and thus Vector) is still in incredibly heavy development - we're going to start a formal beta fairly soon, but as of right now it's still sprouting features and refinements on a daily basis.  Meanwhile matrix-react-sdk's APIs are not remotely frozen (we entirely refactored it as recently as a few weeks ago), so not yet ready for use as a general purpose building block.</p>
-<p>Some of the stuff going into react-sdk is <em>incredibly</em> cool - recent Matrix stuff that it shows off includes:</p>
-<ul>
- <li>Animated read receipts.  If you haven't seen these, you haven't lived.  They are a <a href="http://matrix.org/docs/spec/r0.0.0/client_server.html#id15">relatively new addition to the Matrix spec.</a>
- </li><li>Full server-side search.  We now have <a href="http://matrix.org/docs/spec/r0.0.0/client_server.html#id42">full-text search</a> in the Matrix spec, and implemented on synapse both on sqlite and postgres - and now in Vector too.  Having good search over all of your chat history makes Matrix *so* much more usable.
- </li><li>Video conferencing.  We have full multi-way conferencing in Vector via matrix-appservice-verto and FreeSWITCH.  The intention is to add this to the core Matrix spec (having first made it a bit more generic) - see the <a href="https://github.com/vector-im/vector-web/blob/master/docs/conferencing.md">draft spec</a> for details.
- </li><li><a href="http://matrix.org/docs/spec/r0.0.0/client_server.html#third-party-invites">3rd party invites</a>.  You can now invite users into Matrix by email address as well as matrix ID, and it works.  Vector implements this.
- </li><li><a href="http://matrix.org/docs/spec/r0.0.0/client_server.html#room-tagging">Room tagging</a>.  You can now tag rooms as favourites, low priority, or with arbitrary namespaced metadata.  Vector implements this through a swanky drag & drop UI.
- </li><li>"V2" Sync API.  Now part of the 'r0.0.0' spec, this lets Matrix support much smarter incremental and partial <a href="http://matrix.org/docs/spec/r0.0.0/client_server.html#get-matrix-client-r0-sync">synchronisation patterns</a>.  Vector now implements this, meaning that browser windows sync much faster after being offline for a bit, and no longer hammer the user with stale desktop notifications.
- </li><li>Accessing 'historical' rooms.  Matrix now lets you keep track of rooms you've left, so you can view and search the conversation logs even after you've left the conversation.  Vector now implements this (as of Monday!)
- </li><li>Tab-complete that doesn't suck.  This is a purely client-side feature which landed on Thursday!
- </li><li>Roll-overable animated GIFs.  'nuff said.
- </li><li>Markdown support. yay!
- </li><li>Synchronised read and notification history.  This hasn't landed yet (in vector or synapse or even the spec), but finally provides a way to keep read and notification state in sync in realtime across all your clients and a meaningful favicon 'badge' telling you how many notifications you missed!
- </li><li>Guest access.  This hasn't landed in Vector yet, but it's in <a href="http://matrix.org/docs/spec/r0.0.0/client_server.html#guest-access">the spec</a> and Synapse.  It will let folks use Matrix without having to create an account (at least for rooms which support 'guest access' from the public).</li>
-</ul>
-<p>If you haven't given Vector a spin, it's well worth heading over to <a href="https://vector.im">https://vector.im</a> and taking a look.</p>
-<p>There's also an Electron desktop version of Vector in progress, contributed by Steven Hammerton at <a href="https://github.com/stevenhammerton/vector-desktop">https://github.com/stevenhammerton/vector-desktop</a> (although it's currently stuck on an old release).</p>
-<h2>Epilogue</h2>
-<p>Okay, this has got a lot longer than it was meant to be - but hopefully makes up a bit for the lack of comms over the last few months whilst we've been drowning in work on Synapse, Vector, the Spec, Dendron, and everything else mentioned above.</p>
-<p>2015 has been an epic year as we've taken Matrix from a very early beta to the advanced stage that it's at now.  Obviously there's still a lot of stuff to do though.  Right now we expect the focus in 2016 to be:</p>
-<ul>
- <li>Vector - making sure the Matrix protocol has a flagship glossy FOSS client that normal (non-geek) users can use.</li>
- <li> Dendron - making Synapse more reliable, scalable and maintainable.</li>
- <li>Bridging - wiring as much of the rest of the world into Matrix as accurately and efficiently as possible.</li>
- <li>Federation Spec - finishing and releasing the Server-Server API.</li>
- <li>End-to-end crypto - finishing it off.</li>
-</ul>
-<p>...and obviously continuing to refine and extend the core of Matrix itself with features like threading, editable messages, and possibly even distributed accounts.</p>
-<p>There are very fun and exciting times ahead.  We'd just like to say a profound thank you to everyone who's supported Matrix this far and helped make this mission possible - whether it's by running clients/servers/services, or writing your own, or filing bugs and feedback on our code or the spec, or telling folks about the project, or paying us to work on it(!), or just by reading this blog post.  Hopefully 2016 will be the year where online communication starts to open up and interoperate once again, rather than becoming ever more fragmented and closed.</p>
-<p>Thanks for reading - and Merry Christmas, for those who celebrate :)</p>
-<ul>
-<li>Matthew, Amandine &amp; the Matrix Team.</li>
-</ul>
+<p>FOSDEM this year was even more crazy and incredible than ever - with attendance up from 6,000 to 9,000 folks, it's almost impossible to describe the atmosphere. Matt Jordan from Asterisk describes it as <a href="https://twitter.com/mattcjordan/status/827562586119958528">DisneyWorld for OSS Geeks</a>, but it's even more than that: it's basically a corporeal representation of the whole FOSS movement.  There is no entrance fee; there is no intrusive sponsorship; there is no corporate presence: it's just a venue for huge numbers of FOSS projects and their users and communities to come together in one place (the Université Libre de Bruxelles) and talk and learn.  Imagine if someone built a virtual world with storefronts for every open source project imaginable, where you could chat to the core team, geek out with other users, or gather in auditoriums to hear updates on the latest projects &amp; ideas.  Well, this is FOSDEM... except even better, it's in real life.  With copious amounts of Belgian beer.</p>
+<p>Anyway: this year we had our normal stand on the 2nd floor of K building, sharing the Realtime Lounge chill-out space with the XMPP Standards Foundation.  This year we had a larger representation than ever before with Matthew, Erik and Luke from the London team as well as Manu &amp; Yannick from Rennes - which is just as well given all 5 of us ended up speaking literally non-stop from 10am to 6pm on both Saturday &amp; Sunday (and then into the night as proceedings deteriorated/evolved into an impromptu Matrix meetup with Coffee, uhoreg, tadzik, realitygaps and others!).  The level of interest at the Matrix booth was frankly phenomenal: a major change from the last two FOSDEMs in that this year pretty much everyone had already heard of Matrix, and were most likely to want to enthuse about features and bugs in Synapse or Riot, or geek out about writing new bridges/bots/clients, or trying to work out a way to incorporate Matrix into their own projects or companies.</p>
+<blockquote class="twitter-tweet" data-lang="en"><p lang="en" dir="ltr"><a href="https://twitter.com/hashtag/RTCLounge?src=hash">#RTCLounge</a> with <a href="https://twitter.com/ara4n">@ara4n</a> from <a href="https://twitter.com/matrixdotorg">@matrixdotorg</a> busy demoing cool stuff <a href="https://t.co/Vc0uLEceQP">pic.twitter.com/Vc0uLEceQP</a></p>&mdash; miconda (@miconda) <a href="https://twitter.com/miconda/status/827849923077013504">February 4, 2017</a></blockquote>
+<p><a href="/blog/2017/02/04/synapse-0-19-is-here-just-in-time-for-fosdem">Synapse 0.19</a> and Riot 0.9.7 were also released on Saturday to try to ensure that anyone joining Matrix for the best time at FOSDEM were on the latest &amp; greatest code - especially given the performance and E2E fixes present in both.  Amazingly the last-minute release didn't backfire: if you haven't upgraded to Synapse 0.19 we recommend going so asap.  And if you're a Riot user, make sure you're on the latest version :)</p>
+<p>We were very lucky to have two talks accepted this year: the main one in the Security Track on the Jansen main stage telling the tale of <a href="https://fosdem.org/2017/schedule/event/encrypting_matrix/">how we added end-to-end encryption to Matrix</a>  via <a href="/docs/spec/olm.html">Olm</a> &amp; <a href="/docs/spec/megolm.html">Megolm</a> - and the other in the Decentralised Internet room (AW1.125), focusing on the unsolved <a href="http://fosdem.org/2017/schedule/event/matrix_future">future problems of decentralised accounts, identity, reputation in Matrix</a>.  Both talks were well attended, with huge queues for the Decentralised Internet room: we can only apologise to everyone who queued for 20+ minutes only to still not be able to get in.  Hopefully next year FOSDEM will allocate a larger room for decentralisation!  On the plus side, this year FOSDEM did an amazing job of videoing the sessions - livestreaming every talk, and automatically publishing the recordings (via a fantastic 'publish your own talk' web interface) - so many of the people who couldn't get into the room (as well as the rest of the world) were able to watch it live anyway by the stream.</p>
+<blockquote class="twitter-tweet" data-lang="en"><p lang="en" dir="ltr">This is how popular decentralised communication with <a href="https://twitter.com/matrixdotorg">@matrixdotorg</a> is at <a href="https://twitter.com/hashtag/fosdem2017?src=hash">#fosdem2017</a>. <a href="https://t.co/6T5PK6RRJE">pic.twitter.com/6T5PK6RRJE</a></p>&mdash; Jan Weisensee (@ilumium) <a href="https://twitter.com/ilumium/status/828172686362890240">February 5, 2017</a></blockquote>
+<blockquote class="twitter-tweet" data-lang="en"><p lang="en" dir="ltr">Security track at <a href="https://twitter.com/hashtag/FOSDEM?src=hash">#FOSDEM</a>: <a href="https://twitter.com/matrixdotorg">@matrixdotorg</a> project &amp; <a href="https://twitter.com/ara4n">@ara4n</a> <a href="https://t.co/QwroHSNh8Z">pic.twitter.com/QwroHSNh8Z</a></p>&mdash; miconda (@miconda) <a href="https://twitter.com/miconda/status/828243153706745856">February 5, 2017</a></blockquote>
+<blockquote class="twitter-tweet" data-lang="en"><p lang="en" dir="ltr"><a href="https://t.co/x0x7xuzlH2">https://t.co/x0x7xuzlH2</a> presentation at the Decentralized Internet Devroom <a href="https://twitter.com/fosdem">@fosdem</a> <a href="https://t.co/J2Wxo9SZ8H">pic.twitter.com/J2Wxo9SZ8H</a></p>&mdash; Tristan Nitot (@nitot) <a href="https://twitter.com/nitot/status/828177298427887617">February 5, 2017</a></blockquote>
+<script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
+<p>You can watch the video of the talks from the FOSDEM website <a href="https://fosdem.org/2017/schedule/event/encrypting_matrix/">here</a> and <a href="https://fosdem.org/2017/schedule/event/matrix_future/">here</a>.  Both talks necessarily include the similar exposition for folks unfamiliar with Matrix, so apologies for the duplication - also, the &quot;future of decentralised communication&quot; talk ended up a bit rushed; 20 minutes is not a lot of time to both explain Matrix and give an overview of the challenges we face in fixing spam, identity, moderation etc.  But if you like hearing overenthusiastic people talking too fast about how amazing Matrix is, you may wish to check out the videos :)  You can also get at the slides as PDF <a href="/blog/wp-content/uploads/2017/02/2017-02-03.1-FOSDEM-Encrypting-Matrix.pdf">here (E2E Encryption)</a> and <a href="/blog/wp-content/uploads/2017/02/2017-02-04-FOSDEM-Future.pdf">here (Future of Decentralisation)</a>.</p>
+<p>Huge thanks to evevryone who came to the talks or came and spoke to us at the stand or around the campus.  We had an amazing time, and are already looking forward to next year!</p>
+<p>Matthew &amp; the team</p>
 
                 
             </div>
@@ -453,9 +325,9 @@ cropped thumbnail (PR #475)</li>
         
         <article class="post">
             <header>
-                <h2><a href="&#x2F;blog&#x2F;2015&#x2F;09&#x2F;07&#x2F;matrix-one-year-in&#x2F;" title="Matrix: One year in.">Matrix: One year in.</a></h2>
+                <h2><a href="&#x2F;blog&#x2F;2017&#x2F;02&#x2F;04&#x2F;synapse-0-19-is-here-just-in-time-for-fosdem&#x2F;" title="Synapse 0.19 is here, just in time for FOSDEM!">Synapse 0.19 is here, just in time for FOSDEM!</a></h2>
                 <span>
-                    07.09.2015 00:00
+                    04.02.2017 00:00
                     —
                     <a href="/category/tech">
                         Tech
@@ -471,79 +343,76 @@ cropped thumbnail (PR #475)</li>
             <div>
                 
                 <p>Hi all,</p>
-<p>Just realised that the release of Synapse 0.10.0 on Sept 3rd 2015 was precisely one year from the <a href="http://matrix.org/blog/2014/09/03/welcome-to-the-matrix-blog/">initial launch of Matrix</a>. As such, it feels only right to have a quick update on where we've got to so far, and where we expect things to go from here!</p>
-<p>Back at the original launch, all we had was a <em>very</em> rough and ready Synapse homeserver, an early draft of the spec, and precisely one client - the Angular webclient, much of which was mainly written at the last minute on the plane to TechCrunch Disrupt SF (and has never quite recovered :S). From this initial seed it's been incredibly exciting and slightly scary to see how much things have advanced and grown - the big headlines for the past year (in roughly chronological order) include:</p>
+<p>We're happy to announce the release of Synapse 0.19.0 (same as 0.19.0-rc4) today, just in time for anyone discovering Matrix for the first time at FOSDEM 2017!  In fact, here's Erik doing the release right now (with moral support from Luke):</p>
+<img class="aligncenter size-large wp-image-1900" src="/blog/wp-content/uploads/2017/02/release-1024x768.jpg" alt="release" width="1024" height="768" />
+<p>This is a pretty big release, with a bunch of new features and lots and lots of debugging and optimisation work following on some of the dramas that we had with 0.18 over the Christmas break.  The biggest things are:</p>
 <ul>
-	<li>Making Federation Work:
+ 	<li>IPv6 Support (unless you have an IPv6 only resolver), thanks to contributions from Glyph from Twisted and Kyrias!</li>
+ 	<li>A new API for tracking the E2E devices present in a room (required for fixing many of the remaining E2E bugs...)</li>
+ 	<li>Rewrite the 'state resolution' algorithm to be orders of magnitude more performant</li>
+ 	<li>Lots of tuning to the caching logic.</li>
+</ul>
+If you're already running a server, please upgrade!  And if you're not, go grab yourself a <a href="https://github.com/matrix-org/synapse">brand new Synapse</a> from Github. Debian packages will follow shortly (as soon as Erik can figure out the necessary backporting required for Twisted 16.6.0)
+<p>And here's the full changelog...</p>
+<p> </p>
+<div class="release-header">
+<h1 class="release-title">Changes in synapse v0.19.0 (2017-02-04)</h1>
+</div>
+<div class="markdown-body">
+<p>No changes since RC 4.</p>
+<h1>Changes in synapse v0.19.0-rc4 (2017-02-02)</h1>
 <ul>
-	<li>Switching all of federation over to SSL, using perspectives for key management</li>
-	<li>Crypto-signing all the events in a room's message graph to assert integrity</li>
-	<li>Sorting out 'power levels' and 'auth events' to allow totally decentralised kicks/bans/etc to work in an open federated environment</li>
+ 	<li>Bump cache sizes for common membership queries (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1879" data-url="https://github.com/matrix-org/synapse/issues/1879" data-id="204961298" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1879</a>)</li>
 </ul>
-</li>
-	<li>Decentralised content repository and thumbnailing</li>
-	<li>Reference mobile "Matrix Console" clients for iOS and Android</li>
-	<li>Official client SDKs for iOS and Android - both at the API wrapping layer and the reusable UI component layer</li>
-	<li>Push notifications for APNS and GCM (both on server &amp; clients)</li>
-	<li>Official client SDKs for JavaScript, Python and Perl</li>
-	<li>Typing notifications</li>
-	<li>The sytest integration test harness</li>
-	<li>Proper WebRTC support for VoIP, including TURN.</li>
-	<li>Application Services and Bots - actually letting Matrix defragment communications :)
+<h1>Changes in synapse v0.19.0-rc3 (2017-02-02)</h1>
 <ul>
-	<li>Bridging to all of Freenode, Moznet and other IRC networks</li>
-	<li>Matrix&lt;-&gt;SMS bridge from OpenMarket</li>
-	<li>SIP bridges via FreeSWITCH and Verto</li>
-	<li>Parrot Bebop Drone &lt;-&gt; Matrix bridge via Janus</li>
-	<li>ODB2 telemetry &lt;-&gt;  Matrix bridge via Android SDK</li>
-	<li>Reusable bridging framework in Node</li>
+ 	<li>Fix email push in pusher worker (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1875" data-url="https://github.com/matrix-org/synapse/issues/1875" data-id="204840617" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1875</a>)</li>
+ 	<li>Make presence.get_new_events a bit faster (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1876" data-url="https://github.com/matrix-org/synapse/issues/1876" data-id="204868725" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1876</a>)</li>
+ 	<li>Make /keys/changes a bit more performant (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1877" data-url="https://github.com/matrix-org/synapse/issues/1877" data-id="204905372" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1877</a>)</li>
 </ul>
-</li>
-	<li>Many iterations and refinements to the spec, including designing v2 of the client SDK</li>
-	<li>Switching from Angular to React for all of our web-client development</li>
-	<li>Customisable skins and embedding support for the matrix-react-sdk</li>
-	<li>End-to-end encryption (not quite formally released yet, but it's written, specced and it works!)</li>
-	<li>VoIP support on mobile (landed in Android; still experimenting with different WebRTC stacks on iOS)</li>
-	<li>History ACLs</li>
-	<li>Delivery reports</li>
-	<li>Switching from access_tokens to macaroons for authentication (not yet released)</li>
-	<li>Lots and lots of performance work on Synapse, as we've tried to get the most out of Twisted.</li>
-</ul>
-...and last but not least, the evolution of the #matrix:matrix.org community - including loads of 3rd party clients, SDKs and application services, synapse packaging and even experimental home servers :)
-<p>Overall the last year was an exercise in actually fleshing out the whole ecosystem of Matrix and getting it to a stable usable beta acceptable to early adopters. The plan for the next 12 months is then to make the transition from stable beta to a properly production grade environment that can be used to run large scale services used by normal end-users. In practice, this means:</p>
+<h1>Changes in synapse v0.19.0-rc2 (2017-02-02)</h1>
 <ul>
-	<li>A major rearchitecture of Synapse.
+ 	<li>Include newly joined users in /keys/changes API (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1872" data-url="https://github.com/matrix-org/synapse/issues/1872" data-id="204651600" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1872</a>)</li>
+</ul>
+<h1>Changes in synapse v0.19.0-rc1 (2017-02-02)</h1>
+Features:
 <ul>
-	<li>Synapse currently has no support for horizontal scaling or clustering within a single instance, and many will have seen the performance problems we've hit with a relatively monolithic Twisted app architecture. Profiling deferreds in Twisted has been a particular nightmare.</li>
-	<li>During September we are starting the process of splitting Synapse apart into separate services (e.g. separating reading eventstreams from writing messages) both to allow horizontal scalability and to experiment with implementing the services in more efficient languages than Python/Twisted.</li>
-	<li>We will continue the normal Synapse release process in parallel with this work.</li>
+ 	<li>Add support for specifying multiple bind addresses (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1709" data-url="https://github.com/matrix-org/synapse/issues/1709" data-id="196299310" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1709</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1712" data-url="https://github.com/matrix-org/synapse/issues/1712" data-id="196557084" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1712</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1795" data-url="https://github.com/matrix-org/synapse/issues/1795" data-id="199882750" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1795</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1835" data-url="https://github.com/matrix-org/synapse/issues/1835" data-id="202121261" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1835</a>). Thanks to <a class="user-mention" href="https://github.com/kyrias">@kyrias</a>!</li>
+ 	<li>Add /account/3pid/delete endpoint (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1714" data-url="https://github.com/matrix-org/synapse/issues/1714" data-id="196744832" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1714</a>)</li>
+ 	<li>Add config option to configure the Riot URL used in notification emails (PR <a class="issue-link js-issue-link" title="Allow configuring the Riot URL used in notification emails" href="https://github.com/matrix-org/synapse/pull/1811" data-id="200657367" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1811</a>). Thanks to <a class="user-mention" href="https://github.com/aperezdc">@aperezdc</a>!</li>
+ 	<li>Add username and password config options for turn server (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1832" data-url="https://github.com/matrix-org/synapse/issues/1832" data-id="201858252" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1832</a>). Thanks to <a class="user-mention" href="https://github.com/xsteadfastx">@xsteadfastx</a>!</li>
+ 	<li>Implement device lists updates over federation (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1857" data-url="https://github.com/matrix-org/synapse/issues/1857" data-id="203413361" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1857</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1861" data-url="https://github.com/matrix-org/synapse/issues/1861" data-id="204067531" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1861</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1864" data-url="https://github.com/matrix-org/synapse/issues/1864" data-id="204251726" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1864</a>)</li>
+ 	<li>Implement /keys/changes (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1869" data-url="https://github.com/matrix-org/synapse/issues/1869" data-id="204547521" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1869</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1872" data-url="https://github.com/matrix-org/synapse/issues/1872" data-id="204651600" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1872</a>)</li>
 </ul>
-</li>
-	<li>Ensuring Matrix can support a genuinely excellent UX for normal end-users on glossy clients, and supporting glossy client development as required.  The days of Matrix being just for powerusers are numbered... :)</li>
-	<li>Switching to use 3rd party IDs as the primary means of referring to users in Matrix, hiding matrix IDs as a feature for powerusers and developers.</li>
-	<li>Finishing the spec. You may have noticed the spec has been quietly evolving over the last few months - finally gaining a versioning system, and with larger chunks of it being automatically generated from formal API spec descriptions. We will be finishing off and filling in the remaining holes.</li>
-	<li>Improving the documentation (and FAQ!) on matrix.org in general by switching to a git-backed jekyll system for all the staticish content</li>
-	<li>Replace the Angular-based reference webapp bundled with Synapse entirely with a matrix-react-sdk based reference app, and providing better examples and documentation for using it to embed Matrix functionality into existing websites.</li>
-	<li>Moving to v2 of the client-server API. This fixes some significant limitations in the v1 API that everyone's been using all year, and should improve performance significantly for many use cases (especially when launching apps). The v1 API will hang around for a very very long time for backwards compatibility.</li>
-	<li>Writing *lots* more bridges and integrations to other protocols, now we have a nice framework for rapidly developing them.</li>
-	<li>General security audits and double-checking the security model.</li>
-	<li>New features, including:
+Changes:
 <ul>
-	<li>Multiway VoIP and Video conferencing, most likely using FreeSWITCH's new conferencing capabilities via an Application Service bridge (should be ready very shortly!)</li>
-	<li>Getting E2E crypto reviewed/audited and putting it live across the board.</li>
-	<li>Adding VoIP to iOS</li>
-	<li>Implementing delivery reports in all clients</li>
-	<li>Improving how invites work (ability to reject them; metadata about where they came from)</li>
-	<li>Search API</li>
-	<li>Improved file management</li>
+ 	<li>Improve IPv6 support (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1696" data-url="https://github.com/matrix-org/synapse/issues/1696" data-id="195001361" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1696</a>). Thanks to <a class="user-mention" href="https://github.com/kyrias">@kyrias</a> and <a class="user-mention" href="https://github.com/glyph">@glyph</a>!</li>
+ 	<li>Log which files we saved attachments to in the media_repository (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1791" data-url="https://github.com/matrix-org/synapse/issues/1791" data-id="199834508" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1791</a>)</li>
+ 	<li>Linearize updates to membership via PUT /state/ to better handle multiple joins (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1787" data-url="https://github.com/matrix-org/synapse/issues/1787" data-id="199625078" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1787</a>)</li>
+ 	<li>Limit number of entries to prefill from cache on startup (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1792" data-url="https://github.com/matrix-org/synapse/issues/1792" data-id="199837759" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1792</a>)</li>
+ 	<li>Remove full_twisted_stacktraces option (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1802" data-url="https://github.com/matrix-org/synapse/issues/1802" data-id="200333064" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1802</a>)</li>
+ 	<li>Measure size of some caches by sum of the size of cached values (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1815" data-url="https://github.com/matrix-org/synapse/issues/1815" data-id="201019660" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1815</a>)</li>
+ 	<li>Measure metrics of string_cache (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1821" data-url="https://github.com/matrix-org/synapse/issues/1821" data-id="201347397" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1821</a>)</li>
+ 	<li>Reduce logging verbosity (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1822" data-url="https://github.com/matrix-org/synapse/issues/1822" data-id="201347914" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1822</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1823" data-url="https://github.com/matrix-org/synapse/issues/1823" data-id="201350918" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1823</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1824" data-url="https://github.com/matrix-org/synapse/issues/1824" data-id="201351456" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1824</a>)</li>
+ 	<li>Don't clobber a displayname or avatar_url if provided by an m.room.member event (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1852" data-url="https://github.com/matrix-org/synapse/issues/1852" data-id="202898869" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1852</a>)</li>
+ 	<li>Better handle 401/404 response for federation /send/ (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1866" data-url="https://github.com/matrix-org/synapse/issues/1866" data-id="204298485" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1866</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1871" data-url="https://github.com/matrix-org/synapse/issues/1871" data-id="204619103" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1871</a>)</li>
 </ul>
-</li>
-	<li>...and an awful lot of bug fixing as we work through the backlog we've accumulated on JIRA.</li>
+Fixes:
+<ul>
+ 	<li>Fix ability to change password to a non-ascii one (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1711" data-url="https://github.com/matrix-org/synapse/issues/1711" data-id="196303488" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1711</a>)</li>
+ 	<li>Fix push getting stuck due to looking at the wrong view of state (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1820" data-url="https://github.com/matrix-org/synapse/issues/1820" data-id="201302378" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1820</a>)</li>
+ 	<li>Fix email address comparison to be case insensitive (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1827" data-url="https://github.com/matrix-org/synapse/issues/1827" data-id="201573837" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1827</a>)</li>
+ 	<li>Fix occasional inconsistencies of room membership (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1836" data-url="https://github.com/matrix-org/synapse/issues/1836" data-id="202122666" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1836</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1840" data-url="https://github.com/matrix-org/synapse/issues/1840" data-id="202175956" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1840</a>)</li>
 </ul>
-Hopefully this won't take up all year(!) and is just a beginning - there's a huge list of interesting ideas beyond this baseline which we'll be looking at assuming the core stuff above is on track. For instance, we need to work out how to decentralise the identity services that mapping 3rd party IDs to matrix IDs. We need to work out how to avoid spam. And it could be fascinating to start bridging more internet-of-things devices and ecosystems into Matrix, or decentralising user accounts between homeservers, or perhaps using Matrix for synchronising more sophisticated data structures than timelines and key-value state dictionaries...
-<p>Finally, we also want to save as much time as possible to help support the wider community in building out clients, services and servers on top of Matrix. Just like the web itself, Matrix is only as useful as the content and services built on top of it - and we will do everything we can to help the pioneers who are interested in colonising this brave new world :)</p>
-<p>Huge thanks to everyone over the last year who have supported us - whether that's by creating an account and using the system, running a homeserver, hacking on top of the platform, contributing to the core project, enduring one of our presentations, or even paying for us to work on this. The coming year should prove incredibly interesting, and we hope you'll stay and bring along all your friends, family and colleagues for the ride as the adventure continues!</p>
-<p>Matthew, Amandine &amp; the whole Matrix.org team.</p>
+Performance:
+<ul>
+ 	<li>Don't block messages sending on bumping presence (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1789" data-url="https://github.com/matrix-org/synapse/issues/1789" data-id="199812171" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1789</a>)</li>
+ 	<li>Change device_inbox stream index to include user (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1793" data-url="https://github.com/matrix-org/synapse/issues/1793" data-id="199845292" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1793</a>)</li>
+ 	<li>Optimise state resolution (PR <a class="issue-link js-issue-link" title=" Optimise state resolution" href="https://github.com/matrix-org/synapse/pull/1818" data-id="201285644" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1818</a>)</li>
+ 	<li>Use DB cache of joined users for presence (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1862" data-url="https://github.com/matrix-org/synapse/issues/1862" data-id="204068613" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1862</a>)</li>
+ 	<li>Add an index to make membership queries faster (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1867" data-url="https://github.com/matrix-org/synapse/issues/1867" data-id="204327354" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1867</a>)</li>
+</ul>
+</div>
 
                 
             </div>
@@ -551,9 +420,9 @@ Hopefully this won't take up all year(!) and is just a beginning - there's a hug
         
         <article class="post">
             <header>
-                <h2><a href="&#x2F;blog&#x2F;2015&#x2F;09&#x2F;03&#x2F;synapse-0-10-0-is-released&#x2F;" title="Synapse 0.10.0 is released!!">Synapse 0.10.0 is released!!</a></h2>
+                <h2><a href="&#x2F;blog&#x2F;2017&#x2F;01&#x2F;25&#x2F;matrix-org-homeserver-outage-25th-jan-2017&#x2F;" title="Matrix.org homeserver outage (25th Jan 2017)">Matrix.org homeserver outage (25th Jan 2017)</a></h2>
                 <span>
-                    03.09.2015 00:00
+                    25.01.2017 00:00
                     —
                     <a href="/category/tech">
                         Tech
@@ -569,127 +438,31 @@ Hopefully this won't take up all year(!) and is just a beginning - there's a hug
             <div>
                 
                 <p>Hi folks,</p>
-<p>Whilst the blog has been a bit quiet, we've actually had an incredibly busy summer refining Synapse, building the new matrix-react-sdk and example apps, building an entirely new matrix-appservice-bridge framework for rapidly creating Matrix&lt;-&gt;other-protocol bridges, getting end-to-end encryption ready for primetime and lots more fun stuff as we keep chipping away to take Matrix out of beta.  We'll write about all of these once they're ready, but right now the big news is that after 6 release candidates we have a major new update for Synapse out today - version 0.10.0.  This also includes 0.9.4, which we never quite got around to releasing and ended up skipping from 0.9.4-rc1 straight to 0.10.0-rc1.</p>
-<p>The release focuses mainly on performance, bugfixes, and infrastructure work to support forthcoming features like end-to-end encryption, read receipts, etc.  Some of the more exciting new features include preset ACLs for room creation; history visibility ACLs; SAML2 single-sign-on login (courtesy of Ericsson, thanks guys!), filename support when sending files, support for specifying a canonical alias for a room, support for intermediary SSL certificates, etc.</p>
-<p>The full changelog is below.</p>
-<p>To upgrade, go read <a href="https://github.com/matrix-org/synapse/blob/master/UPGRADE.rst">https://github.com/matrix-org/synapse/blob/master/UPGRADE.rst</a> - to install for the first time, go to <a href="https://github.com/matrix-org/synapse/blob/master/README.rst">https://github.com/matrix-org/synapse/blob/master/README.rst</a>.</p>
-<code>
-Changes in synapse v0.10.0 (2015-09-03)
-=======================================
-<p>No change from release candidate.</p>
-<h1 id="changes-in-synapse-v0-10-0-rc6-2015-09-02">Changes in synapse v0.10.0-rc6 (2015-09-02)</h1>
+<p>As many will have noticed there was a major outage on the Matrix homeserver for matrix.org last night (UK-time).  This impacted anyone with an account on the matrix.org server, as well as anyone using matrix.org-hosted bots &amp; bridges.  As Matrix rooms are shared over all participants, rooms with participants on other servers were unaffected (for users on those servers). Here's a quick explanation of what went wrong (times are UTC):</p>
 <ul>
-<li>Remove some of the old database upgrade scripts.</li>
-<li>Fix database port script to work with newly created sqlite databases.</li>
+<li>2017-01-24 16:00 - We notice that we're badly running out of diskspace on the matrix.org backup postgres replica.  (Turns out the backup box, whilst identical hardware to the master, had been built out as RAID-10 rather than RAID-5 and so has less disk space).
+</li><li>2017-01-24 17:00 - We decide to drop a large DB index: <code>event_push_actions(room_id, event_id, user_id, profile_tag)</code>, which was taking up a disproportionate amount of disk space, on the basis that it didn't appear to be being used according to the postgres stats.  All seems good.
+</li><li>2017-01-24 ~23:00 - The core matrix.org team go to bed.
+</li><li>2017-01-24 23:33 - Someone redacts an event in a very active room (probably #matrix:matrix.org) which necessitates redacting the associated push notification from the event_push_actions table.  This takes out a lock within persist_event, which is then blocked on deleting the push notification.  It turns out that this deletion requires the missing DB constraint, causing the query to run for hours whilst holding the transaction lock.  The symptoms are that anything reading events from the DB was blocked on the transaction, causing messages not to be relayed to other clients or servers despite appearing to send correctly.  Meanwhile, the fact that events are being received by the server fine (including over federation) makes the monitoring graphs look largely healthy.
+</li><li>2017-01-24 23:35 - End-to-end monitoring detects problems, and sends alerts into pagerduty and various Matrix rooms.  Unfortunately we'd failed to upgrade the pageduty trial into a paid account a few months ago, however, so the alerts are lost.
+</li><li>2017-01-25 08:00 - Matrix team starts to wake up and spot problems, but confusion over the right escalation process (especially with Matthew on holiday) means folks assume that other members of the team must already be investigating.
+</li><li>2017-01-25 09:00 - Server gets restarted, service starts to resume, although box suffers from load problems as traffic tries to catch up.
+</li><li>2017-01-25 09:45 - Normal service on the homeserver itself is largely resumed (other than bridges; see below)
+</li><li>2017-01-25 10:41 - Root cause established and the redaction path is patched on matrix.org to stop a recurrence.
+</li><li>2017-01-25 11:15 - Bridges are seen to be lagging and taking much longer to recover than expected.   Decision made to let them continue to catch up normally rather than risk further disruption (e.g. IRC join/part spam) by restarting them.
+</li><li>2017-01-25 13:00 - All hosted bridges returned to normal.</li>
 </ul>
-<h1 id="changes-in-synapse-v0-10-0-rc5-2015-08-27">Changes in synapse v0.10.0-rc5 (2015-08-27)</h1>
+<p>Obviously this is rather embarrassing, and a huge pain for everyone using the matrix.org homeserver - many apologies indeed for the outage. On the plus side, all the other Matrix homeservers out there carried on without noticing any problems (which actually complicated spotting that things had broken, given many of the core team primarily use their personal homeservers).</p>
+<p>In some ways the root cause here is that the core team has been focusing all its energy recently on improving the overall Matrix codebase rather than operational issues on matrix.org itself, and as a result our ops practices have fallen behind (especially as the health of the Matrix ecosystem as a whole is arguably more important than the health of a single homeserver deployment).  However, we clearly need to improve things here given the number of people (&gt;750K at the last count) dependent on the Matrix.org homeserver and its bridges &amp; bots.</p>
+<p>Lessons learnt on our side are:</p>
 <ul>
-<li>Fix bug that broke downloading files with ascii filenames across federation.</li>
+<li>Make sure that even though we had monitoring graphs & thresholds set up on all the right things... monitoring alerts actually have to be routed somewhere useful - i.e. phone calls to the team's phones.  Pagerduty is now set up and running properly to this end.</li>
+<li>Make sure that people know to wake up the right people anyway if the monitoring alerting system fails.</li>
+<li>To be even more paranoid about hotfixes to production at 5pm, especially if they can wait 'til the next day (as this one could have).</li>
+<li>To investigate ways to rapidly recover bridges without causing unnecessary disruption.</li>
 </ul>
-<h1 id="changes-in-synapse-v0-10-0-rc4-2015-08-27">Changes in synapse v0.10.0-rc4 (2015-08-27)</h1>
-<ul>
-<li>Allow UTF-8 filenames for upload. (PR #259)</li>
-</ul>
-<h1 id="changes-in-synapse-v0-10-0-rc3-2015-08-25">Changes in synapse v0.10.0-rc3 (2015-08-25)</h1>
-<ul>
-<li>
-<p>Add <code>--keys-directory</code> config option to specify where files such as
-certs and signing keys should be stored in, when using <code>--generate-config</code>
-or <code>--generate-keys</code>. (PR #250)</p>
-</li>
-<li>
-<p>Allow <code>--config-path</code> to specify a directory, causing synapse to use all
-\*.yaml files in the directory as config files. (PR #249)</p>
-</li>
-<li>
-<p>Add <code>web_client_location</code> config option to specify static files to be
-hosted by synapse under <code>/_matrix/client</code>. (PR #245)</p>
-</li>
-<li>
-<p>Add helper utility to synapse to read and parse the config files and extract
-the value of a given key. For example::</p>
-<p>$ python -m synapse.config read server_name -c homeserver.yaml
-localhost</p>
-<p>(PR #246)</p>
-</li>
-</ul>
-<h1 id="changes-in-synapse-v0-10-0-rc2-2015-08-24">Changes in synapse v0.10.0-rc2 (2015-08-24)</h1>
-<ul>
-<li>Fix bug where we incorrectly populated the <code>event_forward_extremities</code>
-table, resulting in problems joining large remote rooms (e.g.
-<code>#matrix:matrix.org</code>)</li>
-<li>Reduce the number of times we wake up pushers by not listening for presence
-or typing events, reducing the CPU cost of each pusher.</li>
-</ul>
-<h1 id="changes-in-synapse-v0-10-0-rc1-2015-08-21">Changes in synapse v0.10.0-rc1 (2015-08-21)</h1>
-<p>Also see v0.9.4-rc1 changelog, which has been amalgamated into this release.</p>
-<p>General:</p>
-<ul>
-<li>Upgrade to Twisted 15 (PR #173)</li>
-<li>Add support for serving and fetching encryption keys over federation.
-(PR #208)</li>
-<li>Add support for logging in with email address (PR #234)</li>
-<li>Add support for new <code>m.room.canonical_alias</code> event. (PR #233)</li>
-<li>Change synapse to treat user IDs case insensitively during registration and
-login. (If two users already exist with case insensitive matching user ids,
-synapse will continue to require them to specify their user ids exactly.)</li>
-<li>Error if a user tries to register with an email already in use. (PR #211)</li>
-<li>Add extra and improve existing caches  (PR #212, #219, #226, #228)</li>
-<li>Batch various storage request (PR #226, #228)</li>
-<li>Fix bug where we didn't correctly log the entity that triggered the request
-if the request came in via an application service (PR #230)</li>
-<li>Fix bug where we needlessly regenerated the full list of rooms an AS is
-interested in. (PR #232)</li>
-<li>Add support for AS's to use v2_alpha registration API (PR #210)</li>
-</ul>
-<p>Configuration:</p>
-<ul>
-<li>Add <code>--generate-keys</code> that will generate any missing cert and key files in
-the configuration files. This is equivalent to running <code>--generate-config</code>
-on an existing configuration file. (PR #220)</li>
-<li><code>--generate-config</code> now no longer requires a <code>--server-name</code> parameter
-when used on existing configuration files. (PR #220)</li>
-<li>Add <code>--print-pidfile</code> flag that controls the printing of the pid to stdout
-of the demonised process. (PR #213)</li>
-</ul>
-<p>Media Repository:</p>
-<ul>
-<li>Fix bug where we picked a lower resolution image than requested. (PR #205)</li>
-<li>Add support for specifying if a the media repository should dynamically
-thumbnail images or not. (PR #206)</li>
-</ul>
-<p>Metrics:</p>
-<ul>
-<li>Add statistics from the reactor to the metrics API. (PR #224, #225)</li>
-</ul>
-<p>Demo Homeservers:</p>
-<ul>
-<li>Fix starting the demo homeservers without rate-limiting enabled. (PR #182)</li>
-<li>Fix enabling registration on demo homeservers (PR #223)</li>
-</ul>
-<h1 id="changes-in-synapse-v0-9-4-rc1-2015-07-21">Changes in synapse v0.9.4-rc1 (2015-07-21)</h1>
-<p>General:</p>
-<ul>
-<li>Add basic implementation of receipts. (SPEC-99)</li>
-<li>Add support for configuration presets in room creation API. (PR  #203)</li>
-<li>Add auth event that limits the visibility of history for new users.
-(SPEC-134)</li>
-<li>Add SAML2 login/registration support. (PR  #201. Thanks Muthu Subramanian!)</li>
-<li>Add client side key management APIs for end to end encryption. (PR #198)</li>
-<li>Change power level semantics so that you cannot kick, ban or change power
-levels of users that have equal or greater power level than you. (SYN-192)</li>
-<li>Improve performance by bulk inserting events where possible. (PR #193)</li>
-<li>Improve performance by bulk verifying signatures where possible. (PR #194)</li>
-</ul>
-<p>Configuration:</p>
-<ul>
-<li>Add support for including TLS certificate chains.</li>
-</ul>
-<p>Media Repository:</p>
-<ul>
-<li>Add Content-Disposition headers to content repository responses. (SYN-150)</li>
-</ul>
-</code>
+<p>Apologies again to everyone who was bitten by this - we're doing everything we can to ensure it doesn't happen again.</p>
+<p>Matthew &amp; the team.</p>
 
                 
             </div>
@@ -697,9 +470,9 @@ levels of users that have equal or greater power level than you. (SYN-192)</li>
         
         <article class="post">
             <header>
-                <h2><a href="&#x2F;blog&#x2F;2015&#x2F;07&#x2F;10&#x2F;synapse-0-9-3-is-out-as-of-a-few-weeks-ago&#x2F;" title="Synapse 0.9.3 is out! (as of a few weeks ago)">Synapse 0.9.3 is out! (as of a few weeks ago)</a></h2>
+                <h2><a href="&#x2F;blog&#x2F;2017&#x2F;01&#x2F;06&#x2F;synapse-0-18-6-is-out-please-upgrade-especially-if-on-0-18-5&#x2F;" title="Synapse 0.18.7 is out - Please upgrade, especially if on 0.18.5 or 0.18.6.">Synapse 0.18.7 is out - Please upgrade, especially if on 0.18.5 or 0.18.6.</a></h2>
                 <span>
-                    10.07.2015 00:00
+                    06.01.2017 00:00
                     —
                     <a href="/category/tech">
                         Tech
@@ -715,27 +488,67 @@ levels of users that have equal or greater power level than you. (SYN-192)</li>
             <div>
                 
                 <p>Hi all,</p>
-<p>We seem to have done that thing again where we were too busy writing new stuff (E2E crypto, all-new React-based Web SDK, long-awaited iOS Console update) to remember that we'd released a new version of Synapse - sorry!</p>
-<p>Synapse 0.9.3 was released on July 1st (actually on June 23rd as 0.9.3-rc1, but was released without changes).  It's a fairly minor release but does provide some performance improvements and bug fixes - see below for details.  Get it from <a href="http://github.com/matrix-org/synapse">http://github.com/matrix-org/synapse</a> if you haven't already.</p>
-<code>
-Changes in synapse v0.9.3 (2015-07-01)
-======================================
-<p>General:</p>
+<p><del>TL;DR: Please upgrade to <a href="https://github.com/matrix-org/synapse/releases/tag/v0.18.6">Synapse 0.18.6</a>, especially if you are on 0.18.5 which is a bad release.</del></p>
+<p>TL;DR: Please upgrade to <strong><a href="https://github.com/matrix-org/synapse/releases/tag/v0.18.7">Synapse 0.18.7</a> </strong>- especially if you are on 0.18.5 or 0.18.6 which both have serious federation bugs.</p>
+<p>Synapse 0.18.5 contained a really nasty regression in the federation code which causes servers to echo transactions that they receive back out to the other servers participating in a room. This has effectively resulted in a gradual amplification of federation traffic as more people have installed 0.18.5, causing every transaction to be received N times over where N is the number of servers in the room.</p>
+<p>We'll do a full write-up once we're happy we've tracked down all the root problems here, but the short story is that this hit critical mass around Dec 26, where typical Synapses started to fail to keep up with the traffic - especially when requests hit some of the more inefficient or buggy codepaths in Synapse.  As servers started to overload with inbound connections, this in turn started to slow down and consume resources on the connecting servers - especially due to an architectural mistake in Synapse which blocks inbound connections until the request has been fully processed (which could require the receiving server in turn to make outbound connections), rather than releasing the inbound connection asap.  This hit the point that servers were running out of file descriptors due to all the outbound and inbound connections, at which point they started to entirely tarpit inbound connections, resulting in a slow feedback loop making the whole situation even worse.</p>
+<p>We've spent the last two weeks hunting all the individual inefficient requests which were mysteriously starting to cause more problems than they ever had before; then trying to understand the feedback misbehaviour; before finally discovering the regression in 0.18.5 as the plausible root cause of the problem.  Troubleshooting has been complicated by most of the team having unplugged for the holidays, and because this is the first (and hopefully last!) failure mode to be distributed across the whole network, making debugging something of a nightmare - especially when the overloading was triggering a plethora of different exotic failure modes.  Huge thanks to everyone who has shared their server logs with the team to help debug this.</p>
+<p>Some of these failure modes are still happening (and we're working on fixing them), but we believe that if everyone upgrades away from the bad 0.18.5 release most of the symptoms will go away, or at least go back to being as bad as they were before.  Meanwhile, if you find your server suddenly grinding to a halt after upgrading to <del>0.18.6</del> 0.18.7 please come tell us in <a href="https://matrix.to/#/#matrix-dev:matrix.org">#matrix-dev:matrix.org</a>.</p>
+<p>We're enormously sorry if you've been bitten by the federation instability this has caused - and many many thanks for your patience whilst we've hunted it down.  On the plus side, it's given us a lot of <em>very</em> useful insight into how to implement federation in future homeservers to not suffer from any of these failure modes.  It's also revealed the root cause of why Synapse's RAM usage is quite so bad - it turns out that it actually idles at around 200MB with default caching, but there's a particular codepath which causes it to spike temporarily by 1GB or so - and that RAM is then not released back to the OS.  We're working on a fix for this too, but it'll come after 0.18.7.</p>
+<p>Unfortunately the original release of 0.18.6 still exhibits the root bug, but 0.18.7 (originally released as 0.18.7-rc2) should finally fix this.  Sorry for all the upgrades :(</p>
+<p>So <a href="https://github.com/matrix-org/synapse/releases/tag/v0.18.7">please upgrade as soon as possible</a> to 0.18.7.  <a href="/packages/debian">Debian packages</a> are available as normal.</p>
+<p>thanks,</p>
+<p>Matthew</p>
+<div class="markdown-body">
+<h3>Changes in synapse v0.18.7 (2017-01-09)</h3>
 <ul>
-<li>Fix a memory leak in the notifier. (SYN-412)</li>
-<li>Improve performance of room initial sync. (SYN-418)</li>
-<li>General improvements to logging.</li>
-<li>Remove <code>access_token</code> query params from <code>INFO</code> level logging.</li>
+<li>No changes from v0.18.7-rc2</li>
 </ul>
-<p>Configuration:</p>
+<h3>Changes in synapse v0.18.7-rc2 (2017-01-07)</h3>
+Bug fixes:
 <ul>
-<li>Add support for specifying and configuring multiple listeners. (SYN-389)</li>
+ 	<li>Fix error in rc1's discarding invalid inbound traffic logic that was incorrectly discarding missing events
+</li>
 </ul>
-<p>Application services:</p>
+<h3>Changes in synapse v0.18.7-rc1 (2017-01-06)</h3>
+Bug fixes:
 <ul>
-<li>Fix bug where synapse failed to send user queries to application services.</li>
+ 	<li>Fix error in #PR 1764 to actually fix the nightmare #1753 bug.
+</li>
+ 	<li>Improve deadlock logging further
+</li>
+ 	<li>Discard inbound federation traffic from invalid domains, to immunise 
+against #1753
+</li>
 </ul>
-</code>
+<h3>Changes in synapse v0.18.6 (2017-01-06)</h3>
+Bug fixes:
+<ul>
+ 	<li>Fix bug when checking if a guest user is allowed to join a room - thanks to Patrik Oldsberg (PR <a class="issue-link js-issue-link" title="handlers/room_member: fix guest access check when joining rooms" href="https://github.com/matrix-org/synapse/pull/1772" data-id="199209215" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1772</a>)</li>
+</ul>
+<h3>Changes in synapse v0.18.6-rc3 (2017-01-05)</h3>
+Bug fixes:
+<ul>
+ 	<li>Fix bug where we failed to send ban events to the banned server (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1758" data-url="https://github.com/matrix-org/synapse/issues/1758" data-id="198709898" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1758</a>)</li>
+ 	<li>Fix bug where we sent event that didn't originate on this server to other servers (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1764" data-url="https://github.com/matrix-org/synapse/issues/1764" data-id="198934605" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1764</a>)</li>
+ 	<li>Fix bug where processing an event from a remote server took a long time because we were making long HTTP requests (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1765" data-url="https://github.com/matrix-org/synapse/issues/1765" data-id="198940353" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1765</a>, PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1744" data-url="https://github.com/matrix-org/synapse/issues/1744" data-id="198236017" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1744</a>)</li>
+</ul>
+Changes:
+<ul>
+ 	<li>Improve logging for debugging deadlocks (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1766" data-url="https://github.com/matrix-org/synapse/issues/1766" data-id="198946790" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1766</a>, PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1767" data-url="https://github.com/matrix-org/synapse/issues/1767" data-id="198958245" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1767</a>)</li>
+</ul>
+<h3>Changes in synapse v0.18.6-rc2 (2016-12-30)</h3>
+Bug fixes:
+<ul>
+ 	<li>Fix memory leak in twisted by initialising logging correctly (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1731" data-url="https://github.com/matrix-org/synapse/issues/1731" data-id="198134635" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1731</a>)</li>
+ 	<li>Fix bug where fetching missing events took an unacceptable amount of time in large rooms (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1734" data-url="https://github.com/matrix-org/synapse/issues/1734" data-id="198178611" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1734</a>)</li>
+</ul>
+<h3>Changes in synapse v0.18.6-rc1 (2016-12-29)</h3>
+Bug fixes:
+<ul>
+ 	<li>Make sure that outbound connections are closed (PR <a class="issue-link js-issue-link" title="Wrap connections in an N minute timeout to ensure they get reaped correctly" href="https://github.com/matrix-org/synapse/pull/1725" data-id="197934419" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1725</a>)</li>
+</ul>
+</div>
 
                 
             </div>
@@ -743,9 +556,141 @@ Changes in synapse v0.9.3 (2015-07-01)
         
         <article class="post">
             <header>
-                <h2><a href="&#x2F;blog&#x2F;2015&#x2F;06&#x2F;22&#x2F;the-matrix-org-irc-bridge-now-bridges-all-of-freenode&#x2F;" title="The matrix.org IRC bridge now bridges all of Freenode!">The matrix.org IRC bridge now bridges all of Freenode!</a></h2>
+                <h2><a href="&#x2F;blog&#x2F;2016&#x2F;12&#x2F;26&#x2F;the-matrix-holiday-special-2016-edition&#x2F;" title="The Matrix Holiday Special! (2016 edition)">The Matrix Holiday Special! (2016 edition)</a></h2>
                 <span>
-                    22.06.2015 00:00
+                    26.12.2016 00:00
+                    —
+                    <a href="/category/general">
+                        General
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>We seem to have fallen into the pattern of giving seasonal 'state of the union' updates on the Matrix blog, despite best intentions to blog more frequently... although given the <a href="/blog/2016/11/12/the-matrix-autumn-special/">Autumn Update</a> ended up being posted in November this one is going to be a relatively incremental update.  Let's jump straight in:</p>
+<h3>E2E Encryption</h3>
+Unless you've been in a coma for the last month you'll have hopefully noticed that we <a href="/blog/2016/11/21/matrixs-olm-end-to-end-encryption-security-assessment-released-and-implemented-cross-platform-on-riot-at-last/">launched the formal beta for E2E Encryption</a> across matrix-{'{'}js,ios,android{'}'}-sdk (and thus Riot/{'{'}Web, iOS, Android{'}'}) in November, complete with the successful <a href="http://nccgroup.trust/us/our-research/matrix-olm-cryptographic-review">independent public security assessment</a> of our Olm and Megolm cryptography library from NCC Group.  So far the beta has gone well in parts: the core Olm/Megolm crypto library has held up well with no bugfixes at all required since the audit (yay!).  However, we've hit a lot of different edge cases in the wild where devices can fail to share their outbound session ratchet state to other devices present in the room.  This results in the infamous "Unknown Inbound Session ID" (UISI) errors which many folks will have seen (now renamed to the more meaningful "Unable to decrypt: The sender's device has not sent us the keys for this message" error).
+<p>Unfortunately there's a bunch of entirely different causes for this, both platform-specific and cross-platform, and we've been running around untangling all the error reports and getting to the bottom of it.  The good news is that we think we now know the vast majority of the causes, and fixes are starting to land.  We've also just finished a fairly time-consuming formal crypto code-review on the three application SDK implementations (JS, iOS &amp; Android) to shake out any other issues.  Meanwhile some new features have also landed - e.g. the ability for guests to use E2E!  The remaining stuff at this point before we can consider declaring E2E out of beta is:</p>
+<ul>
+ 	<li>Finish fixing the UISI errors (in progress)</li>
+ 	<li>Warn when unverified devices are added to a room</li>
+ 	<li>Implement passphrased backup &amp; restore for E2E state, so that folks can avoid losing their E2E history when they logout or switch to a new device</li>
+ 	<li>Improve device verification.</li>
+</ul>
+Thanks to everyone who's been using E2E and reporting issues - given the number of different UISI error causes out there, it's been really useful to go through the different bug reports that folks have submitted.  Please continue to submit them when you see unexpected problems (especially over the coming months as stability improves!)
+<h3>New Projects!</h3>
+There have been a tonne of new projects popping up from all over the place since the last update.  Looking at the <a href="https://github.com/matrix-org/matrix-doc/commits/master/supporting-docs">git history</a> of the <a href="/docs/projects">projects page</a>, we've been adding one every few days!  Highlights include:
+<h4>Bridges:</h4>
+<ul>
+ 	<li><a href="https://github.com/kfatehi/matrix-appservice-imessage">https://github.com/kfatehi/matrix-appservice-imessage</a> - A solid foundation for an iMessage bridge from kfatehi, built on top of the official matrix-appservice-bridge stack.  iMessage and FaceTime's crypto is tied into Apple's Fairplay DRM (famous for securing the iTunes Music Store and App Store) and is locked all the way down to the <a href="https://www.apple.com/business/docs/iOS_Security_Guide.pdf">keypair baked into your Apple device's CPU</a> at fabrication time, so for now the bridge has to be run on a macOS device in order to bridge.  It's very promising indeed, and exciting to see bridges to relatively inhospitable environments like iMessage popping up!</li>
+ 	<li><a href="https://github.com/Half-Shot/matrix-fb-chat/">https://github.com/Half-Shot/matrix-fb-chat/</a> - A proof-of-concept bridge for Facebook Messenger written by Half-Shot in TypeScript on top of the matrix-js-sdk.  Currently you have to manually configure which conversations to bridge between FB and Matrix, but it works!</li>
+ 	<li><a href="http://github.com/exul/matrix-rocketchat">https://github.com/exul/matrix-rocketchat</a>  - A new Rocket.Chat bridge from exul, written in Rust.</li>
+ 	<li><a href="https://github.com/pztrn/matrix-xmpp-bridge">https://github.com/pztrn/matrix-xmpp-bridge</a> - A major fork from pztrn of jfred's matrix-xmpp-bridge, now using flask, regius, alembic, sleekxmpp and all sorts.  Currently in very active dev!</li>
+ 	<li><a href="https://github.com/CyrusTheHedgehog/Hangouts-Bridge">https://github.com/CyrusTheHedgehog/Hangouts-Bridge</a> - A basic PoC of a Hangouts bridge, written in python3 asyncio</li>
+</ul>
+<h4>Clients</h4>
+<ul>
+ 	<li><a href="https://github.com/lukebarnard1/j">https://github.com/lukebarnard1/j</a> - A blogging and journalism platform built on Matrix from Luke (moonlighting from the core team!)</li>
+ 	<li><a href="https://live.hello-matrix.net/">https://live.hello-matrix.net/</a> - a live-blogging system powered by Matrix from @ar</li>
+ 	<li><a href="https://github.com/pik/interlocutor">https://github.com/pik/interlocutor</a> - An experimental decentralized comment system powered by Matrix, written as a Polymer Webcomponent</li>
+ 	<li><a href="https://github.com/tjgillies/freebird">https://github.com/tjgillies/freebird</a> - a basic twitter clone built on Matrix by tjgillies</li>
+</ul>
+<h4>Other projects</h4>
+<ul>
+ 	<li><a href="https://github.com/slp/matrix-pushgw">https://github.com/slp/matrix-pushgw</a> - A Matrix push gateway written in Golang which exposes a custom TCP push protocol to apps, letting them get push notifications directly from your own gateway rather than via GCM or APNS.  The intention is to use it for Sailfish and Fdroid.  The initial implementation looks very promising - just needs the clientside support, and then folks who don't trust Google with their notifications can run completely indie at last!</li>
+ 	<li><a href="https://github.com/kultsinuppeli/riotchat">https://github.com/kultsinuppeli/riotchat</a> - Ansible playbook for Riot/Web and Synapse</li>
+ 	<li><a href="https://github.com/bismark/matrex">https://github.com/bismark/matrex</a> - Experimental beginnings of a Matrix homeserver written in Elixir!</li>
+ 	<li><a href="https://github.com/mlopezr/node-red-contrib-matrixbot">https://github.com/mlopezr/node-red-contrib-matrixbot</a> - Matrix bot plugin for the <a href="https://nodered.org/">Node-RED</a> IOT platform</li>
+</ul>
+<h3>Bots and Bridges</h3>
+There's been a bunch of work from the core team on bots &amp; bridges infrastructure over the last month:
+<p>Rearchitecting the slack and gitter bridges to optionally support 'puppeting users'.  This is in some ways the ultimate flavour of bridging - where you authenticate with the remote service using your &quot;real&quot; gitter/slack/... credentials, and then the bridge has access to synchronise your full spectrum of data with Matrix.  This is in contrast to the current implementations where the bridge creates virtual users (e.g. Slack webhook bots or IRC virtual user bots) or uses a predefined bot (e.g. matrixbridge on gitter) to link the rooms.</p>
+<p>This has some huge advantages: e.g. ability to bridge Slack and Gitter DMs through properly to Matrix; bridging presence and typing notifications correctly, not requiring any custom bots or integrations to be configured; not proxying via a crappy bridge bot as per gitter today; letting Matrixed users be completely indistinguishable from their native selves on the remote platform - so supporting tab complete in Slack, profiles, presence, etc.  The main disadvantage is that you have to have an account on the platform already (although you could argue this is a feature, especially from the remote network's perspective!) and that you are delegating access to that account through to the bridge, so you'd better trust it.  However, you can always run your own bridge if trust is an issue.</p>
+<p>The work on this is mid-progress currently, but we're really looking forward to seeing the official Slack, Gitter and other bridges support this mode of operation in the new year!</p>
+<p>We've also been spending some time working with bridges written by the wider community (e.g. Half-Shot's <a href="https://github.com/Half-Shot/matrix-appservice-twitter">twitter bridge</a>) to get them deployed on the matrix.org homeserver itself, to help folks who can't run their own.</p>
+<p>Meanwhile there's been a lot of work going into supporting the IRC bridge. Main highlights there are:</p>
+<ul>
+ 	<li>The release of <a href="/blog/2016/12/19/matrix-appservice-irc-0-7-0-is-out/">matrix-appservice-irc 0.7</a>, with all sorts of major new features</li>
+ 	<li>Turning on bi-directional membership list syncing at last for all networks other than Freenode!  In theory, at least, you should finally see the same list of room members in both IRC and Matrix!!</li>
+ 	<li>Handling IRC PM botspam from Freenode and OFTC, which bridge through as invite spam into Matrix.  Sorry if you've been bitten by this.  We've worked around it for now by setting appropriate umodes on the IRC bots, and by implementing a 'bulk reject' button on Riot (under in Settings).  This caused a few nasty outages on Freenode and OFTC. On the plus side, at least it shows that Riot scales up to receiving 2000+ invites without exhibiting ill effects...</li>
+ 	<li>Considering how to improve history visibility on IRC to avoid scenarios where channel history is shared between users in the same room (even if their IRC bot has temporarily disconnected).  This was a major problem during the Freenode/OFTC outages mentioned earlier.</li>
+</ul>
+Last but not least, we've just released <a href="https://github.com/matrix-org/gomatrix">gomatrix - a new official Matrix client SDK for golang</a>!  <a href="https://github.com/matrix-org/go-neb">Go-neb</a> (the reference golang Matrix bot framework) has been entirely refactored to use gomatrix, which should keep it honest as a 1st class Matrix client SDK for those in the Golang community.  We highly recommend all Golang nuts to go <a href="https://godoc.org/github.com/matrix-org/gomatrix">read the documentation</a> and give it a spin!
+<h3>Riot Desktop</h3>
+Riot development has been largely preoccupied with E2E debugging in the respective Matrix Client SDKs, but <a href="https://medium.com/@RiotChat/introducing-riot-0-9-and-desktop-riot-3585d1027243">0.9.3 was released last week adding in Electron-based desktop app support</a>.  (Remember, if you hate Electron-style desktop apps which provide a desktop app by embedded a webbrowser, you can always use another Matrix client!).  If you've been missing having Riot as a proper desktop app, go get involved!
+<img class="aligncenter size-large wp-image-1874" src="/blog/wp-content/uploads/2016/12/Screen-Shot-2016-12-26-at-01.00.12-1024x687.png" alt="screen-shot-2016-12-26-at-01-00-12" width="1024" height="687" />
+<h3>Next Generation Homeservers</h3>
+<h4>Ruma</h4>
+<a href="https://ruma.io">Ruma</a> is a project led by Jimmy Cuadra to build a Matrix homeserver in Rust - the project has been ploughing steadily onwards through 2016 with a bit of an acceleration during December.  You can follow progress at the excellent <a href="https://www.ruma.io/news/">This Week in Ruma</a> blog, <a href="https://github.com/ruma/ruma/pulse/monthly">watching the project on Github</a>, and tracking the <a href="https://github.com/ruma/ruma/blob/master/STATUS.md">API status dashboard</a>.  Some of the latest PRs are looking very promising in terms of getting the core remaining CS APIs working, e.g:
+<ul class="simple-conversation-list varied-states">
+ 	<li><span class="num">Merged #113</span>
+ <a class="title" href="https://github.com/ruma/ruma/pull/113">Add implementation for the filter endpoint.</a> 4 days ago</li>
+ 	<li><span class="state state-merged">Merged</span>
+<span class="num">#125</span>
+ <a class="title" href="https://github.com/ruma/ruma/pull/125">Adding a Server header to API responses</a> 5 days ago</li>
+ 	<li><span class="state state-merged">Merged</span>
+<span class="num">#105</span>
+ <a class="title" href="https://github.com/ruma/ruma/pull/105">Add basic implementation for the tags endpoint.</a> 5 days ago</li>
+ 	<li><span class="num">Open #106</span>
+ <a class="title" href="https://github.com/ruma/ruma/pull/106">Add basic implementation for the sync endpoint.</a> 2 days ago</li>
+ 	<li><span class="state state-open">Open</span>
+<span class="num">#58</span>
+ <a class="title" href="https://github.com/ruma/ruma/issues/58">API: GET /events</a> 20 days ago</li>
+</ul>
+Needless to say, we've been keeping an eye on Ruma with extreme interest, not least as some of the Matrix core team are rabid Rustaceans too :)  We can't wait to see it exposing a usable CS API in the hopefully not-too-distant future!!
+<h4>Dendrite</h4>
+Meanwhile, in the core team, we've been doing some fairly serious experimentation on next-generation homeservers.  Synapse is in a relatively stable state currently, and we've implemented most of the horizontal scalability tricks available to us there (e.g. splitting out <a href="https://github.com/matrix-org/synapse/blob/master/docs/workers.rst">worker processes</a>).  Instead we're starting to hit some fundamental limitations of the architecture: the fact that the whole codebase effectively assumes that it's talking to a single consistent database instance; python's single-threadedness and memory inefficiency; twisted's lack of profiling; being limited to sqlite's featureset; the fact that the schema has grown organically and is difficulty to refactor aggressively; the fact the app papers over SQL problems by caching everything in RAM (resulting in synapse's high RAM requirements); the constant bugs caused by lack of type safety; etc.
+<p>We started an experiment in Golang to fix some of this a year ago in the form of <a href="https://github.com/matrix-org/dendron">Dendron</a> - a &quot;<a href="http://www.martinfowler.com/bliki/StranglerApplication.html">strangler pattern</a>&quot; homeserver skeleton intended to sit in front of a synapse and slowly port endpoints over to Go.  In practice, Dendron ended up just being a rather dubious Matrix-aware loadbalancer, and meanwhile no endpoints got moved into it (other than /login, which then got moved out again due to the extreme confusion of having to maintain implementations in both Dendron &amp; Synapse).  The main reasons for Dendron's failure are a) we had enough on our hands supporting Synapse; b) there were easier scalability improvements (e.g. workers) to be had on Synapse; c) the gradual migration approach looked like it would end up sharing the same storage backend as Synapse anyway, and potentially end up inheriting a bunch of Synapse's woes.</p>
+<p>So instead, a month or so ago we started a new project codenamed Dendrite (aka Dendron done right ;D) - this time an entirely fresh standalone Golang codebase for rapid development and iteration on the platonic ideal of a next-generation homeserver (and an excuse to audit and better document &amp; spec some of the <a href="https://docs.google.com/document/d/14KVTNIZIig1iyRBzK91L6B7tnsfmon7CIWh-DCFRd6k/edit">murkier</a> bits of Matrix).  The project is still very early and there's no doc or code to be seen yet, but it's looking cautiously optimistic (especially relative to Dendron!).  The project goals are broadly:</p>
+<ol>
+ 	<li>To build a new HS capable of supporting the exponentially increasing load on matrix.org ASAP (which is currently at 600K accounts, 50K rooms, 5 messages/s and growing fast).</li>
+ 	<li>To architecturally support full horizontal scalability through clustering and sharding from the outset - i.e. no single DBs or DB writer processes.</li>
+ 	<li>To optimise for Postgres rather than be constrained by SQLite, whilst still aiming for a simple but optimal schema and storage layer.  Optimising for smaller resource footprints (e.g. environments where a Postgres is overkill) will happen later - but the good news is that the architecture will support it (unlike Synapse, which doesn't scale down nicely even with SQLite).</li>
+</ol>
+It's too early to share more at this stage, but thought we should give some visibility on where things are headed!  Needless to say, Synapse is here for the foreseeable - we think of it as being the Matrix equivalent of the role Apache httpd played for the Web.  It's not enormously efficient, but it's popular and relatively mature, and isn't going away.  Meanwhile, new generations of servers like Ruma and Dendrite will come along for those seeking a sleeker but more experimental beast, much as nginx and lighttpd etc have come along as alternatives to Apache.  Time will tell how the server ecosystem will evolve in the longer term, but it's obviously critical to the success of Matrix to have multiple active independent server implementations, and we look forward to seeing how Synapse, Ruma &amp; Dendrite progress!
+<h3>2017</h3>
+Looking back at where we were at <a href="/blog/2015/12/25/the-matrix-holiday-special/">this time last year</a>, 2016 has been a critical year for Matrix as the ecosystem has matured - rolling out E2E encryption; building out proper bot &amp; bridge infrastructure; stabilising and tuning Synapse to keep up with the exponential traffic growth; seeing the explosion of contributors and new projects; seeing Riot edging closer to becoming a viable mainstream communication app.
+<p>2017 is going to be all about scaling Matrix - both the network, the ecosystem, and the project.  Whilst we've hopefully transitioned from being a niche decentralisation initiative to a relatively mainstream FOSS project, our ambition is unashamedly to become a mainstream communication (meta)network usable for the widest possible audience (whilst obviously still supporting our current community of FOSS &amp; privacy advocates!).  With this in mind, stuff on the menu for 2017 includes:</p>
+<ul>
+ 	<li>Getting E2E Encryption out of beta asap.</li>
+ 	<li>Ensuring we can scale beyond Synapse - see Dendrite, above.</li>
+ 	<li>Getting as many bots and bridges into Matrix as possible, and doing everything we can to support them, host them and help them be as high quality as possible - making the public federated Matrix network as useful and diverse as possible.</li>
+ 	<li>Supporting Riot's leap to the mainstream, ensuring Matrix has at least one killer app.</li>
+ 	<li>Adding the final major missing features:
+<ul>
+ 	<li>Customisable User Profiles (this is almost done, actually)</li>
+ 	<li>Groups (i.e. ability to define groups of users, and perform invites, powerlevels etc per-group as well as per-user)</li>
+ 	<li>Threading</li>
+ 	<li>Editable events (and Reactions)</li>
+</ul>
+</li>
+ 	<li>Maturing and polishing the spec (we are way overdue a new release)</li>
+ 	<li>Improving VoIP - especially conferencing.</li>
+ 	<li>Reputation/Moderation management (i.e. spam/abuse filtering).</li>
+ 	<li>Much-needed SDK performance work on matrix-{'{'}react,ios,android{'}'}-sdk.</li>
+ 	<li>...and a few other things which would be premature to mention right now :D</li>
+</ul>
+This is going to be an incredibly exciting ride (right now, it feels a bit like being on a toboggan which has made its way onto a fairly steep ski slope...) and we can only thank you: the community, for getting the project to this point - whether you're hacking on Matrix, contributing pull requests, filing issues, testing apps, spreading the word, or just simply using it.
+<p>See you in 2017, and thanks again for flying Matrix.</p>
+<ul>
+<li>Matthew, Amandine &amp; the Matrix Team.</li>
+</ul>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2016&#x2F;12&#x2F;19&#x2F;matrix-appservice-irc-0-7-0-is-out&#x2F;" title="matrix-appservice-irc 0.7.0 is out!">matrix-appservice-irc 0.7.0 is out!</a></h2>
+                <span>
+                    19.12.2016 00:00
                     —
                     <a href="/category/tech">
                         Tech
@@ -760,163 +705,21 @@ Changes in synapse v0.9.3 (2015-07-01)
             </header>
             <div>
                 
-                <p>We've been running an IRC gateway from Matrix to Freenode almost since day 1 - originally it was a <a href="/blog/project/perl-matrix-ircbridge/">simple perl bot</a> written by tm604 using Net::Async::Matrix; later it was rewritten by LeoNerd to be a bit more modular, and nowadays it's a full <a href="https://github.com/matrix-org/matrix-appservice-irc">IRC/Matrix Application Service</a> written in Node.js by Kegan.</p>
-<p>Up until the end of last week the bridge was limited to synchronising a fixed number of channels between Freenode and Matrix (#matrix, #matrix-dev, #openwebrtc, #vuc and #hypothes.is, to be precise), as well as any PMs.  But as of Friday, with huge thanks to the admins over at Freenode, we can now bridge <em>any</em> channel in Freenode through to Matrix.</p>
-<p>Doing this is trivial - you just <code>/join #freenode_#channelname:matrix.org</code> from a typical Matrix client - e.g. <code>/join #freenode_#Node.js:matrix.org</code> will give you access to all of #Node.js via Matrix, effectively using Matrix as a great big distributed IRC bouncer in the sky ;)</p>
-<p>There are a few limitations in the current setup:</p>
+                <p>Also, we've just released a major update to the IRC bridge codebase after trialling it on the matrix.org-hosted bridges for the last few days.</p>
+<p>The big news is:</p>
 <ul>
-<li>We only incrementally synchronise the membership lists when folks speak in either IRC or Matrix.  This is to avoid flooding either IRC or Matrix with lurkers when the bridge initially joins a channel.  We have some plans to improve this in future - see <a href="/jira/browse/BOTS-53">BOTS-53</a> for some of the sordid details.</li>
-<li>We don't synchronise joins/parts currently to avoid flooding Matrix with lots of IRC join/part spam.  Again, this will improve in future.</li>
-<li>You can't join +k channels.</li>
-<li>Kicks/bans/invites and other ACLs currently don't propagate between IRC &amp; Matrix.  (I.e. a Matrix user can be kicked from IRC, but it'll continue to sit in Matrix unless also kicked for there).  +i chanmode supported however.</li>
-<li>Bridged public IRC rooms are not yet advertised in the public room list on matrix.org.</li>
-<li>It should be possible to change the nickname of your IRC user by messaging <code>!nick irc.freenode.net MrFlibble</code> to @appservice-irc:matrix.org.  (This isn't actually turned on right now, but should be fixed shortly.  See <a href="https://github.com/matrix-org/matrix-appservice-irc/blob/master/HOWTO.md#changing-nicks">https://github.com/matrix-org/matrix-appservice-irc/blob/master/HOWTO.md#changing-nicks</a> for details.</li>
+ 	<li>The bridge uses Synapse 0.18.5's new APIs for managing the public room list (improving performance a bunch)</li>
+ 	<li>Much faster startup using the new /joined_rooms and /joined_members APIs in Synapse 0.18.5</li>
+ 	<li>The bridge will now remember your NickServ password (encrypted at rest) if you want it to via the <code>!storepass</code> command</li>
+ 	<li>You can now set arbitrary user modes for IRC clients on connection (to mitigate PM spam etc)</li>
+ 	<li>After a split, the bridge will drop Matrix-&gt;IRC messages older than N seconds, rather than try to catch the IRC room up on everything they missed on Matrix :S</li>
+ 	<li>Operational metrics are now implemented using Prometheus rather than statsd</li>
+ 	<li>New <code>!quit</code> command to nuke your user from the remote IRC network</li>
+ 	<li>Membership list syncing for IRC-&gt;Matrix is enormously improved, and enabled for all matrix.org-hosted bridges apart from Freenode.  &lt;b&gt;At last, membership lists should be in sync between IRC and Matrix; please let us know if they're not&lt;/b&gt;.</li>
+ 	<li>Better error logging</li>
 </ul>
-<p>We'll keep chipping away at making the IRC&lt;-&gt;Matrix mapping perfect, but in its current state it's still really usable.  It's obviously beta still, but please give it a go and let us know in #matrix:matrix.org how you get on with it!</p>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2015&#x2F;06&#x2F;12&#x2F;introducing-all-new-matrix-js-sdk-v0-1-0&#x2F;" title="Introducing all new matrix-js-sdk v0.1.0">Introducing all new matrix-js-sdk v0.1.0</a></h2>
-                <span>
-                    12.06.2015 00:00
-                    —
-                    <a href="/category/tech">
-                        Tech
-                    </a>
-                    —
-                    <a
-                        href="/author/matthew-hodgson">
-                        Matthew Hodgson
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Hi all,</p>
-<p>If things seem a bit quiet here at the moment it's because most of the Matrix team is in the 'build' phase across the board on a bunch of major new projects - including the long-awaited reusable UI component library for the Web, end-to-end encryption support, stable VoIP on mobile and a few other surprises.  The first wave of all this new work landed today in the form of a new major version release (0.1.0) of <a href="https://github.com/matrix-org/matrix-js-sdk">matrix-js-sdk</a>: our javascript SDK library.</p>
-<p>The history of JS client support on Matrix is that in the original rush to get a PoC webclient out the door back in September, we jumped straight to talking to the Matrix HTTP API from Angular controllers in 'syweb'.  This then got split into an Angular SDK (<a href="https://github.com/matrix-org/matrix-angular-sdk">matrix-angular-sdk</a>) containing a bunch of services for handling the Matrix client state with the actual webapp sitting alongside as an example of the SDK.  This then in turn got split into a basic matrix-js-sdk (wrapping the Matrix client-server HTTP API) and matrix-angular-sdk (handling the clientside state and exposing it as Angular services) - and this is how the current demo Angular webapp works at <a href="http://matrix.org/beta">http://matrix.org/beta</a>.</p>
-<p>However, this poses a major problem if you want a richer client SDK but don't want to use Angular - e.g. if you prefer another framework (or no framework at all), or are using the SDK in an Application Service or similar.  So, this has prompted a major upgrade to the matrix-js-sdk in order to extend it to act both as a simple wrapper of the Matrix Client-Server HTTP API, but also expose a full object and event model to describe the state of a Matrix client together with all the higher level functions to drive it.  To quote from the <a href="https://github.com/matrix-org/matrix-js-sdk/blob/master/README.md">README</a>:</p>
-<blockquote>
-This SDK provides a full object model around the Matrix Client-Server API and emits events for incoming data and state changes. Aside from wrapping the HTTP API, it:
-<ul>
-<li>Handles syncing (via /initialSync and /events)</li>
-<li>Handles the generation of "friendly" room and member names.</li>
-<li>Handles historical RoomMember information (e.g. display names).</li>
-<li>Manages room member state across multiple events (e.g. it handles typing, power levels and membership changes).</li>
-<li>Exposes high-level objects like Rooms, RoomState, RoomMembers and Users which can be listened to for things like name changes, new messages, membership changes, presence changes, and more.</li>
-</ul>
-<p>Later versions of the SDK will:</p>
-<ul>
-<li>Automatically retry requests to send messages due to network errors.</li>
-<li>Automatically retry requests to send messages due to rate limiting errors.</li>
-<li>Mark events' sent status (e.g. 'not sent').</li>
-<li>Handle "local echo" of messages sent.</li>
-<li>Handle queueing of messages.</li>
-<li>Handle pagination.</li>
-<li>Expose a RoomSummary which would be suitable for a recents page.</li>
-<li>Provide different pluggable storage layers (e.g. local storage, database-backed)</li>
-</ul>
-</blockquote>
-<p>It also is designed to provide an API that abstracts both version 1 of the client-server API and the upcoming version 2 (which fixes various thinkos we've discovered along the way in v1).</p>
-<p>This is incredibly exciting stuff as it now gives a really robust yet lightweight API for client-side and application-service development in JavaScript.  Predictably enough we're using it to develop our new reusable web UI components, and I suspect we'll see new Node-based application services making use of in the near future.  Meanwhile, it's more than topical as it should run straight on top of the <a href="http://tessel.io">Tessel</a> JavaScript hardware modules we're giving away this weekend as our prize for the best hack built on Matrix at <a href="/blog/2015/06/05/global-tadhack-hackathon/">TADHack</a> - letting the little Tessel ARM system-on-a-chip speak a very rich and native Matrix dialect!</p>
-<p>The new matrix-js-sdk comes with comprehensive jsdoc detailing the new API which you can find at <a href="http://matrix-org.github.io/matrix-js-sdk/global.html">http://matrix-org.github.io/matrix-js-sdk/global.html</a>.  There are also some <a href="https://github.com/matrix-org/matrix-js-sdk/tree/master/examples">basic examples</a> available, including a new simple node-powered command-line client designed for testing the SDK.  Finally, if you're interested in reading the design process by which we've converged on the current API, all the details may be found in JIRA on <a href="/jira/browse/SYJS-5">SYJS-5</a>.</p>
-<p>So: if you've been itching to get your hands on a much more powerful pure-JS Matrix SDK, now's your chance!  It's very early days for the new API so we expect to see a few incompatible changes on the horizon, but we encourage you to have a play and <a href="http://matrix.org/beta/#/room/#matrix:matrix.org">tell us what you think!</a>.</p>
-<p>To find out more, go check out the project at <a href="http://github.com/matrix-org/matrix-js-sdk">http://github.com/matrix-org/matrix-js-sdk</a>, or if you're feeling daring just grab the library with <code>npm install matrix-js-sdk</code> and get hacking!</p>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2015&#x2F;06&#x2F;01&#x2F;synapse-0-9-1-released&#x2F;" title="Synapse 0.9.1 released">Synapse 0.9.1 released</a></h2>
-                <span>
-                    01.06.2015 00:00
-                    —
-                    <a href="/category/tech">
-                        Tech
-                    </a>
-                    —
-                    <a
-                        href="/author/matthew-hodgson">
-                        Matthew Hodgson
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>In the excitement of KamailioWorld last week we completely forgot to mention that we released Synapse 0.9.1.</p>
-<p>This is a pretty important performance and stability update of all the new stuff that landed in 0.9.0, as well as landing a major new feature in the form of 'backfill': we finally have the ability to correctly sync in historical conversation history over federation for newly federated rooms.  In other words, if you join a remote room you should be able to navigate its history as intended.</p>
-<p>We highly recommend upgrading to 0.9.1 for all the performance improvements and backfill support - get it now from <a href="http://github.com/matrix-org/synapse">http://github.com/matrix-org/synapse</a>.</p>
-<code>
-Changes in synapse v0.9.1 (2015-05-26)
-======================================
-<p>General:</p>
-<ul>
-<li>Add support for backfilling when a client paginates. This allows servers to
-request history for a room from remote servers when a client tries to
-paginate history the server does not have - SYN-36</li>
-<li>Fix bug where you couldn't disable non-default pushrules - SYN-378</li>
-<li>Fix <code>register_new_user</code> script - SYN-359</li>
-<li>Improve performance of fetching events from the database, this improves both
-initialSync and sending of events.</li>
-<li>Improve performance of event streams, allowing synapse to handle more
-simultaneous connected clients.</li>
-</ul>
-<p>Federation:</p>
-<ul>
-<li>Fix bug with existing backfill implementation where it returned the wrong
-selection of events in some circumstances.</li>
-<li>Improve performance of joining remote rooms.</li>
-</ul>
-<p>Configuration:</p>
-<ul>
-<li>Add support for changing the bind host of the metrics listener via the <code>metrics_bind_host</code> option.</li>
-</ul>
-</code>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2015&#x2F;05&#x2F;18&#x2F;matrix-wins-best-of-show-at-webrtc-world&#x2F;" title="Matrix wins Best of Show at WebRTC World!">Matrix wins Best of Show at WebRTC World!</a></h2>
-                <span>
-                    18.05.2015 00:00
-                    —
-                    <a href="/category/in-the-news">
-                        In the News
-                    </a>
-                    —
-                    <a
-                        href="/author/matthew-hodgson">
-                        Matthew Hodgson
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p><a href="http://www.webrtcworld.com/topics/newsfeed/articles/403642-webrtc-conference-expo-announces-demo-winners.htm"><img src="/blog/wp-content/uploads/2015/05/WebRTC-Best-in-ShowLogo-Only.jpg" alt="WebRTC Best in Show" width="282" height="214" class="alignright size-full wp-image-1022" /></a></p>
-<p>Amandine and I just got back from WebRTC World 2015 in Miami - the conference was a great success: a fantastic opportunity to meet up with many of the companies who are supporting Matrix and give everyone an update on what Matrix is up to with our Keynote: <a href="/blog/wp-content/uploads/2015/05/2015-05-13.2-Matrix-Keynote.pdf">Defragmenting the Internet for fun and non-profit!</a>.</p>
-<p>We also had a little too much fun in the demo shoot-out - hooking up a <a href="http://www.parrot.com/uk/products/bebop-drone/">Parrot Bebop quadrocopter</a> into Matrix using a Matrix-enabled <a href="https://janus.conf.meetecho.com/">Janus WebRTC Gateway</a>.  The problem here is that the Parrot firmware and C SDK provides H.264 video, but doesn't package it up at all for use with WebRTC - let alone using interoperable signalling like Matrix.  So this is a classic use of Matrix to expose a simple open consistent interface to a system which is otherwise is stuck with a proprietary non-web-friendly API.  The code hasn't been tidied up yet, but our hacked Matrixified fork of Janus is up at <a href="https://github.com/matrix-org/janus-gateway/tree/ardrone3">https://github.com/matrix-org/janus-gateway/tree/ardrone3</a> if anyone has a drone and is crazy enough to want to experiment with it :)</p>
-<p>Meanwhile, we also showed <a href="http://openwebrtc.io">OpenWebRTC</a>-powered VoIP on the latest develop iOS Matrix Console app talking hardware-accelerated H.264 through to Firefox on the desktop.  My ancient 2010 MacBook Pro did its best to sabotage the demo (turns out that 1080P AirPlay + Firefox WebRTC is a bridge too far), but it gave a good idea of what's to come.  Many thanks to the OpenWebRTC team for lots of help in getting the demo together in time!</p>
-<p>It turns out that all the demo excitement was worth it in the end, as the jury seemed to like what Matrix is up to and was kind enough to award us more points than any of the other 13 demos... meaning that <b>we won <a href="https://twitter.com/webrtcexpo/status/598901296100462592">Best In Show!!</a></b>.  Huge thanks to the judges for believing in the Matrix vision, and congratulations to all the other demoists too :)</p>
-<p><a href="http://matrix.org/blog/wp-content/uploads/2015/05/prize-e1431964418791.jpg"><img src="/blog/wp-content/uploads/2015/05/prize-e1431964418791-300x225.jpg" alt="Best in Show at WebRTC World!" width="300" height="225" class="aligncenter size-medium wp-image-1017" /></a></p>
-<p>Meanwhile, the slides from the demo presentation can be found here: <a href="/blog/wp-content/uploads/2015/05/2015-05-12-Matrix-Demo-Miami.pdf">Building bridges between islands of communication</a>, and you can see the full video of our Demo here:</p>
-<iframe width="560" height="315" src="https://www.youtube.com/embed/OMzDklvDS3c" frameBorder="0" allowFullScreen></iframe>
-<p>...and the actual video stream that the drone transmitted before I crashed it (recorded on Janus) is at...</p>
-<iframe width="420" height="315" src="https://www.youtube.com/embed/NpBStIIq6fM" frameBorder="0" allowFullScreen></iframe>
-<p>Finally, our grand finale was meant to be combining the two demos, and showing OpenWebRTC decoding the H.264 from the Drone in hardware on an iPhone - using Matrix of course to set up the call and control the drone.  Alas a TURN-related bug got in the way of this working, but we just fixed it up in the office this morning, and I'm proud to show the first ever Parrot Bebop -&gt; Janus -&gt; Matrix -&gt; OpenWebRTC video stream!! (and very exciting it is too...)</p>
-<iframe width="420" height="315" src="https://www.youtube.com/embed/KsJOqLcpzNM" frameBorder="0" allowFullScreen></iframe>
-<p>Huge thanks again to Dave for doing the Matrix integration with Janus, Stefan and Rob from OpenWebRTC for all the help on the OWR side, and Manu &amp; Giom for porting the OpenWebRTC pull request to MatrixKit and landing it in iOS Console Develop for the demo!</p>
+For full details, please see <a href="https://github.com/matrix-org/matrix-appservice-irc/blob/master/CHANGELOG.md">the changelog</a>.
+<p>With things like NickServ-pass storing, !quit support and full bi-directional membership list syncing, it's never been a better time to run your own IRC bridge.  Please install or upgrade today from <a href="https://github.com/matrix-org/matrix-appservice-irc">https://github.com/matrix-org/matrix-appservice-irc</a>!</p>
 
                 
             </div>
@@ -928,7 +731,7 @@ selection of events in some circumstances.</li>
         <a href="&#x2F;author&#x2F;matthew-hodgson&#x2F;page&#x2F;6&#x2F;">‹ Previous</a>
         
     </div>
-    <span class="page-number">7 / 10</span>
+    <span class="page-number">7 / 12</span>
     <div class="prev">
         
         <a href="&#x2F;author&#x2F;matthew-hodgson&#x2F;page&#x2F;8&#x2F;">Next ›</a>

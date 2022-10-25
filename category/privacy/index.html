@@ -117,7 +117,7 @@
     <div class="content">
         <header>
             <h1>Privacy</h1>
-            3 posts tagged with "Privacy" <a href="/category">(See all Category)</a>
+            8 posts tagged with "Privacy" <a href="/category">(See all Category)</a>
             
             <h2>
                 <small><a href="/category/privacy/atom.xml">Atom Feed</a></small>
@@ -125,6 +125,891 @@
             
         </header>
 
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2019&#x2F;11&#x2F;09&#x2F;avoiding-unwelcome-visitors-on-private-matrix-servers&#x2F;" title="Avoiding unwelcome visitors on private Matrix servers">Avoiding unwelcome visitors on private Matrix servers</a></h2>
+                <span>
+                    09.11.2019 00:00
+                    —
+                    <a href="/category/privacy">
+                        Privacy
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Hi all,</p>
+<p>Over the course of today we've been made aware of folks port-scanning the
+general internet to discover private Matrix servers, looking for publicly
+visible room directories, and then trying to join rooms listed in them.</p>
+<p>If you are running a Matrix server that is intended to be private, you must correctly
+configure your server to not expose its public room list to the general public -
+and also ensure that any sensitive rooms are invite-only (especially if the
+server is federated with the public Matrix network).</p>
+<p>In Synapse, this means ensuring that the following options are set correctly in
+your <code>homeserver.yaml</code>:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span># If set to &#39;false&#39;, requires authentication to access the server&#39;s public rooms
+</span><span># directory through the client API. Defaults to &#39;true&#39;.
+</span><span>#
+</span><span>#allow_public_rooms_without_auth: false
+</span><span>
+</span><span># If set to &#39;false&#39;, forbids any other homeserver to fetch the server&#39;s public
+</span><span># rooms directory via federation. Defaults to &#39;true&#39;.
+</span><span>#
+</span><span>#allow_public_rooms_over_federation: false
+</span></code></pre>
+<p><strong>For private servers, you will almost certainly want to explicitly set these to
+<code>false</code></strong>, meaning that the server's &quot;public&quot; room directory is hidden from the
+general internet and wider Matrix network.</p>
+<p>You can test whether your room directory is visible to arbitrary Matrix clients
+on the general internet by viewing a URL like
+https://sandbox.modular.im/_matrix/client/r0/publicRooms (but for your server). 
+If it gives a &quot;Missing access token&quot; error, you are okay.</p>
+<p>You can test whether your room directory is visible to arbitrary Matrix servers
+on the general internet by loading Riot (or similar) on another server, and
+entering the target server's domain name into the room directory's server
+selection box.  If you can't see any rooms, then are okay.</p>
+<p>Relatedly, <strong>please ensure that any sensitive rooms are set to be &quot;invite only&quot;
+and room history is not world visible</strong> - particularly if your server is
+federated, or if it has public registration enabled.  This stops random
+members of the public peeking into them (let alone joining them).</p>
+<p>Relying on security-by-obscurity is a very bad idea: all it takes is for someone
+to scan the whole internet for Matrix servers, and then trying to join (say)
+#finance on each discovered domain (either by signing up on that
+server or by trying to join over federation) to cause problems.</p>
+<p>Finally, if you don't want the general public reading your room directory,
+please also remember to turn off public registration on your homeserver.
+Otherwise even with the changes above, if randoms can sign up on your server
+to view &amp; join rooms then all bets are off.</p>
+<p>We'll be rethinking the security model of room directories in future (e.g.
+whether to default them to being only visible to registered users on the local
+server, or whether to replace per-server directories with per-community
+directories with finer grained access control, etc) - but until this is sorted,
+please heed this advice.</p>
+<p>If you have concerns about randoms having managed to discover or join rooms
+which should have been private, please contact security@matrix.org.</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2019&#x2F;09&#x2F;27&#x2F;privacy-improvements-in-synapse-1-4-and-riot-1-4&#x2F;" title="Privacy improvements in Synapse 1.4 and Riot 1.4">Privacy improvements in Synapse 1.4 and Riot 1.4</a></h2>
+                <span>
+                    27.09.2019 00:00
+                    —
+                    <a href="/category/privacy">
+                        Privacy
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Hi all,</p>
+<p>Back in June we wrote about our <a href="https://matrix.org/blog/2019/06/30/tightening-up-privacy-in-matrix">plans to tighten up data
+privacy</a>
+in Matrix after some areas for improvement were brought to our attention.  To
+quickly recap: the primary concern was that the default config for Riot
+specifies identity servers and integration managers run by New Vector (the
+company which the original Matrix team set up to build Riot and fund Matrix
+dev) - and so folks using a standalone homeserver may end up using external
+services without realising it.  There were some other legitimate issues raised
+too (e.g. contact information should be obfuscated when checking if your
+contacts are on Matrix; Riot defaulted to using Google for STUN (firewall
+detection) if no TURN server had been set up on their server; Synapse defaults
+to using matrix.org as a key notary server).</p>
+<p>We’ve been working away at this fairly solidly over the last few months.  Some
+of the simpler items shipped quickly (e.g. Riot/Web had a <a href="https://github.com/matrix-org/matrix-react-sdk/pull/3115">stupid
+bug</a> where it kept
+incorrectly loading the integration manager; Riot/Android <a href="https://news.ycombinator.com/item?id=20181515">wasn’t clear
+enough</a> about when contact
+discovery was happening; Riot/Web <a href="https://github.com/vector-im/riot-web/issues/10216">wasn’t clear
+enough</a> about the fact
+device names are publicly visible; etc) - but other bits have turned out to be
+incredibly time-consuming to get right.</p>
+<p>However, we’re in the process today of releasing Synapse 1.4.0 and Riot/Web
+1.4.0 (it’s coincidence the version numbers have lined up!) which resolve the
+majority of the remaining issues.  The main changes are as follows:</p>
+<ol>
+<li>
+<p><strong>Riot no longer automatically uses identity servers by default</strong>.
+Identity servers are only useful when inviting users by email address, or when
+discovering whether your contacts are on Matrix.  Therefore, we now wait until
+the user tries to perform one of these operations before explaining that they
+need an identity server to do so, and we prompt them to select one if they
+want to proceed. This makes it abundantly clear that the user is connecting to
+an independent service, and why.</p>
+</li>
+<li>
+<p><strong>Integration Managers and identity servers now have the ability to force
+users to accept terms of use before using them</strong>.  This means they can
+explicitly spell out the data privacy &amp; usage policy of the server as required
+by GDPR, and it should now be impossible for a user to use these services
+without realising it.  This was particularly fun in the case of identity
+servers, which previously had no concept of users and so couldn’t track
+whether users had agreed to their terms &amp; conditions or not… and because
+homeservers sometimes talk to the identity server on behalf of users rather
+than the user talking direct, the privacy policy flow gets even hairier.  But
+it’s solved now, and a nice side-effect of this is that users can now
+explicitly select their Integration Manager in Riot, in case they want to use
+<a href="https://dimension.t2bot.io">Dimension</a> or similar rather than the default
+provided by <a href="https://modular.im">Modular</a>.</p>
+</li>
+<li>
+<p><strong>Synapse no longer uses identity servers for verifying registrations or
+verifying password reset.</strong> Originally, Synapse made use of the fact that the
+Identity Service contains email/msisdn verification logic to handle identity
+verification in general on behalf of the homeserver. However, in retrospect
+this was a mistake: why should the entity running your identity server have
+the right to verify password resets or registration details on your
+homeserver?  So, we have moved this logic into Synapse.  <strong>This means Synapse
+1.4.0 requires new configuration for email/msisdn verification to work -
+please see the upgrade notes for full details.</strong></p>
+</li>
+<li>
+<p><strong>Sydent now supports discovering contacts based on hashed identifiers.</strong>
+<a href="https://github.com/matrix-org/matrix-doc/blob/hs/hash-identity/proposals/2134-identity-hash-lookup.md">MSC2134</a>
+specifies entirely new IS APIs for discovering contacts using a hash of their
+identifier rather than directly exposing the raw identifiers being searched
+for.  This is implemented in
+<a href="https://github.com/vector-im/riot-ios/issues/2652">Riot/iOS</a> and
+<a href="https://github.com/vector-im/riot-android/issues/3257">Riot/Android</a> and
+should be in the next major release;
+<a href="https://github.com/vector-im/riot-web/issues/10556">Riot/Web</a> 1.4.0 has it
+already.</p>
+</li>
+<li>
+<p>Synapse now <a href="https://github.com/matrix-org/synapse/pull/6090/files">warns in its
+logs</a> if you are using
+matrix.org as a default trusted key server, in case you wish to use a
+different server to help discover other servers’ keys.</p>
+</li>
+<li>
+<p>Synapse now <a href="https://github.com/matrix-org/synapse/issues/1287">garbage collects redacted
+messages</a> after N days (7
+days by default).  (It doesn’t yet garbage collect attachments referenced from
+redacted messages; we’re still working on that).</p>
+</li>
+<li>
+<p>Synapse now <a href="https://github.com/matrix-org/synapse/pull/6098/files">deletes account access
+data</a> (IP addresses and
+User Agent) after N days (28 days by default) of a device being deleted.</p>
+</li>
+<li>
+<p>Riot warns before falling back to using STUN (and defaults to
+turn.matrix.org rather than stun.google.com) for firewall discovery (STUN)
+when placing VoIP calls, and makes it clear that this is an emergency fallback
+for misconfigured servers which are missing TURN support.  (We originally
+deleted the fallback entirely, but this broke things for too many people, so
+we’ve kept it but warn instead).</p>
+</li>
+</ol>
+<p>All of this is implemented in Riot/Web 1.4.0 and Synapse 1.4.0.  Riot/Web
+1.4.0 shipped today (Fri Sept 27th) and we have a release candidate
+for Synapse 1.4 (1.4.0rc1) today which fully ship on Monday.</p>
+<p>For full details please go check out the <a href="https://medium.com/@RiotChat/new-privacy-controls-for-riot-dc3661888563">Riot 1.4.0</a>
+and <a href="https://matrix.org/blog/2019/10/03/synapse-1-4-0-released">Synapse 1.4.0</a> blog posts.</p>
+<p>Riot/Mobile is following fast behind - most of the above has been implemented
+and everything should land in the next release.  RiotX/Android doesn’t really
+have any changes to make given it hadn’t yet implemented Identity Service or
+Integration Manager APIs.</p>
+<p>This has involved a surprisingly large amount of spec work; no fewer than 9
+new Matrix Spec Changes (MSC) have been required as part of the project.  In
+particular, this results in a massive update to the Identity Service API,
+which will be released very shortly with the new MSCs.  You can see the
+upcoming changes on the <a href="https://matrix.org/docs/spec/identity_service/unstable">unstable
+branch</a> and compare
+with the <a href="https://matrix.org/docs/spec/identity_service/r0.2.1">previous 0.2.1 stable
+release</a>, as well as
+checking the detailed MSCs as follows:</p>
+<ul>
+<li><a href="https://github.com/matrix-org/matrix-doc/pull/1961">MSC1961: Integration manager authentication APIs</a></li>
+<li><a href="https://github.com/matrix-org/matrix-doc/pull/2078">MSC2078: Sending Third-Party Request Tokens via the Homeserver</a></li>
+<li><a href="https://github.com/matrix-org/matrix-doc/pull/2134">MSC2134: Identity Hash Lookups</a></li>
+<li><a href="https://github.com/matrix-org/matrix-doc/pull/2140">MSC2140: Terms of Service for ISes and IMs</a></li>
+<li><a href="https://github.com/matrix-org/matrix-doc/pull/2229">MSC2229: Allowing 3PID Owners to Rebind</a></li>
+<li><a href="https://github.com/matrix-org/matrix-doc/pull/2230">MSC2230: Store Identity Server in Account Data</a></li>
+<li><a href="https://github.com/matrix-org/matrix-doc/pull/2263">MSC2263: Give homeservers the ability to handle their own 3PID registrations/password resets</a></li>
+<li><a href="https://github.com/matrix-org/matrix-doc/pull/2264">MSC2264: Add an unstable feature flag to MSC2140 for clients to detect support</a></li>
+<li><a href="https://github.com/matrix-org/matrix-doc/pull/2290">MSC2290: Separate Endpoints for Threepid Binding</a></li>
+</ul>
+<p>This said, there is still some work remaining for us to do here.  The main
+things which haven’t made it into this release are:</p>
+<ul>
+<li>Preferring to get server keys from the source server rather than the notary server by default (<a href="https://github.com/matrix-org/synapse/pull/6110">https://github.com/matrix-org/synapse/pull/6110</a>). This almost made it in, but we need to test it more first - until then, your specified notary server will see roughly what servers your servers are trying to talk to.  In future this will be mitigated properly by <a href="https://github.com/matrix-org/matrix-doc/issues/1228">MSC1228 (removing mxids from events)</a>.</li>
+<li>Configurable data retention periods for rooms.  We are tantalisingly close with this - <a href="https://github.com/matrix-org/synapse/pull/5815">https://github.com/matrix-org/synapse/pull/5815</a> is an implementation that the French Govt deployment is using; we need to port it into mainline Synapse.</li>
+<li>Authenticating access to the media repository - for now, we still rely on media IDs being almost impossible to guess to protect the data rather than authenticating the user.</li>
+<li>Deleting items from the media repository - we still need to hook up deletion APIs.</li>
+<li>Garbage collecting forgotten rooms.  If everyone leaves &amp; forgets a room, we should delete it from the DB.</li>
+<li><a href="https://github.com/matrix-org/matrix-doc/issues/1280">Communicating erasure requests over federation </a></li>
+</ul>
+<p>We’ll continue to work on these as part of our ongoing maintenance backlog.</p>
+<p>Separately to the data privacy concerns, we’ve had a <a href="https://news.ycombinator.com/item?id=20515069">separate wave of
+feedback</a> regarding how we
+handle GDPR Data Subject Access Requests (DSARs). Particularly: whether DSAR
+responses should contain solely the info your have directly keyed by the
+requesting Matrix ID - or if we should provide all the data “visible” to that
+ID (i.e. the history of the conversations they’ve been part of).  We went and
+got professional legal advice on this one, and the conclusion is that we
+should keep our responses to DSARs as tightly scoped as possible. We <a href="https://github.com/vector-im/policies/pull/7/files?short_path=09dc019#diff-09dc019b94b6efb90fa9f6e5c836f310">updated
+Matrix.org’s privacy
+policy</a>
+and DSAR tools to reflect the new legal input.</p>
+<p>Finally, it’s really worth calling out the amount of effort that went into
+this project. Huge huge thanks to everyone involved (given it’s cut across
+pretty much every project &amp; subteam we have working on the core of Matrix) who
+have soldiered through the backlog.  We’ve been tracking progress using our
+<a href="https://github.com/vector-im/feature-dashboard">feature-dashboard</a> tool which
+summarises Github issues based on labels &amp; issue lifecycle, and for better or
+worse it’s ended up being the biggest project board we’ve ever had.  You can
+see the live data
+<a href="https://vector-im.github.io/feature-dashboard/#/plan?label=privacy-sprint&amp;repo=vector-im/riot-web&amp;repo=vector-im/riot-ios&amp;repo=vector-im/riot-android&amp;repo=vector-im/riotX-android&amp;repo=matrix-org/matrix-doc&amp;repo=matrix-org/sydent&amp;repo=matrix-org/synapse">here</a>
+(warning, it takes tens of seconds to spider Github to gather the data) - or,
+for posterity and ease of reference, I’ve included the current issue list
+below.  The issues which are completed have “done” after them; the ones still
+in progress say “in progress”, and ones which haven’t started yet have
+nothing. We split the project into 3 phases - phases 1 and 2 represent the
+items needed to fully solve the privacy concerns, phase 3 is right now a mix
+of &quot;nice to have&quot; polish and some more speculative items.  At this point we’ve
+effectively finished phase 1 on Synapse &amp; Riot/Web, and Riot/Mobile is
+following close behind.  We're continuing to work on phase 2, and we’ll work
+through phase 3 (where appropriate) as part of our general maintenance
+backlog.</p>
+<p>I hope this gives suitable visibility on how we’re considering privacy; after
+all, Matrix is useless as an open communication protocol if the openness comes
+at the expense of user privacy.  We’ll give another update once the remaining
+straggling issues are closed out; and meanwhile, now the bulk of the privacy
+work is out of the way on Riot/Web, we can <strong>finally</strong> get back to
+implementing the UI E2E cross-signing verification and improving first time
+user experience.</p>
+<p>Thanks for your patience and understanding while we’ve sorted this stuff out;
+and thanks once again for flying Matrix :)</p>
+<p><em>In the absence of comments on the current blog, please feel free to discuss
+over at <a href="https://news.ycombinator.com/item?id=21091908">HN</a>, or alternatively come ask stuff in
+our AMA over at
+<a href="https://www.reddit.com/r/privacy/comments/da219t/im_project_lead_for_matrixorg_the_open_protocol/">/r/privacy</a>
+(starting ~5pm GMT+1 (UK) on Friday Sept 27th).</em></p>
+<h3 id="the-privacy-project-dashboard-of-doom">The Privacy Project Dashboard Of Doom</h3>
+<ul>
+<li>phase:1
+<ul>
+<li>vector-im/riot-web
+<ul>
+<li><a href="https://github.com/vector-im/riot-web/issues/5846">5846 Riot duplicates calls to Scalar</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/5921">5921 Ability to disable all identity server functionality via the config file</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/6802">6802 riot shouldn't try to load integrations from an integration manager unless the user has accepted that manager's privacy policies</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10088">10088 Prompt to accept integration manager polices on use</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10090">10090 Make sure there are no ugly edge cases running Riot without an integrations manager</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10091">10091 Decouple setting an email for password reset from publishing your threepid to the identity server and support choice of identity server (on registration)</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10092">10092 Prompt to accept Identity Server policies on registration</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10093">10093 Prompt to accept identity server policies before inviting them to a room</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10094">10094 Store identity server in Account Data and support choosing identity server integration in User Settings</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10159">10159 Enable toggling a threepid's association with the current IS in User Settings</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10173">10173 VoIP: Stop falling back to Google for STUN</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10216">10216 We should make it clear in the UI that device names are publicly readable</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10386">10386 Terms modal prompt should appear without a flash of the integration manager portal first</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10408">10408 Identity server v2 API authentication</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10423">10423 Deploy a develop environment for t's and c's flows for IM and IS</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10424">10424 Remove the bind true flag from 3PID calls on registration</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10425">10425 Ability to disconnect from the identity server by pressing buttons in user settings.</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10452">10452 Test IS v2 access tokens for validity</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10497">10497 Integration manager terms hides terms that need signing</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10510">10510 Remove the bind true flag from 3PID adds in settings</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10519">10519 Update discovery and account 3PID sections when either changes</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10522">10522 Handle terms agreement in the Discovery section of settings</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10525">10525 IS interactions proxied through the HS also need terms agreement</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10528">10528 don't try &amp; show threepids in discovery section if we don't have an ID server</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10539">10539 Inline terms agreement on change IS and IM</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10540">10540 When using Riot without an IS, identity requests are sent to server hosting Riot</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10546">10546 Prompt for fallback VOIP should only happen when the user tries to make a call</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10550">10550 warn when disconnecting ID server if there are any current bindings</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10552">10552 Allow email registration, password reset &amp; adding 3pids when no IS</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10553">10553 Remove the ability to set an IS at login/registration</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10556">10556 Use the hashed v2 lookup API for 3PIDs</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10561">10561 Scalar should serve a .well-known file</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10566">10566 Use nicer APIs for toggling a 3PID's shared status</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10571">10571 Allow email registration when no IS</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10572">10572 Allow password reset when no IS</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10573">10573 Allow adding 3pids when no IS</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10574">10574 Placeholder issue for MSCs that should land prior to the privacy release</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10593">10593 Placeholder issue for privacy migration path</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10597">10597 Ensure IS in account data is read / written as specced</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10599">10599 Send IS for adding MSISDNs only when required by HS</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10603">10603 Getting a terms prompt when inviting an email address clears the address picker</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10619">10619 Handle the case of no IS in features that require IS to lookup</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10620">10620 Change auth flows so that you default to no IS</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10634">10634 Changing to vector.im IS in Settings fails because /terms 404s</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10635">10635 Inline terms agreement in Discovery should still show change and do not use</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10636">10636 The UX is a little confusing if you haven't accepted the terms of the default identity server.</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10637">10637 Unable to add email address to HS account without IS set</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10660">10660 Sydent implementation: Unauthed v1, clone all endpoints, auth v2</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10666">10666 In login/register, riot freezes if you go to Advanced, remove the IS url and click next</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10669">10669 Checking email invite account is unclear when no IS set</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10674">10674 Email help text on registration should be updated without binding</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10677">10677 Change text about other users being able to invite you by email on registration page</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10744">10744 Only set terms URLs in the account when they change</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10749">10749 Changing from one IS to another does not trigger bound 3PID warning</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10750">10750 Bound 3PIDs warning should better explain what's being left behind</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10754">10754 Lowercase emails during IS lookup calls</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10755">10755 Terms account data is meant to be additive, but currently sets only new URLs</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10756">10756 After changing IS to termstest.matrix.org the text field isn't cleared and the button remains active</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10757">10757 After changing IS back to vector.im the text field isn't cleared and the button remains active</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10758">10758 Revoke may be too vague for unbinding a 3PID</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10779">10779 When publishing a threepid to an IS, if you click 'continue' before clicking the link in your email, we delete your threepid from the HS.</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10800">10800 Community invite should not talk about ISes at all.</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10823">10823 IS with unagreed terms will block you from adding even unshared 3PIDs to your HS</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10839">10839 Use the new backend APIs for adding-3pid-to-homeserver and binding-3pid-on-identity-server when they exist.</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10878">10878 UX regression when trying to invite by email if no IS is configured</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10883">10883 Riot should check for r0.6.0 server support alongside feature flags</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10923">10923 Send validation tokens to submit_url from HS</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10933">10933 Do not include ID server or access token when HS supports MSC2290</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10939">10939 Registration with MSISDN needs to use submit_url</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10941">10941 threepid_creds for registration and password reset still include id_server</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10959">10959 Remove id_server from email threepid_creds</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10604">10604 QA: Re-test ALL of the identity server interactions</a> (in progress)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10958">10958 Terms of Service nitpicks</a> (in progress)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10704">10704 We treat an empty string identity server as not having one</a></li>
+</ul>
+</li>
+<li>vector-im/riot-ios
+<ul>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2518">2518 Make sure there are no ugly edge cases running Riot without an integrations manager</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2521">2521 Privacy: Improve wording on contact upload UI</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2532">2532 VoIP: Stop falling back to Google for STUN</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2600">2600 Prompt to accept integration manager polices on use</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2601">2601 Decouple setting an email for password reset from publishing your threepid to the identity server and support choice of identity server (on registration)</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2602">2602 Prompt to accept identity server policies before inviting them to a room</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2603">2603 Identity server v2 API authentication</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2606">2606 Settings: Add a Discovery section</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2608">2608 Registration: Update consents flow</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2643">2643 Ability to disable all identity server functionality via the config file</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2646">2646 VoIP: Fallback to matrix.org STUN server with a confirmation dialog</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2647">2647 MXRestClient: Move IS API to its own</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2648">2648 Remove the bind true flag from 3PID calls on registration</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2650">2650 Remove the bind true flag from 3PID adds in settings</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2651">2651 Store identity server in Account Data and support choosing identity server integration in User Settings</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2652">2652 Use the hashed v2 lookup API for 3PIDs</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2653">2653 Allow email registration, password reset &amp; adding 3pids when no IS</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2654">2654 Use nicer APIs for toggling a 3PID's shared status</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2657">2657 Allow email registration when no IS</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2658">2658 Allow password reset when no IS</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2659">2659 Allow adding 3pids when no IS</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2660">2660 Handle terms agreement in the Discovery section of settings</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2661">2661 Remove the ability to set an IS at login/registration</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2662">2662 We should make it clear in the UI that device names are publicly readable</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2664">2664 Placeholder issue for privacy migration path</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2665">2665 Ensure IS in account data is read / written as specced</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2672">2672 Handle the case of no IS in features that require IS to lookup</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2675">2675 Email help text on registration should be updated without binding</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2682">2682 Send IS for adding MSISDNs only when required by HS</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2686">2686 Use wellknown to discover the IS of a custom HS</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2696">2696 Lowercase emails during IS lookup calls</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2704">2704 Use <code>id_access_token</code> in CS API when required</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2604">2604 Settings: Ability to change the identity server</a> (in progress)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2649">2649 Ability to disconnect from the identity server by pressing buttons in user settings</a> (in progress)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2713">2713 Use the new backend APIs for adding-3pid-to-homeserver and binding-3pid-on-identity-server when they exist.</a> (in progress)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2718">2718 Riot should check for r0.6.0 server support alongside feature flags</a> (in progress)</li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2683">2683 Checking email invite account is unclear when no IS set</a></li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2731">2731 Send validation tokens to submit_url from HS</a></li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2732">2732 Do not include ID server or access token when HS supports MSC2290</a></li>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2736">2736 IS terms cannot be accepted anymore</a></li>
+</ul>
+</li>
+<li>vector-im/riot-android
+<ul>
+<li><a href="https://github.com/vector-im/riot-android/issues/3223">3223 VoIP: Stop falling back to Google for STUN</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3224">3224 Make sure there are no ugly edge cases running Riot without an integrations manager</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3225">3225 Prompt to accept integration manager polices on use </a>(done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3226">3226 Decouple setting an email for password reset from publishing your threepid to the identity server and support choice of identity server (on registration)</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3227">3227 Prompt to accept identity server policies before inviting them to a room</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3228">3228 Identity server v2 API authentication</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3229">3229 Settings: Ability to change the identity server</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3230">3230 Settings: Add a Discovery section</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3231">3231 Registration: Update consents flow</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3252">3252 Remove the bind true flag from 3PID calls on registration</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3253">3253 Ability to disconnect from the identity server by pressing buttons in user settings</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3254">3254 Remove the bind true flag from 3PID adds in settings</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3256">3256 Store identity server in Account Data and support choosing identity server integration in User Settings</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3257">3257 Use the hashed v2 lookup API for 3PIDs</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3258">3258 Allow email registration, password reset &amp; adding 3pids when no IS</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3260">3260 Allow email registration when no IS</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3261">3261 Allow password reset when no IS</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3262">3262 Allow adding 3pids when no IS</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3263">3263 Handle terms agreement in the Discovery section of settings</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3264">3264 Remove the ability to set an IS at login/registration</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3265">3265 We should make it clear in the UI that device names are publicly readable</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3268">3268 Placeholder issue for privacy migration path</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3269">3269 Ensure IS in account data is read / written as specced</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3277">3277 Handle the case of no IS in features that require IS to lookup</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3278">3278 Email help text on registration should be updated without binding</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3281">3281 Send IS for adding MSISDNs only when required by HS</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3283">3283 Use wellknown to discover the IS of a custom HS</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3289">3289 Lowercase emails during IS lookup calls</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3295">3295 Use <code>id_access_token</code> in CS API when required</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3300">3300 Use the new backend APIs for adding-3pid-to-homeserver and binding-3pid-on-identity-server when they exist. </a>(done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3312">3312 Riot should check for r0.6.0 server support alongside feature flags</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3316">3316 Implement MSC2290</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3324">3324 id_server param sent when registering an email on server that does not requires one</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3326">3326 Discovery Settings / infinite loading if terms not signed on existing IS</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3327">3327 vector.im is seen as having no terms, but it does</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3251">3251 VoIP: Fallback to matrix.org STUN server with a confirmation dialog</a> (in progress)</li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3248">3248 Ability to disable all identity server functionality via the config file</a></li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3318">3318 Send validation tokens to submit_url from HS</a></li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3322">3322 Do not include ID server or access token when HS supports MSC2290</a></li>
+</ul>
+</li>
+<li>vector-im/riotX-android
+<ul>
+<li><a href="https://github.com/vector-im/riotX-android/issues/490">490 Allow email registration, password reset &amp; adding 3pids when no IS</a> (done)</li>
+<li><a href="https://github.com/vector-im/riotX-android/issues/432">432 Prompt to accept integration manager polices on use</a> (in progress)</li>
+<li><a href="https://github.com/vector-im/riotX-android/issues/431">431 Make sure there are no ugly edge cases running Riot without an integrations manager</a></li>
+<li><a href="https://github.com/vector-im/riotX-android/issues/433">433 Decouple setting an email for password reset from publishing your threepid to the identity server and support choice of identity server (on registration)</a></li>
+<li><a href="https://github.com/vector-im/riotX-android/issues/434">434 Prompt to accept identity server policies before inviting them to a room</a></li>
+<li><a href="https://github.com/vector-im/riotX-android/issues/435">435 Identity server v2 API authentication</a></li>
+<li><a href="https://github.com/vector-im/riotX-android/issues/436">436 Settings: Ability to change the identity server</a></li>
+<li><a href="https://github.com/vector-im/riotX-android/issues/438">438 Settings: Add a Discovery section</a></li>
+<li><a href="https://github.com/vector-im/riotX-android/issues/439">439 Registration: Update consents flow</a></li>
+<li><a href="https://github.com/vector-im/riotX-android/issues/489">489 Use the hashed v2 lookup API for 3PIDs</a></li>
+</ul>
+</li>
+<li>matrix-org/matrix-doc
+<ul>
+<li><a href="https://github.com/matrix-org/matrix-doc/pull/1961">1961 MSC1961: Integration manager authentication APIs</a> (done)</li>
+<li><a href="https://github.com/matrix-org/matrix-doc/pull/2078">2078 MSC2078: Sending Third-Party Request Tokens via the Homeserver</a> (done)</li>
+<li><a href="https://github.com/matrix-org/matrix-doc/issues/2130">2130 Identity service should do lookups based on hashed 3PIDs, not plaintext ones.</a> (done)</li>
+<li><a href="https://github.com/matrix-org/matrix-doc/pull/2134">2134 MSC2134: Identity Hash Lookups</a> (done)</li>
+<li><a href="https://github.com/matrix-org/matrix-doc/issues/2139">2139 Method for ISes and Integration managers to provide terms of service</a> (done)</li>
+<li><a href="https://github.com/matrix-org/matrix-doc/pull/2140">2140 MSC2140: Terms of Service for ISes and IMs</a> (done)</li>
+<li><a href="https://github.com/matrix-org/matrix-doc/pull/2229">2229 MSC2229: Allowing 3PID Owners to Rebind</a> (done)</li>
+<li><a href="https://github.com/matrix-org/matrix-doc/pull/2230">2230 MSC2230: Store Identity Server in Account Data</a> (done)</li>
+<li><a href="https://github.com/matrix-org/matrix-doc/pull/2263">2263 MSC2263: Give homeservers the ability to handle their own 3PID registrations/password resets</a> (done)</li>
+<li><a href="https://github.com/matrix-org/matrix-doc/pull/2264">2264 MSC2264: Add an unstable feature flag to MSC2140 for clients to detect support</a> (done)</li>
+<li><a href="https://github.com/matrix-org/matrix-doc/pull/2290">2290 MSC2290: Separate Endpoints for Threepid Binding</a> (in progress)</li>
+</ul>
+</li>
+<li>matrix-org/sydent
+<ul>
+<li><a href="https://github.com/matrix-org/sydent/issues/178">178 Support for MSC2140</a> (done)</li>
+<li><a href="https://github.com/matrix-org/sydent/pull/179">179 Support testing with matrix-is-tester</a> (done)</li>
+<li><a href="https://github.com/matrix-org/sydent/pull/180">180 Support for MSC2140</a> (done)</li>
+<li><a href="https://github.com/matrix-org/sydent/pull/181">181 Deny bindings to anything other than the mxid you're authed as</a> (done)</li>
+<li><a href="https://github.com/matrix-org/sydent/pull/184">184 Hash 3PID lookups</a> (done)</li>
+<li><a href="https://github.com/matrix-org/sydent/pull/186">186 Don't fail the unbind request if the binding doesn't exist</a> (done)</li>
+<li><a href="https://github.com/matrix-org/sydent/pull/187">187 Add more tweaks to terms branch</a> (done)</li>
+<li><a href="https://github.com/matrix-org/sydent/issues/189">189 Redact looked-up threepids from the application logs.</a> (done)</li>
+<li><a href="https://github.com/matrix-org/sydent/issues/191">191 Add OpenID auth to 3PID hash lookup</a> (done)</li>
+<li><a href="https://github.com/matrix-org/sydent/pull/197">197 Have 'mappings' contain medium as well as address</a> (done)</li>
+<li><a href="https://github.com/matrix-org/sydent/pull/198">198 Throw exception on bad args &amp; catch in wrapper</a> (done)</li>
+<li><a href="https://github.com/matrix-org/sydent/pull/199">199 Return algorithm, lookup_pepper in M_INVALID_PEPPER response</a> (done)</li>
+<li><a href="https://github.com/matrix-org/sydent/pull/200">200 Support MSC2140 register/terms endpoints</a> (done)</li>
+<li><a href="https://github.com/matrix-org/sydent/pull/201">201 Port v1 endpoints to v2</a> (done)</li>
+<li><a href="https://github.com/matrix-org/sydent/pull/202">202 Deny bindings to anything other than the mxid you're authed as</a> (done)</li>
+<li><a href="https://github.com/matrix-org/sydent/pull/204">204 Fix the signing servlet</a> (done)</li>
+<li><a href="https://github.com/matrix-org/sydent/pull/205">205 Correct API v1 path check in get_args</a> (done)</li>
+<li><a href="https://github.com/matrix-org/sydent/pull/206">206 Fix terms POST</a> (done)</li>
+<li><a href="https://github.com/matrix-org/sydent/issues/207">207 Deploy policy file</a> (done)</li>
+<li><a href="https://github.com/matrix-org/sydent/pull/208">208 Remove PII logging from log-level INFO</a> (done)</li>
+<li><a href="https://github.com/matrix-org/sydent/pull/213">213 Delete threepid assocs on unbind and remove existing with migration</a> (done)</li>
+<li><a href="https://github.com/matrix-org/sydent/issues/217">217 Allow non-matrix.org MXIDs via v2 only once terms are enabled</a> (done)</li>
+<li><a href="https://github.com/matrix-org/sydent/issues/218">218 Unbind fails to remove the binding on matrix.org IS</a> (done)</li>
+<li><a href="https://github.com/matrix-org/sydent/issues/220">220 Unbind fails to work for bindings where it was attempted with #213</a> (done)</li>
+<li><a href="https://github.com/matrix-org/sydent/issues/192">192 Sydent doesn't delete 3PIDs from DB on unbind</a> (in progress)</li>
+</ul>
+</li>
+<li>matrix-org/synapse
+<ul>
+<li><a href="https://github.com/matrix-org/synapse/issues/1287">1287 We need to actually censor redactions from the DB (SYN-284)</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/issues/5751">5751 Make homeservers able to handle registration-with-email without depending on an Identity Server</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/issues/5786">5786 Support IS v2 API with authentication for requests proxied to the IS</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/issues/5827">5827 Add 3PID unbind API for MSC2140</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/5835">5835 [1/2] Allow homeservers to send registration emails | Sending the email</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/issues/5861">5861 Use the v2 lookup API for 3PID invites</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/issues/5862">5862 Allow account owners to rebind 3PIDs as in MSC2229</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/5868">5868 Add flag in /versions for whether clients should send id_server params</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/issues/5874">5874 Placeholder issue for privacy migration path</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/5875">5875 Remove trusted_third_party_id_servers functionality</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/5876">5876 Replace trust_identity_server_for_password_resets with account_threepid_delegate</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/5892">5892 Switch to using v2 Identity Service APIs other than lookup (MSC 2140)</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/5897">5897 Use the v2 lookup API for 3PID invites</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/issues/5927">5927 Add a m.id_access_token flag to unstable_features</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/issues/5928">5928 Split account_threepid_handler into a msisdn and email versions</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/issues/5929">5929 Use account_threepid_delegate for sending SMS</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/5930">5930 Add m.id_access_token flag</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/5934">5934 Censor redactions in DB after a month</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/issues/5935">5935 Use federation blacklist for requests to identity servers</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/5937">5937 Revert &quot;Use the v2 lookup API for 3PID invites&quot;</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/5940">5940 [2/2] Allow homeservers to send registration emails | Accepting the verification</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/5945">5945 Revert &quot;Add m.id_access_token flag&quot;</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/5948">5948 Support v2 Identity Server APIs</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/5964">5964 Remove bind_email and bind_msisdn</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/5968">5968 Set m.require_identity_server to always be False</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/5969">5969 Change account_threepid_delegate to a dictionary</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/5972">5972 Add m.require_identity_server to /versions unstable_flags</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/5974">5974 Add m.id_access_token to /versions unstable_features (MSC2264)</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/5976">5976 Use the v2 Identity Service API for lookups (MSC2134 + MSC2140)</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/5979">5979 v2 3PID Invites (part of MSC2140)</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/5980">5980 Add POST /_matrix/client/r0/account/3pid/unbind (MSC2140)</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/5987">5987 Allow Synapse to send registration emails + choose Synapse or an external server to handle 3pid validation</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/5996">5996 Allow users to rebind 3pids they own (MSC2229)</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/6000">6000 Use the federation blacklist for requests to untrusted Identity Servers</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/6011">6011 Use account_threepid_delegate for 3pid validation</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/6013">6013 Fix existing v2 identity server calls (MSC2140)</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/6042">6042 Allow HS to send emails when adding an email to the HS</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/6043">6043 Implement MSC2290</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/6044">6044 Add an unstable feature flag for separate add/bind 3pid APIs</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/6062">6062 Use unstable prefix for 3PID unbind API</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/6067">6067 Drop support for bind param on POST /account/3pid (MSC2290)</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/issues/6076">6076 Synapse doesn't give clients a submit_url on requestToken breaking msisdn adding</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/6078">6078 Add POST submit_token endpoint for MSISDN</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/6079">6079 Add submit_url response parameter to msisdn /requestToken</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/issues/6087">6087 Remove hardcoded defaults of matrix.org and vector.im in configuration</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/pull/6090">6090 Explicitly log when a homeserver does not have a trusted key server configured </a>(done)</li>
+<li><a href="https://github.com/matrix-org/synapse/issues/6096">6096 Riot Web expects the email validation next_link to have the sid appended</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/issues/6100">6100 Remove email from registration flows if it’s unsupported</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/issues/6103">6103 _check_threepid in auth.py incorrect for MSISDN</a> (done)</li>
+<li><a href="https://github.com/matrix-org/synapse/issues/6045">6045 Support Client-Server API r0.6.0</a> (in progress)</li>
+<li><a href="https://github.com/matrix-org/synapse/issues/1263">1263 When we redact events, any mxc content they refer to should be redacted too (SYN-216)</a></li>
+<li><a href="https://github.com/matrix-org/synapse/issues/4565">4565 Metadata resistance.</a></li>
+<li><a href="https://github.com/matrix-org/synapse/issues/6086">6086 Fetch signing-keys directly from servers before falling back to the trusted_key_servers</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>phase:2
+<ul>
+<li>vector-im/riot-web
+<ul>
+<li><a href="https://github.com/vector-im/riot-web/issues/4913">4913 Option for homeservers to set a default integration manager</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10161">10161 Store Integration Manager preferences in account data and allow user to change them somewhere sensible</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10967">10967 Disconnect from identity server fails</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10443">10443 Remove v1 IS API fallbacks once servers are updated</a></li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10557">10557 Prompt users each time before sending data to an Identity Server that doesn't have a terms of service (unless you have actively set that IS in your account data).</a></li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10696">10696 Allow users to disconnect from an integration manager entirely in the same way that we support doing this for identity servers</a></li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10909">10909 Unable to disconnect from IS if the server is unavailable</a></li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10936">10936 Refine submit_url handling to only activate with separate add and bind</a></li>
+</ul>
+</li>
+<li>vector-im/riot-ios
+<ul>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2711">2711 Provide a better UX for users considering sharing their contact list with an IS to discover people they know already using Matrix</a></li>
+</ul>
+</li>
+<li>vector-im/riot-android
+<ul>
+<li><a href="https://github.com/vector-im/riot-android/issues/3282">3282 Checking email invite account is unclear when no IS set</a></li>
+<li><a href="https://github.com/vector-im/riot-android/issues/3323">3323 Post MSC2290 bug / Clicking on the validation mail link fails registration</a></li>
+</ul>
+</li>
+<li>matrix-org/matrix-doc
+<ul>
+<li><a href="https://github.com/matrix-org/matrix-doc/pull/1957">1957 MSC1957: Integration manager discovery</a> (done)</li>
+</ul>
+</li>
+<li>matrix-org/sydent
+<ul>
+<li><a href="https://github.com/matrix-org/sydent/issues/196">196 Remove the lookup_hash field from local_threepid_associations</a> (in progress)</li>
+</ul>
+</li>
+<li>matrix-org/synapse
+<ul>
+<li><a href="https://github.com/matrix-org/synapse/issues/5881">5881 Remove trust_identity_server_for_password_resets and account_threepid_delegate options</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>phase:3
+<ul>
+<li>vector-im/riot-web
+<ul>
+<li><a href="https://github.com/vector-im/riot-web/issues/10563">10563 Add better domain for turn.matrix.org use as STUN server</a> (done)</li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10087">10087 Prompt to accept integration manager policies on registration</a></li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10167">10167 Present an aggregated terms of service dialogue at registration if possible</a></li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10168">10168 If a user has disabled the identity server integration on their account, we should make invite user handle this nicely</a></li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10401">10401 Invite new users to publish their threepids to the identity server</a></li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10422">10422 Use more contextual prompt for integration manager polices on use</a></li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10453">10453 Log out from IM on Riot log out and IM removal</a></li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10455">10455 Log out from IS on Riot log out and IS removal</a></li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10487">10487 Store the date of users having read and accepted the IM policies in the IM db</a></li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10488">10488 Store the date of users having read and accepted the IS policies in the IS db</a></li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10498">10498 Terms test scalar requires the legacy ?v query param on the new account route</a></li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10575">10575 We should show the 'must configure TURN' warning when a call fails, even after using the fallback turn.matrix.org</a></li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10615">10615 Change all IS access token APIs to use getIdentityAccessToken only</a></li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10671">10671 riot submits sign-ed25519 requests as POST requests with params in query string and empty body</a></li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10746">10746 /invite doesn't force terms with older homeservers</a></li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10830">10830 Show IS policy links in user settings somewhere.</a></li>
+<li><a href="https://github.com/vector-im/riot-web/issues/10950">10950 Unhelpful 400 error when adding MSISDN and server doesn’t delegate</a></li>
+</ul>
+</li>
+<li>vector-im/riot-ios
+<ul>
+<li><a href="https://github.com/vector-im/riot-ios/issues/2710">2710 Show IS policy links in user settings somewhere.</a></li>
+</ul>
+</li>
+<li>matrix-org/matrix-doc
+<ul>
+<li><a href="https://github.com/matrix-org/matrix-doc/issues/447">447 We need a way to be able to expire data from a HS. (SPEC-141)</a></li>
+</ul>
+</li>
+<li>matrix-org/synapse
+<ul>
+<li><a href="https://github.com/matrix-org/synapse/issues/5830">5830 <code>pushers</code> table contains user device names, which may include user real names</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2019&#x2F;07&#x2F;24&#x2F;data-portability-tooling-bug&#x2F;" title="Data Portability Tooling Bug">Data Portability Tooling Bug</a></h2>
+                <span>
+                    24.07.2019 00:00
+                    —
+                    <a href="/category/privacy">
+                        Privacy
+                    </a>
+                    —
+                    <a
+                        href="/author/thomas-lant">
+                        Thomas Lant
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>It was drawn to our attention this afternoon that there is a bug in our GDPR data portability tooling that resulted in the data dump including some events that should not have been included.</p>
+<p>This tooling has recently been updated (<a href="https://github.com/matrix-org/synapse/blob/baf081cd3b040926e2d14dfd1c555307bba59245/synapse/handlers/admin.py#L98">here is the new code</a>), and the bug only affects reports generated with the updated tool. So far we have generated one report using the updated tooling.</p>
+<p>The bug affects events which:</p>
+<ul>
+<li>were sent in rooms in which, at the point at which the message was sent, the message visibility was set to 'shared' or 'world readable', and</li>
+<li>were pulled in over federation from another server after the data subject left the room</li>
+</ul>
+<p>As a reminder, 'shared' message visibility means <em>anyone in the room can view the message, from the point in time at which visibility was set to 'shared'</em> and 'world readable' means <em>anyone can read the messages without joining the room, from the point in time at which visibility was set to 'world readable'</em>.</p>
+<p>Events are pulled onto a homeserver over federation when a user on that homeserver tries to access events which, for whatever reason, their homeserver does not already have a local copy. This most often happens when their homeserver is offline for any period of time, but can also happen when a user is the first user from their homeserver to join a room with active participants on other homeservers.</p>
+<p>We're still analysing the data but so far it looks like the bug resulted in only a small number of events that were not publicly-accessible being shared (there were also publicly-accessible events mistakenly included). At this stage we have identified 19 events from 4 users across 2 rooms (the dump contained ~3.5 million events). This is not to diminish the severity of the bug - just to reassure that the scale of its impact appears to be extremely limited.</p>
+<p>It is also worth noting that any encrypted events erroneously included in the dump will not have been decryptable (since the data subject would not have had access to the keys).</p>
+<h3 id="update-2019-08-06">Update (2019-08-06)</h3>
+<blockquote>
+<p>In our original analysis we stated that 19 events were shared erroneously. On closer analysis we missed 5 other timeline events - the correct figure is 24 timeline events originating from 4 users over 2 rooms. However, this figure focused on timeline data and does not take into account all state events (such as user joins, parts, topic changes etc). When considering these too, a further 56 state events were erroneously shared, referencing 64 users across these 2 rooms (mainly detailing when users had joined/left the room after the requesting user themselves had left). These membership events contained avatar &amp; display name details which may not have been public (but in practice, the vast majority appear to be public data).</p>
+<p>Aside from the events referenced above, the full dump contained ~20,000 events that also ought not to have been included; however <strong>these events were already publicly accessible due to being part of publicly accessible rooms</strong> (eg Matrix HQ) and so we do not consider them a breach of data.</p>
+</blockquote>
+<h2 id="what-caused-the-bug">What caused the bug?</h2>
+<p>Events that are pulled in over federation are assigned a negative 'stream ordering' ID. This is designed to avoid their being sent down the sync (where they would likely be out of sequence). In normal operation (accessing your homeserver via a Matrix client) these events would be appropriately filtered, but a bug in the data dump tooling caused them to be included.</p>
+<p>The bug was introduced as a result of two factors:</p>
+<ul>
+<li>The event filtering code assumes that the user is currently in the room - this was not intuitive, and was not called out in the documentation</li>
+<li>When we fetched the events from the database, we tried to limit to events sent before the user left the room. On reflection, we used the wrong ordering mechanism (stream ordering instead of topological ordering), resulting in the inclusion of events that were fetched from a remote server after the data subject had left</li>
+</ul>
+<p>We are working to fix the bug, and we'll update here when it is resolved. As a reminder, please do report security bugs responsibly as per the <a href="https://matrix.org/security-disclosure-policy/">Security Disclosure Policy</a> so we can validate the issue and mitigate abuse.</p>
+<p>As is standard practice for any data breach, we have notified the ICO.</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2019&#x2F;07&#x2F;19&#x2F;privacy-changes-to-new-vector-identity-servers&#x2F;" title="Privacy Changes to New Vector Identity Servers">Privacy Changes to New Vector Identity Servers</a></h2>
+                <span>
+                    19.07.2019 16:35
+                    —
+                    <a href="/category/privacy">
+                        Privacy
+                    </a>
+                    —
+                    <a
+                        href="/author/thomas-lant">
+                        Thomas Lant
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>As a step towards implementing Terms of Service for Sydent Identity Servers (<a href="https://github.com/matrix-org/matrix-doc/pull/2140">MSC2140</a>), we're rolling out a couple of changes to the two Identity Servers run by New Vector (running at vector.im and matrix.org):</p>
+<ol>
+<li>We have erased all of the data where there is any chance that the data subject didn't understand how, why or with whom their data was being shared.</li>
+<li>We've made a change to Sydent so that it no longer persists new associations relating to users on homeservers not run by New Vector.</li>
+</ol>
+<p>The impact of these changes is that users on homeservers not run by New Vector will no longer be discoverable by their email or telephone number via the Identity Servers running at vector.im and matrix.org. As we roll out the rest of the changes for Terms of Service for Identity Servers, this functionality will again be made available for users who make an informed choice to opt in.</p>
+<h2 id="registration-with-email-and-password-reset">Registration with Email and Password Reset</h2>
+<p>In the short term, the New Vector Identity Servers will continue to support registration with email (signing up with an email address as well as a matrix username) and password reset. However, as we continue to improve Identity Server data hygiene practices, we will phase out their use in registration with email and password reset entirely. We have already made the change to Synapse to support password reset without relying on an Identity Server (though this can optionally be re-enabled).</p>
+<p>Once Synapse can support registration with email without relying on an Identity Server <strong>we will announce a schedule for disabling registration with email and password reset in our Identity Servers entirely</strong>. After this point, homeserver administrators will have to make sure their homeservers are configured to send email to keep registration with email and password reset working. More details on this to follow - please watch this space.</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2019&#x2F;06&#x2F;30&#x2F;tightening-up-privacy-in-matrix&#x2F;" title="Tightening up privacy in Matrix">Tightening up privacy in Matrix</a></h2>
+                <span>
+                    30.06.2019 00:00
+                    —
+                    <a href="/category/general">
+                        General
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Hi all,</p>
+<p>A few weeks ago there was <a href="https://news.ycombinator.com/item?id=20178267">some
+discussion</a> around the privacy
+of typical Matrix configurations, particularly how Riot's default config uses
+vector.im as an Identity Server (for discovering users on Matrix by their email
+address or phone number) and scalar.vector.im as an Integration Manager (i.e.
+the mechanism for adding hosted bots/bridges/widgets into rooms). This means
+that Riot, even if using a custom homeserver and running from a custom Riot
+deployment, will try to talk to *.vector.im (run  by New Vector; the company formed by the core
+Matrix team in 2017) for some operations unless an alternative IS or IM has
+been specified in the config.</p>
+<p>We haven't done as good a job at explaining this as we could have, and this
+blog post is a progress update on how we're fixing that and improving other
+privacy considerations in general.</p>
+<p>Firstly, the reason Riot is configured like this is for the user's convenience:
+in general, we believe most users just want to discover other people on Matrix
+as easily as possible, and a logically-centralised server for looking up user
+matrix IDs by email/phone number (called third party IDs, or 3PIDs) is the only
+comprehensive way of doing so.  Decentralising this data while protecting the
+privacy of the 3PIDs and their matrix IDs is a Hard Problem which we're unaware
+of anyone having solved yet.  Alternatively, you could run a local identity
+server, but it will end up having to delegate to a centralised identity server
+anyway for IDs it has no other way to know about. Similarly, providing a
+default integration server that just works out of the box (rather than
+mandating the user configures their own) is a matter of trying to keep Riot's
+UX simple, especially when onboarding users, and especially given Riot's
+reputation for complexity at the best of times.</p>
+<p>That said, the discussion highlighted some areas for improvement.
+Specifically:</p>
+<ol>
+<li>When doing work on making Matrix <a href="https://matrix.org/blog/2018/05/08/gdpr-compliance-in-matrix">GDPR
+compliant</a>
+back in May 2018, we set up a single <a href="https://github.com/vector-im/policies/blob/master/docs/matrix-org/privacy_notice.md">privacy
+policy</a>
+for the services we run, and got users to agree to it by locking them out of
+the matrix.org homeserver until they did.  However, we missed that users not
+on the matrix.org homeserver might still be using our Identity Service (IS)
+&amp; Integration Manager (IM) without accepting the privacy policy.  Over the
+last few weeks we've been working on addressing this - it turns out that
+it's a pain to fix, given the Identity Service doesn't have the concept of
+users, so tracking which users have agreed to the policy policy or not means
+some fairly major changes. The current proposal is to change the Identity
+Service to use a form of OpenID to authenticate users against their
+homeserver in order to check they've accepted the IS's terms of use - see
+<a href="https://github.com/matrix-org/matrix-doc/pull/2140">MSC2140</a> for the gory
+details.</li>
+</ol>
+<p>Meanwhile, Riot is being updated to prompt the user to accept the IS &amp; IM terms
+of use (if different to the HS's), and thus make it crystal clear to the user
+that they are using an IS &amp; IM and that they have the option not to if desired - see https://github.com/vector-im/riot-web/issues/10167 and associated
+<a href="https://github.com/vector-im/riot-web/issues?utf8=%E2%9C%93&amp;q=is%3Aissue+label%3Ap1+label%3Aprivacy+label%3Aphase%3A1+identity">issues</a>.
+This includes also explicitly prompting the user as to whether they want
+3PIDs they provide at registration to be discoverable, as per
+https://github.com/vector-im/riot-web/issues/10091.</p>
+<ol start="2">
+<li>
+<p>Riot on iOS &amp; Android gives the option of scanning your local addressbook to
+discover which of your contacts are on Matrix.  The wording explaining this
+wasn't clear enough on Android - which we <a href="https://news.ycombinator.com/item?id=20181515">promptly
+fixed</a>.  Separately, the
+contact details sent to the server are currently not obfuscated.  This is
+partially because we hadn't got to it, and partially because obfuscating
+them doesn't actually help much with privacy, given an attacker can just
+scan through possible obfuscated phone numbers and email addresses to
+deobfuscate them.  However, we've been working through obfuscating the
+contact details anyway by hashing as per
+<a href="https://github.com/matrix-org/matrix-doc/pull/2134">MSC2134</a>, which has all
+the details.  We're also adding an explicit lookup warning in Riot/Web, as
+per https://github.com/vector-im/riot-web/issues/10093.</p>
+</li>
+<li>
+<p>There was a bug where Riot/Web was querying the Integration Manager every
+time you opened a room, even if that room had no integrations (actually, it
+did it 3 times in a row).  This got <a href="https://github.com/matrix-org/matrix-react-sdk/pull/3115">fixed and
+released</a> in
+Riot/Web 1.2.2 back on June 19th.</p>
+</li>
+<li>
+<p>Matrix needs to authenticate whether events were actually sent by the server
+that claimed to send them.  We do this by having servers sign their events
+when they create them, and publishing the public half of their signing keys
+for anyone to query.  However, this poses problems if you receive an event
+which is signed by a server which isn't currently online.  To solve this, we
+have the concept of <code>trusted_key_servers</code> (aka notary servers), which your
+server can query to see if they know about the missing server's keys.  By
+default, matrix.org is configured as Synapse's trusted notary, but you can
+of course change this. If you choose an unreliable server as the notary
+(e.g. by not setting one at all) then there's a risk that you won't be able
+to look up signing keys, and a splitbrain will result where your server
+can't receive certain events, but other servers in the room can.  This can
+then result in your server being unable to participate in the room entirely,
+if it's missing key events in the room's lifetime.</p>
+<p>Our plan here is to get rid of notaries entirely by changing how event
+signing works as per
+<a href="https://github.com/matrix-org/matrix-doc/issues/1228">MSC1228</a>, but this is
+going to take a while.  Meanwhile we're going to check Synapse's code to
+ensure it doesn't talk to the notary server unnecessarily.  (E.g. it should
+be caching the signing keys locally, and it should only use the notary
+server if the remote server is down.)</p>
+</li>
+<li>
+<p>When doing VoIP in Matrix, clients need to use a TURN server to discover
+their network conditions and perform firewall traversal.  The TURN server
+should be specified by your homeserver (and each homeserver deployment
+should ideally include a TURN server).  However, for users who have not
+configured a TURN server, Riot (on all 3 platforms) defaulted to use
+Google's public STUN service (<code>stun.l.google.com</code>).  STUN is a subset of
+TURN which provides firewall discovery, but not traffic relaying.  This
+slightly increased the chances of calls working for users without a proper
+TURN server, but not by much - and rather than fall back to Google, we've
+decided to simply remove it from Riot (e.g.
+https://github.com/matrix-org/matrix-ios-sdk/commit/24832a2b14fb72ae6f051d5aba40262d11eef65d).
+This means that VoIP might get less reliable for users who were relying on
+this fallback, but you really should be running your own TURN server anyway
+if you want VoIP to work reliably on your homeserver.</p>
+</li>
+<li>
+<p>We should make it clearer in Riot that device names are world-readable, and
+not just for the user's own personal reference. This is
+https://github.com/vector-im/riot-web/issues/10216</p>
+</li>
+</ol>
+<p>As you can see, much of the work on improving these issues is still in full
+swing, although some has already shipped.  As should also be obvious, these
+issues are categorically not malicious: Matrix (and Riot) literally exists to give users full control and autonomy over their communication, and privacy is a key part of that. These are avoidable issues which can and will be solved.  It's worth noting that we have to prioritise privacy issues alongside all the other development in Matrix however: there's no point in having excellent privacy if there are other bugs stopping the platform from being usable.</p>
+<p>We'll do another blog post to confirm once most of the fixes here have landed -
+meanwhile, hopefully this post provides some useful visibility on how we're
+going about improving things.</p>
+
+                
+            </div>
+        </article>
         
         <article class="post">
             <header>
