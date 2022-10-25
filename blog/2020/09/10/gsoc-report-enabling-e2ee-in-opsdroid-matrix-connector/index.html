@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="twitter:widgets:csp" content="on" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta name="twitter:site" content="@matrixdotorg" />
+    <meta name="twitter:creator" content="@matrixdotorg" />
+
+    <title>Matrix.org - GSOC report: Enabling E2EE in Opsdroid Matrix Connector</title>
+    <link rel="shortcut icon" href="/assets/favicon.ico" />
+    <link rel="icon" type="image/png" href="/assets/favicon.png" />
+    <link rel="stylesheet" href="/style.css" />
+
+    
+
+
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    "headline": "GSOC report: Enabling E2EE in Opsdroid Matrix Connector",
+    "datePublished": "2020-09-10T14:50+00:00",
+    
+    "author": [
+    
+    {
+        "@type": "Person",
+        "name": "Tyagraj Desigar",
+        "url": "//authors/tyagraj-desigar"
+    }
+    
+    ]
+}
+</script>
+</head>
+
+<body>
+    
+    <header class="site-header">
+    <a href="/" class="brand">
+        <img src="/images/matrix-logo.svg" alt="Matrix logo">
+    </a>
+    <input id="site-header-dropdown-checkbox" type="checkbox" class="dropdown-checkbox" aria-hidden="true">
+    <label for="site-header-dropdown-checkbox" class="dropdown-button">&#xe602;</label>
+    <label for="site-header-dropdown-checkbox" class="page-overlay"></label>
+    <nav>
+        
+        
+        <a href="&#x2F;about&#x2F;" class="
+            ">
+            About
+        </a>
+        
+        
+        
+        <a href="&#x2F;blog&#x2F;" class="
+            current">
+            Blog
+        </a>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;docs&#x2F;" class="section ">
+                Documentation
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;ecosystem&#x2F;" class="section ">
+                Ecosystem
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                    <a href="&#x2F;ecosystem&#x2F;clients&#x2F;">Clients</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;servers&#x2F;">Servers</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bots&#x2F;">Bots</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bridges&#x2F;">Bridges</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;sdks&#x2F;">SDKs</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;hosting&#x2F;">Hosting</a>
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        <a href="&#x2F;podcasts&#x2F;" class="
+            ">
+            Podcasts
+        </a>
+        
+        
+        
+        <a href="https:&#x2F;&#x2F;shop.matrix.org" class="
+            ">
+            Shop
+        </a>
+        
+        
+        
+        <a href="&#x2F;try-matrix&#x2F;" class="primary
+            ">
+            Try Matrix
+        </a>
+        
+        
+    </nav>
+</header>
+
+
+    <main>
+        
+<article class="content post with-sidebar">
+    <header>
+        <h1>GSOC report: Enabling E2EE in Opsdroid Matrix Connector</h1>
+        <span>10.09.2020 14:50 — <a
+                href="/category/gsoc">GSOC</a>
+             — <a href="/author/tyagraj-desigar">Tyagraj Desigar</a>
+        </span>
+        
+    </header>
+    <div class="post-main">
+        <div class="post-content">
+            <p>This is part of a series of reports on the <a href="https://summerofcode.withgoogle.com/organizations/6060943798173696"><em>six</em> projects</a> assigned to Matrix for Google Summer of Code 2020.</p>
+<p><a href="https://summerofcode.withgoogle.com/organizations/6060943798173696/#6107552447725568">View project: Enabling E2EE in Opsdroid Matrix Connector</a></p>
+<hr />
+<p>I'm <a href="https://github.com/Tyagdit">Tyagraj Desigar</a> and I worked on <a href="https://github.com/opsdroid/opsdroid">Opsdroid</a> with <a href="https://github.com/Cadair">Stuart Mumford</a> and <a href="https://github.com/SolarDrew">Drew Leonard</a>. Opsdroid is a python framework for creating platform agnostic bots usable with multiple chat services including matrix.</p>
+<h2 id="the-plan">The Plan</h2>
+<p>The project's focus was on the interaction layer (called a connector) between opsdroid and matrix. As it stood, the connector used the deprecated <a href="https://github.com/matrix-org/matrix-python-sdk">matrix-python-sdk</a> and had no support for encryption. The aim was to change this by moving over to <a href="https://github.com/poljar/matrix-nio">matrix-nio</a>.</p>
+<p>I had planned to work on some other features as well:</p>
+<ul>
+<li>A database module for opsdroid using matrix state events</li>
+<li>Support for unused matrix events</li>
+<li>Homeserver lookup using <code>.well-known</code> API requests</li>
+<li>Device verification process for the bot</li>
+</ul>
+<p>Porting to nio and adding encryption support was the bulk of the project, and the <strong>minimum</strong> I wanted to accomplish by the end of the project. I wanted to have a connector that worked as it did already with support for encrypted rooms which needed minimal extra configuration.</p>
+<h2 id="the-process">The Process</h2>
+<p>The process began with <a href="https://github.com/opsdroid/opsdroid/pull/1418">This PR</a> which gave us a head start with the migration to matrix-nio. Through helping to review the PR I got to understand how matrix-nio and opsdroid work. </p>
+<p>The implementation of encryption support was a little tricky in that it was tough to figure out the process required to do that in the context of the connector. One problem we faced was the installation of dependencies. Installing <code>libolm</code>, a C library which nio uses for encryption was a less than smooth process. This spawned a couple side projects that dealt with the CI, testing and installation of opsdroid. In the end we found a solution and had a working connector on our hands.</p>
+<p>Next we shifted focus to the database module. It was based on <a href="https://github.com/SolarDrew/database-matrix">this project</a>. I rewrote it with nio and added a few features. The idea was straightforward but the implementation had many catches since we were working under some constraints for the interfacing with opsdroid. It went through several iterations before we settled on the final product.</p>
+<p>The encryption and database took longer than I had initially expected which meant we didn't get to work on adding support for more events and homeserver lookups. I had a go at adding device verification steps while working on the encryption support but that turned out to be quite complicated and would introduce some breaking changes, besides cross-signing had just been introduced so we decided to drop that till nio implemented some way to leverage cross-signing.</p>
+<p>Along the way some issues cropped up with the testing frameworks and CI that were hard to pinpoint and caused further delays but were solved eventually.</p>
+<h2 id="the-conclusion">The Conclusion</h2>
+<p>I am extremely happy with what I've accomplished and hope that I have been able to achieve the standards set by the matrix community. It was a challenging and exhilarating experience. I have learned more in this project than I could've imagined and gained a ton of invaluable experience with software development thanks to my mentors who pushed me forward and guided me throughout. This journey was beyond amazing and I will be sure to contribute to matrix moving forward.</p>
+<p>You can find complete details of everything I worked on during GSoC <a href="https://gist.github.com/Tyagdit/0e6feb332fc33c540db728092cc7ae7f">here</a>.</p>
+
+        </div>
+        
+        <aside>
+            <h3>Post Contents</h3>
+
+            <ul style="list-style: none; padding-left: 0px;">
+                
+                <li>
+                    <a href="/blog/2020/09/10/gsoc-report-enabling-e2ee-in-opsdroid-matrix-connector/#the-plan">The Plan</a>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2020/09/10/gsoc-report-enabling-e2ee-in-opsdroid-matrix-connector/#the-process">The Process</a>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2020/09/10/gsoc-report-enabling-e2ee-in-opsdroid-matrix-connector/#the-conclusion">The Conclusion</a>
+                    
+                </li>
+                
+            </ul>
+        </aside>
+        
+    </div>
+</article>
+
+    </main>
+
+    <footer class="site-footer">
+    <div class="internal-links">
+        
+        <a href="&#x2F;faq">FAQs</a>
+        
+        <a href="&#x2F;security-disclosure-policy">Security Disclosure Policy</a>
+        
+        <a href="&#x2F;hall-of-fame">Security Hall of Fame</a>
+        
+        <a href="&#x2F;legal&#x2F;code-of-conduct">Code of Conduct for Matrix.org</a>
+        
+        <a href="&#x2F;legal">Legal</a>
+        
+        <a href="&#x2F;contact">Contact</a>
+        
+        <a href="https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;">Site Source</a>
+        
+    </div>
+    <div class="external-links">
+        <div>
+            
+            <a href="&#x2F;code"><img src="/assets/github.svg" alt="GitHub"></a>
+            
+            <a href="https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;"><img src="/assets/gitlab.svg" alt="GitLab"></a>
+            
+            <a href="https:&#x2F;&#x2F;mastodon.matrix.org&#x2F;@matrix"><img src="/assets/mastodon.svg" alt="Mastodon"></a>
+            
+            <a href="https:&#x2F;&#x2F;twitter.com&#x2F;matrixdotorg"><img src="/assets/twitter.svg" alt="Twitter"></a>
+            
+            <a href="https:&#x2F;&#x2F;www.youtube.com&#x2F;channel&#x2F;UCVFkW-chclhuyYRbmmfwt6w"><img src="/assets/youtube.svg" alt="YouTube"></a>
+            
+        </div>
+    </div>
+    <p>© 2022 The Matrix.org Foundation C.I.C.</p>
+</footer>
+
+</body>
+
+</html>

@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="twitter:widgets:csp" content="on" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta name="twitter:site" content="@matrixdotorg" />
+    <meta name="twitter:creator" content="@matrixdotorg" />
+
+    <title>Matrix.org - Dendrite is entering Beta!</title>
+    <link rel="shortcut icon" href="/assets/favicon.ico" />
+    <link rel="icon" type="image/png" href="/assets/favicon.png" />
+    <link rel="stylesheet" href="/style.css" />
+
+    
+
+
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    "headline": "Dendrite is entering Beta!",
+    "datePublished": "2020-10-08T00:00+00:00",
+    
+    "author": [
+    
+    {
+        "@type": "Person",
+        "name": "Matthew Hodgson",
+        "url": "//authors/matthew-hodgson"
+    }
+    
+    ]
+}
+</script>
+</head>
+
+<body>
+    
+    <header class="site-header">
+    <a href="/" class="brand">
+        <img src="/images/matrix-logo.svg" alt="Matrix logo">
+    </a>
+    <input id="site-header-dropdown-checkbox" type="checkbox" class="dropdown-checkbox" aria-hidden="true">
+    <label for="site-header-dropdown-checkbox" class="dropdown-button">&#xe602;</label>
+    <label for="site-header-dropdown-checkbox" class="page-overlay"></label>
+    <nav>
+        
+        
+        <a href="&#x2F;about&#x2F;" class="
+            ">
+            About
+        </a>
+        
+        
+        
+        <a href="&#x2F;blog&#x2F;" class="
+            current">
+            Blog
+        </a>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;docs&#x2F;" class="section ">
+                Documentation
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <a href="&#x2F;ecosystem&#x2F;" class="section ">
+                Ecosystem
+            </a>
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                    <a href="&#x2F;ecosystem&#x2F;clients&#x2F;">Clients</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;servers&#x2F;">Servers</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bots&#x2F;">Bots</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bridges&#x2F;">Bridges</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;sdks&#x2F;">SDKs</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;hosting&#x2F;">Hosting</a>
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        <a href="&#x2F;podcasts&#x2F;" class="
+            ">
+            Podcasts
+        </a>
+        
+        
+        
+        <a href="https:&#x2F;&#x2F;shop.matrix.org" class="
+            ">
+            Shop
+        </a>
+        
+        
+        
+        <a href="&#x2F;try-matrix&#x2F;" class="primary
+            ">
+            Try Matrix
+        </a>
+        
+        
+    </nav>
+</header>
+
+
+    <main>
+        
+<article class="content post with-sidebar">
+    <header>
+        <h1>Dendrite is entering Beta!</h1>
+        <span>08.10.2020 00:00 — <a
+                href="/category/releases">Releases</a>
+             — <a href="/author/matthew-hodgson">Matthew Hodgson</a>
+        </span>
+        
+    </header>
+    <div class="post-main">
+        <div class="post-content">
+            <p>Hi all,</p>
+<p>We’re very excited to announce that Dendrite, the next-generation Matrix homeserver from the core Matrix team, is at last exiting alpha development and entering beta testing!</p>
+<p>The path we’ve taken to get here has been quite a curious one, and it’s worth recapping to give context on why it’s taken reality a little while to catch up with the dream. :)</p>
+<p>The Dendrite project has its roots in 2016 as <a href="https://github.com/matrix-org/dendron">Dendron</a>: an attempt to write a next-generation homeserver in Golang rather than Python, in order to benefit from Go’s stronger typing, ease of profiling (no twisted stack-shredding via deferredInlineCallbacks), multithreading and faster GC performance.  The idea for Dendron was to do a <a href="https://martinfowler.com/bliki/StranglerFigApplication.html">strangler pattern</a> rewrite of Synapse - where we’d insert Dendron in front of Synapse as a load balancer, and incrementally replace Synapse’s API endpoints with ones implemented by Dendron.</p>
+<p>However, as the project started to progress, it became clear that this was going to end up with many of Synapse’s architectural choices being baked into the project - particularly the DB schema and data flow architecture, such that the new endpoints could interoperate with the existing Python ones.  We got as far as putting Dendron live on matrix.org and moving some of the login/registration APIs over to it… but then work fizzled out due to Synapse demanding more urgent attention as traffic grew on Matrix.org, combined with concerns about whether Dendron was the right approach in general.</p>
+<p>So, towards the end of 2016 (after the rush to launch <del>Vector</del> <del>Riot</del> Element that summer), we went back to the drawing board to devise Dendrite—“Dendron done right!”—as opposed to Dendron, which in retrospect was Dendrite done wrong. ;) The new vision was:</p>
+<ul>
+<li>Build a massively horizontally scalable architecture, such that large Matrix deployments like matrix.org and big government deployments could run smoothly without the constant scalability headaches we were seeing at the time with Synapse</li>
+<li>Do so by splitting the server into well-defined microservice components, each of which could independently horizontally scale, each with its own DB (if desired)</li>
+<li>Connect the components together with a set of append-only logs via <a href="https://kafka.apache.org/">Kafka</a> or similar, easily letting components shard and maintain their databases from the logs, allowing rolling upgrades, possibly schema upgrades, and all sorts of other niceties.  The logs effectively become a primary source of truth rather than putting all the onus on a massive monolithic ever-growing database</li>
+</ul>
+<p>Rather than Dendron’s top-down approach, instead Dendrite started bottom-up with the very hardest bit: <a href="https://github.com/matrix-org/gomatrixserverlib">gomatrixserverlib</a>, a standalone Go library implementing the state resolution algorithms and performing federation requests (such that it might also someday be used as a general purpose way to add Matrix federation support to an existing Go codebase).</p>
+<p>Then we started building out the various components to implement the various services, starting with the roomserver (the service which models the history and state of one or more rooms in the server), then the syncserver (the service which implements the /sync API to let clients receive messages), etc. We even implemented a simplified in-memory version of Kafka named <a href="https://github.com/matrix-org/naffka">naffka</a>—useful for glueing together the microservice components when running them all within a single binary.</p>
+<p>Things were looking pretty positive by the summer of 2017: we had the server sending/receiving messages, federating with Synapse, and looking tantalisingly close:</p>
+<blockquote class="twitter-tweet" data-dnt="true"><p lang="en" dir="ltr">We just sent the first ever synapse-&gt;dendrite federated traffic, including full dendrite media API (thumbnailing, fed, etc)!!! :D :D :D <a href="https://t.co/sBcM2jMAr6">pic.twitter.com/sBcM2jMAr6</a></p>&mdash; Matrix (@matrixdotorg) <a href="https://twitter.com/matrixdotorg/status/872861579141947392?ref_src=twsrc%5Etfw">June 8, 2017</a></blockquote>
+<p>However, we then hit three fairly major obstacles:</p>
+<ul>
+<li><a href="https://matrix.org/blog/2017/07/07/a-call-to-arms-supporting-matrix">Matrix lost its funding</a></li>
+<li>In the ensuing uncertainty, the two lead developers (Mjark &amp; Kegan) went to work elsewhere</li>
+<li>Meanwhile, Matrix uptake was starting to explode and Synapse was failing to scale to handle the traffic on matrix.org (and elsewhere)</li>
+</ul>
+<p>At first, having formed what would become New Vector (now Element) to keep the rest of the core team hired, we pushed to see if we could get Dendrite finished fast enough to replace Synapse, with Erik &amp; richvdh jumping over from Synapse to pick up the remaining work.  However, it became clear that we urgently needed a quicker solution to address all the overloaded Synapses out there, and so they swung back to focus on improving Synapse (taking inspiration from some of the design of Dendrite - e.g. offloading endpoints onto worker processes connected via replication streams, and using <a href="https://opentracing.io/">OpenTracing</a> to debug traffic as it flows over the various services).</p>
+<p>At this point, Dendrite maintenance was in effect valiantly taken over by the community, with Brendan and later Anoa keeping the ball going in 2017, joined by APWhitehat in GSoC 2018 and cnly in GSoC 2019.  The fact that Dendrite is now here today is thanks in no small part to their work to keep the project alive in its “wilderness years” between Sept 2017 and Dec 2019.</p>
+<p>Meanwhile, it became clear that we were overdue getting Matrix itself out of beta - and the last thing we wanted to do was to split and dilute the implementation work of Matrix 1.0 over both Synapse and Dendrite - so we consciously made the decision to focus all our effort on Synapse for solving the remaining bugs and challenges.</p>
+<p>Then, in July 2019, <a href="https://matrix.org/blog/2019/06/11/introducing-matrix-1-0-and-the-matrix-org-foundation">Matrix and Synapse exited beta</a>, and we finally started to see light at the end of the tunnel.  In October we started dusting off Dendrite again - looking to use it as a relatively simple and flexible codebase for <a href="https://youtu.be/eA0KnTt4O7E?t=1423">experimenting with Peer-to-Peer Matrix</a>, not least because being Go it can compile to WebAssembly and run clientside, and because even though Dendrite was originally built with massive deployments in mind, it turns out the elastic scaling means it can also scale down pretty small too—as a part of the <a href="http://testflight.apple.com/join/Tgh2MEk6">iOS P2P demo</a>, we’ve even ran full Dendrite homeservers on iPhones embedded into Element iOS! :)</p>
+<p>In Dec 2019, we finally got to the point where Element could fund full-time dedicated development on Dendrite once again, with Neil Alexander joining the project and focusing fulltime on getting Dendrite out of alpha and getting it working for P2P and embedded usage (adding libp2p as a federation transport, and adding SQLite support) - and in Jan 2020 we got Dendrite <a href="https://archive.fosdem.org/2020/schedule/event/dip_p2p_matrix/">successfully running clientside in a WASM service worker</a> (just in time for FOSDEM!). Then, in Feb 2020, Kegan returned to the project to work fulltime on Dendrite - and the race began in earnest to get Dendrite ready for beta!</p>
+<p>Here’s a pretty picture courtesy of GitHub to visualise the progress:</p>
+<p><img src="/blog/img/2020-10-08-dendrite-contributors.png" alt="020-10-08-dendrite-contributors.png" /></p>
+<p>Throughout 2020 there’s been a huge amount of stabilisation work and polish:</p>
+<ul>
+<li>Refactoring much of Dendrite’s foundation to make the codebase more maintainable</li>
+<li>Created all-new user server, key server, signing key server microservices</li>
+<li>Moving some work from existing microservices (ultimately superseding the former currentstateserver, publicroomsapi and typingserver microservices altogether)</li>
+<li>Developing new testing infrastructure:
+<ul>
+<li><a href="https://github.com/matrix-org/complement">Complement</a> - our brand new Golang Matrix integration test harness</li>
+<li><a href="https://github.com/matrix-org/dendrite/blob/master/are-we-synapse-yet.py">Are We Synapse Yet</a> - an aggregator which parses sytest/complement output to compare how close Dendrite is to passing</li>
+</ul>
+</li>
+<li>All the Matrix 1.0 work - particularly state res v2 &amp; room version support</li>
+<li>Making it work with more P2P transports for <a href="https://matrix.org/blog/2020/06/02/introducing-p-2-p-matrix/">all the exciting P2P experiments</a></li>
+<li>Supporting backfill and fetching missing events</li>
+<li>Fixing up SQLite support to make it work as a first class citizen (with shared storage code where we can!)</li>
+<li>Supporting both sending and rejecting invites (even over federation)</li>
+<li>E2E encryption support (one-time keys, device lists, send-to-device support)</li>
+<li>Improved federation sender logic (resend retries, backoffs, blacklisting, metrics, resetting backoffs when receiving transactions)</li>
+<li>Handling both inbound and outbound redactions</li>
+<li>User interactive authentication (and implemented on various ‘sudo’ endpoints e.g. deleting devices and changing passwords)</li>
+<li>Respecting server ACLs</li>
+<li>Rejecting / soft-failing events properly</li>
+<li>Support for database schema upgrades</li>
+</ul>
+<p>... which brings us at last to the present day (Oct 2020), as we declare Dendrite sufficiently stable that we consider it ready for beta testing!</p>
+<p>In practice, this means **Dendrite is now ready for experimentation by adventurous Matrix sysadmins. It is <em>NOT</em> ready for production usage yet, but we need folks to test it and help us iron out the remaining bugs!  **Please do not trust it with sensitive data yet, and we don’t recommend trying to run it at scale yet as we haven’t done any serious optimisation work yet.</p>
+<p>That said, we do provide the following guarantees:</p>
+<ul>
+<li>We’re providing versioned releases from here on in, beginning with <a href="https://github.com/matrix-org/dendrite/releases/tag/v0.1.0">0.1.0</a></li>
+<li>We don’t expect any major breaking changes to the config or architecture before 1.0</li>
+<li>Ready for early adopters to try running Dendrite without experiencing ~daily breaking churn</li>
+<li>The database schema is now stable and will upgrade itself going forwards - your database should now be here to stay! (assuming we don’t hit any nasty data loss bugs during beta)</li>
+</ul>
+<p>In terms of comparison with Synapse, the main things you should get excited about are:</p>
+<ul>
+<li>Dendrite aims to provide an <strong>efficient</strong>, <strong>reliable</strong> and <strong>scalable</strong> alternative to Synapse:
+<ul>
+<li>Efficient: A small memory footprint with better baseline performance than an out-of-the-box Synapse</li>
+<li>Reliable: Implements the Matrix specification as written, using the <a href="https://github.com/matrix-org/sytest">same test suite</a> as Synapse as well as a <a href="https://github.com/matrix-org/complement">brand new Go test suite</a></li>
+<li>Scalable: can run on multiple machines and eventually scale to massive homeserver deployments</li>
+</ul>
+</li>
+<li>This means significantly less memory usage than Synapse (depends on joined rooms, often between 50MB - 400MB resident memory) - although we haven’t tuned this at all yet!</li>
+<li>All-new database model, where every microservice instance has its own database tables, letting them scale arbitrarily wide</li>
+<li>The ability to efficiently use all your available CPU cores without needing to split into separate processes, thanks to Go and our extensive use of goroutines.  No more Python global interpreter lock! :)</li>
+<li>Future experimental MSCs are likely to land in Dendrite before Synapse (e.g <a href="https://github.com/matrix-org/matrix-doc/blob/matthew/msc2753/proposals/2753-peeking-via-sync-v2.md">MSC2753 Peeking via /sync</a> and <a href="https://github.com/matrix-org/matrix-doc/blob/matthew/msc2444/proposals/2444-peeking-over-federation-peek-api.md">MSC2444 Peeking over Federation</a> are already being prototyped (<a href="https://github.com/matrix-org/dendrite/pull/1370">#1370</a> and <a href="https://github.com/matrix-org/dendrite/pull/1391">#1391</a>) in Dendrite rather than Synapse!)</li>
+</ul>
+<p>The provisos you should know about however are:</p>
+<ul>
+<li>We’re not feature complete yet: sytest reports 56% CS API coverage and 77% Federation coverage. <strong>NB: these are always going to be underestimates of how much Dendrite actually performs due to how the tests are spread out, in actuality it’s likely more 70% CS, 95% Fed.</strong></li>
+<li>No read receipts, membership lazy-loading, presence, push notifications, search, event context, key backups, cross-signing. See changelog for full limitations.</li>
+<li>Not battle-tested in the wild by many people (there are probably only ~10 dendrites on the open network today!) - so there’s likely to be a broad spectrum of bugs at first.</li>
+<li>Clients that require more exotic features, like lazy loading, may not behave properly yet</li>
+<li>Please <strong>use Postgres rather than SQLite wherever possible</strong>—it’s faster and has fewer issues regarding concurrency (some requests on SQLite Dendrites may 500 with ‘database is locked’ - though we’ve worked hard to eliminate most of these)</li>
+<li>Dendrite can run in either “monolith” or “polylith” mode. In monolith, all the microservices are linked into a single binary - and <strong>we recommend running in this configuration wherever possible</strong> for now. Monolith mode is <em>extremely</em> capable as it is and has fewer moving parts for things to go wrong and will be the right choice for the majority of beta deployments!</li>
+<li>Whilst Dendrite is nearly 100% federation compatible, there may still be situations where it will split-brain and disagree with the current room state that Synapse has calculated. We expect these issues to resolve as we get more user feedback.</li>
+</ul>
+<p>Architecture-wise, this is what Dendrite looks like under the hood today:</p>
+<p><img src="/blog/img/2020-10-08-dendrite-arch.svg" alt="2020-10-08-dendrite-arch.svg" /></p>
+<p>To get up and running, please install Go and head on over to the Get Started guide at <a href="https://github.com/matrix-org/dendrite#get-started">https://github.com/matrix-org/dendrite#get-started</a> to join the fun :)</p>
+<p>In terms of where we’re going next:</p>
+<ul>
+<li>Read receipts. It’s a major missing feature and impacts UX significantly.</li>
+<li>100% Federation coverage (according to sytest). It’s crucial that Dendrite instances play nicely with other servers. This will be the best metric we have for asserting that we are just as capable as Synapse at the fed level.</li>
+<li>Optimisation—<strong>Dendrite has not been optimised yet for speed or resource utilisation!</strong>
+<ul>
+<li>We plan to add benchmarks which will stress test different microservices in the presence of many different scaling factors (number of users, number of rooms, size of room, number of devices per user, number of sync requests, etc). This will hopefully allow us to identify early on bottlenecks and slow algorithms</li>
+<li>Good old fashioned pprof with known slow scenarios to see what’s consuming CPU/memory and fixing issues ad-hoc (which we’ve already done a bit of pre-beta). This may involve adding additional in-memory caches, with a healthy respect for the complexities it may introduce (which Synapse has been bitten by)</li>
+</ul>
+</li>
+<li>We plan to add first class feature flag support for experimental MSCs—experimentation is one thing which makes Dendrite notably different from Synapse, and supporting it more thoroughly going forwards will be important. This may mean adding additional hooks; potentially a dedicated microservice to cleanly separate experiments, we don’t know yet</li>
+<li>P2P work will continue with vigour now we have a working, featureful, and relatively stable HS to embed and play with</li>
+</ul>
+<p>Longer term, it’s pretty hard to say right now when we expect to exit beta (it took Synapse 5 years to exit beta, after all ;) - but obviously we’ll need Dendrite to have parity with Synapse and have no known serious bugs.</p>
+<p>Finally: you’re probably wondering what this means for Synapse.  Synapse is here to stay - with tens of thousands of deployments around the world serving tens of millions of users.  The majority of the core team is still focused on improving and optimising Synapse, and we’ll be keeping improving it for the foreseeable.</p>
+<p>However, we’ll certainly be experimenting with new stuff on Dendrite first - whether that’s P2P, portable accounts, new-style communities, peeking etc.  We expect Synapse to be the stable long-term-supported solution, while Dendrite (particularly while in beta) will be the more unstable and experimental platform. In the longer term we’ll provide ways of migrating from Synapse to Dendrite however (probably via portable accounts), and perhaps in future new deployments may choose to use Dendrite - a bit like you might choose to use nginx rather than Apache for a new web server these days. But this will be a long transition—meanwhile we expect to see more and more next-generation homeservers like <a href="http://conduit.rs/">Conduit</a>, <a href="https://gitlab.com/mascarene/mascarene">Mascarene</a> or <a href="https://github.com/matrix-construct/construct">Construct</a> coming of age too.</p>
+<p>So, there you have it. If you’re an intrepid sysadmin please spin up a Dendrite and start filing bugs! :)</p>
+<p>— Matthew, Neil Alexander, Kegan and the whole Matrix team.</p>
+<p>Here’s the official changelog:</p>
+<h3 id="client-server-api-features">Client-Server API Features</h3>
+<h4 id="account-registration-and-management">Account registration and management</h4>
+<ul>
+<li>Registration: By password only.</li>
+<li>Login: By password only. No fallback.</li>
+<li>Logout: Yes.</li>
+<li>Change password: Yes.</li>
+<li>Link email/msisdn to account: No.</li>
+<li>Deactivate account: Yes.</li>
+<li>Check if username is available: Yes.</li>
+<li>Account data: Yes.</li>
+<li>OpenID: No.</li>
+</ul>
+<h4 id="rooms">Rooms</h4>
+<ul>
+<li>Room creation: Yes, including presets.</li>
+<li>Joining rooms: Yes, including by alias or <code>?server_name=</code>.</li>
+<li>Event sending: Yes, including transaction IDs.</li>
+<li>Aliases: Yes.</li>
+<li>Published room directory: Yes.</li>
+<li>Kicking users: Yes.</li>
+<li>Banning users: Yes.</li>
+<li>Inviting users: Yes, but not third-party invites.</li>
+<li>Forgetting rooms: No.</li>
+<li>Room versions: All (v1 - v6)</li>
+<li>Tagging: Yes.</li>
+</ul>
+<h4 id="user-management">User management</h4>
+<ul>
+<li>User directory: Basic support.</li>
+<li>Ignoring users: No.</li>
+<li>Groups/Communities: No.</li>
+</ul>
+<h4 id="device-management">Device management</h4>
+<ul>
+<li>Creating devices: Yes.</li>
+<li>Deleting devices: Yes.</li>
+<li>Send-to-device messaging: Yes.</li>
+</ul>
+<h4 id="sync">Sync</h4>
+<ul>
+<li>Filters: Timeline limit only. Rest unimplemented.</li>
+<li>Deprecated <code>/events</code> and <code>/initialSync</code>: No.</li>
+</ul>
+<h4 id="room-events">Room events</h4>
+<ul>
+<li>Typing: Yes.</li>
+<li>Receipts: No.</li>
+<li>Read Markers: No.</li>
+<li>Presence: No.</li>
+<li>Content repository (attachments): Yes.</li>
+<li>History visibility: No, defaults to <code>joined</code>.</li>
+<li>Push notifications: No.</li>
+<li>Event context: No.</li>
+<li>Reporting content: No.</li>
+</ul>
+<h4 id="end-to-end-encryption">End-to-End Encryption</h4>
+<ul>
+<li>Uploading device keys: Yes.</li>
+<li>Downloading device keys: Yes.</li>
+<li>Claiming one-time keys: Yes.</li>
+<li>Querying key changes: Yes.</li>
+<li>Cross-Signing: No.</li>
+</ul>
+<h4 id="misc">Misc</h4>
+<ul>
+<li>Server-side search: No.</li>
+<li>Guest access: Partial.</li>
+<li>Room previews: No, partial support for Peeking via MSC2753.</li>
+<li>Third-Party networks: No.</li>
+<li>Server notices: No.</li>
+<li>Policy lists: No.</li>
+</ul>
+<h3 id="federation-features">Federation Features</h3>
+<ul>
+<li>Querying keys (incl. notary): Yes.</li>
+<li>Server ACLs: Yes.</li>
+<li>Sending transactions: Yes.</li>
+<li>Joining rooms: Yes.</li>
+<li>Inviting to rooms: Yes, but not third-party invites.</li>
+<li>Leaving rooms: Yes.</li>
+<li>Content repository: Yes.</li>
+<li>Backfilling / get_missing_events: Yes.</li>
+<li>Retrieving state of the room (<code>/state</code> and <code>/state_ids</code>): Yes.</li>
+<li>Public rooms: Yes.</li>
+<li>Querying profile data: Yes.</li>
+<li>Device management: Yes.</li>
+<li>Send-to-Device messaging: Yes.</li>
+<li>Querying/Claiming E2E Keys: Yes.</li>
+<li>Typing: Yes.</li>
+<li>Presence: No.</li>
+<li>Receipts: No.</li>
+<li>OpenID: No.</li>
+</ul>
+
+        </div>
+        
+        <aside>
+            <h3>Post Contents</h3>
+
+            <ul style="list-style: none; padding-left: 0px;">
+                
+                <li>
+                    <a href="/blog/2020/10/08/dendrite-is-entering-beta/#client-server-api-features">Client-Server API Features</a>
+                    
+                    <ul>
+                        
+                        <li>
+                            <a href="/blog/2020/10/08/dendrite-is-entering-beta/#account-registration-and-management">Account registration and management</a>
+                        </li>
+                        
+                        <li>
+                            <a href="/blog/2020/10/08/dendrite-is-entering-beta/#rooms">Rooms</a>
+                        </li>
+                        
+                        <li>
+                            <a href="/blog/2020/10/08/dendrite-is-entering-beta/#user-management">User management</a>
+                        </li>
+                        
+                        <li>
+                            <a href="/blog/2020/10/08/dendrite-is-entering-beta/#device-management">Device management</a>
+                        </li>
+                        
+                        <li>
+                            <a href="/blog/2020/10/08/dendrite-is-entering-beta/#sync">Sync</a>
+                        </li>
+                        
+                        <li>
+                            <a href="/blog/2020/10/08/dendrite-is-entering-beta/#room-events">Room events</a>
+                        </li>
+                        
+                        <li>
+                            <a href="/blog/2020/10/08/dendrite-is-entering-beta/#end-to-end-encryption">End-to-End Encryption</a>
+                        </li>
+                        
+                        <li>
+                            <a href="/blog/2020/10/08/dendrite-is-entering-beta/#misc">Misc</a>
+                        </li>
+                        
+                    </ul>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2020/10/08/dendrite-is-entering-beta/#federation-features">Federation Features</a>
+                    
+                </li>
+                
+            </ul>
+        </aside>
+        
+    </div>
+</article>
+
+    </main>
+
+    <footer class="site-footer">
+    <div class="internal-links">
+        
+        <a href="&#x2F;faq">FAQs</a>
+        
+        <a href="&#x2F;security-disclosure-policy">Security Disclosure Policy</a>
+        
+        <a href="&#x2F;hall-of-fame">Security Hall of Fame</a>
+        
+        <a href="&#x2F;legal&#x2F;code-of-conduct">Code of Conduct for Matrix.org</a>
+        
+        <a href="&#x2F;legal">Legal</a>
+        
+        <a href="&#x2F;contact">Contact</a>
+        
+        <a href="https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;">Site Source</a>
+        
+    </div>
+    <div class="external-links">
+        <div>
+            
+            <a href="&#x2F;code"><img src="/assets/github.svg" alt="GitHub"></a>
+            
+            <a href="https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;"><img src="/assets/gitlab.svg" alt="GitLab"></a>
+            
+            <a href="https:&#x2F;&#x2F;mastodon.matrix.org&#x2F;@matrix"><img src="/assets/mastodon.svg" alt="Mastodon"></a>
+            
+            <a href="https:&#x2F;&#x2F;twitter.com&#x2F;matrixdotorg"><img src="/assets/twitter.svg" alt="Twitter"></a>
+            
+            <a href="https:&#x2F;&#x2F;www.youtube.com&#x2F;channel&#x2F;UCVFkW-chclhuyYRbmmfwt6w"><img src="/assets/youtube.svg" alt="YouTube"></a>
+            
+        </div>
+    </div>
+    <p>© 2022 The Matrix.org Foundation C.I.C.</p>
+</footer>
+
+</body>
+
+</html>
