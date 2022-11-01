@@ -354,7 +354,7 @@ Docs:
                 <p>Hi folks,</p>
 <p>We've had a few outages over the last week on the Matrix.org homeserver which have caused problems for folks using bridges or accounts hosted on matrix.org itself - we'd like to apologise to everyone who's been caught in the crossfire.  In the interests of giving everyone visibility on what's going on and what we're doing about it (and so folks can learn from our mistakes! :), here's a quick writeup (all times are UTC):</p>
 <ul>
- 	<li>2017-05-04 21:05: The datacenter where we host matrix.org performs an emergency unscheduled upgrade of the VM host where the main matrix.org HS &amp; DB master lives.  This means a live-migration of the VM onto another host, which freezes the (huge) VM for 9 minutes, during which service is (obviously) down.  Monitoring fires; we start investigating and try to get in on the console, but by the point we're considering failing over to the hot-spare, the box has come back and recovers fine other than a load spike as all the traffic catches up.  The clock however is off by 9 minutes due to its world having paused.</li>
+ 	<li>2017-05-04 21:05: The datacenter where we host matrix.org performs an emergency unscheduled upgrade of the VM host where the main matrix.org HS & DB master lives.  This means a live-migration of the VM onto another host, which freezes the (huge) VM for 9 minutes, during which service is (obviously) down.  Monitoring fires; we start investigating and try to get in on the console, but by the point we're considering failing over to the hot-spare, the box has come back and recovers fine other than a load spike as all the traffic catches up.  The clock however is off by 9 minutes due to its world having paused.</li>
  	<li>2017-05-04 22:30: We step NTP on the host to fix the clock (maximum clock skew on ISC ntpd is 500ppm, meaning it would take weeks to reconverge naturally, during which time we're issuing messages with incorrect timestamps).</li>
  	<li>2017-05-05 01:25: Network connectivity breaks between the matrix.org homeserver and the DC where all of our bridges/bots are hosted.</li>
  	<li>2017-05-05 01:40: Monitoring alerts fire for bridge traffic activity and are picked up.  After trying to restart the VPN between the DC a few times, it turns out that the IP routes needed for the VPN have mysteriously disappeared.</li>
@@ -376,9 +376,9 @@ Lessons learned:
  	<li>We need better monitoring and alerting of DB replication traffic.</li>
  	<li>We need to escalate PagerDuty phone alerts more aggressively (done).</li>
  	<li>We need better alerting for disk fill thresholds (especially "time until fill", remembering to take into account the emergency headroom reserved by the filesystem for the superuser).</li>
- 	<li>We should probably have scripts to rapidly (or even automatedly) switch between synapse master &amp; hot-spare, and to promote DB slaves in the event of a master failure.</li>
+ 	<li>We should probably have scripts to rapidly (or even automatedly) switch between synapse master & hot-spare, and to promote DB slaves in the event of a master failure.</li>
 </ul>
-Hopefully this is the last we've seen of this root cause; we'll be working through the todo list above.  Many apologies again for the instability - however please do remember that you can (and should!) run your own homeserver &amp; bridges to stay immune to whatever operational dramas we have with the matrix.org instance!
+Hopefully this is the last we've seen of this root cause; we'll be working through the todo list above.  Many apologies again for the instability - however please do remember that you can (and should!) run your own homeserver & bridges to stay immune to whatever operational dramas we have with the matrix.org instance!
 
                 
             </div>
@@ -509,7 +509,7 @@ Nowadays the hardware problem is effectively solved: the <a href="https://www.vi
 Video calling requires a WebRTC-capable browser (Chrome or Firefox). Unfortunately no iOS browsers support it yet. If you have dedicated VR hardware (Vive or Rift), you'll have to configure your browser appropriately to use the demo - see <a href="https://webvr.rocks">https://webvr.rocks</a> for the latest details.
 <p>Needless to say, the demo's open sourced under the Apache License like all things Matrix - you can check out the code from <a href="https://github.com/matrix-org/matrix-vr-demo">https://github.com/matrix-org/matrix-vr-demo</a>.  Huge kudos to Richard Lewis, Rob Swain and Ben Lewis for building this out - and to Aidan Taub and Tom Elliott for providing the 360 degree video footage!</p>
 <p>The demo is quite high-bandwidth and hardware intensive, so here's a video of it in action, just in case:</p>
-<div style="text-align: center;"><div class="video-container"><iframe src="https://www.youtube.com/embed/nk0nMlVXkbk" width="560" height="315" frameBorder="0" allowFullScreen="allowfullscreen"></iframe></div></div>
+<iframe src="https://www.youtube.com/embed/nk0nMlVXkbk" width="560" height="315" frameBorder="0" allowFullScreen="allowfullscreen"></iframe>
 <p>Now, it's important to understand that here we're using Matrix as a standard communications API for VR, but we're not using Matrix to store any VR world data (yet).  The demo uses plain A-Frame via aframe-react to render its world: we are not providing an API which exposes the world itself onto the network for folks to interact with and extend.  This is because Matrix is currently optimised for storing and synchronising two types of data structure: decentralised timelines of conversation data, and arbitrary decentralised key-value data (e.g. room names, membership, topics).</p>
 <p>However, the job of storing arbitrary world data requires storing and flexibly querying it as an object graph of some kind - e.g. as a scene graph hierarchy.  Doing this efficiently whilst supporting Matrix's decentralised eventual consistency model is tantamount to evolving Matrix into being a generic decentralised object-graph database (whilst upholding the constraints of that virtual world).  This is tractable, but it's a bunch more work than just supporting the eventually-consistent timeline &amp; key-value store we have today.  It's something we're thinking about though. :)</p>
 <p>Also, Matrix is currently not super low-latency - on a typical busy Synapse deployment event transmission between clients has a latency of 50-200ms (ignoring network).  This is fine for instant messaging and setting up VoIP calls etc, but useless for publishing the realtime state of a virtual world: having to wait 200ms to be told that something happened in an interactive virtual world would be a terrible experience.  However, there are various fixes we can do here: Matrix itself is getting faster; Dendrite is expected to be one or two orders of magnitude faster than Synapse.  We could also use Matrix simply as a signalling layer in order to negotiate a lower latency realtime protocol to describe world data updates (much as we use Matrix as a signalling layer for setting up RTP streams for VoIP calls or MIDI sessions).</p>
@@ -520,12 +520,9 @@ Video calling requires a WebRTC-capable browser (Chrome or Firefox). Unfortunate
 <ul>
 <li>Matthew, Amandine &amp; the Matrix team</li>
 </ul>
-<div style="text-align: center;">
-<div style="display: inline-block;">
-<blockquote class="twitter-tweet" data-lang="en"><p lang="en" dir="ltr">Amandine grins at the future in the newest skunkworks zone of the London <a href="https://t.co/y2YCHNIbgU">https://t.co/y2YCHNIbgU</a> HQ... :&gt; :D 😈 <a href="https://t.co/K5xBz7U9o2">pic.twitter.com/K5xBz7U9o2</a></p>&mdash; Matrix (@matrixdotorg) <a href="https://twitter.com/matrixdotorg/status/843181984448991232?ref_src=twsrc%5Etfw">March 18, 2017</a></blockquote>
-<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
-</div>
-</div>
+<blockquote>
+<p lang="en" dir="ltr">Amandine grins at the future in the newest skunkworks zone of the London <a href="https://t.co/y2YCHNIbgU">https://t.co/y2YCHNIbgU</a> HQ... :&gt; :D 😈 <a href="https://t.co/K5xBz7U9o2">pic.twitter.com/K5xBz7U9o2</a></p>&mdash; Matrix (@matrixdotorg) <a href="https://twitter.com/matrixdotorg/status/843181984448991232?ref_src=twsrc%5Etfw">March 18, 2017</a>
+</blockquote>
 
                 
             </div>
