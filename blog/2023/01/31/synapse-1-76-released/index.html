@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="twitter:widgets:csp" content="on" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta name="twitter:site" content="@matrixdotorg" />
+    <meta name="twitter:creator" content="@matrixdotorg" />
+
+    <title>Matrix.org - Synapse 1.76 released</title>
+    <link rel="shortcut icon" href="/assets/favicon.ico" />
+    <link rel="icon" type="image/png" href="/assets/favicon.png" />
+    <link rel="stylesheet" href="/style.css" />
+
+    
+
+
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    "headline": "Synapse 1.76 released",
+    "datePublished": "2023-01-31T00:00+00:00",
+    
+    "author": [
+    
+    {
+        "@type": "Person",
+        "name": "H. Shay",
+        "url": "//authors/h-shay"
+    }
+    
+    ]
+}
+</script>
+</head>
+
+<body>
+    
+    <header class="site-header">
+    <a href="/" class="brand">
+        <img src="/images/matrix-logo-white.svg" alt="Matrix logo">
+    </a>
+    <input id="site-header-dropdown-checkbox" type="checkbox" class="dropdown-checkbox" aria-hidden="true">
+    <label for="site-header-dropdown-checkbox" class="dropdown-button">&#xe602;</label>
+    <label for="site-header-dropdown-checkbox" class="page-overlay"></label>
+    <nav>
+        
+        
+        <a href="&#x2F;about&#x2F;" class="
+            ">
+            About
+        </a>
+        
+        
+        
+        <a href="&#x2F;blog&#x2F;" class="
+            current">
+            Blog
+        </a>
+        
+        
+        
+        <a href="&#x2F;docs&#x2F;" class="
+            ">
+            Documentation
+        </a>
+        
+        
+        
+        
+        
+        <div class="section-wrap">
+            <input id="ecosystem-submenu-checkbox" type="checkbox" class="submenu-checkbox" aria-hidden="true"
+                >
+            <label for="ecosystem-submenu-checkbox" class="submenu-title">Ecosystem <div class="arrow">
+                </div></label>
+
+            <div class="section-submenu-wrap">
+                <div class="section-submenu">
+                    
+                    
+                    <a href="&#x2F;ecosystem&#x2F;clients&#x2F;">Clients</a>
+                    
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bridges&#x2F;">Bridges</a>
+                    
+                    
+                    <a href="&#x2F;ecosystem&#x2F;servers&#x2F;">Servers</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;bots&#x2F;">Bots</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;sdks&#x2F;">SDKs</a>
+                    
+                    <a href="&#x2F;ecosystem&#x2F;hosting&#x2F;">Hosting</a>
+                    
+                </div>
+            </div>
+        </div>
+        
+        
+        
+        <a href="&#x2F;podcasts&#x2F;" class="
+            ">
+            Podcasts
+        </a>
+        
+        
+        
+        <a href="https:&#x2F;&#x2F;shop.matrix.org" class="
+            ">
+            Shop
+        </a>
+        
+        
+        
+        <a href="&#x2F;try-matrix&#x2F;" class="primary
+            ">
+            Try Matrix
+        </a>
+        
+        
+    </nav>
+</header>
+
+
+    <main>
+        
+<article class="content post with-sidebar">
+    <header>
+        <h1>Synapse 1.76 released</h1>
+        <span>31.01.2023 00:00 — <a
+                href="/category/releases">Releases</a>
+             — <a href="/author/h-shay">H. Shay</a>
+        </span>
+        
+    </header>
+    <div class="post-main">
+        <div class="post-content">
+            <p>Greetings Matrix fans! We've published Synapse <a href="https://github.com/matrix-org/synapse/releases/tag/v1.76.0">version 1.76</a>
+as the new stable release this week. Synapse admins are encouraged to upgrade
+to it at their convenience. Please take a look at the <a href="https://matrix-org.github.io/synapse/v1.76/upgrade.html#upgrading-to-v1760">upgrade notes</a>
+for any important information about upgrading.</p>
+<h2 id="announcements">Announcements</h2>
+<p>The big news is that faster joins for all has arrived! When joining a room for the first time,
+Synapse 1.76.0 will request a partial join from the other server by default. Previously, server admins
+had to opt-in to this using an experimental config flag.</p>
+<p>Server admins can opt out of this feature for the time being by setting</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>experimental:
+</span><span>    faster_joins: false
+</span></code></pre>
+<p>in their server config.</p>
+<p>For everyone else, after a faster join Synapse considers that room &quot;partially joined&quot;. In this state, you should be able to</p>
+<ul>
+<li>read incoming messages (on clients which support lazy-loaded members in /sync);</li>
+<li>see incoming state changes, e.g. room topic changes; and</li>
+<li>send messages, if the room is unencrypted.</li>
+</ul>
+<p>Synapse has to spend more effort to complete the join in the background. Once this finishes, you will be able to</p>
+<ul>
+<li>send messages, if the room is encrypted;</li>
+<li>retrieve room history from before your join, if permitted by the room settings; and</li>
+<li>access the full list of room members.</li>
+</ul>
+<p>Practically, this means that the experience of joining a large room over federation should be greatly improved. In past
+versions of Synapse, joining a large room such as Matrix HQ over federation could take up to 30 mins. This time has been
+cut to ~20-30 seconds to partially join in the new release. Those of you who have been watching this know this has been
+a huge undertaking, big shout out to the team for getting it over the line! We're excited the community to try it, as
+always if you encounter any problems you are encouraged to file an <a href="https://github.com/matrix-org/synapse/issues/new?assignees=&amp;labels=&amp;template=BUG_REPORT.yml">issue</a>.</p>
+<h3 id="changes-to-the-account-data-replication-streams">Changes to the account data replication streams</h3>
+<p>Please note that Synapse has changed the format of the account data and devices replication streams (between workers).
+This is a forwards- and backwards-incompatible change: v1.75 workers cannot process account data replicated by v1.76
+workers, and vice versa.</p>
+<p>Once all workers are upgraded to v1.76 (or downgraded to v1.75), account data and device replication will resume as normal.</p>
+<h2 id="the-new-stuff">The new stuff</h2>
+<h3 id="the-default-room-version-has-now-been-updated-to-v10">The default room version has now been updated to <a href="https://spec.matrix.org/v1.5/rooms/v10/">v10</a></h3>
+<p>Room version 10 is now the default room version in Synapse 1.76.0. This room version builds on v9 to introduce a new
+<code>knock_restricted</code> join rule, allowing prospective members to more easily join such a room. The <code>knock_restricted</code> join
+rule allows for prospective members of a room to join either through knocking or through <code>join_restrictions</code>, which allows
+prospective members to join a restricted room based on whether they are a joined member of another room. You can read more
+about restricted rooms <a href="https://spec.matrix.org/v1.5/client-server-api/#restricted-rooms">here</a>.</p>
+<h3 id="synapse-now-implements-experimental-support-for-msc3930-push-rules-for-polls">Synapse now implements experimental support for <a href="https://github.com/matrix-org/matrix-spec-proposals/pull/3930">MSC3930</a> Push rules for Polls</h3>
+<p>Synapse has added some new, default push rules for <a href="https://github.com/matrix-org/matrix-spec-proposals/pull/3381">MSC3881</a>-esque event types.</p>
+<p>This allows for notifications from polls, ie when a poll starts or ends.</p>
+<h2 id="everything-else">Everything else</h2>
+<p>See the full <a href="https://github.com/matrix-org/synapse/releases/tag/v1.76.0">changelog</a>, for a
+complete list of changes in the release.</p>
+<p>Synapse is a Free and Open Source Software project, and we'd like to extend our
+thanks to everyone who contributed to these releases, including: katlol, thezaidbintariq,
+dklimpel, FSG-Cat, tjay27, emgrav, villepeh.</p>
+<p>We are also grateful to anyone helping us make Synapse better by sharing their
+feedback and reporting issues, or helping with community support questions.</p>
+
+        </div>
+        
+        <aside>
+            <h3>Post Contents</h3>
+
+            <ul style="list-style: none; padding-left: 0px;">
+                
+                <li>
+                    <a href="/blog/2023/01/31/synapse-1-76-released/#announcements">Announcements</a>
+                    
+                    <ul>
+                        
+                        <li>
+                            <a href="/blog/2023/01/31/synapse-1-76-released/#changes-to-the-account-data-replication-streams">Changes to the account data replication streams</a>
+                        </li>
+                        
+                    </ul>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2023/01/31/synapse-1-76-released/#the-new-stuff">The new stuff</a>
+                    
+                    <ul>
+                        
+                        <li>
+                            <a href="/blog/2023/01/31/synapse-1-76-released/#the-default-room-version-has-now-been-updated-to-v10">The default room version has now been updated to v10</a>
+                        </li>
+                        
+                        <li>
+                            <a href="/blog/2023/01/31/synapse-1-76-released/#synapse-now-implements-experimental-support-for-msc3930-push-rules-for-polls">Synapse now implements experimental support for MSC3930 Push rules for Polls</a>
+                        </li>
+                        
+                    </ul>
+                    
+                </li>
+                
+                <li>
+                    <a href="/blog/2023/01/31/synapse-1-76-released/#everything-else">Everything else</a>
+                    
+                </li>
+                
+            </ul>
+        </aside>
+        
+    </div>
+</article>
+
+    </main>
+
+    <footer class="site-footer">
+    <div class="internal-links">
+        
+        <a href="&#x2F;faq">FAQs</a>
+        
+        <a href="&#x2F;security-disclosure-policy">Security Disclosure Policy</a>
+        
+        <a href="&#x2F;security-hall-of-fame">Security Hall of Fame</a>
+        
+        <a href="&#x2F;legal&#x2F;code-of-conduct">Code of Conduct for Matrix.org</a>
+        
+        <a href="&#x2F;legal">Legal</a>
+        
+        <a href="&#x2F;contact">Contact</a>
+        
+        <a href="https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;matrix.org&#x2F;">Site Source</a>
+        
+    </div>
+    <div class="external-links">
+        <div>
+            
+            <a href="&#x2F;code"><img src="/assets/github.svg" alt="GitHub"></a>
+            
+            <a href="https:&#x2F;&#x2F;gitlab.matrix.org&#x2F;"><img src="/assets/gitlab.svg" alt="GitLab"></a>
+            
+            <a href="https:&#x2F;&#x2F;mastodon.matrix.org&#x2F;@matrix"><img src="/assets/mastodon.svg" alt="Mastodon"></a>
+            
+            <a href="https:&#x2F;&#x2F;twitter.com&#x2F;matrixdotorg"><img src="/assets/twitter.svg" alt="Twitter"></a>
+            
+            <a href="https:&#x2F;&#x2F;www.youtube.com&#x2F;channel&#x2F;UCVFkW-chclhuyYRbmmfwt6w"><img src="/assets/youtube.svg" alt="YouTube"></a>
+            
+        </div>
+    </div>
+    <p>© 2022 The Matrix.org Foundation C.I.C.</p>
+</footer>
+
+</body>
+
+</html>

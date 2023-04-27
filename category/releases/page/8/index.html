@@ -114,7 +114,7 @@
     <div class="content">
         <header>
             <h1>Releases</h1>
-            132 posts tagged with "Releases" <a href="/category">(See all Category)</a>
+            138 posts tagged with "Releases" <a href="/category">(See all Category)</a>
             
             <h2>
                 <small><a href="/category/releases/atom.xml">Atom Feed</a></small>
@@ -122,6 +122,697 @@
             
         </header>
 
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2020&#x2F;10&#x2F;20&#x2F;dendrite-0-2-0-released&#x2F;" title="Dendrite 0.2.0 released">Dendrite 0.2.0 released</a></h2>
+                <span>
+                    20.10.2020 19:35
+                    —
+                    <a href="/category/releases">
+                        Releases
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Hi all,</p>
+<p>It's been over a week since our next-generation homeserver <a href="https://matrix.org/blog/2020/10/08/dendrite-is-entering-beta">Dendrite entered
+beta</a>, and it's
+been a wild rollercoaster ride as the team has been frantically zapping all
+the initial teething issues that came up - mostly around room federation
+getting 'stuck' due to needing to fix bugs in how room state is managed.  Huge
+huge thanks to everyone who has spun up a Dendrite to experiment and report
+bugs!</p>
+<p>We're now in an impressively better place, and it's feeling way more stable now
+(but please don't trust it with your data yet).  So we've skipped 0.1.x and jumped
+straight to 0.2.0.</p>
+<p>Now would be a great time for more intrepid explorers to try spinning up a
+server from https://github.com/matrix-org/dendrite and see how it feels - the
+more feedback the better.  And if you got scared off by weird bugs in 0.1.0,
+now's the right time to try it again!</p>
+<p>Full changelog follows:</p>
+<h2 id="dendrite-0-2-0-2020-10-20">Dendrite 0.2.0 (2020-10-20)</h2>
+<h3 id="important">Important</h3>
+<ul>
+<li>This release makes breaking changes for polylith deployments, since they now use the multi-personality binary rather than separate binary files
+<ul>
+<li>Users of polylith deployments should revise their setups to use the new binary - see the Features section below</li>
+</ul>
+</li>
+<li>This release also makes breaking changes for Docker deployments, as are now publishing images to Docker Hub in separate repositories for monolith and polylith
+<ul>
+<li>New repositories are as follows: <a href="https://hub.docker.com/repository/docker/matrixdotorg/dendrite-monolith">matrixdotorg/dendrite-monolith</a> and <a href="https://hub.docker.com/repository/docker/matrixdotorg/dendrite-polylith">matrixdotorg/dendrite-polylith</a></li>
+<li>The new <code>latest</code> tag will be updated with the latest release, and new versioned tags, e.g. <code>v0.2.0</code>, will preserve specific release versions</li>
+<li><a href="https://github.com/matrix-org/dendrite/tree/master/build/docker">Sample Compose configs</a> have been updated - if you are running a Docker deployment, please review the changes</li>
+<li>Images for the client API proxy and federation API proxy are no longer provided as they are unsupported - please use <a href="docs/nginx/">nginx</a> (or another reverse proxy) instead</li>
+</ul>
+</li>
+</ul>
+<h3 id="features">Features</h3>
+<ul>
+<li>Dendrite polylith deployments now use a special multi-personality binary, rather than separate binaries
+<ul>
+<li>This is cleaner, builds faster and simplifies deployment</li>
+<li>The first command line argument states the component to run, e.g. <code>./dendrite-polylith-multi roomserver</code></li>
+</ul>
+</li>
+<li>Database migrations are now run at startup</li>
+<li>Invalid UTF-8 in requests is now rejected (contributed by <a href="https://github.com/Pestdoktor">Pestdoktor</a>)</li>
+<li>Fully read markers are now implemented in the client API (contributed by <a href="https://github.com/Lesterpig">Lesterpig</a>)</li>
+<li>Missing auth events are now retrieved from other servers in the room, rather than just the event origin</li>
+<li><code>m.room.create</code> events are now validated properly when processing a <code>/send_join</code> response</li>
+<li>The roomserver now implements <code>KindOld</code> for handling historic events without them becoming forward extremity candidates, i.e. for backfilled or missing events</li>
+</ul>
+<h3 id="fixes">Fixes</h3>
+<ul>
+<li>State resolution v2 performance has been improved dramatically when dealing with large state sets</li>
+<li>The roomserver no longer processes outlier events if they are already known</li>
+<li>A SQLite locking issue in the previous events updater has been fixed</li>
+<li>The client API <code>/state</code> endpoint now correctly returns state after the leave event, if the user has left the room</li>
+<li>The client API <code>/createRoom</code> endpoint now sends cumulative state to the roomserver for the initial room events</li>
+<li>The federation API <code>/send</code> endpoint now correctly requests the entire room state from the roomserver when needed</li>
+<li>Some internal HTTP API paths have been fixed in the user API (contributed by <a href="https://github.com/S7evinK">S7evinK</a>)</li>
+<li>A race condition in the rate limiting code resulting in concurrent map writes has been fixed</li>
+<li>Each component now correctly starts a consumer/producer connection in monolith mode (when using Kafka)</li>
+<li>State resolution is no longer run for single trusted state snapshots that have been verified before</li>
+<li>A crash when rolling back the transaction in the latest events updater has been fixed</li>
+<li>Typing events are now ignored when the sender domain does not match the origin server</li>
+<li>Duplicate redaction entries no longer result in database errors</li>
+<li>Recursion has been removed from the code path for retrieving missing events</li>
+<li><code>QueryMissingAuthPrevEvents</code> now returns events that have no associated state as if they are missing</li>
+<li>Signing key fetchers no longer ignore keys for the local domain, if retrieving a key that is not known in the local config</li>
+<li>Federation timeouts have been adjusted so we don't give up on remote requests so quickly</li>
+<li><code>create-account</code> no longer relies on the device database (contributed by <a href="https://github.com/ThatNerdyPikachu">ThatNerdyPikachu</a>)</li>
+</ul>
+<h3 id="known-issues">Known issues</h3>
+<ul>
+<li>Old events can incorrectly appear in <code>/sync</code> as if they are new when retrieving missing events from federated servers, causing them to appear at the bottom of the timeline in clients</li>
+<li>Memory can explode when catching up after a federation outage.</li>
+</ul>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2020&#x2F;10&#x2F;15&#x2F;synapse-1-21-2-released-and-security-advisory&#x2F;" title="Synapse 1.21.2 released, and security advisory.">Synapse 1.21.2 released, and security advisory.</a></h2>
+                <span>
+                    15.10.2020 17:25
+                    —
+                    <a href="/category/releases">
+                        Releases
+                    </a>
+                    —
+                    <a
+                        href="/author/richard-van-der-hoff">
+                        Richard van der Hoff
+                    </a>
+                </span>
+                <br>
+                <small>Last update: 15.10.2020 17:16</small>
+            </header>
+            <div>
+                
+                <p>Hi folks,</p>
+<p>Today we have released Synapse 1.21.2, which fixes a couple of minor bugs that crept into the previous release. Full details are below.</p>
+<p>Separately, we are advising any administrators who have not yet upgraded to Synapse 1.21.0 or later to do so as soon as possible. Previous versions of Synapse were vulnerable to a cross-site-scripting (XSS) attack; the bug was fixed in Synapse 1.21.0 with <a href="https://github.com/matrix-org/synapse/pull/8444">PR #8444</a>.</p>
+<p>The changelog for 1.21.2 is as follows:</p>
+<h1 id="synapse-1-21-2-2020-10-15">Synapse 1.21.2 (2020-10-15)</h1>
+<p>Debian packages and Docker images have been rebuilt using the latest versions of dependency libraries, including authlib 0.15.1. Please see bugfixes below.</p>
+<h2 id="bugfixes">Bugfixes</h2>
+<ul>
+<li>Fix rare bug where sending an event would fail due to a racey assertion. (<a href="https://github.com/matrix-org/synapse/issues/8530">#8530</a>)</li>
+<li>An updated version of the authlib dependency is included in the Docker and Debian images to fix an issue using OpenID Connect. See <a href="https://github.com/matrix-org/synapse/issues/8534">#8534</a> for details.</li>
+</ul>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2020&#x2F;10&#x2F;13&#x2F;synapse-1-21-1-released&#x2F;" title="Synapse 1.21.1 released">Synapse 1.21.1 released</a></h2>
+                <span>
+                    13.10.2020 00:00
+                    —
+                    <a href="/category/releases">
+                        Releases
+                    </a>
+                    —
+                    <a
+                        href="/author/neil-johnson">
+                        Neil Johnson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Synapse 1.21.1 has landed!</p>
+<p>Highlights of 1.21.1 include:-</p>
+<ul>
+<li>
+<p>Add experimental support for sharding event persister. (<a href="https://github.com/matrix-org/synapse/issues/8294">#8294</a>, <a href="https://github.com/matrix-org/synapse/issues/8387">#8387</a>, <a href="https://github.com/matrix-org/synapse/issues/8396">#8396</a>, <a href="https://github.com/matrix-org/synapse/issues/8419">#8419</a>)</p>
+</li>
+<li>
+<p>Add experimental prometheus metric to track numbers of &quot;large&quot; rooms for state resolutiom. (<a href="https://github.com/matrix-org/synapse/issues/8425">#8425</a>)</p>
+</li>
+<li>
+<p>Add prometheus metrics to track federation delays. (<a href="https://github.com/matrix-org/synapse/issues/8430">#8430</a>)</p>
+</li>
+<li>
+<p>Fix messages not being sent over federation until an event is sent into the same room. (<a href="https://github.com/matrix-org/synapse/issues/8230">#8230</a>, <a href="https://github.com/matrix-org/synapse/issues/8247">#8247</a>, <a href="https://github.com/matrix-org/synapse/issues/8258">#8258</a>, <a href="https://github.com/matrix-org/synapse/issues/8272">#8272</a>, <a href="https://github.com/matrix-org/synapse/issues/8322">#8322</a>)</p>
+</li>
+</ul>
+<p>We've also made some improvements to SSO and added new admin APIs.</p>
+<p>Get the new releases from any of the usual sources mentioned at https://github.com/matrix-org/synapse/blob/master/INSTALL.md. 1.21.1 is on github <a href="https://github.com/matrix-org/synapse/releases/tag/v1.21.1">here</a></p>
+<p>The changelog for 1.21.1 is as follows:</p>
+<h1 id="synapse-1-21-1-2020-10-13">Synapse 1.21.1 (2020-10-13)</h1>
+<p>This release fixes a regression in v1.21.0 that prevented debian packages from being built.</p>
+<p>It is otherwise identical to v1.21.0.</p>
+<h1 id="synapse-1-21-0-2020-10-12">Synapse 1.21.0 (2020-10-12)</h1>
+<p>No significant changes since v1.21.0rc3.</p>
+<p>As <a href="https://github.com/matrix-org/synapse/blob/release-v1.21.1/CHANGES.md#synapse-1200-2020-09-22">noted in v1.20.0</a>, a future release will drop support for accessing Synapse's <a href="https://github.com/matrix-org/synapse/tree/master/docs/admin_api">Admin API</a> under the <code>/_matrix/client/*</code> endpoint prefixes. At that point, the Admin API will only be accessible under <code>/_synapse/admin</code>.</p>
+<h1 id="synapse-1-21-0rc3-2020-10-08">Synapse 1.21.0rc3 (2020-10-08)</h1>
+<h2 id="bugfixes">Bugfixes</h2>
+<ul>
+<li>Fix duplication of events on high traffic servers, caused by PostgreSQL <code>could not serialize access due to concurrent update</code> errors. (<a href="https://github.com/matrix-org/synapse/issues/8456">#8456</a>)</li>
+</ul>
+<h2 id="internal-changes">Internal Changes</h2>
+<ul>
+<li>Add Groovy Gorilla to the list of distributions we build <code>.deb</code>s for. (<a href="https://github.com/matrix-org/synapse/issues/8475">#8475</a>)</li>
+</ul>
+<h1 id="synapse-1-21-0rc2-2020-10-02">Synapse 1.21.0rc2 (2020-10-02)</h1>
+<h2 id="features">Features</h2>
+<ul>
+<li>Convert additional templates from inline HTML to Jinja2 templates. (<a href="https://github.com/matrix-org/synapse/issues/8444">#8444</a>)</li>
+</ul>
+<h2 id="bugfixes-1">Bugfixes</h2>
+<ul>
+<li>Fix a regression in v1.21.0rc1 which broke thumbnails of remote media. (<a href="https://github.com/matrix-org/synapse/issues/8438">#8438</a>)</li>
+<li>Do not expose the experimental <code>uk.half-shot.msc2778.login.application_service</code> flow in the login API, which caused a compatibility problem with Element iOS. (<a href="https://github.com/matrix-org/synapse/issues/8440">#8440</a>)</li>
+<li>Fix malformed log line in new federation &quot;catch up&quot; logic. (<a href="https://github.com/matrix-org/synapse/issues/8442">#8442</a>)</li>
+<li>Fix DB query on startup for negative streams which caused long start up times. Introduced in <a href="https://github.com/matrix-org/synapse/issues/8374">#8374</a>. (<a href="https://github.com/matrix-org/synapse/issues/8447">#8447</a>)</li>
+</ul>
+<h1 id="synapse-1-21-0rc1-2020-10-01">Synapse 1.21.0rc1 (2020-10-01)</h1>
+<h2 id="features-1">Features</h2>
+<ul>
+<li>Require the user to confirm that their password should be reset after clicking the email confirmation link. (<a href="https://github.com/matrix-org/synapse/issues/8004">#8004</a>)</li>
+<li>Add an admin API <code>GET /_synapse/admin/v1/event_reports</code> to read entries of table <code>event_reports</code>. Contributed by @dklimpel. (<a href="https://github.com/matrix-org/synapse/issues/8217">#8217</a>)</li>
+<li>Consolidate the SSO error template across all configuration. (<a href="https://github.com/matrix-org/synapse/issues/8248">#8248</a>, <a href="https://github.com/matrix-org/synapse/issues/8405">#8405</a>)</li>
+<li>Add a configuration option to specify a whitelist of domains that a user can be redirected to after validating their email or phone number. (<a href="https://github.com/matrix-org/synapse/issues/8275">#8275</a>, <a href="https://github.com/matrix-org/synapse/issues/8417">#8417</a>)</li>
+<li>Add experimental support for sharding event persister. (<a href="https://github.com/matrix-org/synapse/issues/8294">#8294</a>, <a href="https://github.com/matrix-org/synapse/issues/8387">#8387</a>, <a href="https://github.com/matrix-org/synapse/issues/8396">#8396</a>, <a href="https://github.com/matrix-org/synapse/issues/8419">#8419</a>)</li>
+<li>Add the room topic and avatar to the room details admin API. (<a href="https://github.com/matrix-org/synapse/issues/8305">#8305</a>)</li>
+<li>Add an admin API for querying rooms where a user is a member. Contributed by @dklimpel. (<a href="https://github.com/matrix-org/synapse/issues/8306">#8306</a>)</li>
+<li>Add <code>uk.half-shot.msc2778.login.application_service</code> login type to allow appservices to login. (<a href="https://github.com/matrix-org/synapse/issues/8320">#8320</a>)</li>
+<li>Add a configuration option that allows existing users to log in with OpenID Connect. Contributed by @BBBSnowball and @OmmyZhang. (<a href="https://github.com/matrix-org/synapse/issues/8345">#8345</a>)</li>
+<li>Add prometheus metrics for replication requests. (<a href="https://github.com/matrix-org/synapse/issues/8406">#8406</a>)</li>
+<li>Support passing additional single sign-on parameters to the client. (<a href="https://github.com/matrix-org/synapse/issues/8413">#8413</a>)</li>
+<li>Add experimental reporting of metrics on expensive rooms for state-resolution. (<a href="https://github.com/matrix-org/synapse/issues/8420">#8420</a>)</li>
+<li>Add experimental prometheus metric to track numbers of &quot;large&quot; rooms for state resolutiom. (<a href="https://github.com/matrix-org/synapse/issues/8425">#8425</a>)</li>
+<li>Add prometheus metrics to track federation delays. (<a href="https://github.com/matrix-org/synapse/issues/8430">#8430</a>)</li>
+</ul>
+<h2 id="bugfixes-2">Bugfixes</h2>
+<ul>
+<li>Fix a bug in the media repository where remote thumbnails with the same size but different crop methods would overwrite each other. Contributed by @deepbluev7. (<a href="https://github.com/matrix-org/synapse/issues/7124">#7124</a>)</li>
+<li>Fix inconsistent handling of non-existent push rules, and stop tracking the <code>enabled</code> state of removed push rules. (<a href="https://github.com/matrix-org/synapse/issues/7796">#7796</a>)</li>
+<li>Fix a longstanding bug when storing a media file with an empty <code>upload_name</code>. (<a href="https://github.com/matrix-org/synapse/issues/7905">#7905</a>)</li>
+<li>Fix messages not being sent over federation until an event is sent into the same room. (<a href="https://github.com/matrix-org/synapse/issues/8230">#8230</a>, <a href="https://github.com/matrix-org/synapse/issues/8247">#8247</a>, <a href="https://github.com/matrix-org/synapse/issues/8258">#8258</a>, <a href="https://github.com/matrix-org/synapse/issues/8272">#8272</a>, <a href="https://github.com/matrix-org/synapse/issues/8322">#8322</a>)</li>
+<li>Fix a longstanding bug where files that could not be thumbnailed would result in an Internal Server Error. (<a href="https://github.com/matrix-org/synapse/issues/8236">#8236</a>, <a href="https://github.com/matrix-org/synapse/issues/8435">#8435</a>)</li>
+<li>Upgrade minimum version of <code>canonicaljson</code> to version 1.4.0, to fix an unicode encoding issue. (<a href="https://github.com/matrix-org/synapse/issues/8262">#8262</a>)</li>
+<li>Fix longstanding bug which could lead to incomplete database upgrades on SQLite. (<a href="https://github.com/matrix-org/synapse/issues/8265">#8265</a>)</li>
+<li>Fix stack overflow when stderr is redirected to the logging system, and the logging system encounters an error. (<a href="https://github.com/matrix-org/synapse/issues/8268">#8268</a>)</li>
+<li>Fix a bug which cause the logging system to report errors, if <code>DEBUG</code> was enabled and no <code>context</code> filter was applied. (<a href="https://github.com/matrix-org/synapse/issues/8278">#8278</a>)</li>
+<li>Fix edge case where push could get delayed for a user until a later event was pushed. (<a href="https://github.com/matrix-org/synapse/issues/8287">#8287</a>)</li>
+<li>Fix fetching malformed events from remote servers. (<a href="https://github.com/matrix-org/synapse/issues/8324">#8324</a>)</li>
+<li>Fix <code>UnboundLocalError</code> from occurring when appservices send a malformed register request. (<a href="https://github.com/matrix-org/synapse/issues/8329">#8329</a>)</li>
+<li>Don't send push notifications to expired user accounts. (<a href="https://github.com/matrix-org/synapse/issues/8353">#8353</a>)</li>
+<li>Fix a regression in v1.19.0 with reactivating users through the admin API. (<a href="https://github.com/matrix-org/synapse/issues/8362">#8362</a>)</li>
+<li>Fix a bug where during device registration the length of the device name wasn't limited. (<a href="https://github.com/matrix-org/synapse/issues/8364">#8364</a>)</li>
+<li>Include <code>guest_access</code> in the fields that are checked for null bytes when updating <code>room_stats_state</code>. Broke in v1.7.2. (<a href="https://github.com/matrix-org/synapse/issues/8373">#8373</a>)</li>
+<li>Fix theoretical race condition where events are not sent down <code>/sync</code> if the synchrotron worker is restarted without restarting other workers. (<a href="https://github.com/matrix-org/synapse/issues/8374">#8374</a>)</li>
+<li>Fix a bug which could cause errors in rooms with malformed membership events, on servers using sqlite. (<a href="https://github.com/matrix-org/synapse/issues/8385">#8385</a>)</li>
+<li>Fix &quot;Re-starting finished log context&quot; warning when receiving an event we already had over federation. (<a href="https://github.com/matrix-org/synapse/issues/8398">#8398</a>)</li>
+<li>Fix incorrect handling of timeouts on outgoing HTTP requests. (<a href="https://github.com/matrix-org/synapse/issues/8400">#8400</a>)</li>
+<li>Fix a regression in v1.20.0 in the <code>synapse_port_db</code> script regarding the <code>ui_auth_sessions_ips</code> table. (<a href="https://github.com/matrix-org/synapse/issues/8410">#8410</a>)</li>
+<li>Remove unnecessary 3PID registration check when resetting password via an email address. Bug introduced in v0.34.0rc2. (<a href="https://github.com/matrix-org/synapse/issues/8414">#8414</a>)</li>
+</ul>
+<h2 id="improved-documentation">Improved Documentation</h2>
+<ul>
+<li>Add <code>/_synapse/client</code> to the reverse proxy documentation. (<a href="https://github.com/matrix-org/synapse/issues/8227">#8227</a>)</li>
+<li>Add note to the reverse proxy settings documentation about disabling Apache's mod_security2. Contributed by Julian Fietkau (@jfietkau). (<a href="https://github.com/matrix-org/synapse/issues/8375">#8375</a>)</li>
+<li>Improve description of <code>server_name</code> config option in <code>homserver.yaml</code>. (<a href="https://github.com/matrix-org/synapse/issues/8415">#8415</a>)</li>
+</ul>
+<h2 id="deprecations-and-removals">Deprecations and Removals</h2>
+<ul>
+<li>Drop support for <code>prometheus_client</code> older than 0.4.0. (<a href="https://github.com/matrix-org/synapse/issues/8426">#8426</a>)</li>
+</ul>
+<h2 id="internal-changes-1">Internal Changes</h2>
+<ul>
+<li>Fix tests on distros which disable TLSv1.0. Contributed by @danc86. (<a href="https://github.com/matrix-org/synapse/issues/8208">#8208</a>)</li>
+<li>Simplify the distributor code to avoid unnecessary work. (<a href="https://github.com/matrix-org/synapse/issues/8216">#8216</a>)</li>
+<li>Remove the <code>populate_stats_process_rooms_2</code> background job and restore functionality to <code>populate_stats_process_rooms</code>. (<a href="https://github.com/matrix-org/synapse/issues/8243">#8243</a>)</li>
+<li>Clean up type hints for <code>PaginationConfig</code>. (<a href="https://github.com/matrix-org/synapse/issues/8250">#8250</a>, <a href="https://github.com/matrix-org/synapse/issues/8282">#8282</a>)</li>
+<li>Track the latest event for every destination and room for catch-up after federation outage. (<a href="https://github.com/matrix-org/synapse/issues/8256">#8256</a>)</li>
+<li>Fix non-user visible bug in implementation of <code>MultiWriterIdGenerator.get_current_token_for_writer</code>. (<a href="https://github.com/matrix-org/synapse/issues/8257">#8257</a>)</li>
+<li>Switch to the JSON implementation from the standard library. (<a href="https://github.com/matrix-org/synapse/issues/8259">#8259</a>)</li>
+<li>Add type hints to <code>synapse.util.async_helpers</code>. (<a href="https://github.com/matrix-org/synapse/issues/8260">#8260</a>)</li>
+<li>Simplify tests that mock asynchronous functions. (<a href="https://github.com/matrix-org/synapse/issues/8261">#8261</a>)</li>
+<li>Add type hints to <code>StreamToken</code> and <code>RoomStreamToken</code> classes. (<a href="https://github.com/matrix-org/synapse/issues/8279">#8279</a>)</li>
+<li>Change <code>StreamToken.room_key</code> to be a <code>RoomStreamToken</code> instance. (<a href="https://github.com/matrix-org/synapse/issues/8281">#8281</a>)</li>
+<li>Refactor notifier code to correctly use the max event stream position. (<a href="https://github.com/matrix-org/synapse/issues/8288">#8288</a>)</li>
+<li>Use slotted classes where possible. (<a href="https://github.com/matrix-org/synapse/issues/8296">#8296</a>)</li>
+<li>Support testing the local Synapse checkout against the <a href="https://github.com/matrix-org/complement/">Complement homeserver test suite</a>. (<a href="https://github.com/matrix-org/synapse/issues/8317">#8317</a>)</li>
+<li>Update outdated usages of <code>metaclass</code> to python 3 syntax. (<a href="https://github.com/matrix-org/synapse/issues/8326">#8326</a>)</li>
+<li>Move lint-related dependencies to package-extra field, update CONTRIBUTING.md to utilise this. (<a href="https://github.com/matrix-org/synapse/issues/8330">#8330</a>, <a href="https://github.com/matrix-org/synapse/issues/8377">#8377</a>)</li>
+<li>Use the <code>admin_patterns</code> helper in additional locations. (<a href="https://github.com/matrix-org/synapse/issues/8331">#8331</a>)</li>
+<li>Fix test logging to allow braces in log output. (<a href="https://github.com/matrix-org/synapse/issues/8335">#8335</a>)</li>
+<li>Remove <code>__future__</code> imports related to Python 2 compatibility. (<a href="https://github.com/matrix-org/synapse/issues/8337">#8337</a>)</li>
+<li>Simplify <code>super()</code> calls to Python 3 syntax. (<a href="https://github.com/matrix-org/synapse/issues/8344">#8344</a>)</li>
+<li>Fix bad merge from <code>release-v1.20.0</code> branch to <code>develop</code>. (<a href="https://github.com/matrix-org/synapse/issues/8354">#8354</a>)</li>
+<li>Factor out a <code>_send_dummy_event_for_room</code> method. (<a href="https://github.com/matrix-org/synapse/issues/8370">#8370</a>)</li>
+<li>Improve logging of state resolution. (<a href="https://github.com/matrix-org/synapse/issues/8371">#8371</a>)</li>
+<li>Add type annotations to <code>SimpleHttpClient</code>. (<a href="https://github.com/matrix-org/synapse/issues/8372">#8372</a>)</li>
+<li>Refactor ID generators to use <code>async with</code> syntax. (<a href="https://github.com/matrix-org/synapse/issues/8383">#8383</a>)</li>
+<li>Add <code>EventStreamPosition</code> type. (<a href="https://github.com/matrix-org/synapse/issues/8388">#8388</a>)</li>
+<li>Create a mechanism for marking tests &quot;logcontext clean&quot;. (<a href="https://github.com/matrix-org/synapse/issues/8399">#8399</a>)</li>
+<li>A pair of tiny cleanups in the federation request code. (<a href="https://github.com/matrix-org/synapse/issues/8401">#8401</a>)</li>
+<li>Add checks on startup that PostgreSQL sequences are consistent with their associated tables. (<a href="https://github.com/matrix-org/synapse/issues/8402">#8402</a>)</li>
+<li>Do not include appservice users when calculating the total MAU for a server. (<a href="https://github.com/matrix-org/synapse/issues/8404">#8404</a>)</li>
+<li>Typing fixes for <code>synapse.handlers.federation</code>. (<a href="https://github.com/matrix-org/synapse/issues/8422">#8422</a>)</li>
+<li>Various refactors to simplify stream token handling. (<a href="https://github.com/matrix-org/synapse/issues/8423">#8423</a>)</li>
+<li>Make stream token serializing/deserializing async. (<a href="https://github.com/matrix-org/synapse/issues/8427">#8427</a>)</li>
+</ul>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2020&#x2F;10&#x2F;08&#x2F;dendrite-is-entering-beta&#x2F;" title="Dendrite is entering Beta!">Dendrite is entering Beta!</a></h2>
+                <span>
+                    08.10.2020 00:00
+                    —
+                    <a href="/category/releases">
+                        Releases
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Hi all,</p>
+<p>We’re very excited to announce that Dendrite, the next-generation Matrix homeserver from the core Matrix team, is at last exiting alpha development and entering beta testing!</p>
+<p>The path we’ve taken to get here has been quite a curious one, and it’s worth recapping to give context on why it’s taken reality a little while to catch up with the dream. :)</p>
+<p>The Dendrite project has its roots in 2016 as <a href="https://github.com/matrix-org/dendron">Dendron</a>: an attempt to write a next-generation homeserver in Golang rather than Python, in order to benefit from Go’s stronger typing, ease of profiling (no twisted stack-shredding via deferredInlineCallbacks), multithreading and faster GC performance.  The idea for Dendron was to do a <a href="https://martinfowler.com/bliki/StranglerFigApplication.html">strangler pattern</a> rewrite of Synapse - where we’d insert Dendron in front of Synapse as a load balancer, and incrementally replace Synapse’s API endpoints with ones implemented by Dendron.</p>
+<p>However, as the project started to progress, it became clear that this was going to end up with many of Synapse’s architectural choices being baked into the project - particularly the DB schema and data flow architecture, such that the new endpoints could interoperate with the existing Python ones.  We got as far as putting Dendron live on matrix.org and moving some of the login/registration APIs over to it… but then work fizzled out due to Synapse demanding more urgent attention as traffic grew on Matrix.org, combined with concerns about whether Dendron was the right approach in general.</p>
+<p>So, towards the end of 2016 (after the rush to launch <del>Vector</del> <del>Riot</del> Element that summer), we went back to the drawing board to devise Dendrite—“Dendron done right!”—as opposed to Dendron, which in retrospect was Dendrite done wrong. ;) The new vision was:</p>
+<ul>
+<li>Build a massively horizontally scalable architecture, such that large Matrix deployments like matrix.org and big government deployments could run smoothly without the constant scalability headaches we were seeing at the time with Synapse</li>
+<li>Do so by splitting the server into well-defined microservice components, each of which could independently horizontally scale, each with its own DB (if desired)</li>
+<li>Connect the components together with a set of append-only logs via <a href="https://kafka.apache.org/">Kafka</a> or similar, easily letting components shard and maintain their databases from the logs, allowing rolling upgrades, possibly schema upgrades, and all sorts of other niceties.  The logs effectively become a primary source of truth rather than putting all the onus on a massive monolithic ever-growing database</li>
+</ul>
+<p>Rather than Dendron’s top-down approach, instead Dendrite started bottom-up with the very hardest bit: <a href="https://github.com/matrix-org/gomatrixserverlib">gomatrixserverlib</a>, a standalone Go library implementing the state resolution algorithms and performing federation requests (such that it might also someday be used as a general purpose way to add Matrix federation support to an existing Go codebase).</p>
+<p>Then we started building out the various components to implement the various services, starting with the roomserver (the service which models the history and state of one or more rooms in the server), then the syncserver (the service which implements the /sync API to let clients receive messages), etc. We even implemented a simplified in-memory version of Kafka named <a href="https://github.com/matrix-org/naffka">naffka</a>—useful for glueing together the microservice components when running them all within a single binary.</p>
+<p>Things were looking pretty positive by the summer of 2017: we had the server sending/receiving messages, federating with Synapse, and looking tantalisingly close:</p>
+<blockquote>
+<p lang="en" dir="ltr">We just sent the first ever synapse-&gt;dendrite federated traffic, including full dendrite media API (thumbnailing, fed, etc)!!! :D :D :D <a href="https://t.co/sBcM2jMAr6">pic.twitter.com/sBcM2jMAr6</a></p>&mdash; Matrix (@matrixdotorg) <a href="https://twitter.com/matrixdotorg/status/872861579141947392?ref_src=twsrc%5Etfw">June 8, 2017</a>
+</blockquote>
+<p>However, we then hit three fairly major obstacles:</p>
+<ul>
+<li><a href="https://matrix.org/blog/2017/07/07/a-call-to-arms-supporting-matrix">Matrix lost its funding</a></li>
+<li>In the ensuing uncertainty, the two lead developers (Mjark &amp; Kegan) went to work elsewhere</li>
+<li>Meanwhile, Matrix uptake was starting to explode and Synapse was failing to scale to handle the traffic on matrix.org (and elsewhere)</li>
+</ul>
+<p>At first, having formed what would become New Vector (now Element) to keep the rest of the core team hired, we pushed to see if we could get Dendrite finished fast enough to replace Synapse, with Erik &amp; richvdh jumping over from Synapse to pick up the remaining work.  However, it became clear that we urgently needed a quicker solution to address all the overloaded Synapses out there, and so they swung back to focus on improving Synapse (taking inspiration from some of the design of Dendrite - e.g. offloading endpoints onto worker processes connected via replication streams, and using <a href="https://opentracing.io/">OpenTracing</a> to debug traffic as it flows over the various services).</p>
+<p>At this point, Dendrite maintenance was in effect valiantly taken over by the community, with Brendan and later Anoa keeping the ball going in 2017, joined by APWhitehat in GSoC 2018 and cnly in GSoC 2019.  The fact that Dendrite is now here today is thanks in no small part to their work to keep the project alive in its “wilderness years” between Sept 2017 and Dec 2019.</p>
+<p>Meanwhile, it became clear that we were overdue getting Matrix itself out of beta - and the last thing we wanted to do was to split and dilute the implementation work of Matrix 1.0 over both Synapse and Dendrite - so we consciously made the decision to focus all our effort on Synapse for solving the remaining bugs and challenges.</p>
+<p>Then, in July 2019, <a href="https://matrix.org/blog/2019/06/11/introducing-matrix-1-0-and-the-matrix-org-foundation">Matrix and Synapse exited beta</a>, and we finally started to see light at the end of the tunnel.  In October we started dusting off Dendrite again - looking to use it as a relatively simple and flexible codebase for <a href="https://youtu.be/eA0KnTt4O7E?t=1423">experimenting with Peer-to-Peer Matrix</a>, not least because being Go it can compile to WebAssembly and run clientside, and because even though Dendrite was originally built with massive deployments in mind, it turns out the elastic scaling means it can also scale down pretty small too—as a part of the <a href="http://testflight.apple.com/join/Tgh2MEk6">iOS P2P demo</a>, we’ve even ran full Dendrite homeservers on iPhones embedded into Element iOS! :)</p>
+<p>In Dec 2019, we finally got to the point where Element could fund full-time dedicated development on Dendrite once again, with Neil Alexander joining the project and focusing fulltime on getting Dendrite out of alpha and getting it working for P2P and embedded usage (adding libp2p as a federation transport, and adding SQLite support) - and in Jan 2020 we got Dendrite <a href="https://archive.fosdem.org/2020/schedule/event/dip_p2p_matrix/">successfully running clientside in a WASM service worker</a> (just in time for FOSDEM!). Then, in Feb 2020, Kegan returned to the project to work fulltime on Dendrite - and the race began in earnest to get Dendrite ready for beta!</p>
+<p>Here’s a pretty picture courtesy of GitHub to visualise the progress:</p>
+<p><img src="/blog/img/2020-10-08-dendrite-contributors.png" alt="020-10-08-dendrite-contributors.png" /></p>
+<p>Throughout 2020 there’s been a huge amount of stabilisation work and polish:</p>
+<ul>
+<li>Refactoring much of Dendrite’s foundation to make the codebase more maintainable</li>
+<li>Created all-new user server, key server, signing key server microservices</li>
+<li>Moving some work from existing microservices (ultimately superseding the former currentstateserver, publicroomsapi and typingserver microservices altogether)</li>
+<li>Developing new testing infrastructure:
+<ul>
+<li><a href="https://github.com/matrix-org/complement">Complement</a> - our brand new Golang Matrix integration test harness</li>
+<li><a href="https://github.com/matrix-org/dendrite/blob/master/are-we-synapse-yet.py">Are We Synapse Yet</a> - an aggregator which parses sytest/complement output to compare how close Dendrite is to passing</li>
+</ul>
+</li>
+<li>All the Matrix 1.0 work - particularly state res v2 &amp; room version support</li>
+<li>Making it work with more P2P transports for <a href="https://matrix.org/blog/2020/06/02/introducing-p-2-p-matrix/">all the exciting P2P experiments</a></li>
+<li>Supporting backfill and fetching missing events</li>
+<li>Fixing up SQLite support to make it work as a first class citizen (with shared storage code where we can!)</li>
+<li>Supporting both sending and rejecting invites (even over federation)</li>
+<li>E2E encryption support (one-time keys, device lists, send-to-device support)</li>
+<li>Improved federation sender logic (resend retries, backoffs, blacklisting, metrics, resetting backoffs when receiving transactions)</li>
+<li>Handling both inbound and outbound redactions</li>
+<li>User interactive authentication (and implemented on various ‘sudo’ endpoints e.g. deleting devices and changing passwords)</li>
+<li>Respecting server ACLs</li>
+<li>Rejecting / soft-failing events properly</li>
+<li>Support for database schema upgrades</li>
+</ul>
+<p>... which brings us at last to the present day (Oct 2020), as we declare Dendrite sufficiently stable that we consider it ready for beta testing!</p>
+<p>In practice, this means **Dendrite is now ready for experimentation by adventurous Matrix sysadmins. It is <em>NOT</em> ready for production usage yet, but we need folks to test it and help us iron out the remaining bugs!  **Please do not trust it with sensitive data yet, and we don’t recommend trying to run it at scale yet as we haven’t done any serious optimisation work yet.</p>
+<p>That said, we do provide the following guarantees:</p>
+<ul>
+<li>We’re providing versioned releases from here on in, beginning with <a href="https://github.com/matrix-org/dendrite/releases/tag/v0.1.0">0.1.0</a></li>
+<li>We don’t expect any major breaking changes to the config or architecture before 1.0</li>
+<li>Ready for early adopters to try running Dendrite without experiencing ~daily breaking churn</li>
+<li>The database schema is now stable and will upgrade itself going forwards - your database should now be here to stay! (assuming we don’t hit any nasty data loss bugs during beta)</li>
+</ul>
+<p>In terms of comparison with Synapse, the main things you should get excited about are:</p>
+<ul>
+<li>Dendrite aims to provide an <strong>efficient</strong>, <strong>reliable</strong> and <strong>scalable</strong> alternative to Synapse:
+<ul>
+<li>Efficient: A small memory footprint with better baseline performance than an out-of-the-box Synapse</li>
+<li>Reliable: Implements the Matrix specification as written, using the <a href="https://github.com/matrix-org/sytest">same test suite</a> as Synapse as well as a <a href="https://github.com/matrix-org/complement">brand new Go test suite</a></li>
+<li>Scalable: can run on multiple machines and eventually scale to massive homeserver deployments</li>
+</ul>
+</li>
+<li>This means significantly less memory usage than Synapse (depends on joined rooms, often between 50MB - 400MB resident memory) - although we haven’t tuned this at all yet!</li>
+<li>All-new database model, where every microservice instance has its own database tables, letting them scale arbitrarily wide</li>
+<li>The ability to efficiently use all your available CPU cores without needing to split into separate processes, thanks to Go and our extensive use of goroutines.  No more Python global interpreter lock! :)</li>
+<li>Future experimental MSCs are likely to land in Dendrite before Synapse (e.g <a href="https://github.com/matrix-org/matrix-doc/blob/matthew/msc2753/proposals/2753-peeking-via-sync-v2.md">MSC2753 Peeking via /sync</a> and <a href="https://github.com/matrix-org/matrix-doc/blob/matthew/msc2444/proposals/2444-peeking-over-federation-peek-api.md">MSC2444 Peeking over Federation</a> are already being prototyped (<a href="https://github.com/matrix-org/dendrite/pull/1370">#1370</a> and <a href="https://github.com/matrix-org/dendrite/pull/1391">#1391</a>) in Dendrite rather than Synapse!)</li>
+</ul>
+<p>The provisos you should know about however are:</p>
+<ul>
+<li>We’re not feature complete yet: sytest reports 56% CS API coverage and 77% Federation coverage. <strong>NB: these are always going to be underestimates of how much Dendrite actually performs due to how the tests are spread out, in actuality it’s likely more 70% CS, 95% Fed.</strong></li>
+<li>No read receipts, membership lazy-loading, presence, push notifications, search, event context, key backups, cross-signing. See changelog for full limitations.</li>
+<li>Not battle-tested in the wild by many people (there are probably only ~10 dendrites on the open network today!) - so there’s likely to be a broad spectrum of bugs at first.</li>
+<li>Clients that require more exotic features, like lazy loading, may not behave properly yet</li>
+<li>Please <strong>use Postgres rather than SQLite wherever possible</strong>—it’s faster and has fewer issues regarding concurrency (some requests on SQLite Dendrites may 500 with ‘database is locked’ - though we’ve worked hard to eliminate most of these)</li>
+<li>Dendrite can run in either “monolith” or “polylith” mode. In monolith, all the microservices are linked into a single binary - and <strong>we recommend running in this configuration wherever possible</strong> for now. Monolith mode is <em>extremely</em> capable as it is and has fewer moving parts for things to go wrong and will be the right choice for the majority of beta deployments!</li>
+<li>Whilst Dendrite is nearly 100% federation compatible, there may still be situations where it will split-brain and disagree with the current room state that Synapse has calculated. We expect these issues to resolve as we get more user feedback.</li>
+</ul>
+<p>Architecture-wise, this is what Dendrite looks like under the hood today:</p>
+<p><img src="/blog/img/2020-10-08-dendrite-arch.svg" alt="2020-10-08-dendrite-arch.svg" /></p>
+<p>To get up and running, please install Go and head on over to the Get Started guide at <a href="https://github.com/matrix-org/dendrite#get-started">https://github.com/matrix-org/dendrite#get-started</a> to join the fun :)</p>
+<p>In terms of where we’re going next:</p>
+<ul>
+<li>Read receipts. It’s a major missing feature and impacts UX significantly.</li>
+<li>100% Federation coverage (according to sytest). It’s crucial that Dendrite instances play nicely with other servers. This will be the best metric we have for asserting that we are just as capable as Synapse at the fed level.</li>
+<li>Optimisation—<strong>Dendrite has not been optimised yet for speed or resource utilisation!</strong>
+<ul>
+<li>We plan to add benchmarks which will stress test different microservices in the presence of many different scaling factors (number of users, number of rooms, size of room, number of devices per user, number of sync requests, etc). This will hopefully allow us to identify early on bottlenecks and slow algorithms</li>
+<li>Good old fashioned pprof with known slow scenarios to see what’s consuming CPU/memory and fixing issues ad-hoc (which we’ve already done a bit of pre-beta). This may involve adding additional in-memory caches, with a healthy respect for the complexities it may introduce (which Synapse has been bitten by)</li>
+</ul>
+</li>
+<li>We plan to add first class feature flag support for experimental MSCs—experimentation is one thing which makes Dendrite notably different from Synapse, and supporting it more thoroughly going forwards will be important. This may mean adding additional hooks; potentially a dedicated microservice to cleanly separate experiments, we don’t know yet</li>
+<li>P2P work will continue with vigour now we have a working, featureful, and relatively stable HS to embed and play with</li>
+</ul>
+<p>Longer term, it’s pretty hard to say right now when we expect to exit beta (it took Synapse 5 years to exit beta, after all ;) - but obviously we’ll need Dendrite to have parity with Synapse and have no known serious bugs.</p>
+<p>Finally: you’re probably wondering what this means for Synapse.  Synapse is here to stay - with tens of thousands of deployments around the world serving tens of millions of users.  The majority of the core team is still focused on improving and optimising Synapse, and we’ll be keeping improving it for the foreseeable.</p>
+<p>However, we’ll certainly be experimenting with new stuff on Dendrite first - whether that’s P2P, portable accounts, new-style communities, peeking etc.  We expect Synapse to be the stable long-term-supported solution, while Dendrite (particularly while in beta) will be the more unstable and experimental platform. In the longer term we’ll provide ways of migrating from Synapse to Dendrite however (probably via portable accounts), and perhaps in future new deployments may choose to use Dendrite - a bit like you might choose to use nginx rather than Apache for a new web server these days. But this will be a long transition—meanwhile we expect to see more and more next-generation homeservers like <a href="http://conduit.rs/">Conduit</a>, <a href="https://gitlab.com/mascarene/mascarene">Mascarene</a> or <a href="https://github.com/matrix-construct/construct">Construct</a> coming of age too.</p>
+<p>So, there you have it. If you’re an intrepid sysadmin please spin up a Dendrite and start filing bugs! :)</p>
+<p>— Matthew, Neil Alexander, Kegan and the whole Matrix team.</p>
+<p>Here’s the official changelog:</p>
+<h3 id="client-server-api-features">Client-Server API Features</h3>
+<h4 id="account-registration-and-management">Account registration and management</h4>
+<ul>
+<li>Registration: By password only.</li>
+<li>Login: By password only. No fallback.</li>
+<li>Logout: Yes.</li>
+<li>Change password: Yes.</li>
+<li>Link email/msisdn to account: No.</li>
+<li>Deactivate account: Yes.</li>
+<li>Check if username is available: Yes.</li>
+<li>Account data: Yes.</li>
+<li>OpenID: No.</li>
+</ul>
+<h4 id="rooms">Rooms</h4>
+<ul>
+<li>Room creation: Yes, including presets.</li>
+<li>Joining rooms: Yes, including by alias or <code>?server_name=</code>.</li>
+<li>Event sending: Yes, including transaction IDs.</li>
+<li>Aliases: Yes.</li>
+<li>Published room directory: Yes.</li>
+<li>Kicking users: Yes.</li>
+<li>Banning users: Yes.</li>
+<li>Inviting users: Yes, but not third-party invites.</li>
+<li>Forgetting rooms: No.</li>
+<li>Room versions: All (v1 - v6)</li>
+<li>Tagging: Yes.</li>
+</ul>
+<h4 id="user-management">User management</h4>
+<ul>
+<li>User directory: Basic support.</li>
+<li>Ignoring users: No.</li>
+<li>Groups/Communities: No.</li>
+</ul>
+<h4 id="device-management">Device management</h4>
+<ul>
+<li>Creating devices: Yes.</li>
+<li>Deleting devices: Yes.</li>
+<li>Send-to-device messaging: Yes.</li>
+</ul>
+<h4 id="sync">Sync</h4>
+<ul>
+<li>Filters: Timeline limit only. Rest unimplemented.</li>
+<li>Deprecated <code>/events</code> and <code>/initialSync</code>: No.</li>
+</ul>
+<h4 id="room-events">Room events</h4>
+<ul>
+<li>Typing: Yes.</li>
+<li>Receipts: No.</li>
+<li>Read Markers: No.</li>
+<li>Presence: No.</li>
+<li>Content repository (attachments): Yes.</li>
+<li>History visibility: No, defaults to <code>joined</code>.</li>
+<li>Push notifications: No.</li>
+<li>Event context: No.</li>
+<li>Reporting content: No.</li>
+</ul>
+<h4 id="end-to-end-encryption">End-to-End Encryption</h4>
+<ul>
+<li>Uploading device keys: Yes.</li>
+<li>Downloading device keys: Yes.</li>
+<li>Claiming one-time keys: Yes.</li>
+<li>Querying key changes: Yes.</li>
+<li>Cross-Signing: No.</li>
+</ul>
+<h4 id="misc">Misc</h4>
+<ul>
+<li>Server-side search: No.</li>
+<li>Guest access: Partial.</li>
+<li>Room previews: No, partial support for Peeking via MSC2753.</li>
+<li>Third-Party networks: No.</li>
+<li>Server notices: No.</li>
+<li>Policy lists: No.</li>
+</ul>
+<h3 id="federation-features">Federation Features</h3>
+<ul>
+<li>Querying keys (incl. notary): Yes.</li>
+<li>Server ACLs: Yes.</li>
+<li>Sending transactions: Yes.</li>
+<li>Joining rooms: Yes.</li>
+<li>Inviting to rooms: Yes, but not third-party invites.</li>
+<li>Leaving rooms: Yes.</li>
+<li>Content repository: Yes.</li>
+<li>Backfilling / get_missing_events: Yes.</li>
+<li>Retrieving state of the room (<code>/state</code> and <code>/state_ids</code>): Yes.</li>
+<li>Public rooms: Yes.</li>
+<li>Querying profile data: Yes.</li>
+<li>Device management: Yes.</li>
+<li>Send-to-Device messaging: Yes.</li>
+<li>Querying/Claiming E2E Keys: Yes.</li>
+<li>Typing: Yes.</li>
+<li>Presence: No.</li>
+<li>Receipts: No.</li>
+<li>OpenID: No.</li>
+</ul>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2020&#x2F;09&#x2F;22&#x2F;synapse-1-20-0-released&#x2F;" title="Synapse 1.20.0 released">Synapse 1.20.0 released</a></h2>
+                <span>
+                    22.09.2020 19:30
+                    —
+                    <a href="/category/releases">
+                        Releases
+                    </a>
+                    —
+                    <a
+                        href="/author/neil-johnson">
+                        Neil Johnson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Synapse 1.20.0 is here!</p>
+<p>Highlights of 1.20.0 include:-</p>
+<ul>
+<li>Shadow ban support.</li>
+<li>Unread message counts in the sync response to help our client developers, this is a precursor to improving notification support.</li>
+<li>No less than 28 async/await PRs, so we can finally share all the hard work.</li>
+</ul>
+<p>Also take note that in a future release, we will be dropping support for accessing Synapse's Admin API using the <code>/_matrix/client/* prefixes</code>. More details follow in the changelog.</p>
+<p>Get the new releases from any of the usual sources mentioned at https://github.com/matrix-org/synapse/blob/master/INSTALL.md. 1.20.0 is on github <a href="https://github.com/matrix-org/synapse/releases/tag/v1.20.0">here</a>, and 1.20.0rc4 is <a href="https://github.com/matrix-org/synapse/releases/tag/v1.20.0rc4">here</a>.</p>
+<p>The changelog for 1.20.0 is as follows:</p>
+<h1 id="synapse-1-20-0-2020-09-22">Synapse 1.20.0 (2020-09-22)</h1>
+<p>No significant changes since v1.20.0rc5.</p>
+<h2 id="removal-warning">Removal warning</h2>
+<p>Historically, the <a href="https://github.com/matrix-org/synapse/tree/master/docs">Synapse Admin API</a> has been accessible under the <code>/_matrix/client/api/v1/admin</code>, <code>/_matrix/client/unstable/admin</code>, <code>/_matrix/client/r0/admin</code> and <code>/_synapse/admin</code> prefixes. In a future release, we will be dropping support for accessing Synapse's Admin API using the <code>/_matrix/client/*</code> prefixes. This makes it easier for homeserver admins to lock down external access to the Admin API endpoints.</p>
+<h1 id="synapse-1-20-0rc5-2020-09-18">Synapse 1.20.0rc5 (2020-09-18)</h1>
+<p>In addition to the below, Synapse 1.20.0rc5 also includes the bug fix that was included in 1.19.3.</p>
+<h2 id="features">Features</h2>
+<ul>
+<li>Add flags to the <code>/versions</code> endpoint for whether new rooms default to using E2EE. (<a href="https://github.com/matrix-org/synapse/issues/8343">#8343</a>)</li>
+</ul>
+<h2 id="bugfixes">Bugfixes</h2>
+<ul>
+<li>Fix rate limiting of federation <code>/send</code> requests. (<a href="https://github.com/matrix-org/synapse/issues/8342">#8342</a>)</li>
+<li>Fix a longstanding bug where back pagination over federation could get stuck if it failed to handle a received event. (<a href="https://github.com/matrix-org/synapse/issues/8349">#8349</a>)</li>
+</ul>
+<h2 id="internal-changes">Internal Changes</h2>
+<ul>
+<li>Blacklist <a href="https://github.com/matrix-org/matrix-doc/pull/2753">MSC2753</a> SyTests until it is implemented. (<a href="https://github.com/matrix-org/synapse/issues/8285">#8285</a>)</li>
+</ul>
+<h1 id="synapse-1-20-0rc4-2020-09-16">Synapse 1.20.0rc4 (2020-09-16)</h1>
+<p>Synapse 1.20.0rc4 is identical to 1.20.0rc3, with the addition of the security fix that was included in 1.19.2.</p>
+<h1 id="synapse-1-20-0rc3-2020-09-11">Synapse 1.20.0rc3 (2020-09-11)</h1>
+<h2 id="bugfixes-1">Bugfixes</h2>
+<ul>
+<li>Fix a bug introduced in v1.20.0rc1 where the wrong exception was raised when invalid JSON data is encountered. (<a href="https://github.com/matrix-org/synapse/issues/8291">#8291</a>)</li>
+</ul>
+<h1 id="synapse-1-20-0rc2-2020-09-09">Synapse 1.20.0rc2 (2020-09-09)</h1>
+<h2 id="bugfixes-2">Bugfixes</h2>
+<ul>
+<li>Fix a bug introduced in v1.20.0rc1 causing some features related to notifications to misbehave following the implementation of unread counts. (<a href="https://github.com/matrix-org/synapse/issues/8280">#8280</a>)</li>
+</ul>
+<h1 id="synapse-1-20-0rc1-2020-09-08">Synapse 1.20.0rc1 (2020-09-08)</h1>
+<h2 id="removal-warning-1">Removal warning</h2>
+<p>Some older clients used a <a href="https://matrix.org/docs/spec/client_server/r0.6.1#post-matrix-client-r0-register-email-requesttoken">disallowed character</a> (<code>:</code>) in the <code>client_secret</code> parameter of various endpoints. The incorrect behaviour was allowed for backwards compatibility, but is now being removed from Synapse as most users have updated their client. Further context can be found at <a href="https://github.com/matrix-org/synapse/issues/6766">#6766</a>.</p>
+<h2 id="features-1">Features</h2>
+<ul>
+<li>Add an endpoint to query your shared rooms with another user as an implementation of <a href="https://github.com/matrix-org/matrix-doc/pull/2666">MSC2666</a>. (<a href="https://github.com/matrix-org/synapse/issues/7785">#7785</a>)</li>
+<li>Iteratively encode JSON to avoid blocking the reactor. (<a href="https://github.com/matrix-org/synapse/issues/8013">#8013</a>, <a href="https://github.com/matrix-org/synapse/issues/8116">#8116</a>)</li>
+<li>Add support for shadow-banning users (ignoring any message send requests). (<a href="https://github.com/matrix-org/synapse/issues/8034">#8034</a>, <a href="https://github.com/matrix-org/synapse/issues/8092">#8092</a>, <a href="https://github.com/matrix-org/synapse/issues/8095">#8095</a>, <a href="https://github.com/matrix-org/synapse/issues/8142">#8142</a>, <a href="https://github.com/matrix-org/synapse/issues/8152">#8152</a>, <a href="https://github.com/matrix-org/synapse/issues/8157">#8157</a>, <a href="https://github.com/matrix-org/synapse/issues/8158">#8158</a>, <a href="https://github.com/matrix-org/synapse/issues/8176">#8176</a>)</li>
+<li>Use the default template file when its equivalent is not found in a custom template directory. (<a href="https://github.com/matrix-org/synapse/issues/8037">#8037</a>, <a href="https://github.com/matrix-org/synapse/issues/8107">#8107</a>, <a href="https://github.com/matrix-org/synapse/issues/8252">#8252</a>)</li>
+<li>Add unread messages count to sync responses, as specified in <a href="https://github.com/matrix-org/matrix-doc/pull/2654">MSC2654</a>. (<a href="https://github.com/matrix-org/synapse/issues/8059">#8059</a>, <a href="https://github.com/matrix-org/synapse/issues/8254">#8254</a>, <a href="https://github.com/matrix-org/synapse/issues/8270">#8270</a>, <a href="https://github.com/matrix-org/synapse/issues/8274">#8274</a>)</li>
+<li>Optimise <code>/federation/v1/user/devices/</code> API by only returning devices with encryption keys. (<a href="https://github.com/matrix-org/synapse/issues/8198">#8198</a>)</li>
+</ul>
+<h2 id="bugfixes-3">Bugfixes</h2>
+<ul>
+<li>Fix a memory leak by limiting the length of time that messages will be queued for a remote server that has been unreachable. (<a href="https://github.com/matrix-org/synapse/issues/7864">#7864</a>)</li>
+<li>Fix <code>Re-starting finished log context PUT-nnnn</code> warning when event persistence failed. (<a href="https://github.com/matrix-org/synapse/issues/8081">#8081</a>)</li>
+<li>Synapse now correctly enforces the valid characters in the <code>client_secret</code> parameter used in various endpoints. (<a href="https://github.com/matrix-org/synapse/issues/8101">#8101</a>)</li>
+<li>Fix a bug introduced in v1.7.2 impacting message retention policies that would allow federated homeservers to dictate a retention period that's lower than the configured minimum allowed duration in the configuration file. (<a href="https://github.com/matrix-org/synapse/issues/8104">#8104</a>)</li>
+<li>Fix a long-standing bug where invalid JSON would be accepted by Synapse. (<a href="https://github.com/matrix-org/synapse/issues/8106">#8106</a>)</li>
+<li>Fix a bug introduced in Synapse v1.12.0 which could cause <code>/sync</code> requests to fail with a 404 if you had a very old outstanding room invite. (<a href="https://github.com/matrix-org/synapse/issues/8110">#8110</a>)</li>
+<li>Return a proper error code when the rooms of an invalid group are requested. (<a href="https://github.com/matrix-org/synapse/issues/8129">#8129</a>)</li>
+<li>Fix a bug which could cause a leaked postgres connection if synapse was set to daemonize. (<a href="https://github.com/matrix-org/synapse/issues/8131">#8131</a>)</li>
+<li>Clarify the error code if a user tries to register with a numeric ID. This bug was introduced in v1.15.0. (<a href="https://github.com/matrix-org/synapse/issues/8135">#8135</a>)</li>
+<li>Fix a bug where appservices with ratelimiting disabled would still be ratelimited when joining rooms. This bug was introduced in v1.19.0. (<a href="https://github.com/matrix-org/synapse/issues/8139">#8139</a>)</li>
+<li>Fix logging in via OpenID Connect with a provider that uses integer user IDs. (<a href="https://github.com/matrix-org/synapse/issues/8190">#8190</a>)</li>
+<li>Fix a longstanding bug where user directory updates could break when unexpected profile data was included in events. (<a href="https://github.com/matrix-org/synapse/issues/8223">#8223</a>)</li>
+<li>Fix a longstanding bug where stats updates could break when unexpected profile data was included in events. (<a href="https://github.com/matrix-org/synapse/issues/8226">#8226</a>)</li>
+<li>Fix slow start times for large servers by removing a table scan of the <code>users</code> table from startup code. (<a href="https://github.com/matrix-org/synapse/issues/8271">#8271</a>)</li>
+</ul>
+<h2 id="updates-to-the-docker-image">Updates to the Docker image</h2>
+<ul>
+<li>Fix builds of the Docker image on non-x86 platforms. (<a href="https://github.com/matrix-org/synapse/issues/8144">#8144</a>)</li>
+<li>Added curl for healthcheck support and readme updates for the change. Contributed by @maquis196. (<a href="https://github.com/matrix-org/synapse/issues/8147">#8147</a>)</li>
+</ul>
+<h2 id="improved-documentation">Improved Documentation</h2>
+<ul>
+<li>Link to matrix-synapse-rest-password-provider in the password provider documentation. (<a href="https://github.com/matrix-org/synapse/issues/8111">#8111</a>)</li>
+<li>Updated documentation to note that Synapse does not follow <code>HTTP 308</code> redirects due to an upstream library not supporting them. Contributed by Ryan Cole. (<a href="https://github.com/matrix-org/synapse/issues/8120">#8120</a>)</li>
+<li>Explain better what GDPR-erased means when deactivating a user. (<a href="https://github.com/matrix-org/synapse/issues/8189">#8189</a>)</li>
+</ul>
+<h2 id="internal-changes-1">Internal Changes</h2>
+<ul>
+<li>Add filter <code>name</code> to the <code>/users</code> admin API, which filters by user ID or displayname. Contributed by Awesome Technologies Innovationslabor GmbH. (<a href="https://github.com/matrix-org/synapse/issues/7377">#7377</a>, <a href="https://github.com/matrix-org/synapse/issues/8163">#8163</a>)</li>
+<li>Reduce run times of some unit tests by advancing the reactor a fewer number of times. (<a href="https://github.com/matrix-org/synapse/issues/7757">#7757</a>)</li>
+<li>Don't fail <code>/submit_token</code> requests on incorrect session ID if <code>request_token_inhibit_3pid_errors</code> is turned on. (<a href="https://github.com/matrix-org/synapse/issues/7991">#7991</a>)</li>
+<li>Convert various parts of the codebase to async/await. (<a href="https://github.com/matrix-org/synapse/issues/8071">#8071</a>, <a href="https://github.com/matrix-org/synapse/issues/8072">#8072</a>, <a href="https://github.com/matrix-org/synapse/issues/8074">#8074</a>, <a href="https://github.com/matrix-org/synapse/issues/8075">#8075</a>, <a href="https://github.com/matrix-org/synapse/issues/8076">#8076</a>, <a href="https://github.com/matrix-org/synapse/issues/8087">#8087</a>, <a href="https://github.com/matrix-org/synapse/issues/8100">#8100</a>, <a href="https://github.com/matrix-org/synapse/issues/8119">#8119</a>, <a href="https://github.com/matrix-org/synapse/issues/8121">#8121</a>, <a href="https://github.com/matrix-org/synapse/issues/8133">#8133</a>, <a href="https://github.com/matrix-org/synapse/issues/8156">#8156</a>, <a href="https://github.com/matrix-org/synapse/issues/8162">#8162</a>, <a href="https://github.com/matrix-org/synapse/issues/8166">#8166</a>, <a href="https://github.com/matrix-org/synapse/issues/8168">#8168</a>, <a href="https://github.com/matrix-org/synapse/issues/8173">#8173</a>, <a href="https://github.com/matrix-org/synapse/issues/8191">#8191</a>, <a href="https://github.com/matrix-org/synapse/issues/8192">#8192</a>, <a href="https://github.com/matrix-org/synapse/issues/8193">#8193</a>, <a href="https://github.com/matrix-org/synapse/issues/8194">#8194</a>, <a href="https://github.com/matrix-org/synapse/issues/8195">#8195</a>, <a href="https://github.com/matrix-org/synapse/issues/8197">#8197</a>, <a href="https://github.com/matrix-org/synapse/issues/8199">#8199</a>, <a href="https://github.com/matrix-org/synapse/issues/8200">#8200</a>, <a href="https://github.com/matrix-org/synapse/issues/8201">#8201</a>, <a href="https://github.com/matrix-org/synapse/issues/8202">#8202</a>, <a href="https://github.com/matrix-org/synapse/issues/8207">#8207</a>, <a href="https://github.com/matrix-org/synapse/issues/8213">#8213</a>, <a href="https://github.com/matrix-org/synapse/issues/8214">#8214</a>)</li>
+<li>Remove some unused database functions. (<a href="https://github.com/matrix-org/synapse/issues/8085">#8085</a>)</li>
+<li>Add type hints to various parts of the codebase. (<a href="https://github.com/matrix-org/synapse/issues/8090">#8090</a>, <a href="https://github.com/matrix-org/synapse/issues/8127">#8127</a>, <a href="https://github.com/matrix-org/synapse/issues/8187">#8187</a>, <a href="https://github.com/matrix-org/synapse/issues/8241">#8241</a>, <a href="https://github.com/matrix-org/synapse/issues/8140">#8140</a>, <a href="https://github.com/matrix-org/synapse/issues/8183">#8183</a>, <a href="https://github.com/matrix-org/synapse/issues/8232">#8232</a>, <a href="https://github.com/matrix-org/synapse/issues/8235">#8235</a>, <a href="https://github.com/matrix-org/synapse/issues/8237">#8237</a>, <a href="https://github.com/matrix-org/synapse/issues/8244">#8244</a>)</li>
+<li>Return the previous stream token if a non-member event is a duplicate. (<a href="https://github.com/matrix-org/synapse/issues/8093">#8093</a>, <a href="https://github.com/matrix-org/synapse/issues/8112">#8112</a>)</li>
+<li>Separate <code>get_current_token</code> into two since there are two different use cases for it. (<a href="https://github.com/matrix-org/synapse/issues/8113">#8113</a>)</li>
+<li>Remove <code>ChainedIdGenerator</code>. (<a href="https://github.com/matrix-org/synapse/issues/8123">#8123</a>)</li>
+<li>Reduce the amount of whitespace in JSON stored and sent in responses. (<a href="https://github.com/matrix-org/synapse/issues/8124">#8124</a>)</li>
+<li>Update the test federation client to handle streaming responses. (<a href="https://github.com/matrix-org/synapse/issues/8130">#8130</a>)</li>
+<li>Micro-optimisations to <code>get_auth_chain_ids</code>. (<a href="https://github.com/matrix-org/synapse/issues/8132">#8132</a>)</li>
+<li>Refactor <code>StreamIdGenerator</code> and <code>MultiWriterIdGenerator</code> to have the same interface. (<a href="https://github.com/matrix-org/synapse/issues/8161">#8161</a>)</li>
+<li>Add functions to <code>MultiWriterIdGen</code> used by events stream. (<a href="https://github.com/matrix-org/synapse/issues/8164">#8164</a>, <a href="https://github.com/matrix-org/synapse/issues/8179">#8179</a>)</li>
+<li>Fix tests that were broken due to the merge of 1.19.1. (<a href="https://github.com/matrix-org/synapse/issues/8167">#8167</a>)</li>
+<li>Make <code>SlavedIdTracker.advance</code> have the same interface as <code>MultiWriterIDGenerator</code>. (<a href="https://github.com/matrix-org/synapse/issues/8171">#8171</a>)</li>
+<li>Remove unused <code>is_guest</code> parameter from, and add safeguard to, <code>MessageHandler.get_room_data</code>. (<a href="https://github.com/matrix-org/synapse/issues/8174">#8174</a>, <a href="https://github.com/matrix-org/synapse/issues/8181">#8181</a>)</li>
+<li>Standardize the mypy configuration. (<a href="https://github.com/matrix-org/synapse/issues/8175">#8175</a>)</li>
+<li>Refactor some of <code>LoginRestServlet</code>'s helper methods, and move them to <code>AuthHandler</code> for easier reuse. (<a href="https://github.com/matrix-org/synapse/issues/8182">#8182</a>)</li>
+<li>Fix <code>wait_for_stream_position</code> to allow multiple waiters on same stream ID. (<a href="https://github.com/matrix-org/synapse/issues/8196">#8196</a>)</li>
+<li>Make <code>MultiWriterIDGenerator</code> work for streams that use negative values. (<a href="https://github.com/matrix-org/synapse/issues/8203">#8203</a>)</li>
+<li>Refactor queries for device keys and cross-signatures. (<a href="https://github.com/matrix-org/synapse/issues/8204">#8204</a>, <a href="https://github.com/matrix-org/synapse/issues/8205">#8205</a>, <a href="https://github.com/matrix-org/synapse/issues/8222">#8222</a>, <a href="https://github.com/matrix-org/synapse/issues/8224">#8224</a>, <a href="https://github.com/matrix-org/synapse/issues/8225">#8225</a>, <a href="https://github.com/matrix-org/synapse/issues/8231">#8231</a>, <a href="https://github.com/matrix-org/synapse/issues/8233">#8233</a>, <a href="https://github.com/matrix-org/synapse/issues/8234">#8234</a>)</li>
+<li>Fix type hints for functions decorated with <code>@cached</code>. (<a href="https://github.com/matrix-org/synapse/issues/8240">#8240</a>)</li>
+<li>Remove obsolete <code>order</code> field from federation send queues. (<a href="https://github.com/matrix-org/synapse/issues/8245">#8245</a>)</li>
+<li>Stop sub-classing from object. (<a href="https://github.com/matrix-org/synapse/issues/8249">#8249</a>)</li>
+<li>Add more logging to debug slow startup. (<a href="https://github.com/matrix-org/synapse/issues/8264">#8264</a>)</li>
+<li>Do not attempt to upgrade database schema on worker processes. (<a href="https://github.com/matrix-org/synapse/issues/8266">#8266</a>, <a href="https://github.com/matrix-org/synapse/issues/8276">#8276</a>)</li>
+</ul>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2020&#x2F;09&#x2F;16&#x2F;synapse-1-19-2-released&#x2F;" title="Synapse 1.19.2 released">Synapse 1.19.2 released</a></h2>
+                <span>
+                    16.09.2020 00:00
+                    —
+                    <a href="/category/releases">
+                        Releases
+                    </a>
+                    —
+                    <a
+                        href="/author/neil-johnson">
+                        Neil Johnson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p><strong>Synapse 1.19.2 is a security patch. All federating instances should upgrade immediately.</strong></p>
+<p>Today we are releasing Synapse 1.19.2, which is a security patch release containing a fix to encountering invalid events over federation. We are also putting out a fourth release candidate for the upcoming Synapse 1.20.0 release with the same fix.</p>
+<p>The bug prevents affected Synapse instances from joining rooms with invalid events. Server administrators running federating instances are strongly encouraged to update as soon as possible.</p>
+<p><strong>Those on Synapse 1.19.1 or earlier should upgrade to Synapse 1.19.2, while those who are running a release candidate of Synapse 1.20.0 should upgrade to 1.20.0rc4.</strong></p>
+<p>Get the new releases from any of the usual sources mentioned at https://github.com/matrix-org/synapse/blob/master/INSTALL.md. 1.19.2 is on github <a href="https://github.com/matrix-org/synapse/releases/tag/v1.19.2">here</a>, and 1.20.0rc4 is <a href="https://github.com/matrix-org/synapse/releases/tag/v1.20.0rc4">here</a>.</p>
+<p>The changelog for 1.19.2 is as follows:</p>
+<h2 id="synapse-1-19-2-2020-09-16">Synapse 1.19.2 (2020-09-16)</h2>
+<p>Due to the issue below server admins are encouraged to upgrade as soon as possible.
+Bugfixes</p>
+<ul>
+<li>Fix joining rooms over federation that include malformed events. (#8324)</li>
+</ul>
+
+                
+            </div>
+        </article>
         
         <article class="post">
             <header>
@@ -433,500 +1124,6 @@ and <code>get_previous_frame</code> from <code>synapse.logging.utils</code> modu
 <li>Add <code>signing_key</code> property to <code>HomeServer</code> to save code duplication. (<a href="https://github.com/matrix-org/synapse/issues/7805">#7805</a>)</li>
 <li>Improve stacktraces from exceptions in background processes. (<a href="https://github.com/matrix-org/synapse/issues/7808">#7808</a>)</li>
 <li>Fix various spelling errors in comments and log lines. (<a href="https://github.com/matrix-org/synapse/issues/7811">#7811</a>)</li>
-</ul>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2020&#x2F;07&#x2F;08&#x2F;synapse-1-16-0-released&#x2F;" title="Synapse 1.16.0 released">Synapse 1.16.0 released</a></h2>
-                <span>
-                    08.07.2020 19:18
-                    —
-                    <a href="/category/releases">
-                        Releases
-                    </a>
-                    —
-                    <a
-                        href="/author/neil-johnson">
-                        Neil Johnson
-                    </a>
-                </span>
-                <br>
-                <small>Last update: 08.07.2020 14:45</small>
-            </header>
-            <div>
-                
-                <p>Synapse 1.16.0 is here!</p>
-<p>Notable additions in 1.16.0 include:-</p>
-<ul>
-<li>An important performance fix to improve room state resolution.</li>
-<li>An option to enable e2e by default for new rooms.</li>
-<li>Ability to run multiple media repo workers side by side.</li>
-<li>Ability to mark specific content as being safe from quarantine.</li>
-<li>Bug fixes to make migrating from SQLite to Postgres more reliable - if you are running sqlite for anything other than evaluation purposes then please migrate!</li>
-</ul>
-<p>Note, we have deprecated the <code>m.login.jwt</code> login method in favour of <code>org.matrix.login.jwt</code> see the changelog for more details.</p>
-<p>Enjoy!</p>
-<p>Get the new releases from any of the usual sources mentioned at https://github.com/matrix-org/synapse/blob/master/INSTALL.md. 1.16.0 is on github <a href="https://github.com/matrix-org/synapse/releases/tag/v1.16.0">here</a>.</p>
-<p>Changelog for 1.16.0 follows:</p>
-<h1 id="synapse-1-16-0-2020-07-08">Synapse 1.16.0 (2020-07-08)</h1>
-<p>No significant changes since 1.16.0rc2.</p>
-<p>Note that this release deprecates the <code>m.login.jwt</code> login method, renaming it to <code>org.matrix.login.jwt</code>, as <code>m.login.jwt</code> is not part of the Matrix spec. Otherwise the behaviour is identical. Synapse will accept both names for now, but this may change in a future release.</p>
-<h1 id="synapse-1-16-0rc2-2020-07-02">Synapse 1.16.0rc2 (2020-07-02)</h1>
-<p>Synapse 1.16.0rc2 includes the security fixes released with Synapse 1.15.2.
-Please see the <a href="https://github.com/matrix-org/synapse/releases/tag/v1.15.2">1.15.2 release notes</a> for more details.</p>
-<h2 id="improved-documentation">Improved Documentation</h2>
-<ul>
-<li>Update postgres image in example <code>docker-compose.yaml</code> to tag <code>12-alpine</code>. (<a href="https://github.com/matrix-org/synapse/issues/7696">#7696</a>)</li>
-</ul>
-<h2 id="internal-changes">Internal Changes</h2>
-<ul>
-<li>Add some metrics for inbound and outbound federation latencies: <code>synapse_federation_server_pdu_process_time</code> and <code>synapse_event_processing_lag_by_event</code>. (<a href="https://github.com/matrix-org/synapse/issues/7771">#7771</a>)</li>
-</ul>
-<h1 id="synapse-1-16-0rc1-2020-07-01">Synapse 1.16.0rc1 (2020-07-01)</h1>
-<h2 id="features">Features</h2>
-<ul>
-<li>Add an option to enable encryption by default for new rooms. (<a href="https://github.com/matrix-org/synapse/issues/7639">#7639</a>)</li>
-<li>Add support for running multiple media repository workers. See <a href="https://github.com/matrix-org/synapse/blob/release-v1.16.0/docs/workers.md">docs/workers.md</a> for instructions. (<a href="https://github.com/matrix-org/synapse/issues/7706">#7706</a>)</li>
-<li>Media can now be marked as safe from quarantined. (<a href="https://github.com/matrix-org/synapse/issues/7718">#7718</a>)</li>
-<li>Expand the configuration options for auto-join rooms. (<a href="https://github.com/matrix-org/synapse/issues/7763">#7763</a>)</li>
-</ul>
-<h2 id="bugfixes">Bugfixes</h2>
-<ul>
-<li>Remove <code>user_id</code> from the response to <code>GET /_matrix/client/r0/presence/{userId}/status</code> to match the specification. (<a href="https://github.com/matrix-org/synapse/issues/7606">#7606</a>)</li>
-<li>In worker mode, ensure that replicated data has not already been received. (<a href="https://github.com/matrix-org/synapse/issues/7648">#7648</a>)</li>
-<li>Fix intermittent exception during startup, introduced in Synapse 1.14.0. (<a href="https://github.com/matrix-org/synapse/issues/7663">#7663</a>)</li>
-<li>Include a user-agent for federation and well-known requests. (<a href="https://github.com/matrix-org/synapse/issues/7677">#7677</a>)</li>
-<li>Accept the proper field (<code>phone</code>) for the <code>m.id.phone</code> identifier type. The legacy field of <code>number</code> is still accepted as a fallback. Bug introduced in v0.20.0. (<a href="https://github.com/matrix-org/synapse/issues/7687">#7687</a>)</li>
-<li>Fix &quot;Starting db txn 'get_completed_ui_auth_stages' from sentinel context&quot; warning. The bug was introduced in 1.13.0. (<a href="https://github.com/matrix-org/synapse/issues/7688">#7688</a>)</li>
-<li>Compare the URI and method during user interactive authentication (instead of the URI twice). Bug introduced in 1.13.0. (<a href="https://github.com/matrix-org/synapse/issues/7689">#7689</a>)</li>
-<li>Fix a long standing bug where the response to the <code>GET room_keys/version</code> endpoint had the incorrect type for the <code>etag</code> field. (<a href="https://github.com/matrix-org/synapse/issues/7691">#7691</a>)</li>
-<li>Fix logged error during device resync in opentracing. Broke in v1.14.0. (<a href="https://github.com/matrix-org/synapse/issues/7698">#7698</a>)</li>
-<li>Do not break push rule evaluation when receiving an event with a non-string body. This is a long-standing bug. (<a href="https://github.com/matrix-org/synapse/issues/7701">#7701</a>)</li>
-<li>Fixs a long standing bug which resulted in an exception: &quot;TypeError: argument of type 'ObservableDeferred' is not iterable&quot;. (<a href="https://github.com/matrix-org/synapse/issues/7708">#7708</a>)</li>
-<li>The <code>synapse_port_db</code> script no longer fails when the <code>ui_auth_sessions</code> table is non-empty. This bug has existed since v1.13.0. (<a href="https://github.com/matrix-org/synapse/issues/7711">#7711</a>)</li>
-<li>Synapse will now fetch media from the proper specified URL (using the r0 prefix instead of the unspecified v1). (<a href="https://github.com/matrix-org/synapse/issues/7714">#7714</a>)</li>
-<li>Fix the tables ignored by <code>synapse_port_db</code> to be in sync the current database schema. (<a href="https://github.com/matrix-org/synapse/issues/7717">#7717</a>)</li>
-<li>Fix missing <code>Content-Length</code> on HTTP responses from the metrics handler. (<a href="https://github.com/matrix-org/synapse/issues/7730">#7730</a>)</li>
-<li>Fix large state resolutions from stalling Synapse for seconds at a time. (<a href="https://github.com/matrix-org/synapse/issues/7735">#7735</a>, <a href="https://github.com/matrix-org/synapse/issues/7746">#7746</a>)</li>
-</ul>
-<h2 id="improved-documentation-1">Improved Documentation</h2>
-<ul>
-<li>Spelling correction in sample_config.yaml. (<a href="https://github.com/matrix-org/synapse/issues/7652">#7652</a>)</li>
-<li>Added instructions for how to use Keycloak via OpenID Connect to authenticate with Synapse. (<a href="https://github.com/matrix-org/synapse/issues/7659">#7659</a>)</li>
-<li>Corrected misspelling of PostgreSQL. (<a href="https://github.com/matrix-org/synapse/issues/7724">#7724</a>)</li>
-</ul>
-<h2 id="deprecations-and-removals">Deprecations and Removals</h2>
-<ul>
-<li>Deprecate <code>m.login.jwt</code> login method in favour of <code>org.matrix.login.jwt</code>, as <code>m.login.jwt</code> is not part of the Matrix spec. (<a href="https://github.com/matrix-org/synapse/issues/7675">#7675</a>)</li>
-</ul>
-<h2 id="internal-changes-1">Internal Changes</h2>
-<ul>
-<li>Refactor getting replication updates from database. (<a href="https://github.com/matrix-org/synapse/issues/7636">#7636</a>)</li>
-<li>Clean-up the login fallback code. (<a href="https://github.com/matrix-org/synapse/issues/7657">#7657</a>)</li>
-<li>Increase the default SAML session expiry time to 15 minutes. (<a href="https://github.com/matrix-org/synapse/issues/7664">#7664</a>)</li>
-<li>Convert the device message and pagination handlers to async/await. (<a href="https://github.com/matrix-org/synapse/issues/7678">#7678</a>)</li>
-<li>Convert typing handler to async/await. (<a href="https://github.com/matrix-org/synapse/issues/7679">#7679</a>)</li>
-<li>Require <code>parameterized</code> package version to be at least 0.7.0. (<a href="https://github.com/matrix-org/synapse/issues/7680">#7680</a>)</li>
-<li>Refactor handling of <code>listeners</code> configuration settings. (<a href="https://github.com/matrix-org/synapse/issues/7681">#7681</a>)</li>
-<li>Replace uses of <code>six.iterkeys</code>/<code>iteritems</code>/<code>itervalues</code> with <code>keys()</code>/<code>items()</code>/<code>values()</code>. (<a href="https://github.com/matrix-org/synapse/issues/7692">#7692</a>)</li>
-<li>Add support for using <code>rust-python-jaeger-reporter</code> library to reduce jaeger tracing overhead. (<a href="https://github.com/matrix-org/synapse/issues/7697">#7697</a>)</li>
-<li>Make Tox actions work on Debian 10. (<a href="https://github.com/matrix-org/synapse/issues/7703">#7703</a>)</li>
-<li>Replace all remaining uses of <code>six</code> with native Python 3 equivalents. Contributed by @ilmari. (<a href="https://github.com/matrix-org/synapse/issues/7704">#7704</a>)</li>
-<li>Fix broken link in sample config. (<a href="https://github.com/matrix-org/synapse/issues/7712">#7712</a>)</li>
-<li>Speed up state res v2 across large state differences. (<a href="https://github.com/matrix-org/synapse/issues/7725">#7725</a>)</li>
-<li>Convert directory handler to async/await. (<a href="https://github.com/matrix-org/synapse/issues/7727">#7727</a>)</li>
-<li>Move <code>flake8</code> to the end of <code>scripts-dev/lint.sh</code> as it takes the longest and could cause the script to exit early. (<a href="https://github.com/matrix-org/synapse/issues/7738">#7738</a>)</li>
-<li>Explain the &quot;test&quot; conditional requirement for dependencies is not all of the modules necessary to run the unit tests. (<a href="https://github.com/matrix-org/synapse/issues/7751">#7751</a>)</li>
-<li>Add some metrics for inbound and outbound federation latencies: <code>synapse_federation_server_pdu_process_time</code> and <code>synapse_event_processing_lag_by_event</code>. (<a href="https://github.com/matrix-org/synapse/issues/7755">#7755</a>)</li>
-</ul>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2020&#x2F;07&#x2F;02&#x2F;synapse-1-15-2-released-with-security-fixes&#x2F;" title="Synapse 1.15.2 released with security fixes">Synapse 1.15.2 released with security fixes</a></h2>
-                <span>
-                    02.07.2020 17:58
-                    —
-                    <a href="/category/releases">
-                        Releases
-                    </a>
-                    —
-                    <a
-                        href="/author/richard-van-der-hoff">
-                        Richard van der Hoff
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Folks, today we are releasing Synapse 1.15.2, which is a security release which contains fixes to two separate problems. We are also putting out the second release candidate for the forthcoming Synapse 1.16, including the same fixes.</p>
-<p>Firstly, we have fixed a bug in the implementation of the room state resolution algorithm which could cause users to be unexpectedly ejected from rooms (Synapse issue <a href="https://github.com/matrix-org/synapse/issues/7742">#7742</a>).</p>
-<p>Secondly, we have improved the security of pages served as part of the Single-Sign-on login flows to prevent clickjacking attacks. Thank you to <a href="https://sandhose.fr/">Quentin Gliech</a> for reporting this.</p>
-<p>We are not aware of either of these vulnerabilities being exploited in the wild, but we recommend that administrators upgrade as soon as possible. Those on Synapse 1.15.1 or earlier should upgrade to Synapse 1.15.2, while those who have already upgraded to Synapse 1.16.0rc1 should upgrade to 1.16.0rc2.</p>
-<p>Get the new releases from any of the usual sources mentioned at https://github.com/matrix-org/synapse/blob/master/INSTALL.md. 1.15.2 is on github <a href="https://github.com/matrix-org/synapse/releases/tag/v1.15.2">here</a>, and 1.16.0rc2 is <a href="https://github.com/matrix-org/synapse/releases/tag/v1.16.0rc2">here</a>.</p>
-<p>Changelog for 1.15.2 follows:</p>
-<h2 id="synapse-1-15-2-2020-07-02">Synapse 1.15.2 (2020-07-02)</h2>
-<p>Due to the two security issues highlighted below, server administrators are
-encouraged to update Synapse. We are not aware of these vulnerabilities being
-exploited in the wild.</p>
-<h3 id="security-advisory">Security advisory</h3>
-<ul>
-<li>
-<p>A malicious homeserver could force Synapse to reset the state in a room to a
-small subset of the correct state. This affects all Synapse deployments which
-federate with untrusted servers. (<a href="https://github.com/matrix-org/synapse/commit/96e9afe62500310977dc3cbc99a8d16d3d2fa15c">96e9afe6</a>)</p>
-</li>
-<li>
-<p>HTML pages served via Synapse were vulnerable to clickjacking attacks. This
-predominantly affects homeservers with single-sign-on enabled, but all server
-administrators are encouraged to upgrade.  (<a href="https://github.com/matrix-org/synapse/commit/ea26e9a98b0541fc886a1cb826a38352b7599dbe">ea26e9a9</a>)</p>
-<p>This was reported by <a href="https://sandhose.fr/">Quentin Gliech</a>.</p>
-</li>
-</ul>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2020&#x2F;06&#x2F;16&#x2F;synapse-1-15-1-released&#x2F;" title="Synapse 1.15.1 released">Synapse 1.15.1 released</a></h2>
-                <span>
-                    16.06.2020 12:25
-                    —
-                    <a href="/category/releases">
-                        Releases
-                    </a>
-                    —
-                    <a
-                        href="/author/neil-johnson">
-                        Neil Johnson
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Synapse 1.15.1 is a bug fix release to fix two bugs introduced in 1.15.0.</p>
-<p>The first prevented users of certain clients (including Riot) to add or remove third party identifiers such as email addresses.</p>
-<p>The second caused Synapse not to start when configured with certain password auth providers.</p>
-<p>Sorry if you have been bitten!</p>
-<p>Get 1.15.1 from <a href="https://github.com/matrix-org/synapse/releases/tag/v1.15.1">github</a> or any of the sources mentioned at https://github.com/matrix-org/synapse/blob/master/INSTALL.md.</p>
-<p>Changelog since v1.15.0</p>
-<h1 id="synapse-1-15-1-2020-06-16">Synapse 1.15.1 (2020-06-16)</h1>
-<h2 id="bugfixes">Bugfixes</h2>
-<ul>
-<li>Fix a bug introduced in v1.15.0 that would crash Synapse on start when using certain password auth providers. (<a href="https://github.com/matrix-org/synapse/issues/7684">#7684</a>)</li>
-<li>Fix a bug introduced in v1.15.0 which meant that some 3PID management endpoints were not accessible on the correct URL. (<a href="https://github.com/matrix-org/synapse/issues/7685">#7685</a>)</li>
-</ul>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2020&#x2F;06&#x2F;11&#x2F;synapse-1-15-0-released&#x2F;" title="Synapse 1.15.0 released">Synapse 1.15.0 released</a></h2>
-                <span>
-                    11.06.2020 18:27
-                    —
-                    <a href="/category/releases">
-                        Releases
-                    </a>
-                    —
-                    <a
-                        href="/author/neil-johnson">
-                        Neil Johnson
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Synapse 1.15.0 release day folks.</p>
-<p>We continue our push to improve performance across the board. Factoring out event persistence into a separate worker pointed the way to a host of small but collectively important improvements. Expect further changes in coming releases.</p>
-<p>Aside from that the admin API continues to grow (this time device management) and we have improved device list syncing to aid e2ee reliability.</p>
-<p>We are receiving an increasing number of high quality PRs from the community, please keep them coming. Special thanks to <a href="https://github.com/cg505">cg505</a>, <a href="https://github.com/dklimpel">dklimpel</a>, <a href="https://github.com/WGH">WGH</a>, <a href="https://github.com/olof">olof</a> and <a href="https://github.com/ilmari">ilmari</a></p>
-<p>Get 1.15.0 from <a href="https://github.com/matrix-org/synapse/releases/tag/v1.15.0">github</a> or any of the sources mentioned at https://github.com/matrix-org/synapse/blob/master/INSTALL.md.</p>
-<p>Changelog since v1.14.0</p>
-<h1 id="synapse-1-15-0-2020-06-11">Synapse 1.15.0 (2020-06-11)</h1>
-<p>No significant changes.</p>
-<h1 id="synapse-1-15-0rc1-2020-06-09">Synapse 1.15.0rc1 (2020-06-09)</h1>
-<h2 id="features">Features</h2>
-<ul>
-<li>Advertise support for Client-Server API r0.6.0 and remove related unstable feature flags. (<a href="https://github.com/matrix-org/synapse/issues/6585">#6585</a>)</li>
-<li>Add an option to disable autojoining rooms for guest accounts. (<a href="https://github.com/matrix-org/synapse/issues/6637">#6637</a>)</li>
-<li>For SAML authentication, add the ability to pass email addresses to be added to new users' accounts via SAML attributes. Contributed by Christopher Cooper. (<a href="https://github.com/matrix-org/synapse/issues/7385">#7385</a>)</li>
-<li>Add admin APIs to allow server admins to manage users' devices. Contributed by @dklimpel. (<a href="https://github.com/matrix-org/synapse/issues/7481">#7481</a>)</li>
-<li>Add support for generating thumbnails for WebP images. Previously, users would see an empty box instead of preview image. Contributed by @WGH-. (<a href="https://github.com/matrix-org/synapse/issues/7586">#7586</a>)</li>
-<li>Support the standardized <code>m.login.sso</code> user-interactive authentication flow. (<a href="https://github.com/matrix-org/synapse/issues/7630">#7630</a>)</li>
-</ul>
-<h2 id="bugfixes">Bugfixes</h2>
-<ul>
-<li>Allow new users to be registered via the admin API even if the monthly active user limit has been reached. Contributed by @dklimpel. (<a href="https://github.com/matrix-org/synapse/issues/7263">#7263</a>)</li>
-<li>Fix email notifications not being enabled for new users when created via the Admin API. (<a href="https://github.com/matrix-org/synapse/issues/7267">#7267</a>)</li>
-<li>Fix str placeholders in an instance of <code>PrepareDatabaseException</code>. Introduced in Synapse v1.8.0. (<a href="https://github.com/matrix-org/synapse/issues/7575">#7575</a>)</li>
-<li>Fix a bug in automatic user creation during first time login with <code>m.login.jwt</code>. Regression in v1.6.0. Contributed by @olof. (<a href="https://github.com/matrix-org/synapse/issues/7585">#7585</a>)</li>
-<li>Fix a bug causing the cross-signing keys to be ignored when resyncing a device list. (<a href="https://github.com/matrix-org/synapse/issues/7594">#7594</a>)</li>
-<li>Fix metrics failing when there is a large number of active background processes. (<a href="https://github.com/matrix-org/synapse/issues/7597">#7597</a>)</li>
-<li>Fix bug where returning rooms for a group would fail if it included a room that the server was not in. (<a href="https://github.com/matrix-org/synapse/issues/7599">#7599</a>)</li>
-<li>Fix duplicate key violation when persisting read markers. (<a href="https://github.com/matrix-org/synapse/issues/7607">#7607</a>)</li>
-<li>Prevent an entire iteration of the device list resync loop from failing if one server responds with a malformed result. (<a href="https://github.com/matrix-org/synapse/issues/7609">#7609</a>)</li>
-<li>Fix exceptions when fetching events from a remote host fails. (<a href="https://github.com/matrix-org/synapse/issues/7622">#7622</a>)</li>
-<li>Make <code>synctl restart</code> start synapse if it wasn't running. (<a href="https://github.com/matrix-org/synapse/issues/7624">#7624</a>)</li>
-<li>Pass device information through to the login endpoint when using the login fallback. (<a href="https://github.com/matrix-org/synapse/issues/7629">#7629</a>)</li>
-<li>Advertise the <code>m.login.token</code> login flow when OpenID Connect is enabled. (<a href="https://github.com/matrix-org/synapse/issues/7631">#7631</a>)</li>
-<li>Fix bug in account data replication stream. (<a href="https://github.com/matrix-org/synapse/issues/7656">#7656</a>)</li>
-</ul>
-<h2 id="improved-documentation">Improved Documentation</h2>
-<ul>
-<li>Update the OpenBSD installation instructions. (<a href="https://github.com/matrix-org/synapse/issues/7587">#7587</a>)</li>
-<li>Advertise Python 3.8 support in <code>setup.py</code>. (<a href="https://github.com/matrix-org/synapse/issues/7602">#7602</a>)</li>
-<li>Add a link to <code>#synapse:matrix.org</code> in the troubleshooting section of the README. (<a href="https://github.com/matrix-org/synapse/issues/7603">#7603</a>)</li>
-<li>Clarifications to the admin api documentation. (<a href="https://github.com/matrix-org/synapse/issues/7647">#7647</a>)</li>
-</ul>
-<h2 id="internal-changes">Internal Changes</h2>
-<ul>
-<li>Convert the identity handler to async/await. (<a href="https://github.com/matrix-org/synapse/issues/7561">#7561</a>)</li>
-<li>Improve query performance for fetching state from a PostgreSQL database. Contributed by @ilmari. (<a href="https://github.com/matrix-org/synapse/issues/7567">#7567</a>)</li>
-<li>Speed up processing of federation stream RDATA rows. (<a href="https://github.com/matrix-org/synapse/issues/7584">#7584</a>)</li>
-<li>Add comment to systemd example to show postgresql dependency. (<a href="https://github.com/matrix-org/synapse/issues/7591">#7591</a>)</li>
-<li>Refactor <code>Ratelimiter</code> to limit the amount of expensive config value accesses. (<a href="https://github.com/matrix-org/synapse/issues/7595">#7595</a>)</li>
-<li>Convert groups handlers to async/await. (<a href="https://github.com/matrix-org/synapse/issues/7600">#7600</a>)</li>
-<li>Clean up exception handling in <code>SAML2ResponseResource</code>. (<a href="https://github.com/matrix-org/synapse/issues/7614">#7614</a>)</li>
-<li>Check that all asynchronous tasks succeed and general cleanup of <code>MonthlyActiveUsersTestCase</code> and <code>TestMauLimit</code>. (<a href="https://github.com/matrix-org/synapse/issues/7619">#7619</a>)</li>
-<li>Convert <code>get_user_id_by_threepid</code> to async/await. (<a href="https://github.com/matrix-org/synapse/issues/7620">#7620</a>)</li>
-<li>Switch to upstream <code>dh-virtualenv</code> rather than our fork for Debian package builds. (<a href="https://github.com/matrix-org/synapse/issues/7621">#7621</a>)</li>
-<li>Update CI scripts to check the number in the newsfile fragment. (<a href="https://github.com/matrix-org/synapse/issues/7623">#7623</a>)</li>
-<li>Check if the localpart of a Matrix ID is reserved for guest users earlier in the registration flow, as well as when responding to requests to <code>/register/available</code>. (<a href="https://github.com/matrix-org/synapse/issues/7625">#7625</a>)</li>
-<li>Minor cleanups to OpenID Connect integration. (<a href="https://github.com/matrix-org/synapse/issues/7628">#7628</a>)</li>
-<li>Attempt to fix flaky test: <code>PhoneHomeStatsTestCase.test_performance_100</code>. (<a href="https://github.com/matrix-org/synapse/issues/7634">#7634</a>)</li>
-<li>Fix typos of <code>m.olm.curve25519-aes-sha2</code> and <code>m.megolm.v1.aes-sha2</code> in comments, test files. (<a href="https://github.com/matrix-org/synapse/issues/7637">#7637</a>)</li>
-<li>Convert user directory, state deltas, and stats handlers to async/await. (<a href="https://github.com/matrix-org/synapse/issues/7640">#7640</a>)</li>
-<li>Remove some unused constants. (<a href="https://github.com/matrix-org/synapse/issues/7644">#7644</a>)</li>
-<li>Fix type information on <code>assert_*_is_admin</code> methods. (<a href="https://github.com/matrix-org/synapse/issues/7645">#7645</a>)</li>
-<li>Convert registration handler to async/await. (<a href="https://github.com/matrix-org/synapse/issues/7649">#7649</a>)</li>
-</ul>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2020&#x2F;05&#x2F;28&#x2F;synapse-1-14-0-released&#x2F;" title="Synapse 1.14.0 released">Synapse 1.14.0 released</a></h2>
-                <span>
-                    28.05.2020 17:45
-                    —
-                    <a href="/category/releases">
-                        Releases
-                    </a>
-                    —
-                    <a
-                        href="/author/neil-johnson">
-                        Neil Johnson
-                    </a>
-                </span>
-                <br>
-                <small>Last update: 28.05.2020 17:23</small>
-            </header>
-            <div>
-                
-                <p>Synapse 1.14.0 has landed.</p>
-<p>This release contains OpenId Connect support, so that admins can configure a whole range of SSO options. We're really excited about what this means for helping users sign up and are considering it for matrix.org.</p>
-<p>1.14.0 also contains finer grained cache configuration support, so that admins can tune caches in a more granular way. Our experience is that cache tuning can make a big difference to Synapse performance and over time we hope to continue improving cache tooling. Potentially we could even have caches auto-tune.</p>
-<p>You'll also find support for <a href="https://matrix.org/docs/spec/rooms/v6">rooms v6</a>. v6 contains some small but important changes to improve the security of the room model. As with all room version upgrades we can't switch to v6 as the default version immediately since we need to build up a critical mass of servers that can support it. So upgrade and watch this space for when we switch over properly.</p>
-<p>As an aside we continue to be very happy with using Redis for worker inter-communication and will likely recommend it for production use in the coming weeks.</p>
-<p>Get 1.14.0 from <a href="https://github.com/matrix-org/synapse/releases/tag/v1.14.0">github</a> or any of the sources mentioned at https://github.com/matrix-org/synapse/blob/master/INSTALL.md.</p>
-<p>Changelog since v1.13.0</p>
-<h1 id="synapse-1-14-0-2020-05-28">Synapse 1.14.0 (2020-05-28)</h1>
-<p>No significant changes.</p>
-<h1 id="synapse-1-14-0rc2-2020-05-27">Synapse 1.14.0rc2 (2020-05-27)</h1>
-<h2 id="bugfixes">Bugfixes</h2>
-<ul>
-<li>Fix cache config to not apply cache factor to event cache. Regression in v1.14.0rc1. (<a href="https://github.com/matrix-org/synapse/issues/7578">#7578</a>)</li>
-<li>Fix bug where <code>ReplicationStreamer</code> was not always started when replication was enabled. Bug introduced in v1.14.0rc1. (<a href="https://github.com/matrix-org/synapse/issues/7579">#7579</a>)</li>
-<li>Fix specifying individual cache factors for caches with special characters in their name. Regression in v1.14.0rc1. (<a href="https://github.com/matrix-org/synapse/issues/7580">#7580</a>)</li>
-</ul>
-<h2 id="improved-documentation">Improved Documentation</h2>
-<ul>
-<li>Fix the OIDC <code>client_auth_method</code> value in the sample config. (<a href="https://github.com/matrix-org/synapse/issues/7581">#7581</a>)</li>
-</ul>
-<h1 id="synapse-1-14-0rc1-2020-05-26">Synapse 1.14.0rc1 (2020-05-26)</h1>
-<h2 id="features">Features</h2>
-<ul>
-<li>Synapse's cache factor can now be configured in <code>homeserver.yaml</code> by the <code>caches.global_factor</code> setting. Additionally, <code>caches.per_cache_factors</code> controls the cache factors for individual caches. (<a href="https://github.com/matrix-org/synapse/issues/6391">#6391</a>)</li>
-<li>Add OpenID Connect login/registration support. Contributed by Quentin Gliech, on behalf of <a href="https://connecteu.rs">les Connecteurs</a>. (<a href="https://github.com/matrix-org/synapse/issues/7256">#7256</a>, <a href="https://github.com/matrix-org/synapse/issues/7457">#7457</a>)</li>
-<li>Add room details admin endpoint. Contributed by Awesome Technologies Innovationslabor GmbH. (<a href="https://github.com/matrix-org/synapse/issues/7317">#7317</a>)</li>
-<li>Allow for using more than one spam checker module at once. (<a href="https://github.com/matrix-org/synapse/issues/7435">#7435</a>)</li>
-<li>Add additional authentication checks for <code>m.room.power_levels</code> event per <a href="https://github.com/matrix-org/matrix-doc/pull/2209">MSC2209</a>. (<a href="https://github.com/matrix-org/synapse/issues/7502">#7502</a>)</li>
-<li>Implement room version 6 per <a href="https://github.com/matrix-org/matrix-doc/pull/2240">MSC2240</a>. (<a href="https://github.com/matrix-org/synapse/issues/7506">#7506</a>)</li>
-<li>Add highly experimental option to move event persistence off master. (<a href="https://github.com/matrix-org/synapse/issues/7281">#7281</a>, <a href="https://github.com/matrix-org/synapse/issues/7374">#7374</a>, <a href="https://github.com/matrix-org/synapse/issues/7436">#7436</a>, <a href="https://github.com/matrix-org/synapse/issues/7440">#7440</a>, <a href="https://github.com/matrix-org/synapse/issues/7475">#7475</a>, <a href="https://github.com/matrix-org/synapse/issues/7490">#7490</a>, <a href="https://github.com/matrix-org/synapse/issues/7491">#7491</a>, <a href="https://github.com/matrix-org/synapse/issues/7492">#7492</a>, <a href="https://github.com/matrix-org/synapse/issues/7493">#7493</a>, <a href="https://github.com/matrix-org/synapse/issues/7495">#7495</a>, <a href="https://github.com/matrix-org/synapse/issues/7515">#7515</a>, <a href="https://github.com/matrix-org/synapse/issues/7516">#7516</a>, <a href="https://github.com/matrix-org/synapse/issues/7517">#7517</a>, <a href="https://github.com/matrix-org/synapse/issues/7542">#7542</a>)</li>
-</ul>
-<h2 id="bugfixes-1">Bugfixes</h2>
-<ul>
-<li>Fix a bug where event updates might not be sent over replication to worker processes after the stream falls behind. (<a href="https://github.com/matrix-org/synapse/issues/7384">#7384</a>)</li>
-<li>Allow expired user accounts to log out their device sessions. (<a href="https://github.com/matrix-org/synapse/issues/7443">#7443</a>)</li>
-<li>Fix a bug that would cause Synapse not to resync out-of-sync device lists. (<a href="https://github.com/matrix-org/synapse/issues/7453">#7453</a>)</li>
-<li>Prevent rooms with 0 members or with invalid version strings from breaking group queries. (<a href="https://github.com/matrix-org/synapse/issues/7465">#7465</a>)</li>
-<li>Workaround for an upstream Twisted bug that caused Synapse to become unresponsive after startup. (<a href="https://github.com/matrix-org/synapse/issues/7473">#7473</a>)</li>
-<li>Fix Redis reconnection logic that can result in missed updates over replication if master reconnects to Redis without restarting. (<a href="https://github.com/matrix-org/synapse/issues/7482">#7482</a>)</li>
-<li>When sending <code>m.room.member</code> events, omit <code>displayname</code> and <code>avatar_url</code> if they aren't set instead of setting them to <code>null</code>. Contributed by Aaron Raimist. (<a href="https://github.com/matrix-org/synapse/issues/7497">#7497</a>)</li>
-<li>Fix incorrect <code>method</code> label on <code>synapse_http_matrixfederationclient_{requests,responses}</code> prometheus metrics. (<a href="https://github.com/matrix-org/synapse/issues/7503">#7503</a>)</li>
-<li>Ignore incoming presence events from other homeservers if presence is disabled locally. (<a href="https://github.com/matrix-org/synapse/issues/7508">#7508</a>)</li>
-<li>Fix a long-standing bug that broke the update remote profile background process. (<a href="https://github.com/matrix-org/synapse/issues/7511">#7511</a>)</li>
-<li>Hash passwords as early as possible during password reset. (<a href="https://github.com/matrix-org/synapse/issues/7538">#7538</a>)</li>
-<li>Fix bug where a local user leaving a room could fail under rare circumstances. (<a href="https://github.com/matrix-org/synapse/issues/7548">#7548</a>)</li>
-<li>Fix &quot;Missing RelayState parameter&quot; error when using user interactive authentication with SAML for some SAML providers. (<a href="https://github.com/matrix-org/synapse/issues/7552">#7552</a>)</li>
-<li>Fix exception <code>'GenericWorkerReplicationHandler' object has no attribute 'send_federation_ack'</code>, introduced in v1.13.0. (<a href="https://github.com/matrix-org/synapse/issues/7564">#7564</a>)</li>
-<li><code>synctl</code> now warns if it was unable to stop Synapse and will not attempt to start Synapse if nothing was stopped. Contributed by Romain Bouyé. (<a href="https://github.com/matrix-org/synapse/issues/6590">#6590</a>)</li>
-</ul>
-<h2 id="updates-to-the-docker-image">Updates to the Docker image</h2>
-<ul>
-<li>Update docker runtime image to Alpine v3.11. Contributed by @Starbix. (<a href="https://github.com/matrix-org/synapse/issues/7398">#7398</a>)</li>
-</ul>
-<h2 id="improved-documentation-1">Improved Documentation</h2>
-<ul>
-<li>Update information about mapping providers for SAML and OpenID. (<a href="https://github.com/matrix-org/synapse/issues/7458">#7458</a>)</li>
-<li>Add additional reverse proxy example for Caddy v2. Contributed by Jeff Peeler. (<a href="https://github.com/matrix-org/synapse/issues/7463">#7463</a>)</li>
-<li>Fix copy-paste error in <code>ServerNoticesConfig</code> docstring. Contributed by @ptman. (<a href="https://github.com/matrix-org/synapse/issues/7477">#7477</a>)</li>
-<li>Improve the formatting of <code>reverse_proxy.md</code>. (<a href="https://github.com/matrix-org/synapse/issues/7514">#7514</a>)</li>
-<li>Change the systemd worker service to check that the worker config file exists instead of silently failing. Contributed by David Vo. (<a href="https://github.com/matrix-org/synapse/issues/7528">#7528</a>)</li>
-<li>Minor clarifications to the TURN docs. (<a href="https://github.com/matrix-org/synapse/issues/7533">#7533</a>)</li>
-</ul>
-<h2 id="internal-changes">Internal Changes</h2>
-<ul>
-<li>Add typing annotations in <code>synapse.federation</code>. (<a href="https://github.com/matrix-org/synapse/issues/7382">#7382</a>)</li>
-<li>Convert the room handler to async/await. (<a href="https://github.com/matrix-org/synapse/issues/7396">#7396</a>)</li>
-<li>Improve performance of <code>get_e2e_cross_signing_key</code>. (<a href="https://github.com/matrix-org/synapse/issues/7428">#7428</a>)</li>
-<li>Improve performance of <code>mark_as_sent_devices_by_remote</code>. (<a href="https://github.com/matrix-org/synapse/issues/7429">#7429</a>, <a href="https://github.com/matrix-org/synapse/issues/7562">#7562</a>)</li>
-<li>Add type hints to the SAML handler. (<a href="https://github.com/matrix-org/synapse/issues/7445">#7445</a>)</li>
-<li>Remove storage method <code>get_hosts_in_room</code> that is no longer called anywhere. (<a href="https://github.com/matrix-org/synapse/issues/7448">#7448</a>)</li>
-<li>Fix some typos in the <code>notice_expiry</code> templates. (<a href="https://github.com/matrix-org/synapse/issues/7449">#7449</a>)</li>
-<li>Convert the federation handler to async/await. (<a href="https://github.com/matrix-org/synapse/issues/7459">#7459</a>)</li>
-<li>Convert the search handler to async/await. (<a href="https://github.com/matrix-org/synapse/issues/7460">#7460</a>)</li>
-<li>Add type hints to <code>synapse.event_auth</code>. (<a href="https://github.com/matrix-org/synapse/issues/7505">#7505</a>)</li>
-<li>Convert the room member handler to async/await. (<a href="https://github.com/matrix-org/synapse/issues/7507">#7507</a>)</li>
-<li>Add type hints to room member handler. (<a href="https://github.com/matrix-org/synapse/issues/7513">#7513</a>)</li>
-<li>Fix typing annotations in <code>tests.replication</code>. (<a href="https://github.com/matrix-org/synapse/issues/7518">#7518</a>)</li>
-<li>Remove some redundant Python 2 support code. (<a href="https://github.com/matrix-org/synapse/issues/7519">#7519</a>)</li>
-<li>All endpoints now respond with a 200 OK for <code>OPTIONS</code> requests. (<a href="https://github.com/matrix-org/synapse/issues/7534">#7534</a>, <a href="https://github.com/matrix-org/synapse/issues/7560">#7560</a>)</li>
-<li>Synapse now exports <a href="https://doc.pypy.org/en/latest/gc_info.html#gc-get-stats">detailed allocator statistics</a> and basic GC timings as Prometheus metrics (<code>pypy_gc_time_seconds_total</code> and <code>pypy_memory_bytes</code>) when run under PyPy. Contributed by Ivan Shapovalov. (<a href="https://github.com/matrix-org/synapse/issues/7536">#7536</a>)</li>
-<li>Remove Ubuntu Cosmic and Disco from the list of distributions which we provide <code>.deb</code>s for, due to end-of-life. (<a href="https://github.com/matrix-org/synapse/issues/7539">#7539</a>)</li>
-<li>Make worker processes return a stubbed-out response to <code>GET /presence</code> requests. (<a href="https://github.com/matrix-org/synapse/issues/7545">#7545</a>)</li>
-<li>Optimise some references to <code>hs.config</code>. (<a href="https://github.com/matrix-org/synapse/issues/7546">#7546</a>)</li>
-<li>On upgrade room only send canonical alias once. (<a href="https://github.com/matrix-org/synapse/issues/7547">#7547</a>)</li>
-<li>Fix some indentation inconsistencies in the sample config. (<a href="https://github.com/matrix-org/synapse/issues/7550">#7550</a>)</li>
-<li>Include <code>synapse.http.site</code> in type checking. (<a href="https://github.com/matrix-org/synapse/issues/7553">#7553</a>)</li>
-<li>Fix some test code to not mangle stacktraces, to make it easier to debug errors. (<a href="https://github.com/matrix-org/synapse/issues/7554">#7554</a>)</li>
-<li>Refresh apt cache when building <code>dh_virtualenv</code> docker image. (<a href="https://github.com/matrix-org/synapse/issues/7555">#7555</a>)</li>
-<li>Stop logging some expected HTTP request errors as exceptions. (<a href="https://github.com/matrix-org/synapse/issues/7556">#7556</a>, <a href="https://github.com/matrix-org/synapse/issues/7563">#7563</a>)</li>
-<li>Convert sending mail to async/await. (<a href="https://github.com/matrix-org/synapse/issues/7557">#7557</a>)</li>
-<li>Simplify <code>reap_monthly_active_users</code>. (<a href="https://github.com/matrix-org/synapse/issues/7558">#7558</a>)</li>
-</ul>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2020&#x2F;05&#x2F;27&#x2F;room-version-6-client-server-r0-6-1-and-federation-r0-1-4-spec-releases&#x2F;" title="Room Version 6, Client-Server r0.6.1, and Federation r0.1.4 spec releases">Room Version 6, Client-Server r0.6.1, and Federation r0.1.4 spec releases</a></h2>
-                <span>
-                    27.05.2020 00:00
-                    —
-                    <a href="/category/releases">
-                        Releases
-                    </a>
-                    —
-                    <a
-                        href="/author/travis-ralston">
-                        Travis Ralston
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <h2 id="room-version-6-client-server-r0-6-1-and-federation-r0-1-4-spec-releases">Room Version 6, Client-Server r0.6.1, and Federation r0.1.4 spec releases</h2>
-<p>Hey all,</p>
-<p>It's been <a href="https://matrix.org/blog/2019/11/08/client-server-r-0-6-0-and-identity-service-r-0-3-0-releases">a little while</a> since we've done a spec release, so here we are with <a href="https://matrix.org/docs/spec/rooms/v6">Room Version 6</a>, <a href="https://matrix.org/docs/spec/client_server/r0.6.1">Client-Server r0.6.1</a>, and <a href="https://matrix.org/docs/spec/server_server/r0.1.4">Federation r0.1.4</a>.</p>
-<p>Room Version 6 (and the associated Federation r0.1.4 release) is largely something for implementations to worry about. It contains new event authorisation rules, changes to the redaction algorithm, and stricter compliance for JSON.</p>
-<p>Client-Server r0.6.1 contains a number of clarifications as well as SSO support for authorisation, &quot;soft logout&quot; to avoid needlessly destroying e2e history, and new ways to publish aliases within rooms.</p>
-<p>If you're wondering where all the E2E-by-default related MSCs are - we're doing final iterations based on the real-world feedback from the E2E-by-default launch a few weeks ago, and they are then expected to land in the upcoming Client-Server r0.7.</p>
-<p>Here's all the MSCs that got merged since the last release:</p>
-<ul>
-<li><a href="https://github.com/matrix-org/matrix-doc/pull/2240">MSC2240</a>: Room version 6</li>
-<li><a href="https://github.com/matrix-org/matrix-doc/pull/2457">MSC2457</a>: Invalidating devices during password modification</li>
-<li><a href="https://github.com/matrix-org/matrix-doc/pull/2454">MSC2454</a>: Support UI auth for SSO</li>
-<li><a href="https://github.com/matrix-org/matrix-doc/pull/2451">MSC2451</a>: Remove <code>query_auth</code> federation endpoint</li>
-<li><a href="https://github.com/matrix-org/matrix-doc/pull/2432">MSC2432</a>: Updated semantics for publishing room aliases</li>
-<li><a href="https://github.com/matrix-org/matrix-doc/pull/2324">MSC2324</a>: Facilitating early releases of software dependent on spec</li>
-<li><a href="https://github.com/matrix-org/matrix-doc/pull/2313">MSC2313</a>: Moderation policies as rooms</li>
-<li><a href="https://github.com/matrix-org/matrix-doc/issues/1466">MSC1466</a>: Soft Logout</li>
-<li><a href="https://github.com/matrix-org/matrix-doc/pull/2540">MSC2540</a>: Stricter event validation: JSON compliance</li>
-<li><a href="https://github.com/matrix-org/matrix-doc/pull/2209">MSC2209</a>: Alter auth rules to check notifications in m.room.power_levels</li>
-<li><a href="https://github.com/matrix-org/matrix-doc/pull/1802">MSC1802</a>: Remove the '200' value from some federation responses</li>
-</ul>
-<h3 id="client-server-r0-6-1-changelog">Client-Server r0.6.1 changelog</h3>
-<h4 id="new-endpoints">New Endpoints</h4>
-<ul>
-<li>Added <code>/rooms/{roomId}/aliases</code> for retrieving local aliases for a room. (<a href="https://github.com/matrix-org/matrix-doc/issues/2562">#2562</a>)</li>
-</ul>
-<h4 id="backwards-compatible-changes">Backwards Compatible Changes</h4>
-<ul>
-<li>Added data structures for defining moderation policies in rooms per <a href="https://github.com/matrix-org/matrix-doc/pull/2313">MSC2313</a>. (<a href="https://github.com/matrix-org/matrix-doc/issues/2434">#2434</a>)</li>
-<li>Optionally invalidate other access tokens during password modification per <a href="https://github.com/matrix-org/matrix-doc/pull/2457">MSC2457</a>. (<a href="https://github.com/matrix-org/matrix-doc/issues/2523">#2523</a>)</li>
-<li>Add User-Interactive Authentication for SSO-backed homeserver per <a href="https://github.com/matrix-org/matrix-doc/pull/2454">MSC2454</a>. (<a href="https://github.com/matrix-org/matrix-doc/issues/2532">#2532</a>)</li>
-<li>Add soft-logout support per <a href="https://github.com/matrix-org/matrix-doc/issues/1466">MSC1466</a>. (<a href="https://github.com/matrix-org/matrix-doc/issues/2546">#2546</a>)</li>
-<li>Replaced legacy room alias handling with a more sustainable solution per <a href="https://github.com/matrix-org/matrix-doc/pull/2432">MSC2432</a>. (<a href="https://github.com/matrix-org/matrix-doc/issues/2562">#2562</a>)</li>
-</ul>
-<h4 id="spec-clarifications">Spec Clarifications</h4>
-<ul>
-<li>List available enum values for the room versions capability. (<a href="https://github.com/matrix-org/matrix-doc/issues/2245">#2245</a>)</li>
-<li>Fix various spelling errors throughout the specification. (<a href="https://github.com/matrix-org/matrix-doc/issues/2351">#2351</a>, <a href="https://github.com/matrix-org/matrix-doc/issues/2415">#2415</a>, <a href="https://github.com/matrix-org/matrix-doc/issues/2453">#2453</a>, <a href="https://github.com/matrix-org/matrix-doc/issues/2524">#2524</a>, <a href="https://github.com/matrix-org/matrix-doc/issues/2553">#2553</a>, <a href="https://github.com/matrix-org/matrix-doc/issues/2569">#2569</a>)</li>
-<li>Minor clarifications to token-based User-Interactive Authentication. (<a href="https://github.com/matrix-org/matrix-doc/issues/2369">#2369</a>)</li>
-<li>Minor clarification for what the user directory searches. (<a href="https://github.com/matrix-org/matrix-doc/issues/2381">#2381</a>)</li>
-<li>Fix key export format example to match the specification. (<a href="https://github.com/matrix-org/matrix-doc/issues/2430">#2430</a>)</li>
-<li>Clarify the IV data type for encrypted files. (<a href="https://github.com/matrix-org/matrix-doc/issues/2492">#2492</a>)</li>
-<li>Fix the <code>.m.rule.contains_user_name</code> default push rule to set the highlight tweak. (<a href="https://github.com/matrix-org/matrix-doc/issues/2519">#2519</a>)</li>
-<li>Clarify that an <code>event_id</code> is returned when sending events. (<a href="https://github.com/matrix-org/matrix-doc/issues/2525">#2525</a>)</li>
-<li>Fix some numbers in the specification to match their explanation text. (<a href="https://github.com/matrix-org/matrix-doc/issues/2554">#2554</a>)</li>
-<li>Move redaction algorithm into the room version specifications. (<a href="https://github.com/matrix-org/matrix-doc/issues/2563">#2563</a>)</li>
-<li>Clarify signature object structures for encryption. (<a href="https://github.com/matrix-org/matrix-doc/issues/2566">#2566</a>)</li>
-<li>Clarify which events are created as part of <code>/createRoom</code>. (<a href="https://github.com/matrix-org/matrix-doc/issues/2571">#2571</a>)</li>
-<li>Remove claims that the homeserver is exclusively responsible for profile information in membership events. (<a href="https://github.com/matrix-org/matrix-doc/issues/2574">#2574</a>)</li>
-</ul>
-<h3 id="server-server-federation-r0-1-4-changelog">Server-Server (Federation) r0.1.4 changelog</h3>
-<h4 id="new-endpoints-1">New Endpoints</h4>
-<ul>
-<li>Add new <code>POST /publicRooms</code> endpoint for filtering the room directory. (<a href="https://github.com/matrix-org/matrix-doc/issues/2305">#2305</a>)</li>
-<li>Add new v2 <code>/send_join</code> and <code>/send_leave</code> endpoints per <a href="https://github.com/matrix-org/matrix-doc/pull/1802">MSC1802</a>. (<a href="https://github.com/matrix-org/matrix-doc/issues/2547">#2547</a>)</li>
-</ul>
-<h4 id="removed-endpoints">Removed Endpoints</h4>
-<ul>
-<li>Remove the unused <code>query_auth</code> API per <a href="https://github.com/matrix-org/matrix-doc/pull/2451">MSC2451</a>. (<a href="https://github.com/matrix-org/matrix-doc/issues/2470">#2470</a>)</li>
-</ul>
-<h4 id="spec-clarifications-1">Spec Clarifications</h4>
-<ul>
-<li>Move auth event selection to a more obvious location. (<a href="https://github.com/matrix-org/matrix-doc/issues/2392">#2392</a>)</li>
-<li>Fix typo in Request Authentication python example. (<a href="https://github.com/matrix-org/matrix-doc/issues/2510">#2510</a>)</li>
-<li>Clarify which fields are required on the key server endpoints. (<a href="https://github.com/matrix-org/matrix-doc/issues/2527">#2527</a>)</li>
-<li>Clarify the limits of <code>prev_events</code> and <code>auth_events</code> for PDUs. (<a href="https://github.com/matrix-org/matrix-doc/issues/2538">#2538</a>)</li>
-<li>Clarify which events are targeted by backfill. (<a href="https://github.com/matrix-org/matrix-doc/issues/2559">#2559</a>)</li>
-<li>Fix the response format of the <code>/send</code> endpoint. (<a href="https://github.com/matrix-org/matrix-doc/issues/2560">#2560</a>)</li>
-<li>Clarify signature object structures for encryption. (<a href="https://github.com/matrix-org/matrix-doc/issues/2566">#2566</a>)</li>
-<li>Clarify the server names to use when signing requests. (<a href="https://github.com/matrix-org/matrix-doc/issues/2570">#2570</a>)</li>
-<li>Clarify the state/auth chain requirements for <code>/send_join</code>. (<a href="https://github.com/matrix-org/matrix-doc/issues/2575">#2575</a>)</li>
-<li>Fix various spelling errors throughout the specification. (<a href="https://github.com/matrix-org/matrix-doc/issues/2577">#2577</a>)</li>
 </ul>
 
                 

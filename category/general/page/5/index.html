@@ -114,7 +114,7 @@
     <div class="content">
         <header>
             <h1>General</h1>
-            131 posts tagged with "General" <a href="/category">(See all Category)</a>
+            133 posts tagged with "General" <a href="/category">(See all Category)</a>
             
             <h2>
                 <small><a href="/category/general/atom.xml">Atom Feed</a></small>
@@ -122,6 +122,241 @@
             
         </header>
 
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2019&#x2F;06&#x2F;11&#x2F;introducing-matrix-1-0-and-the-matrix-org-foundation&#x2F;" title="Introducing Matrix 1.0 and the Matrix.org Foundation">Introducing Matrix 1.0 and the Matrix.org Foundation</a></h2>
+                <span>
+                    11.06.2019 00:00
+                    —
+                    <a href="/category/general">
+                        General
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <h2 id="matrix-1-0">Matrix 1.0</h2>
+<p>Hi all,</p>
+<p>We are very excited to announce the first fully stable release of the Matrix protocol and specification across **all **APIs - as well as the Synapse 1.0 reference implementation which implements the full Matrix 1.0 API surface.</p>
+<p>This means that after just over 5 years since the initial work on Matrix began, we are proud to have finally <strong>exited beta</strong>!!  This is the conclusion of the work which we announced at <a href="https://matrix.org/blog/2019/02/04/matrix-at-fosdem-2019">FOSDEM 2019</a> when we cut the first stable release of the Server-Server API and began the Synapse 0.99 release series in anticipation of releasing a 1.0.</p>
+<p>Now, before you get too excited, it’s critical to understand that Matrix 1.0 is all about providing a <strong>stable, self-consistent, self-contained and secure version of the standard</strong> which anyone should be able to use to independently implement production-grade Matrix clients, servers, bots and bridges etc.  It does <strong>not</strong> mean that all planned or possible features in Matrix are now specified and implemented, but that the most important core of the protocol is a well-defined stable platform for everyone to build on.</p>
+<p>On the Synapse side, our focus has been exclusively on ensuring that Synapse correctly implements Matrix 1.0, to provide a stable and secure basis for participating in Matrix without risk of room corruption or other nastinesses.  However, we have deliberately <strong>not</strong> focused on performance or features in the 1.0 release - so I’m afraid that synapse’s RAM footprint will not have got significantly better, and your favourite long-awaited features (automatically defragmenting rooms with lots of forward extremities, configurable message retention, admin management web-interface etc) have not yet landed.  In other words, this is the opposite of the <a href="https://medium.com/@RiotChat/the-big-1-0-68fa7c6050be">Riot 1.0 release</a> (where the entire app was redesigned and radically improved its performance and UX) - instead, we have adopted the mantra to <a href="http://wiki.c2.com/?MakeItWorkMakeItRightMakeItFast">make it work, make it work right, and then (finally) make it fast</a>.  You can read the <a href="/blog/2019/06/11/synapse-1-0-0-released">full release notes</a> here.  It’s also worth looking at the <a href="https://github.com/matrix-org/synapse/blob/release-v1.0.0/CHANGES.md">full changelog</a> through the Synapse 0.99 release series to see the massive amount of polishing that’s been going on here.</p>
+<p>All this means that the main headline features which land in Matrix 1.0 are vitally important but relatively dry:</p>
+<ul>
+<li>Using X.509 certificates to trust servers rather than perspective notaries, to simplify and improve server-side trust.  This is a <strong>breaking change</strong> across Matrix, and we’ve given the community several months now to ensure their homeservers run a valid TLS certificate.  See <a href="https://github.com/matrix-org/synapse/blob/master/docs/MSC1711_certificates_FAQ.md">MSC1711</a> for full details, and the <a href="https://matrix.org/blog/2019/05/24/final-countdown-to-1-0">2 week warning</a> we gave.  As of ~9am UTC today, the matrix.org homeserver is running Synapse 1.0 and enforcing valid TLS certificates - the transition has begun (and so far we haven’t spotted any major breakage :).  Thank you to everyone who <a href="https://arewereadyyet.com">got ready</a> in advance!</li>
+<li>Using .well-known URIs to discover servers, in case you can’t get a valid TLS certificate for your server’s domain.</li>
+<li>Switching to <strong><a href="https://matrix.org/docs/spec/rooms/v4.html">room version 4</a> by default</strong> for creating new rooms.  This fixes the most important defects that the core room algorithm has historically encountered, particularly:
+<ul>
+<li>The new State Resolution algorithm to fix the <a href="https://github.com/matrix-org/synapse/issues/2432">Hotel California bug</a> and many others: <a href="https://github.com/matrix-org/matrix-doc/issues/1442">State Resolution Reloaded</a></li>
+<li><a href="https://github.com/matrix-org/matrix-doc/pull/1659">Collision resistant event IDs</a></li>
+</ul>
+</li>
+<li>Specifying the ability to upgrade between room versions</li>
+<li>Full specification of lazy loading room members</li>
+<li><a href="https://github.com/matrix-org/matrix-doc/issues/1267">Short Authentication String</a> (Emoji!) interactive verification of E2EE devices</li>
+<li>...and lots and lots and lots of bugfixes and spec omission fixes.</li>
+</ul>
+<p>That said, there is a <em>lot</em> of really exciting stuff in flight right now which sadly didn’t stabilise in time for Matrix 1.0, but will be landing as fast as we can finalise it now that 1.0 is at last out the door.  This includes:</p>
+<ul>
+<li>Editable messages!  (These are in Synapse 1.0 and Riot already, but still stabilising so not enabled by default)</li>
+<li>Reactions! (Similarly these are in develop)</li>
+<li>Threading!! (We’ve planted the seeds for this in the new ‘aggregations’ support which powers edits &amp; reactions - but full thread support is still a bit further out).</li>
+<li><a href="https://github.com/uhoreg/matrix-doc/blob/cross-signing2/proposals/1756-cross-signing.md">Cross-signed verification for end-to-end encryption</a> (This is on a branch, but due to land any day now).  We’ve also held off merging E2E backups into the Matrix 1.0 spec until cross-signing lands, given it may change the backup behaviour a bit.  Once this is done, we can seriously talk about turning on E2E by default everywhere.</li>
+<li>Live-tracking of room statistics and state in Synapse!  (This is in Synapse 1.0 already if you check out the new room_stats and room_state tables, but we need to provide a nice admin interface for it).</li>
+<li>Support for smaller footprint homeservers by reducing memory usage and stopping them from joining overly complex rooms.</li>
+</ul>
+<p>Then stuff which we haven’t yet started, but is now unlocked by the 1.0 release:</p>
+<ul>
+<li>Fixing extremities build-up (and so massively improving performance)</li>
+<li>Rewriting Communities.  Groups/Communities deliberately didn’t land in Matrix 1.0 as the current implementation has issues we want to fix first.  <a href="https://github.com/matrix-org/matrix-doc/pull/1772">MSC1772</a> has the details.</li>
+<li>Rewritten room directory using the new room stats/state tables to be super-speedy.</li>
+<li>Super-speedy <a href="https://github.com/matrix-org/synapse/pull/3122">incremental state resolution</a></li>
+<li>Removing MXIDs from events (<a href="https://github.com/matrix-org/matrix-doc/issues/1228">MSC1228</a>)</li>
+</ul>
+<p>Just to give a quick taster of the shape of things to come, here’s RiotX/Android, the all-new Riot client for Android, showing off Edits &amp; Reactions in the wild…</p>
+<div style="text-align: center">
+<img src="/blog/img/edits.jpg" style="height: 640px;"/>
+</div>
+<p>...and here’s a screenshot of the final test jig for cross-signing devices in end-to-end encryption, so you will never have to manually verify new devices for a trusted user ever again!  We demoed a <em>very</em> early version of this at FOSDEM, but this here is the testing harness for real deal, after several iterations of the spec and implementation to nail down the model. + means the device/user's cross-signing key is trusted, T means it's TOFU:</p>
+<div style="text-align: center">
+<img src="/blog/img/cross-signing.png" style="height: 480px; margin: auto"/>
+</div>
+<p>So, there you have it - welcome to Matrix 1.0, and we look forward to our backlog of feature work now landing!</p>
+<p>Massive massive thanks to everyone who has stuck with the project over the years and helped support and grow Matrix - little did we think back in May 2014 that it’d take us this long to exit beta, but hopefully you’ll agree that it’s been worth it :)</p>
+<p>Talking of which, we were looking through the photos we took from the first ever session hacking on Matrix back in May 2014…</p>
+<p><img src="/blog/img/nightmare.jpg" alt="Whiteboard 1" /></p>
+<p>...suffice it to say that of the architectural options, we went with #3 in the end...</p>
+<p><img src="/blog/img/pl.jpg" alt="Whiteboard 2" /></p>
+<p>...and that nowadays we actually know how power levels work, in excruciating and (hopefully) well-specified detail :)</p>
+<p>There has been an absolutely enormous amount of work to pull Matrix 1.0 together - both on the spec side (thanks to the Spec Core Team for corralling proposals, and everyone who's contributed proposals, and particularly to Travis for editing it all) and the implementation side (thanks to the whole Synapse team for the tedious task of cleaning up everything that was needed for 1.0).  And of course, huge thanks go to everyone who has been helping test and debug the Synapse 1.0 release candidates, or just supporting the project to get to this point :)</p>
+<h2 id="the-matrix-org-foundation">The Matrix.org Foundation</h2>
+<p>Finally, as promised, alongside Matrix 1.0, we are very happy to announce the official launch of the finalised Matrix.org Foundation!</p>
+<p>This has been a long-running project to ensure that Matrix’s future is governed by a neutral non-profit custodian for the benefit of everyone in the Matrix ecosystem.  We started the process nearly a year ago back with the initial proposal <a href="https://matrix.org/blog/2018/06/20/towards-open-governance-for-matrix-org">Towards Open Governance of Matrix.org</a>, and then legally <a href="https://matrix.org/blog/2018/10/29/introducing-the-matrix-org-foundation-part-1-of-2">incorporated the Foundation</a> in October, and published the <a href="https://github.com/matrix-org/matrix-doc/blob/matthew/msc1779/proposals/1779-open-governance.md">final governance proposal</a> in January.</p>
+<p>As of today the Foundation is finalised and operational, and all the assets for Matrix.org have been transferred from <a href="https://vector.im">New Vector</a> (the startup we formed in 2017 to hire the core Matrix team).  In fact you may already have seen Matrix.org Foundation notices popping up all over the Matrix codebase (as all of New Vector’s work on the public Matrix codebase for the foreseeable is being assigned to the Matrix.org Foundation).</p>
+<p>Most importantly, we’re excited to introduce the <strong>Guardians of the Matrix.org Foundation</strong>.  The Guardians are the legal directors of the non-profit Foundation, and are responsible for ensuring that the Foundation (and by extension the Spec Core Team) keeps on mission and neutrally protects the development of Matrix. Guardians are typically independent of the commercial Matrix ecosystem and may even not be members of today’s Matrix community, but are deeply aligned with the mission of the project. Guardians are selected to be respected and trusted by the wider community to uphold the guiding principles of the Foundation and keep the other Guardians honest.</p>
+<p>We have started the Foundation with five Guardians - two being the original founders of the Matrix project (Matthew and Amandine) and three being entirely independent, thus ensuring the original Matrix team forms a minority which can be kept in check by the rest of the Guardians. The new Guardians are:</p>
+<ul>
+<li>
+<p>Prof. Jon Crowcroft - Marconi Professor of Communications Systems in the Computer Lab at the University of Cambridge and the Turing Institute. Jon is a pioneer in the field of decentralised communication, and a fellow of the Royal Society, the ACM, the British Computer Society, the Institution of Engineering and Technology, the Royal Academy of Engineering and the Institute of Electrical and Electronics Engineers.</p>
+<p>Jon is a global expert in decentralisation and data privacy, and is excellently placed to help ensure Matrix stays true to its ideals.</p>
+</li>
+<li>
+<p>Ross Schulman - Ross is a senior counsel and senior policy technologist at New America’s Open Technology Institute, where he focuses on internet measurement, emerging technologies, surveillance, and decentralization. Prior to joining OTI, Ross worked for Google.</p>
+<p>Ross brings a unique perspective as a tech- and decentralisation-savvy lawyer to the Foundation, as well as being one of the first non-developers in the Matrix community to run his own homeserver. Ross has been known to walk around Mozfest clutching a battery-powered Synapse in a box, promoting decentralised communication for all.</p>
+</li>
+<li>
+<p>Dr. Jutta Steiner - As co-founder and CEO of Parity Technologies, Jutta is dedicated to building a better internet - Web 3.0 - where users’ privacy &amp; control come first. Parity Technologies is a leader in the blockchain space – known to many as the creator of one of the most popular Ethereum clients, it is also the creator of two ambitious new blockchain technlogies, Polkadot and Substrate, that make it easier to experiment and innovate on scalability, encryption and governance.</p>
+<p>Parity has been pioneering Matrix enterprise use since the moment they decided to rely on Matrix for their internal and external communication back in 2016, and now run their own high-volume deployment, with end-to-end encryption enabled by default. Jutta represents organisations who are professionally dependent on Matrix day-to-day, as well as bringing her unique experiences around decentralisation and ensuring that Web 3.0 will be a fair web for all.</p>
+</li>
+</ul>
+<p>We’d like to offer a very warm welcome to the new Guardians, and thank them profusely for giving up their time to join the Foundation and help ensure Matrix stays on course for the years to come.</p>
+<p>For the full update on the Foundation, please check out the new website content at <a href="https://matrix.org/foundation">https://matrix.org/foundation</a> which should tell you everything you could possibly want to know about the Foundation, the Guardians, the Foundation’s legal Articles of Association, and the day-to-day Rules which define the Open Governance process.</p>
+<h2 id="and-finally">And finally…</h2>
+<p>Matrix 1.0 has been a bit of an epic to release, but puts us on a much stronger footing for the future.</p>
+<p>However, it’s very unlikely that we’d have made it this far if most of the core dev team wasn’t able to work on Matrix as their day job.  Right now we are actively looking for large-scale donations to the Matrix.org Foundation (and/or investment in <a href="https://vector.im">New Vector</a>) to ensure that the team can maintain as tight a focus on core Matrix work as possible, and to ensure the project realises its full potential.  While Matrix is growing faster than ever, this perversely means we have more and more distractions - whether that’s keeping the Matrix.org server safe and operational, or handling support requests from the community, or helping new members of the ecosystem get up and running.  If you would like Matrix to succeed, please <a href="mailto:funding@matrix.org">get in touch</a> if you’d like to sponsor work, prioritise features, get support contracts, or otherwise support the project.  We’re particularly interested in sponsorship around decentralised reputation work (e.g. publishing a global room directory which users can filter based on their preferences).</p>
+<p>Finally, huge thanks to everyone who has continued to support us through thick and thin on <a href="https://patreon.com/matrixdotorg">Patreon</a>, <a href="https://liberapay.com/matrixdotorg">Liberapay</a> or other platforms.  Every little helps here, both in terms of practically keeping the lights on, and also inspiring larger donations &amp; financial support.</p>
+<p>So: thank you once again for flying Matrix.  We hope you enjoy 1.0, and we look forward to everything else landing on the horizon!</p>
+<p>- Matthew, Amandine &amp; the whole Matrix.org Team.</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2019&#x2F;06&#x2F;11&#x2F;synapse-1-0-0-released&#x2F;" title="Synapse 1.0.0 released">Synapse 1.0.0 released</a></h2>
+                <span>
+                    11.06.2019 00:00
+                    —
+                    <a href="/category/general">
+                        General
+                    </a>
+                    —
+                    <a
+                        href="/author/neil-johnson">
+                        Neil Johnson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Well here it is: Synapse 1.0.</p>
+<p>Synapse 1.0 is the reference implementation of the <a href="https://matrix.org/docs/spec">Matrix 1.0 spec</a>. The goal of the release overall has been to focus on security and stability, such that we can officially declare Synapse (and Matrix) out of beta and recommended for production use. This means changing the default room protocol version used for new rooms to be <a href="https://github.com/matrix-org/matrix-doc/blob/37871106c6fc6013c17b5711fb93853fff140267/proposals/2002-rooms-v4.md">v4</a>, which includes the new <a href="https://github.com/matrix-org/matrix-doc/blob/f714aaadd011ac736d779f8460202a8d95799123/proposals/1442-state-resolution.md">state resolution algorithm</a>, as well as <a href="https://github.com/matrix-org/matrix-doc/blob/erikj/event_id_hashes/proposals/1659-event-id-as-hashes.md">collision-resistant event IDs</a>, which are now formatted to be <a href="https://github.com/matrix-org/matrix-doc/blob/rav/proposal/no_slash_in_event_id/proposals/1884-replace-slashes-in-event_ids.md">URL safe</a>.</p>
+<p>Synapse 1.0 also ships with support for the upcoming <a href="https://matrix.org/docs/spec/rooms/v5.html">v5 room protocol</a> (which enforces honouring server key validity periods), but this will not be used as the default for new rooms until a sufficient number of servers support it.</p>
+<p>Please note that Synapse 1.0 does <strong>not</strong> include significant performance work or new features - our focus has been almost exclusively on providing a reference implementation of the Matrix 1.0 protocol. But having cleared our backlog on security/stability issues we will finally be now unblocked to pursue work around reducing RAM footprint, eliminating forward-extremity build up, and shipping new features like Edits, Reactions &amp; E2E cross-signing support.</p>
+<p>As part of the security work, Synapse 1.0 contains a <a href="https://github.com/matrix-org/synapse/blob/master/docs/MSC1711_certificates_FAQ.md#it-used-to-work-just-fine-why-are-you-breaking-everything">breaking change</a> that requires a valid TLS certificate on the federation API endpoint. <strong>Servers that do not configure their certificate will no longer be able to federate post 1.0.</strong></p>
+<p>It is also worth noting that Synapse 1.0.0 is the last release that will support Python 2.x and Postgres 9.4. For more information see <a href="/blog/2019/04/08/synapse-deprecating-postgres-9-4-and-python-2-x">here</a> but the TL;DR is that you should upgrade asap.</p>
+<p>This release has been a long time coming. Many thanks indeed to everyone who helped test the release candidates and provided feedback along the way.</p>
+<p>Synapse 1.0 is just one component of a larger Matrix 1.0 release, which you can <a href="/blog/2019/06/11/introducing-matrix-1-0-and-the-matrix-org-foundation">read all about here</a>.</p>
+<p>As ever, you can get the new update <a href="https://github.com/matrix-org/synapse/releases/tag/v1.0.0">here</a> or any of the sources mentioned at <a href="https://github.com/matrix-org/synapse">https://github.com/matrix-org/synapse</a>. Note, Synapse is now available from PyPI, pick it up <a href="https://pypi.org/project/matrix-synapse/">here</a>. Also, check out our <a href="https://matrix.org/docs/guides/installing-synapse">Synapse installation guide page</a></p>
+<p>The changelog since 0.99.5 follows:</p>
+<h1 id="synapse-1-0-0-2019-06-11">Synapse 1.0.0 (2019-06-11)</h1>
+<h2 id="bugfixes">Bugfixes</h2>
+<ul>
+<li>Fix bug where attempting to send transactions with large number of EDUs can fail. (<a href="https://github.com/matrix-org/synapse/issues/5418">#5418</a>)</li>
+</ul>
+<h2 id="improved-documentation">Improved Documentation</h2>
+<ul>
+<li>Expand the federation guide to include relevant content from the MSC1711 FAQ (<a href="https://github.com/matrix-org/synapse/issues/5419">#5419</a>)</li>
+</ul>
+<h2 id="internal-changes">Internal Changes</h2>
+<ul>
+<li>Move password reset links to /_matrix/client/unstable namespace. (<a href="https://github.com/matrix-org/synapse/issues/5424">#5424</a>)</li>
+</ul>
+<h1 id="synapse-1-0-0rc3-2019-06-10">Synapse 1.0.0rc3 (2019-06-10)</h1>
+<p>Security: Fix authentication bug introduced in 1.0.0rc1. Please upgrade to rc3 immediately</p>
+<h1 id="synapse-1-0-0rc2-2019-06-10">Synapse 1.0.0rc2 (2019-06-10)</h1>
+<h2 id="bugfixes-1">Bugfixes</h2>
+<ul>
+<li>Remove redundant warning about key server response validation. (<a href="https://github.com/matrix-org/synapse/issues/5392">#5392</a>)</li>
+<li>Fix bug where old keys stored in the database with a null valid until timestamp caused all verification requests for that key to fail. (<a href="https://github.com/matrix-org/synapse/issues/5415">#5415</a>)</li>
+<li>Fix excessive memory using with default <code>federation_verify_certificates: true</code> configuration. (<a href="https://github.com/matrix-org/synapse/issues/5417">#5417</a>)</li>
+</ul>
+<h1 id="synapse-1-0-0rc1-2019-06-07">Synapse 1.0.0rc1 (2019-06-07)</h1>
+<h2 id="features">Features</h2>
+<ul>
+<li>Synapse now more efficiently collates room statistics. (<a href="https://github.com/matrix-org/synapse/issues/4338">#4338</a>, <a href="https://github.com/matrix-org/synapse/issues/5260">#5260</a>, <a href="https://github.com/matrix-org/synapse/issues/5324">#5324</a>)</li>
+<li>Add experimental support for relations (aka reactions and edits). (<a href="https://github.com/matrix-org/synapse/issues/5220">#5220</a>)</li>
+<li>Ability to configure default room version. (<a href="https://github.com/matrix-org/synapse/issues/5223">#5223</a>, <a href="https://github.com/matrix-org/synapse/issues/5249">#5249</a>)</li>
+<li>Allow configuring a range for the account validity startup job. (<a href="https://github.com/matrix-org/synapse/issues/5276">#5276</a>)</li>
+<li>CAS login will now hit the r0 API, not the deprecated v1 one. (<a href="https://github.com/matrix-org/synapse/issues/5286">#5286</a>)</li>
+<li>Validate federation server TLS certificates by default (implements <a href="https://github.com/matrix-org/matrix-doc/blob/master/proposals/1711-x509-for-federation.md">MSC1711</a>). (<a href="https://github.com/matrix-org/synapse/issues/5359">#5359</a>)</li>
+<li>Update /_matrix/client/versions to reference support for r0.5.0. (<a href="https://github.com/matrix-org/synapse/issues/5360">#5360</a>)</li>
+<li>Add a script to generate new signing-key files. (<a href="https://github.com/matrix-org/synapse/issues/5361">#5361</a>)</li>
+<li>Update upgrade and installation guides ahead of 1.0. (<a href="https://github.com/matrix-org/synapse/issues/5371">#5371</a>)</li>
+<li>Replace the <code>perspectives</code> configuration section with <code>trusted_key_servers</code>, and make validating the signatures on responses optional (since TLS will do this job for us). (<a href="https://github.com/matrix-org/synapse/issues/5374">#5374</a>)</li>
+<li>Add ability to perform password reset via email without trusting the identity server. (<a href="https://github.com/matrix-org/synapse/issues/5377">#5377</a>)</li>
+<li>Set default room version to v4. (<a href="https://github.com/matrix-org/synapse/issues/5379">#5379</a>)</li>
+</ul>
+<h2 id="bugfixes-2">Bugfixes</h2>
+<ul>
+<li>Fixes client-server API not sending &quot;m.heroes&quot; to lazy-load /sync requests when a rooms name or its canonical alias are empty. Thanks to @dnaf for this work! (<a href="https://github.com/matrix-org/synapse/issues/5089">#5089</a>)</li>
+<li>Prevent federation device list updates breaking when processing multiple updates at once. (<a href="https://github.com/matrix-org/synapse/issues/5156">#5156</a>)</li>
+<li>Fix worker registration bug caused by ClientReaderSlavedStore being unable to see get_profileinfo. (<a href="https://github.com/matrix-org/synapse/issues/5200">#5200</a>)</li>
+<li>Fix race when backfilling in rooms with worker mode. (<a href="https://github.com/matrix-org/synapse/issues/5221">#5221</a>)</li>
+<li>Fix appservice timestamp massaging. (<a href="https://github.com/matrix-org/synapse/issues/5233">#5233</a>)</li>
+<li>Ensure that server_keys fetched via a notary server are correctly signed. (<a href="https://github.com/matrix-org/synapse/issues/5251">#5251</a>)</li>
+<li>Show the correct error when logging out and access token is missing. (<a href="https://github.com/matrix-org/synapse/issues/5256">#5256</a>)</li>
+<li>Fix error code when there is an invalid parameter on /_matrix/client/r0/publicRooms (<a href="https://github.com/matrix-org/synapse/issues/5257">#5257</a>)</li>
+<li>Fix error when downloading thumbnail with missing width/height parameter. (<a href="https://github.com/matrix-org/synapse/issues/5258">#5258</a>)</li>
+<li>Fix schema update for account validity. (<a href="https://github.com/matrix-org/synapse/issues/5268">#5268</a>)</li>
+<li>Fix bug where we leaked extremities when we soft failed events, leading to performance degradation. (<a href="https://github.com/matrix-org/synapse/issues/5274">#5274</a>, <a href="https://github.com/matrix-org/synapse/issues/5278">#5278</a>, <a href="https://github.com/matrix-org/synapse/issues/5291">#5291</a>)</li>
+<li>Fix &quot;db txn 'update_presence' from sentinel context&quot; log messages. (<a href="https://github.com/matrix-org/synapse/issues/5275">#5275</a>)</li>
+<li>Fix dropped logcontexts during high outbound traffic. (<a href="https://github.com/matrix-org/synapse/issues/5277">#5277</a>)</li>
+<li>Fix a bug where it is not possible to get events in the federation format with the request <code>GET /_matrix/client/r0/rooms/{roomId}/messages</code>. (<a href="https://github.com/matrix-org/synapse/issues/5293">#5293</a>)</li>
+<li>Fix performance problems with the rooms stats background update. (<a href="https://github.com/matrix-org/synapse/issues/5294">#5294</a>)</li>
+<li>Fix noisy 'no key for server' logs. (<a href="https://github.com/matrix-org/synapse/issues/5300">#5300</a>)</li>
+<li>Fix bug where a notary server would sometimes forget old keys. (<a href="https://github.com/matrix-org/synapse/issues/5307">#5307</a>)</li>
+<li>Prevent users from setting huge displaynames and avatar URLs. (<a href="https://github.com/matrix-org/synapse/issues/5309">#5309</a>)</li>
+<li>Fix handling of failures when processing incoming events where calling <code>/event_auth</code> on remote server fails. (<a href="https://github.com/matrix-org/synapse/issues/5317">#5317</a>)</li>
+<li>Ensure that we have an up-to-date copy of the signing key when validating incoming federation requests. (<a href="https://github.com/matrix-org/synapse/issues/5321">#5321</a>)</li>
+<li>Fix various problems which made the signing-key notary server time out for some requests. (<a href="https://github.com/matrix-org/synapse/issues/5333">#5333</a>)</li>
+<li>Fix bug which would make certain operations (such as room joins) block for 20 minutes while attemoting to fetch verification keys. (<a href="https://github.com/matrix-org/synapse/issues/5334">#5334</a>)</li>
+<li>Fix a bug where we could rapidly mark a server as unreachable even though it was only down for a few minutes. (<a href="https://github.com/matrix-org/synapse/issues/5335">#5335</a>, <a href="https://github.com/matrix-org/synapse/issues/5340">#5340</a>)</li>
+<li>Fix a bug where account validity renewal emails could only be sent when email notifs were enabled. (<a href="https://github.com/matrix-org/synapse/issues/5341">#5341</a>)</li>
+<li>Fix failure when fetching batches of events during backfill, etc. (<a href="https://github.com/matrix-org/synapse/issues/5342">#5342</a>)</li>
+<li>Add a new room version where the timestamps on events are checked against the validity periods on signing keys. (<a href="https://github.com/matrix-org/synapse/issues/5348">#5348</a>, <a href="https://github.com/matrix-org/synapse/issues/5354">#5354</a>)</li>
+<li>Fix room stats and presence background updates to correctly handle missing events. (<a href="https://github.com/matrix-org/synapse/issues/5352">#5352</a>)</li>
+<li>Include left members in room summaries' heroes. (<a href="https://github.com/matrix-org/synapse/issues/5355">#5355</a>)</li>
+<li>Fix <code>federation_custom_ca_list</code> configuration option. (<a href="https://github.com/matrix-org/synapse/issues/5362">#5362</a>)</li>
+<li>Fix missing logcontext warnings on shutdown. (<a href="https://github.com/matrix-org/synapse/issues/5369">#5369</a>)</li>
+</ul>
+<h2 id="improved-documentation-1">Improved Documentation</h2>
+<ul>
+<li>Fix docs on resetting the user directory. (<a href="https://github.com/matrix-org/synapse/issues/5282">#5282</a>)</li>
+<li>Fix notes about ACME in the MSC1711 faq. (<a href="https://github.com/matrix-org/synapse/issues/5357">#5357</a>)</li>
+</ul>
+<h2 id="internal-changes-1">Internal Changes</h2>
+<ul>
+<li>Synapse will now serve the experimental &quot;room complexity&quot; API endpoint. (<a href="https://github.com/matrix-org/synapse/issues/5216">#5216</a>)</li>
+<li>The base classes for the v1 and v2_alpha REST APIs have been unified. (<a href="https://github.com/matrix-org/synapse/issues/5226">#5226</a>, <a href="https://github.com/matrix-org/synapse/issues/5328">#5328</a>)</li>
+<li>Simplifications and comments in do_auth. (<a href="https://github.com/matrix-org/synapse/issues/5227">#5227</a>)</li>
+<li>Remove urllib3 pin as requests 2.22.0 has been released supporting urllib3 1.25.2. (<a href="https://github.com/matrix-org/synapse/issues/5230">#5230</a>)</li>
+<li>Preparatory work for key-validity features. (<a href="https://github.com/matrix-org/synapse/issues/5232">#5232</a>, <a href="https://github.com/matrix-org/synapse/issues/5234">#5234</a>, <a href="https://github.com/matrix-org/synapse/issues/5235">#5235</a>, <a href="https://github.com/matrix-org/synapse/issues/5236">#5236</a>, <a href="https://github.com/matrix-org/synapse/issues/5237">#5237</a>, <a href="https://github.com/matrix-org/synapse/issues/5244">#5244</a>, <a href="https://github.com/matrix-org/synapse/issues/5250">#5250</a>, <a href="https://github.com/matrix-org/synapse/issues/5296">#5296</a>, <a href="https://github.com/matrix-org/synapse/issues/5299">#5299</a>, <a href="https://github.com/matrix-org/synapse/issues/5343">#5343</a>, <a href="https://github.com/matrix-org/synapse/issues/5347">#5347</a>, <a href="https://github.com/matrix-org/synapse/issues/5356">#5356</a>)</li>
+<li>Specify the type of reCAPTCHA key to use. (<a href="https://github.com/matrix-org/synapse/issues/5283">#5283</a>)</li>
+<li>Improve sample config for monthly active user blocking. (<a href="https://github.com/matrix-org/synapse/issues/5284">#5284</a>)</li>
+<li>Remove spurious debug from MatrixFederationHttpClient.get_json. (<a href="https://github.com/matrix-org/synapse/issues/5287">#5287</a>)</li>
+<li>Improve logging for logcontext leaks. (<a href="https://github.com/matrix-org/synapse/issues/5288">#5288</a>)</li>
+<li>Clarify that the admin change password API logs the user out. (<a href="https://github.com/matrix-org/synapse/issues/5303">#5303</a>)</li>
+<li>New installs will now use the v54 full schema, rather than the full schema v14 and applying incremental updates to v54. (<a href="https://github.com/matrix-org/synapse/issues/5320">#5320</a>)</li>
+<li>Improve docstrings on MatrixFederationClient. (<a href="https://github.com/matrix-org/synapse/issues/5332">#5332</a>)</li>
+<li>Clean up FederationClient.get_events for clarity. (<a href="https://github.com/matrix-org/synapse/issues/5344">#5344</a>)</li>
+<li>Various improvements to debug logging. (<a href="https://github.com/matrix-org/synapse/issues/5353">#5353</a>)</li>
+<li>Don't run CI build checks until sample config check has passed. (<a href="https://github.com/matrix-org/synapse/issues/5370">#5370</a>)</li>
+<li>Automatically retry buildkite builds (max twice) when an agent is lost. (<a href="https://github.com/matrix-org/synapse/issues/5380">#5380</a>)</li>
+</ul>
+
+                
+            </div>
+        </article>
         
         <article class="post">
             <header>
@@ -752,315 +987,6 @@ Synapse 1.0 is good news for anyone running a Synapse installation - it contains
 <ul>
 <li>the Matrix Core Team</li>
 </ul>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2018&#x2F;12&#x2F;25&#x2F;the-2018-matrix-holiday-special&#x2F;" title="The 2018 Matrix Holiday Special!">The 2018 Matrix Holiday Special!</a></h2>
-                <span>
-                    25.12.2018 00:00
-                    —
-                    <a href="/category/general">
-                        General
-                    </a>
-                    —
-                    <a
-                        href="/author/matthew-hodgson">
-                        Matthew Hodgson
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Hi all,</p>
-<p>It's that time again where we break out the mince pies and brandy butter (at least for those of us in the UK) and look back on the year to see how far Matrix has come, as well as anticipate what 2019 may bring!</p>
-<h3 id="overview">Overview</h3>
-<p>It's fair to say that 2018 has been a pretty crazy year.  We have had one overriding goal: to take the <a href="/blog/2018/01/29/status-partners-up-with-new-vector-fueling-decentralised-comms-and-the-matrix-ecosystem/">funding</a> we received in January, stabilise and freeze the protocol and get it and the reference implementations out of beta and to a 1.0 - to provide a genuinely open and decentralised mainstream alternative to the likes of Slack, Discord, WhatsApp etc.  What's so crazy about that, you might ask?</p>
-<p>Well, in parallel with this we've also seen adoption of Matrix accelerating ahead of our dev plan at an unprecedented speed: with France selecting Matrix to power the communication infrastructure of its whole public sector - first <a href="/blog/2018/04/26/matrix-and-riot-confirmed-as-the-basis-for-frances-secure-instant-messenger-app/">trialling over the summer</a>, and now <a href="https://twitter.com/matrixdotorg/status/1070392608801910784">confirmed for full roll-out</a> as of a few weeks ago.  Meanwhile there are several other similar-sized projects on the horizon which we can't talk about yet.  We've had the growing pains of establishing <a href="https://vector.im">New Vector</a> as a startup in order to hire the core team and support these projects.  We've launched <a href="https://modular.im">Modular</a> to provide professional-quality SaaS Matrix hosting for the wider community and help fund the team.  And most importantly, we've also been establishing the non-profit <a href="/blog/2018/10/29/introducing-the-matrix-org-foundation-part-1-of-2/">Matrix.org Foundation</a> to formalise the open governance of the Matrix protocol and protect and isolate it from any of the for-profit work.</p>
-<p>However: things have just about come together.  Almost all the spec work for 1.0 is done and we are now aiming to get a 1.0 released in time by the end of January (in time for FOSDEM).  Meanwhile Synapse has improved massively in terms of performance and stability (not least having migrated over to <a href="/blog/2018/12/21/porting-synapse-to-python-3/">Python 3</a>); Riot's spectacular redesign is now <a href="https://medium.com/@RiotChat/redesign-experimenters-needed-afa7c2d4c858">available for testing</a> right now; E2E encryption is more stable than ever with the usability rework <a href="https://github.com/matrix-org/matrix-js-sdk/compare/develop...uhoreg:e2e_cross-signing">landing</a> as we speak.  And we've even got a full rewrite of Riot/Android in the wings.</p>
-<p>But it's certainly been an interesting ride.  Longer-term spec work has been delayed by needing to apply band-aids to mitigate abuse of the outstanding issues.  Riot redesign was pushed back considerably due to prioritising Riot performance over UX. The E2E UX work has forced us to consider E2E holistically… which does not always interact well with structuring the dev work into bite-sized chunks.  Dendrite has generally been idling whilst we instead pour most of our effort into getting to 1.0 on Synapse (rather than diluting 1.0 work across both projects). These tradeoffs have been hard to make, but hopefully we have chosen the correct path in the end.</p>
-<p>Overall, as we approach 1.0, the project is looking better than ever - hopefully everyone has seen both Riot and Synapse using less RAM and being more responsive and stable, E2E being more reliable, and anyone who has played with the <a href="https://riot.im/experimental">Riot redesign</a> beta should agree that it is light-years ahead of yesterday's Riot and something which can genuinely surpass today's centralised proprietary incumbents. And that is unbelievably exciting :D</p>
-<p>We'd like to thank everyone for continuing to support Matrix - especially our <a href="http://patreon.com/matrixdotorg">Patreon</a> &amp; <a href="http://liberapay.com/matrixdotorg">Liberapay</a> supporters, whose donations continue to be critical for helping fund the core dev team, and also those who are supporting the project indirectly by hosting homeservers with <a href="https://modular.im">Modular</a>.  We are going to do everything humanly possible to ship 1.0 over the coming weeks, and then the sky will be the limit!</p>
-<p>Before going into what else 2019 will hold, however, let's take the opportunity to give a bit more detail on the various core team projects which landed in 2018…</p>
-<h2 id="france">France</h2>
-<p>DINSIC (France's Ministry of Digital, IT &amp; Comms) have been busy building out their massive cross-government Matrix deployment and custom Matrix client throughout most of the year.  After the <a href="/blog/2018/04/26/matrix-and-riot-confirmed-as-the-basis-for-frances-secure-instant-messenger-app/">announcement in April</a>, this started off with an initial deployment over the summer, and is now moving towards the full production rollout, as confirmed at the Paris Open Source Summit a few weeks ago by Mounir Mahjoubi, the Secretary of State of Digital.  All the press coverage about this ended up in French, with the biggest writeup being at <a href="https://www.cio-online.com/actualites/lire-mounir-mahjoubi%C2%A0-%C2%A0le-libre-n-est-pas-toujours-moins-cher-mais-c-est-toujours-plus-transparent%C2%A0-10842.html">CIO Online</a>, but the main mention of Matrix (badly translated from French) is:</p>
-<p style="padding-left: 30px;"><i>Denouncing the use of tools such as WhatsApp; a practice that has become commonplace within ministerial offices, Mounir Mahjoubi announced the launch in production of Tchap, based on Matrix and Riot: an instant messaging tool that will be provided throughout the administrations. So, certainly, developing a product can have a certain cost. Integrating it too. "Free is not always cheaper but it's always more transparent," admitted the Secretary of State.
-</i></p>
-The project really shows off Matrix at its best, with up to 60 different deployments spread over different ministries and departments; multiple clusters per Ministry; end-to-end encryption enabled by default (complete with e2e-aware antivirus scanning); multiple networks for different classes of traffic; and the hope of federating with the public Matrix network once the S2S API is finalised and suitable border gateways are available.  It's not really our project to talk about, but we'll try to share as much info as we can as roll-out continues.
-<h2 id="the-matrix-specification">The Matrix Specification</h2>
-<p>A major theme throughout the year has been polishing the <a href="/docs/spec">Matrix Spec</a> itself for its first full stable release, having had more than enough time to see which bits work in practice now and which bits need rethinking.  This all kicked off with the <a href="/blog/2018/05/17/introducing-matrix-specification-changes/">creation of the Matrix Spec Change process</a> back in May, which provides a formal process for reviewing and accepting contributions from anyone into the spec.  Getting the balance right between agility and robustness has been quite tough here, especially pre-1.0 where we've needed to move rapidly to resolve the remaining long-lived sticking points.  However, a process like this risks encouraging the classic “<a href="https://en.wikipedia.org/wiki/Perfect_is_the_enemy_of_good">Perfect is the Enemy of Good</a>” problem, as all and sundry jump in to apply their particular brand of perfectionism to the spec (and/or the process around it) and risk smothering it to death with enthusiasm.  So we've ended up iterating a few times on the process and hopefully now converged on an approach which will work for 1.0 and beyond. If you haven't checked out the current <a href="/docs/spec/proposals">proposals guide</a> please give it a look, and feel free to marvel at all the MSCs in flight.  You can also see a <a href="/~richardv/proposal_news.html">quick and dirty timeline of all the MSC status changes</a> since we introduced the process, to get an idea of how it's all been progressing.</p>
-<p>In August we had a big sprint to cut <a href="/blog/2018/09/03/matrix-spec-update-august-2018/">stable “r0” releases of all the APIs</a> of the spec which had not yet reached a stable release (i.e. all apart from the Client-Server API, which has been stable since Dec 2015 - hence in part the large number of usable independent Matrix clients relative to the other bits of the ecosystem).  In practice, we managed to release 3 out of the 4 remaining APIs - but needed more time to solve the remaining blocking issues with the Server-Server API. So since August (modulo operational and project distractions) we've been plugging away on the S2S API.  </p>
-<p>The main blocking issue for a stable S2S API has been State Resolution. This is the fundamental algorithm used to determine the state of a given room whenever a race or partition happens between the servers participating in it.  For instance: if Alice kicks Bob on her server at the same time as Charlie ops Bob on his server, who should win? It's vital that all servers reach the same conclusion as to the state of the room, and we don't want servers to have to replicate a full copy of the room's history (which could be massive) to reach a consistent conclusion.  Matrix's original state resolution algorithm dates back to the initial usable S2S implementation at the beginning of 2015 - but over time deficiencies in the algorithm became increasingly apparent. The most obvious issue is the “<a href="https://github.com/matrix-org/synapse/issues/2432">Hotel California</a>” bug, where users can be spontaneously re-joined to a room they've previously left if the room's current state is merged with an older copy of the room on another server and the ‘wrong' version wins the conflict - a so-called state-reset.</p>
-<p>After a lot of thought we ended up proposing an <a href="https://github.com/matrix-org/matrix-doc/blob/erikj/state_res_rejections/proposals/1442-state-resolution.md">all new State Resolution algorithm</a> in July 2018, nicknamed State Resolution Reloaded.  This extends the original algorithm to consider the ‘auth chain' of state events when performing state resolution (i.e. the sequence of events that a given state event cites as evidence of its validity) - as well as addressing a bunch of other issues.  For those wishing to understand in more detail, there's <a href="https://github.com/matrix-org/matrix-doc/blob/erikj/state_res_rejections/proposals/1442-state-resolution.md">the MSC</a> itself, the formal terse description of the algorithm now merged into the <a href="/docs/spec/server_server/unstable.html#state-resolution-algorithm-for-version-2-rooms">unstable S2S spec</a> - or alternatively there's an excellent <a href="https://matrix.uhoreg.ca/stateres/reloaded.html">step-by-step explanation and guided example</a> from uhoreg (warning: contains Haskell :)  Or you can watch Erik and Matthew try to explain it all on <a href="https://youtu.be/f6ZdmPSUUBA">Matrix Live</a> back in July.</p>
-<p>Since the initial proposal in July, the algorithm has been proofed out in a <a href="https://github.com/matrix-org/matrix-test-state-resolution-ideas">test jig</a>, iterated on some more to better specify <a href="https://github.com/matrix-org/matrix-doc/pull/1693">how to handle rejected events</a>, <a href="https://github.com/matrix-org/synapse/pull/4040">implemented in Synapse</a>, and is now ready to roll.  The only catch is that to upgrade to it we've had to introduce the concept of <a href="https://github.com/matrix-org/matrix-doc/pull/1516/files">room versioning</a>, and to flush out historical issues we require you to <a href="https://github.com/matrix-org/matrix-doc/blob/rav/room_upgrades/proposals/1501-room-version-upgrades.md">re-create rooms to upgrade them</a> to the new resolution algorithm. Getting the logistics in place for this is a massive pain, but we've got an approach now which should be sufficient. Clients will be free to smooth over the transition in the UI as gracefully as possible (and in fact Riot has this already hooked up).  So: watch this space as v2 rooms with all-new state resolution in the coming weeks!</p>
-<p>Otherwise, there are a bunch of other issues in the S2S API which we are still working through (e.g. <a href="https://github.com/matrix-org/matrix-doc/blob/erikj/event_id_hashes/proposals/1640-event-id-as-hashes.md">changing event IDs to be hashes</a> of event contents to avoid lying about IDs, <a href="https://github.com/matrix-org/matrix-doc/pull/1711">switching to use normal X.509 certificates for federation</a> and so resolve problems with Perspectives, etc).  </p>
-<p>Once these land and are implemented in Synapse over the coming weeks, we will be able to finally declare a 1.0!</p>
-<p>Also on the spec side of things, it's worth noting that a lot of effort went into improving performance for clients in the form of the <a href="https://github.com/matrix-org/matrix-doc/issues/1227">Lazy Loading Members MSC</a>.  This ended up consuming a lot of time over the summer as we updated Synapse and the various matrix-*-sdks (and thus Riot) to only calculate and send details to the clients about members who are currently talking in a room, whereas previously we sent the entire state of the room to the client (even including users who had left). The end result however is a 3-5x reduction in RAM on Riot, and a 3-5x speedup on initial sync.  The current MSC is currently being <a href="https://github.com/matrix-org/matrix-doc/pull/1758">merged as we speak</a> into the main spec (thanks Kitsune!) for inclusion in upcoming CS API 0.5.</p>
-<h2 id="the-matrix-org-foundation-cic">The Matrix.org Foundation (CIC!)</h2>
-<p>Alongside getting the open spec process up and running, we've been establishing The Matrix.org Foundation as an independent non-profit legal entity responsible for neutrally safeguarding the Matrix spec and evolution of the protocol.  This kicked off in June with the “<a href="/blog/2018/06/20/towards-open-governance-for-matrix-org/">Towards Open Governance</a>” blog post, and continued with the <a href="/blog/2018/10/29/introducing-the-matrix-org-foundation-part-1-of-2/">formal incorporation</a> of The Matrix.org Foundation in October.  Since then, we've spent a lot of time with the non-profit lawyers evolving <a href="https://github.com/matrix-org/matrix-doc/issues/1318">MSC1318</a> into the final Articles of Association (and other guidelines) for the Foundation.  This work is basically solved now; it just needs MSC1318 to be updated with the conclusions (which we're running late on, but is top of Matthew's MSC todo list).</p>
-<p>In other news, we have confirmation that the <a href="https://en.wikipedia.org/wiki/Community_interest_company">Community Interest Company</a> (CIC) status for The Matrix.org Foundation has been approved - this means that the CIC Regulator has independently reviewed the initial Articles of Association and approved that they indeed lock the mission of the Foundation to be non-profit and to act solely for the good of the wider online community.  In practice, this means that the Foundation will be formally renamed The Matrix.org Foundation C.I.C, and provides a useful independent safeguard to ensure the Foundation remains on track.</p>
-<p>The remaining work on the Foundation is:</p>
-<ul>
- 	<li style="font-weight: 400;">Update and land MSC1318, particularly on clarifying the relationship between the legal Guardians (Directors) of the Foundation and the technical members of the core spec team, and how funds of the Foundation will be handled.
-</li>
- 	<li style="font-weight: 400;">Update the Articles of Association of the Foundation based on the end result of MSC1318
-</li>
- 	<li style="font-weight: 400;">Transfer any Matrix.org assets over from New Vector to the Foundation.  Given Matrix's code is all open source, there isn't much in the way of assets - we're basically talking about the matrix.org domain and website itself.
-</li>
- 	<li style="font-weight: 400;">Introduce the final Guardians for the Foundation.
-</li>
-</ul>
-We'll keep you posted with progress as this lands over the coming months.
-<h2 id="riot">Riot</h2>
-<p>2018 has been a bit of a chrysalis year for Riot: the vast majority of work has been going into the <a href="https://medium.com/@RiotChat/a-sneak-peek-at-a-whole-new-riot-im-1114df653782">massive redesign</a> we started in May to improve usability &amp; cosmetics, performance, stability, and E2E encryption usability improvements.  We've consciously spent most of the year feature frozen in order to polish what we already have, as we've certainly been guilty in the past of landing way too many features without necessarily applying the needed amount of UX polish.</p>
-<p>However, as of today, we're super-excited to announce that Riot's redesign is at the point where the intrepid can start experimenting with it - in fact, internally most of the team has switched over to dogfooding (testing) the redesign as of a week or so ago.  Just shut down your current copy of Riot/Web or Desktop and go to <a href="https://riot.im/experimental">https://riot.im/experimental</a> instead if you want to experiment (we don't recommend running both at the same time).  Please note that it is still work-in-progress and there's a lot of polish still to land and some cosmetic bugs still hanging around, but it's definitely at the point of feeling better than the old app.  Most importantly, please provide feedback (by hitting the lifesaver-ring button at the bottom left) to let us know how you get on. See the <a href="https://medium.com/@RiotChat/redesign-experimenters-needed-afa7c2d4c858">Riot blog</a> for more details!</p>
-<p><a href="/blog/wp-content/uploads/2018/12/Screenshot-2018-12-25-at-04.00.44.png"><img class="aligncenter size-large wp-image-3854" src="/blog/wp-content/uploads/2018/12/Screenshot-2018-12-25-at-04.00.44-1024x578.png" alt="" width="1024" height="578" /></a></p>
-<p>Meanwhile, on the performance and stability side of things - Lazy Loading (see above) made a <a href="https://medium.com/@RiotChat/riot-im-web-0-17-and-ios-0-7-6-smaller-footprint-faster-launch-5ddd18a65abb">massive difference</a> to performance on all platforms; shrinking RAM usage by 3-5x and similarly speeding up launch and initial sync times.  Ironically, this ended up pushing back the redesign work, but hopefully the performance improvements will have been noticeable in the interim.  We also <a href="https://github.com/vector-im/riot-web/issues/6477">switched</a> the entire rich text composer from using Facebook's <a href="https://draftjs.org/">Draft.js</a> library to instead use <a href="https://www.slatejs.org">Slate.js</a> (which has generally been a massive improvement for stability and maintainability, although took <em><a href="https://github.com/matrix-org/matrix-react-sdk/pull/1890">ages</a></em> to land - huge thanks to t3chguy for getting it over the line). Meanwhile Travis has been blitzing through a massive list of key “<a href="https://github.com/vector-im/riot-web/projects/12">First Impression</a>” bugs to ensure that as many of Riot's most glaring usability gotchas are solved.</p>
-<p>We also welcomed ever-popular <a href="https://medium.com/@RiotChat/stickers-are-here-introducing-riot-im-0-15-for-web-desktop-284c32b93acc">Stickers</a> to the fold - the first instance of per-account rather than per-room widgets, which ended up requiring a lot of new infrastructure in both Riot and the underlying integration manager responsible for hosting the widgets.  But judging by how popular they are, the effort seems to be worth it - and paves the way for much more exciting interactive widgets and integrations in future!</p>
-<p>An unexpectedly large detour/distraction came in the form of GDPR back in May - we spent a month or so running around ensuring that both Riot and Matrix are GDPR compliant (including the necessary legal legwork to establish how GDPR even applies to a decentralised technology like Matrix).  If you missed all that fun, you can <a href="/blog/2018/05/08/gdpr-compliance-in-matrix/">read about it here</a>.  Hopefully we won't have to do anything like that again any time soon...</p>
-<p>And finally: on the mobile side, much of the team has been distracted helping out France with their Matrix deployment.  However, we've been plugging away on Riot/Mobile, keeping pace with the development on Riot/Web - but most excitingly, we've also found time to experiment with a <a href="https://github.com/vector-im/riot-android-redesign-PoC/tree/develop">complete rewrite of Riot/Android</a> in Kotlin, using Realm and Rx (currently nicknamed Riot X).  The rewrite was originally intended as a test-jig for experimenting with the redesign on mobile, but it's increasingly becoming a fully fledged Matrix client… which launches and syncs over 5x faster than today's Riot/Android.  If you're particularly intrepid you should be able to run the app by checking out the project in Android Studio and hitting ‘run'. We expect the rewrite to land properly in the coming months - watch this space for progress!</p>
-<h2 id="e2e-encryption">E2E Encryption</h2>
-<p>One of the biggest projects this year has been to get E2E encryption out of beta and <a href="https://github.com/vector-im/riot-web/issues/6779">turned on by default</a>.  Now, whilst the encryption itself in Matrix has been <a href="/blog/2016/11/21/matrixs-olm-end-to-end-encryption-security-assessment-released-and-implemented-cross-platform-on-riot-at-last/">cryptographically robust</a> since 2016 - its usability has been minimal at best, and we'd been running around polishing the underlying implementation rather than addressing the UX.  However, this year that changed, as we opened a war on about 6 concurrent battlefronts to address the remaining issues. These are:</p>
-<ul>
- 	<li style="font-weight: 400;">Holistic UX.  Designing a coherent, design-led UX across all of the encryption and key-management functionality.  Nad (who joined Matrix as a fulltime Lead UI/UX designer in August) has been leading the charge on this - you can see a <a href="/blog/2018/11/02/user-experience-preview-end-to-end-encryption-by-default/">preview of the end result</a><span style="font-weight: 400;"> here.  Meanwhile, Dave and Ryan are working through implementing it as we speak.
-</span>
-</li>
- 	<li style="font-weight: 400;">Decryption failures (UISIs).  Whenever something goes wrong with E2E encryption, the symptoms are generally the same: you find yourself unable to decrypt other people's messages.  We've been plugging away chasing these down - for instance, <a href="https://github.com/matrix-org/matrix-js-sdk/pull/597">switching from localStorage to IndexedDB</a> in Riot/Web for storing encryption state (to make it harder for multiple tabs to collide and corrupt your encryption state); providing mechanisms to <a href="https://github.com/matrix-org/matrix-js-sdk/pull/780">unwedge Olm sessions</a><span style="font-weight: 400;"> which have got corrupted (e.g. by restoring from backup); and many others.  We also added full telemetry to track the number of UISIs people are seeing in practice - and the good news is that over the course of the year their occurrence has been steadily reducing.  The bad news is that there are still some edge cases left: so please, whenever you fail to decrypt a message, please make sure you submit a bug report and debug logs from *both* the sender and receiving device.  The end is definitely in sight on these, however, and good news is other battlefronts will also help mitigate UISIs.
-</span>
-</li>
- 	<li style="font-weight: 400;">Incremental Key Backup.  Previously, if you only used one device (e.g. your phone) and you lost that phone, you would lose all your E2E history unless you were in the habit of explicitly manually backing up your keys.  Nowadays, we have the ability to optionally let users encrypt their keys with a passphrase (or recovery key) and <a href="https://github.com/matrix-org/matrix-doc/pull/1703">constantly upload them to the server</a> for safe keeping.  This was a significant chunk of work, but has actually <a href="https://github.com/matrix-org/matrix-react-sdk/pull/2169">landed already</a><span style="font-weight: 400;"> in Riot/Web and Riot/iOS, but is hidden behind a “Labs” feature flag in Settings whilst we test it and sort out the final UX.
-</span>
-</li>
- 	<li style="font-weight: 400;">Cross-signing Keys. Previously, the only way to check whether you were talking to a legitimate user or an imposter was to independently compare the fingerprints of the keys of the device they claim to be using.  In the near future, we will let users prove that they own their devices by <a href="https://github.com/matrix-org/matrix-doc/pull/1756">signing them with a per-user identity key</a>, so you only have to do this check once. We've actually <a href="https://github.com/matrix-org/matrix-js-sdk/pull/795">already implemented</a> one iteration of cross-signing, but this <a href="https://github.com/matrix-org/matrix-doc/issues/1680">allowed arbitrary devices for a given user to attest each other</a><span style="font-weight: 400;"> (which creates a directed graph of attestations, and associated problems with revocations), hence switching to a simpler approach.
-</span>
-</li>
- 	<li style="font-weight: 400;">Improved Verification. Verifying keys by manually comparing elliptic key fingerprints is incredibly cumbersome and tedious.  Instead, we have proposals for using <a href="https://github.com/matrix-org/matrix-doc/issues/1267">Short Authentication String</a> comparisons and <a href="https://github.com/matrix-org/matrix-doc/issues/1543">QR-code scanning</a><span style="font-weight: 400;"><span style="font-weight: 400;"> to simplify the process.  uhoreg is currently implementing these as we speak :)
-</span>
-</span>
-</li>
- 	<li style="font-weight: 400;">Search.  Solving encrypted search is Hard, but t3chguy did a lot of work earlier in the year to build out <a href="https://github.com/matrix-org/matrix-search">matrix-search</a>: essentially a js-sdk bot which you can host, hand your keys to, and will archive your history using a golang full-text search engine (bleve) and expose a search interface that replaces Synapse's default one.  Of all the battlefronts this one is progressing the least right now, but the hope is to integrate it into Riot/Desktop or other clients so that folks who want to index all their conversations have the means to do so.  On the plus side, all the necessary building blocks are available thanks to t3chguy's hacking.
-</li>
-</ul>
-So, TL;DR: E2E is hard, but the end is in sight thanks to a lot of blood, sweat and tears.  It's possible that we may have opened up too many battlefronts in finishing it off rather than landing stuff gradually.  But it should be transformative when it all lands - and we'll finally be able to turn it on by default for private conversations.  Again, we're aiming to pull this together by the end of January.
-<p>Separately, we've been keeping a close eye on <a href="https://datatracker.ietf.org/wg/mls/about/">MLS</a> - the IETF's activity around standardising scalable group E2E encryption.  MLS has a lot of potential and could provide algorithmic improvements over Olm &amp; Megolm (whist paving the way for interop with other MLS-encrypted comms systems).  But it's also quite complicated, and is at risk of designing out support of decentralised environments. For now, we're obviously focusing on ensuring that Matrix is rock solid with Olm &amp; Megolm, but once we hit that 1.0 we'll certainly be experimenting a bit with MLS too.</p>
-<h2 id="homeservers">Homeservers</h2>
-<p>The story of the Synapse team in 2018 has been one of alternating between solving scaling and performance issues to support the ever-growing network (especially the massive matrix.org server)... and dealing with S2S API issues; both in terms of fixing the design of State Resolution, Room Versioning etc (see the Spec section above) and doing stop-gap fixes to the current implementation.</p>
-<p>Focusing on the performance side of things, the main wins have been:</p>
-<ul>
- 	<li style="font-weight: 400;"><span style="font-weight: 400;">Splitting yet more functionality out into worker processes which can scale independently of the master Synapse process.
-</span>
-</li>
- 	<li style="font-weight: 400;"><span style="font-weight: 400;"><span style="font-weight: 400;">Yet more profiling and optimisation (particularly caching).  Between this and the worker split-out we were able to resolve the performance ceiling that we hit over the summer, and as of right now matrix.org feels relatively snappy.
-</span>
-</span>
-</li>
- 	<li style="font-weight: 400;"><span style="font-weight: 400;">Lazy Loading Members.
-</span>
-</li>
- 	<li style="font-weight: 400;"><a href="/blog/2018/12/21/porting-synapse-to-python-3/">Python 3</a>.  As everyone should have seen by now, Synapse is now Python 3 by default as of 0.34, which provides significant RAM and CPU improvements across the board as well as a path forwards given Python 2's planned demise at the end of 2019.  If you're not running your Synapse on Python 3 today, you are officially doing it wrong.
-</li>
-</ul>
-There are also some major improvements which haven't fully landed yet:
-<span style="font-weight: 400;">
-</span>
-<ul>
- 	<li style="font-weight: 400;">State compression.  We have a new algorithm for storing room state which is ~10x more efficient than the current one.  We'll be migrating to it in by default in future. If you're feeling particularly intrepid you can actually <a href="https://github.com/matrix-org/rust-synapse-compress-state">manually use it today</a><span style="font-weight: 400;"> (but we don't recommend it yet).
-</span>
-</li>
- 	<li style="font-weight: 400;">Incremental state resolution.  Before we got sucked into redesigning state resolution in general, Erik came up with a <a href="/_matrix/media/v1/download/jki.re/ubNfLtrmXZMmlGjJZYPnlHHy">proof that it's possible to memoize state resolution</a><span style="font-weight: 400;"> and incrementally calculate it whenever state is resolved in a room rather than recalculate it from scratch each time (as is the current implementation).  This would be a significant performance improvement, given non-incremental state res can consume a lot of CPU (making everything slow down when there are lots of room extremities to resolve), and can consume a lot of RAM and has been one of the reasons that synapse's RAM usage can sometimes spike badly. The good news is that the new state res algorithm was designed to also work in this manner.  The bad news is that we haven't yet got back to implementing it yet, given the new algorithm is only just being rolled out now.
-</span>
-</li>
- 	<li style="font-weight: 400;"><a href="https://github.com/matrix-org/matrix-doc/issues/1229">Chunks</a>.  Currently, Synapse models all events in a room as being part of a single DAG, which can be problematic if you can see lots of disconnected sections of the DAG (e.g. due to intermittent connectivity somewhere in the network), as Synapse will frantically try to resolve all these disconnected sections of DAG together.  Instead, a better solution is to explicitly model these sections of DAG as separate entities called Chunks, and not try to resolve state between disconnected Chunks but instead consider them independent fragments of the room - and thus simplify state resolution calculations significantly. It also fixes an S2S API design flaw where previously we trusted the server to state the ordering (depth) of events they provided; with chunks, the receiving server can keep track of that itself by tracking a DAG of chunks (as well as the normal event DAG within the chunks).  Now, most of the work for this happened already, but is <a href="https://github.com/matrix-org/synapse/issues/3785">currently parked</a> until new state res has landed.
-</li>
-</ul>
-Meanwhile, over on Dendrite, we made the conscious decision to get 1.0 out the door on Synapse first rather than trying to implement and iterate on the stuff needed for 1.0 on both Synapse & Dendrite simultaneously.  However, Dendrite has been ticking along thanks to work from Brendan, Anoa and APWhitehat - and the plan is to use it for more niche homeserver work at first; e.g. constrained resource devices (Dendrite uses 5-10x less RAM than Synapse on Py3), clientside homeservers, experimental routing deployments, etc.  In the longer term we expect it to grow into a fully fledged HS though!
-<h2 id="bridging">Bridging</h2>
-<p>2018 was a bit of a renaissance for Bridging, largely thanks to Half-Shot coming on board in the Summer to work on IRC bridging and finally get to the bottom of the stability issues which plagued Freenode for the previous, uh, few years.  Meanwhile the Slack bridge got its first ever release - and more recently there's some Really Exciting Stuff happening with <a href="https://github.com/matrix-org/matrix-appservice-purple">matrix-appservice-purple</a>; a properly usable bridge through to any protocol that libpurple can speak… and as of a few days ago also supports <em>native</em> XMPP bridging via XMPP.js.  There'll probably be a dedicated blogpost about all of this in the new year, especially when we deploy it all on Matrix.org. Until then, the best bet is to learn more is to watch <a href="https://youtu.be/B0faoVdw0ak">last week's Matrix Live</a> and hear it all first hand.</p>
-<h2 id="modular">Modular</h2>
-<p>One of the biggest newcomers of 2018 was the launch of <a href="https://modular.im">Modular.im</a> in October - the world's first commercial Matrix hosting service.  Whilst (like Riot), Modular isn't strictly-speaking a Matrix.org project - it feels appropriate to mention it here, not least because it's helping directly fund the core Matrix dev team.</p>
-<p>So far Modular has seen a lot of interest from folks who want to spin up a super-speedy dedicated homeserver run by us rather than having to spend the time to build one themselves - or folks who have yet to migrate from IRC and want a better-than-IRC experience which still bridges well.  One of the nice bits is that the servers are still decentralised and completely operationally independent of one another, and there have been a bunch of really nice refinements since launch, including the ability to point your own DNS at the server; matrix-&gt;matrix migration tools; with custom branding and other goodness coming soon.  If you want one-click Matrix hosting, please give Modular a go :) </p>
-<p>Right now we're promoting Modular mainly to existing Matrix users, but once the Riot redesign is finished you should expect to see some very familiar names popping up on the platform :D</p>
-<h2 id="twim">TWIM</h2>
-<p>Unless you were living under a rock, you'll hopefully have also realised that 2018 was the year that brought us <a href="/blog/category/general/this-week-in-matrix/">This Week In Matrix</a> (TWIM) - our very own blog tracking all the action across the whole Matrix community on a weekly basis.  Thank you to everyone who contributes updates, and to Ben for editing it each week. Go flip through the archives to find out what's been going on in the wider community over the course of the year!  (This blog post is already way too long without trying to cover the rest of the ecosystem too :)</p>
-<h2 id="shapes-of-things-to-come">Shapes of Things to Come</h2>
-<p>Finally, a little Easter egg (it is Christmas, after all) for anyone crazy enough to have read this far: The eagle-eyed amongst you might have noticed that one of our accepted talks for FOSDEM 2019 is “<a href="https://fosdem.org/2019/schedule/event/matrix/">Breaking the 100bps barrier with Matrix</a>” in the Real Time Communications devroom.  We don't want to spoil the full surprise, but here's a quick preview of some of the more exotic <a href="https://en.wikipedia.org/wiki/Skunkworks_project">skunkworks</a> we've been doing on low-bandwidth routing and transports recently.  Right now it shamelessly assumes that you're running within a trusted network, but once we solve that it will of course be be proposed as an MSC for Matrix proper.  A full write-up and code will follow, but for now, here's a mysterious video…</p>
-<div><iframe src="https://www.youtube.com/embed/vimXuCTxV6k" frameBorder="0" allowFullScreen="allowfullscreen"></iframe></div>
-<p>(If you're interested in running Matrix over low-bandwidth networks, please <a href="https://matrix.to/#/@matthew:matrix.org">get in touch</a> - we'd love to hear from you...)</p>
-<h2 id="2019">2019</h2>
-<p>So, what will 2019 bring?</p>
-<p>In the short term, as should be obvious from the above, our focus is on:</p>
-<ul>
- 	<li style="font-weight: 400;">r0 spec releases across the board (aka Matrix 1.0)
-</li>
- 	<li style="font-weight: 400;">Implementing them in Synapse
-</li>
- 	<li style="font-weight: 400;">Landing the Riot redesign
-</li>
- 	<li style="font-weight: 400;">Landing all the new E2E encryption UX and features
-</li>
- 	<li style="font-weight: 400;">Finalising the Matrix.org Foundation
-</li>
-</ul>
-However, beyond that, there's a lot of possible options on the table in the medium term:
-<ul>
- 	<li style="font-weight: 400;">Reworking and improving Communities/Groups.
-</li>
- 	<li style="font-weight: 400;">Reactions.
-</li>
- 	<li style="font-weight: 400;">E2E-encrypted Search
-</li>
- 	<li style="font-weight: 400;">Filtering. (empowering users to filter out rooms & content they're not interested in).
-</li>
- 	<li style="font-weight: 400;">Extensible events.
-</li>
- 	<li style="font-weight: 400;">Editable messages.
-</li>
- 	<li style="font-weight: 400;">Extensible Profiles (we've actually been experimenting with this already).
-</li>
- 	<li style="font-weight: 400;">Threading.
-</li>
- 	<li style="font-weight: 400;">Landing the Riot/Android rewrite
-</li>
- 	<li style="font-weight: 400;">Scaling synapse via sharding the master process
-</li>
- 	<li style="font-weight: 400;">Bridge UI for discovery of users/rooms and bridge status
-</li>
- 	<li style="font-weight: 400;">Considering whether to do a similar overhaul of Riot/iOS
-</li>
- 	<li style="font-weight: 400;">Bandwidth-efficient transports
-</li>
- 	<li style="font-weight: 400;">Bandwidth-efficient routing
-</li>
- 	<li style="font-weight: 400;">Getting Dendrite to production.
-</li>
- 	<li style="font-weight: 400;">Inline widgets (polls etc)
-</li>
-</ul>
-<ul>
- 	<li style="font-weight: 400;">Improving VoIP over Matrix.
-</li>
-</ul>
-<ul>
- 	<li style="font-weight: 400;">Adding more bridges, and improving the current ones..
-</li>
- 	<li style="font-weight: 400;">Account portability
-</li>
- 	<li style="font-weight: 400;">Replacing MXIDs with public keys
-</li>
-</ul>
-In the longer term, options include:
-<ul>
- 	<li style="font-weight: 400;">Shared-code cross-platform client SDKs (e.g. sharing a native core library between matrix-{'{'}js,ios,android{'}'}-sdk)
-</li>
- 	<li style="font-weight: 400;">Matrix daemons (e.g. running an always-on client as a background process in your OS which apps can connect to via a lightweight CS API)
-</li>
- 	<li style="font-weight: 400;">Push notifications via Matrix (using a daemon-style architecture)
-</li>
- 	<li style="font-weight: 400;">Clientside homeservers (i.e. p2p matrix) - e.g. compiling Dendrite to WASM and running it in a service worker.
-</li>
- 	<li style="font-weight: 400;">Experimenting with MLS for E2E Encryption
-</li>
- 	<li style="font-weight: 400;">Storing and querying more generic data structures in Matrix (e.g. object trees; scene graphs)
-</li>
- 	<li style="font-weight: 400;">Alternate use cases for VR, IoT, etc.
-</li>
-</ul>
-Obviously we're not remotely going to do all of that in 2019, but this serves to give a taste of the possibilities on the menu post-1.0; we'll endeavour to publish a more solid roadmap when we get to that point.
-<p>And on that note, it's time to call this blogpost to a close. Thanks to anyone who read this far, and thank you, as always, for flying Matrix and continuing to support the project.  The next few months should be particularly fun; all the preparation of 2018 will finally pay off :)</p>
-<p>Happy holidays,</p>
-<p>Matthew, Amandine &amp; the whole Matrix.org team.</p>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2018&#x2F;11&#x2F;02&#x2F;user-experience-preview-end-to-end-encryption-by-default&#x2F;" title="User Experience Preview: End-to-end encryption">User Experience Preview: End-to-end encryption</a></h2>
-                <span>
-                    02.11.2018 00:00
-                    —
-                    <a href="/category/general">
-                        General
-                    </a>
-                    —
-                    <a
-                        href="/author/nad-chishtie">
-                        Nad Chishtie
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p><span style="font-weight: 400">It's been a long-standing goal to enable end-to-end encryption by default for private communication in Matrix. The technical effort so far has included </span>
-<a href="/docs/guides/e2e_implementation.html"><span style="font-weight: 400">our libolm library</span></a><span style="font-weight: 400">, </span>
-<a href="https://www.nccgroup.trust/us/our-research/matrix-olm-cryptographic-review/"><span style="font-weight: 400">an independent cryptographic review</span></a><span style="font-weight: 400"> and </span>
-<a href="https://github.com/vector-im/riot-web/issues/6779"><span style="font-weight: 400">a massive backlog of feature development and bug fixes</span></a><span style="font-weight: 400">. Today, instead I'd like to focus on some of the User Experience challenges and goals we're facing.</span></p>
-<p><span style="font-weight: 400">I should also introduce myself—I'm Nad Chishtie (</span>
-<a href="https://matrix.to/#/@nadonomy:matrix.org"><span style="font-weight: 400">@nadonomy:matrix.org</span></a><span style="font-weight: 400">) and I recently joined the Matrix core team (at New Vector) as Lead Designer, most recently focusing on end-to-end encryption.</span></p>
-<p>When using encrypted messages, most existing services fall short in one or all of the following:</p>
-<ul>
- 	<li style="font-weight: 400"><span style="font-weight: 400">They don't allow you to use multiple devices independently. For example, a web session might be locally tethered to a mobile device.</span>
-</li>
- 	<li style="font-weight: 400"><span style="font-weight: 400">They don't support a way to restore or temporarily access message history. For example, if you don't have physical access to your main device because it's broken or has been stolen.</span>
-</li>
- 	<li style="font-weight: 400"><span style="font-weight: 400">They don't allow you to verify that devices are controlled by their owners rather than eavesdroppers, and persist that trust across multiple devices, sessions or rooms.</span>
-</li>
-</ul>
-<span style="font-weight: 400">Modern users, even those we talk to at security and privacy-led organisations, expect these features to 'just work' by default out of the box. Before enabling end-to-end encryption by default, we've been hard at work figuring out how we can deliver these features without compromising security or usability.</span>
-<p><span style="font-weight: 400">(For some users, restrictions such as limiting the number of places encryption keys reside, and not having a synchronised message history may be desirable </span>
-<i><span style="font-weight: 400">security features.</span>
-</i><span style="font-weight: 400"> We'll support these cases, but just not as the default behaviour.)</span></p>
-<p><span style="font-weight: 400">Let's dive in to some of the fundamental concepts we'll be putting forward to deliver a default end-to-end encryption experience that makes sense for most modern users. In this post we'll look at an overview of</span>
-<b> work-in-progress wireframes</b><span style="font-weight: 400">, in the spirit of designing in the open and gathering feedback from the wider Matrix community. Please note that these don't represent the actual interface design.</span></p>
-<h2 id="cross-signing-personal-devices">Cross-signing personal devices</h2>
-<p><a href="/blog/wp-content/uploads/2018/11/E2E-UX-Cross-signing.png"><img class="alignnone wp-image-3708 size-large" src="/blog/wp-content/uploads/2018/11/E2E-UX-Cross-signing-1024x576.png" alt="" width="1024" height="576" /></a></p>
-<p><span style="font-weight: 400">When logging in to a new device, you'll be able to use an existing device to verify your new one. Verification is done by </span>
-<a href="https://github.com/matrix-org/matrix-doc/issues/1543"><span style="font-weight: 400">scanning a QR code</span></a><span style="font-weight: 400"> on whichever device has the most convenient camera to use, or by </span>
-<a href="https://github.com/matrix-org/matrix-doc/issues/1267"><span style="font-weight: 400">comparing a short text string</span></a><span style="font-weight: 400">. You only have to complete this process once to mutually verify both devices.</span></p>
-<p><a href="https://github.com/matrix-org/matrix-doc/issues/1680"><span style="font-weight: 400">Verifying your new device by cross-signing</span></a><span style="font-weight: 400"> transfers encryption keys, giving it access to your encrypted messages, and also signals to other users that the new device is trustworthy.</span></p>
-<h2 id="secure-message-recovery">Secure Message Recovery</h2>
-<p><a href="/blog/wp-content/uploads/2018/11/E2E-UX-Secure-Message-Recovery.gif.gif"><img class="alignnone size-large wp-image-3725" src="/blog/wp-content/uploads/2018/11/E2E-UX-Secure-Message-Recovery.gif.gif" alt="" width="1024" height="577" /></a></p>
-<p><span style="font-weight: 400">To the end user, Secure Message Recovery works a lot like setting up disk encryption or a password manager. A user can optionally secure their message history using a recovery passphrase and/or key. If logged out, or using another device, the user can use the recovery passphrase or key to access their encrypted message history.</span></p>
-<p><span style="font-weight: 400">In practise, this </span>
-<a href="https://github.com/vector-im/riot-web/issues/5675"><span style="font-weight: 400">incrementally encrypts and backs up encryption keys to a user's homeserver</span></a><span style="font-weight: 400">, kept secure by the homeserver never having access to the passphrase or key. Like cross-signing, using a recovery passphrase or key will also signal to other users that a device is trustworthy.</span></p>
-<p><span style="font-weight: 400">We think that in most cases users will cross-sign personal devices, but as a safety net (for example, if a user's devices are broken or lost) Secure Message Recovery is an invaluable tool for users to minimise the chance of them losing their encrypted message history.
-</span></p>
-<h2 id="people-should-trust-people">People should trust people</h2>
-<p><a href="/blog/wp-content/uploads/2018/11/E2E-UX-Verification.gif"><img class="alignnone size-large wp-image-3726" src="/blog/wp-content/uploads/2018/11/E2E-UX-Verification.gif" alt="" width="1024" height="577" /></a></p>
-<p><span style="font-weight: 400">With both cross-signing and Secure Message Recovery in place, we think that people should trust people, instead of individual devices. Now, when you verify a device, it'll mark all of that users trusted devices as trusted.</span></p>
-<p><span style="font-weight: 400">Gone are the days of every person you talk to having to independently verify your new device upgrade. Like cross-signing, you can verify a device by scanning a QR code or comparing a short text string.</span></p>
-<h2 id="sensible-and-extensible">Sensible and extensible</h2>
-<p><a href="/blog/wp-content/uploads/2018/11/E2E-UX-Settings.gif"><img class="alignnone size-large wp-image-3727" src="/blog/wp-content/uploads/2018/11/E2E-UX-Settings.gif" alt="" width="1024" height="577" /></a></p>
-<p><span style="font-weight: 400">In Riot, we're implementing these features with a sensible default experience that strikes a balance between usability and security. We think most people would prefer to trust cross-signed devices, and that user trust shouldn't block encryption. However, if you aren't most people, you'll be free to configure whatever level of security you need.
-</span></p>
-<h2 id="in-summary">In Summary</h2>
-<p><span style="font-weight: 400">With all of the above in place, and after resolving any remaining technical issues, users will be able to:</span></p>
-<ul>
- 	<li>Use end-to-end encryption by default in private rooms.</li>
- 	<li><span style="font-weight: 400">Use an existing device or Secure Message Recovery to access their encrypted message history on multiple devices, and to signal device trust to other users.</span>
-</li>
- 	<li><span style="font-weight: 400">Access their encrypted message history using Secure Message Recovery, by storing encrypted message keys on their homeserver.</span>
-</li>
- 	<li><span style="font-weight: 400">Mark a user as trusted by verifying one of their devices, persisting across all rooms and devices.</span>
-</li>
- 	<li>Keep their encrypted messages out of the hands of eavesdroppers.</li>
- 	<li>Opt out, or further configure if they have more specific security requirements.</li>
-</ul>
-<span style="font-weight: 400">There's more nuance to making all this work than we can cover in this overview post; things like recovery key management and immutable security notifications are all important pieces of the puzzle. For further reading, we're filling up more detail in </span>
-<a href="https://docs.google.com/document/d/1TIZarCxP0UHcn52o3YdKrFs_ESB3YvDxvCY_SoY-FUk/edit?usp=sharing"><span style="font-weight: 400">UX reference documentation</span></a><span style="font-weight: 400">, </span>
-<a href="https://xd.adobe.com/view/aa55e61a-c9b5-4ab2-5d45-71e40b5447dc-dc64/"><span style="font-weight: 400">interactive wireframes</span></a><span style="font-weight: 400">, </span>
-<a href="https://github.com/vector-im/riot-meta/issues/222"><span style="font-weight: 400">GitHub issues</span></a><span style="font-weight: 400"> and a </span>
-<a href="https://docs.google.com/spreadsheets/d/1Bv2Pf4rz62nB8omDFoolRmONmU47zIeGewJBbPeADoM/edit#gid=0"><span style="font-weight: 400">work-in-progress threat model</span></a><span style="font-weight: 400">. </span>
-<p><span style="font-weight: 400">Over the coming days we're polishing wireframes, nomenclature, iconography and microcopy as we dig deeper into development and implementation, as well as designing these features for </span>
-<a href="https://medium.com/@dharmaone/redesigning-matrix-riot-chat-c7bffd9eb841"><span style="font-weight: 400">the upcoming Riot redesign</span></a><span style="font-weight: 400">. Cryptography needn't be intimidating, and we're excited to iterate on these advanced features to make them work for everyone.</span></p>
-<p><span style="font-weight: 400">We'd love to hear your feedback! Let us know your thoughts here or in </span>
-<a href="https://matrix.to/#/#e2e-dev:matrix.org"><span style="font-weight: 400">#e2e-dev:matrix.org</span></a><span style="font-weight: 400">.</span></p>
 
                 
             </div>

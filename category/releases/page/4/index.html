@@ -114,7 +114,7 @@
     <div class="content">
         <header>
             <h1>Releases</h1>
-            132 posts tagged with "Releases" <a href="/category">(See all Category)</a>
+            138 posts tagged with "Releases" <a href="/category">(See all Category)</a>
             
             <h2>
                 <small><a href="/category/releases/atom.xml">Atom Feed</a></small>
@@ -122,6 +122,358 @@
             
         </header>
 
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2022&#x2F;02&#x2F;02&#x2F;matrix-v1-2-release&#x2F;" title="Matrix v1.2 release">Matrix v1.2 release</a></h2>
+                <span>
+                    02.02.2022 18:57
+                    —
+                    <a href="/category/releases">
+                        Releases
+                    </a>
+                    —
+                    <a
+                        href="/author/travis-ralston">
+                        Travis Ralston
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Hey all,</p>
+<p>Welcome to the second installment of our quarterly spec releases. If it feels like it hasn’t been long since our last release, you’re not alone! Our <a href="https://matrix.org/blog/2021/11/09/matrix-v-1-1-release">last release</a> was just 3 months ago, introducing the new platform and world we build within.</p>
+<p>This improvement in speed might seem <em>too</em> fast, but fret not: implementations are not expected to update as soon as the new spec is published. Rather, it is more realistic to expect that the ecosystem gradually update over the course of the following few months/year. Particularly after the massive release that was v1.1.</p>
+<p>So, what’s new in v1.2? With 18 MSCs merged there’s a lot to cover - we’ve picked some notable highlights and recommend the full changelog at the bottom for a complete idea of what’s been going on.</p>
+<h2 id="rearchitecting-with-spaces">Rearchitecting with Spaces</h2>
+<p>Spaces launched into beta <a href="https://matrix.org/blog/2021/05/17/the-matrix-space-beta">last May</a>, redefining how we can use rooms on Matrix to represent different data structures. Described mostly as <a href="https://github.com/matrix-org/matrix-doc/pull/1772">MSC1772</a>, Spaces are simply rooms with a specific <a href="https://spec.matrix.org/v1.2/client-server-api/#rooms-1">type in their m.room.create event</a>. With state events being used to define which other rooms (meaning Spaces too) are part of that Space, the possibilities for tree-like structured data become endless.</p>
+<p>There’s still quite a lot of work to do in the Spaces space (hah), though we’re excited to see it all land. For instance, <a href="https://github.com/matrix-org/matrix-doc/pull/3216">MSC3216</a> and <a href="https://github.com/matrix-org/matrix-doc/pull/2962">MSC2962</a> target power level syncing, <a href="https://github.com/matrix-org/matrix-doc/pull/3219">MSC3219</a> aims for flair, and <a href="https://github.com/matrix-org/matrix-doc/pull/3089">MSC3089</a> looks at file structures using Spaces. We might even be able to replace the public room directory with a server-wide space, making writing clients a little bit easier.</p>
+<h2 id="public-but-not-too-public-join-rules">Public, but not <em>too</em> public, join rules</h2>
+<p><a href="https://spec.matrix.org/v1.2/client-server-api/#restricted-rooms">Restricted rooms</a> are new in this release from <a href="https://github.com/matrix-org/matrix-doc/pull/3083">MSC3083</a>. In these rooms (<em>and therefore Spaces too!</em>), the join rules can be configured such that a member of another room can join without needing an invite. In a typical setup, this means that a Space could be set as invite-only, but all the rooms and Spaces underneath that Space could allow joins for members of the parent Space. When someone wishes to explore the universe you’ve laid out in your Space they can simply join the interesting rooms without having to ask for invites <em>constantly</em>.</p>
+<p>This feature changes how membership events are authorized, so is only available in room versions 8 and 9 (both introduced in this release). Room version 9 fixes a relatively rare bug from version 8, so we’d recommend using v9 if you’re planning an upgrade for this functionality.</p>
+<p>Further work in this area involves figuring out how to keep membership lists perfectly in sync between the rooms, which is currently done by external tooling. For example, evicting someone from the parent Space could (optionally) evict the user from all the subsequent rooms and Spaces too.</p>
+<p>We also need to figure out how to support both knocking and restricted rooms at the same time (oops). <a href="https://github.com/matrix-org/matrix-doc/pull/3613">MSC3613</a> and <a href="https://github.com/matrix-org/matrix-doc/pull/3386">MSC3386</a> both tackle this problem in different ways and timescales.</p>
+<h2 id="matrix-a-uri">Matrix: A URI</h2>
+<p>A massive shoutout goes to kitsune and the whole community for working on <a href="https://github.com/matrix-org/matrix-doc/pull/2312">MSC2312</a>, giving us a URI we can pass around outside of Matrix to bring us back in. The early work on this <a href="https://github.com/matrix-org/matrix-doc/issues/455">dates all the way back to 2014</a>, the very beginning of Matrix’s development, and has since been <a href="https://www.iana.org/assignments/uri-schemes/prov/matrix">marked Provisional</a> by the IANA.</p>
+<p>The full spec is available <a href="https://spec.matrix.org/v1.2/appendices/#uris">here</a> - feel free to discuss it at <a href="matrix:r/matrix-spec:matrix.org">matrix:r/matrix-spec:matrix.org</a> ;)</p>
+<h2 id="the-full-changelog">The full changelog</h2>
+<p>MSCs are how the spec changes in the way it does - adding, fixing, and maintaining features for the whole ecosystem to use. The blog post can’t cover them all, but that doesn’t make them any less important! Check out the full changelog below, and the <a href="https://spec.matrix.org/unstable/proposals/">Spec Change Proposals</a> page for more information on how these MSCs got merged (hint: they submitted a proposal, which anyone can do - take a look at the <a href="https://www.youtube.com/watch?v=SFkZz60RRfc">Matrix Live episode</a> where Matthew covers the proposal process).</p>
+<h3 id="client-server-api">Client-Server API</h3>
+<p><strong>Breaking Changes</strong></p>
+<ul>
+<li>The <code>prev_content</code> field is now returned inside the <code>unsigned</code> property of events, rather than at the top level, as per <a href="https://github.com/matrix-org/matrix-doc/pull/3442">MSC3442</a>. (<a href="https://github.com/matrix-org/matrix-doc/issues/3524">#3524</a>)</li>
+<li>The <code>aliases</code> property from the chunks returned by <code>/publicRooms</code>, as per <a href="https://github.com/matrix-org/matrix-doc/pull/2432">MSC2432</a>. (<a href="https://github.com/matrix-org/matrix-doc/issues/3624">#3624</a>)</li>
+</ul>
+<p><strong>New Endpoints</strong></p>
+<ul>
+<li>Add the Space Hierarchy API (<code>GET /_matrix/client/v1/rooms/{roomId}/hierarchy</code>) as per <a href="https://github.com/matrix-org/matrix-doc/pull/2946">MSC2946</a>. (<a href="https://github.com/matrix-org/matrix-doc/issues/3610">#3610</a>)</li>
+<li>Add <code>/_matrix/client/v1/register/m.login.registration_token/validity</code> as per <a href="https://github.com/matrix-org/matrix-doc/pull/3231">MSC3231</a>. (<a href="https://github.com/matrix-org/matrix-doc/issues/3616">#3616</a>)</li>
+</ul>
+<p><strong>Backwards Compatible Changes</strong></p>
+<ul>
+<li>Extend <code>/_matrix/client/r0/login</code> to accept a <code>m.login.appservice</code>, as per <a href="https://github.com/matrix-org/matrix-doc/pull/2778">MSC2778</a>. (<a href="https://github.com/matrix-org/matrix-doc/issues/3324">#3324</a>)</li>
+<li>Add support for <code>restricted</code> rooms as per <a href="https://github.com/matrix-org/matrix-doc/pull/3083">MSC3083</a>, <a href="https://github.com/matrix-org/matrix-doc/pull/3289">MSC3289</a>, and <a href="https://github.com/matrix-org/matrix-doc/pull/3375">MSC3375</a>. (<a href="https://github.com/matrix-org/matrix-doc/issues/3387">#3387</a>)</li>
+<li>Add <code>is_guest</code> to <code>/account/whoami</code> as per <a href="https://github.com/matrix-org/matrix-doc/pull/3069">MSC3069</a>. (<a href="https://github.com/matrix-org/matrix-doc/issues/3605">#3605</a>)</li>
+<li>Expand guest access to sending any room event and state event as per <a href="https://github.com/matrix-org/matrix-doc/pull/3419">MSC3419</a>. (<a href="https://github.com/matrix-org/matrix-doc/issues/3605">#3605</a>)</li>
+<li>Add Spaces and room types as per <a href="https://github.com/matrix-org/matrix-doc/pull/1772">MSC1772</a> and <a href="https://github.com/matrix-org/matrix-doc/pull/2946">MSC2946</a>. (<a href="https://github.com/matrix-org/matrix-doc/issues/3610">#3610</a>)</li>
+<li>Add new <code>m.set_displayname</code>, <code>m.set_avatar_url</code>, and <code>m.3pid_changes</code> capabilities as per <a href="https://github.com/matrix-org/matrix-doc/pull/3283">MSC3283</a>. (<a href="https://github.com/matrix-org/matrix-doc/issues/3614">#3614</a>)</li>
+<li>Add support for fallback keys (optional keys used once one-time keys run out), as per <a href="https://github.com/matrix-org/matrix-doc/pull/2732">MSC2732</a>. (<a href="https://github.com/matrix-org/matrix-doc/issues/3615">#3615</a>)</li>
+<li>Add token-authenticated registration support as per <a href="https://github.com/matrix-org/matrix-doc/pull/3231">MSC3231</a>. (<a href="https://github.com/matrix-org/matrix-doc/issues/3616">#3616</a>)</li>
+</ul>
+<p><strong>Spec Clarifications</strong></p>
+<ul>
+<li>Make <code>AesHmacSha2KeyDescription</code> consistent with <code>KeyDescription</code> in marking <code>name</code> as optional. (<a href="https://github.com/matrix-org/matrix-doc/issues/3481">#3481</a>)</li>
+<li>Fix various typos throughout the specification. (<a href="https://github.com/matrix-org/matrix-doc/issues/3482">#3482</a>, <a href="https://github.com/matrix-org/matrix-doc/issues/3495">#3495</a>, <a href="https://github.com/matrix-org/matrix-doc/issues/3509">#3509</a>, <a href="https://github.com/matrix-org/matrix-doc/issues/3535">#3535</a>, <a href="https://github.com/matrix-org/matrix-doc/issues/3591">#3591</a>, <a href="https://github.com/matrix-org/matrix-doc/issues/3601">#3601</a>, <a href="https://github.com/matrix-org/matrix-doc/issues/3611">#3611</a>, <a href="https://github.com/matrix-org/matrix-doc/issues/3671">#3671</a>, <a href="https://github.com/matrix-org/matrix-doc/issues/3680">#3680</a>)</li>
+<li>Explicitly mention RFC5870 in the definition of <code>m.location</code> events (<a href="https://github.com/matrix-org/matrix-doc/issues/3492">#3492</a>)</li>
+<li>Add <code>403 M_FORBIDDEN</code> error code to <code>/profile/{userId}</code> as per <a href="https://github.com/matrix-org/matrix-doc/pull/3550">MSC3550</a>. (<a href="https://github.com/matrix-org/matrix-doc/issues/3530">#3530</a>)</li>
+<li>Clarify the description of the <code>/sync</code> API, including a fix to an ASCII art diagram. (<a href="https://github.com/matrix-org/matrix-doc/issues/3543">#3543</a>)</li>
+<li>Clarify that <code>base_url</code> in client <code>well_known</code> may or may not include trailing slash. (<a href="https://github.com/matrix-org/matrix-doc/issues/3562">#3562</a>)</li>
+<li>Clarify which signature to check when decrypting <code>m.olm.v1.curve25519-aes-sha2</code> messages. (<a href="https://github.com/matrix-org/matrix-doc/issues/3573">#3573</a>)</li>
+<li>Clarify what &quot;Stripped State&quot; is and what purpose it serves, as per <a href="https://github.com/matrix-org/matrix-doc/pull/3173">MSC3173</a>. (<a href="https://github.com/matrix-org/matrix-doc/issues/3606">#3606</a>)</li>
+<li>Clarify how to interpret missing one-time key counts. (<a href="https://github.com/matrix-org/matrix-doc/issues/3636">#3636</a>)</li>
+<li>Correct the schema for the responses  for various API endpoints. (<a href="https://github.com/matrix-org/matrix-doc/issues/3650">#3650</a>)</li>
+<li>Clarify that group mentions are no longer in the specification. (<a href="https://github.com/matrix-org/matrix-doc/issues/3652">#3652</a>)</li>
+<li>Distinguish between &quot;federation&quot; event format as exchanged by the Federation API, and the &quot;client&quot; event formats as used in the client-server and AS APIs. (<a href="https://github.com/matrix-org/matrix-doc/issues/3658">#3658</a>)</li>
+<li>Fix the rendering of the responses for various API endpoints. (<a href="https://github.com/matrix-org/matrix-doc/issues/3674">#3674</a>)</li>
+</ul>
+<h3 id="server-server-api">Server-Server API</h3>
+<p><strong>New Endpoints</strong></p>
+<ul>
+<li>Add the Space Hierarchy API (<code>GET /_matrix/federation/v1/hierarchy/{roomId}</code>) as per <a href="https://github.com/matrix-org/matrix-doc/pull/2946">MSC2946</a>. (<a href="https://github.com/matrix-org/matrix-doc/issues/3610">#3610</a>, <a href="https://github.com/matrix-org/matrix-doc/issues/3660">#3660</a>)</li>
+</ul>
+<p><strong>Backwards Compatible Changes</strong></p>
+<ul>
+<li>Add support for <code>restricted</code> rooms as per <a href="https://github.com/matrix-org/matrix-doc/pull/3083">MSC3083</a>, <a href="https://github.com/matrix-org/matrix-doc/pull/3289">MSC3289</a>, and <a href="https://github.com/matrix-org/matrix-doc/pull/3375">MSC3375</a>. (<a href="https://github.com/matrix-org/matrix-doc/issues/3387">#3387</a>)</li>
+</ul>
+<p><strong>Spec Clarifications</strong></p>
+<ul>
+<li>Fix various typos throughout the specification. (<a href="https://github.com/matrix-org/matrix-doc/issues/3527">#3527</a>)</li>
+<li>Clarify that <code>GET /_matrix/federation/v1/event_auth/{roomId}/{eventId}</code> does <em>not</em> return the auth chain for the full state of the room. (<a href="https://github.com/matrix-org/matrix-doc/issues/3583">#3583</a>)</li>
+<li>Fix the rendering of the responses for various API endpoints. (<a href="https://github.com/matrix-org/matrix-doc/issues/3674">#3674</a>)</li>
+</ul>
+<h3 id="application-service-api">Application Service API</h3>
+<p><strong>Spec Clarifications</strong></p>
+<ul>
+<li>Distinguish between &quot;federation&quot; event format as exchanged by the Federation API, and the &quot;client&quot; event formats as used in the client-server and AS APIs. (<a href="https://github.com/matrix-org/matrix-doc/issues/3658">#3658</a>)</li>
+<li>Fix the rendering of the responses for various API endpoints. (<a href="https://github.com/matrix-org/matrix-doc/issues/3674">#3674</a>)</li>
+<li>Correct the documentation for the response value for <code>GET /_matrix/app/v1/thirdparty/protocol/{protocol}</code>. (<a href="https://github.com/matrix-org/matrix-doc/issues/3675">#3675</a>)</li>
+</ul>
+<h3 id="identity-service-api">Identity Service API</h3>
+<p><strong>Backwards Compatible Changes</strong></p>
+<ul>
+<li>Add the <code>room_type</code> to stored invites as per <a href="https://github.com/matrix-org/matrix-doc/pull/3288">MSC3288</a>. (<a href="https://github.com/matrix-org/matrix-doc/issues/3610">#3610</a>)</li>
+</ul>
+<p><strong>Spec Clarifications</strong></p>
+<ul>
+<li>Fix the rendering of the responses for various API endpoints. (<a href="https://github.com/matrix-org/matrix-doc/issues/3674">#3674</a>)</li>
+</ul>
+<h3 id="push-gateway-api">Push Gateway API</h3>
+<p><strong>Spec Clarifications</strong></p>
+<ul>
+<li>Fix the rendering of the responses for various API endpoints. (<a href="https://github.com/matrix-org/matrix-doc/issues/3674">#3674</a>)</li>
+</ul>
+<h3 id="room-versions">Room Versions</h3>
+<p><strong>Backwards Compatible Changes</strong></p>
+<ul>
+<li>Add Room Version 8 as per <a href="https://github.com/matrix-org/matrix-doc/pull/3289">MSC3289</a>. (<a href="https://github.com/matrix-org/matrix-doc/issues/3387">#3387</a>)</li>
+<li>Add Room Version 9 as per <a href="https://github.com/matrix-org/matrix-doc/pull/3375">MSC3375</a>. (<a href="https://github.com/matrix-org/matrix-doc/issues/3387">#3387</a>)</li>
+</ul>
+<p><strong>Spec Clarifications</strong></p>
+<ul>
+<li>Fully specify room versions to indicate what exactly is carried over from parent versions. (<a href="https://github.com/matrix-org/matrix-doc/issues/3432">#3432</a>, <a href="https://github.com/matrix-org/matrix-doc/issues/3661">#3661</a>)</li>
+<li>Clarifications to sections on event IDs and event formats. (<a href="https://github.com/matrix-org/matrix-doc/issues/3501">#3501</a>)</li>
+<li>Remove a number of fields which were incorrectly shown to form part of the <code>unsigned</code> data of a Federation PDU. (<a href="https://github.com/matrix-org/matrix-doc/issues/3522">#3522</a>)</li>
+<li>Fix heading order of room version specifications to be consistent. (<a href="https://github.com/matrix-org/matrix-doc/issues/3683">#3683</a>)</li>
+<li>Add missing &quot;Signing key validity period&quot; section to room version 6. (<a href="https://github.com/matrix-org/matrix-doc/issues/3683">#3683</a>)</li>
+<li>Fix auth rules to allow membership of <code>knock</code> -&gt; <code>leave</code> in v7, v8, and v9. (<a href="https://github.com/matrix-org/matrix-doc/issues/3694">#3694</a>)</li>
+</ul>
+<h3 id="appendices">Appendices</h3>
+<p><strong>Backwards Compatible Changes</strong></p>
+<ul>
+<li>Describe &quot;Common Namespaced Identifier Grammar&quot; as per <a href="https://github.com/matrix-org/matrix-doc/pull/2758">MSC2758</a>. (<a href="https://github.com/matrix-org/matrix-doc/issues/3171">#3171</a>)</li>
+<li>Describe the <code>matrix:</code> URI scheme as per <a href="https://github.com/matrix-org/matrix-doc/pull/2312">MSC2312</a>. (<a href="https://github.com/matrix-org/matrix-doc/issues/3608">#3608</a>)</li>
+</ul>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2022&#x2F;01&#x2F;25&#x2F;synapse-1-51-released&#x2F;" title="Synapse 1.51 released">Synapse 1.51 released</a></h2>
+                <span>
+                    25.01.2022 00:00
+                    —
+                    <a href="/category/releases">
+                        Releases
+                    </a>
+                    —
+                    <a
+                        href="/author/brendan-abolivier">
+                        Brendan Abolivier
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p><a href="https://github.com/matrix-org/synapse/releases/tag/v1.51.0">Synapse 1.51</a> is out! Here's what's new with this week's release.</p>
+<h2 id="deprecation-of-the-webclient-listener">Deprecation of the <code>webclient</code> listener</h2>
+<p>A long time ago, Synapse used to serve a very basic web Matrix client (named &quot;console&quot;) that could be used to connect to the homeserver. Server administrators could chose to make it available to their users by configuring a <code>webclient</code> listener.</p>
+<p>This web client was removed in <a href="https://github.com/matrix-org/synapse/releases/tag/v0.34.0">Synapse 0.34</a> back in 2018, but the <code>webclient</code> listener stayed, instead allowing server admins to serve the web client of their choice (or redirect to it) through the <code>web_client_location</code> configuration file.</p>
+<p>Synapse 1.53 will remove the <code>webclient</code> listener, as well as the ability to set <code>web_client_location</code> to a static directory (instead of a HTTP(S) URL). See the <a href="https://matrix-org.github.io/synapse/develop/upgrade#upgrading-to-v1510">upgrade notes</a> for more information.</p>
+<h2 id="aggregations-and-sync">Aggregations and sync</h2>
+<p>The concept of server-side aggregation in Matrix is defined in <a href="https://github.com/matrix-org/matrix-doc/pull/2675">MSC2675</a> and is the ability for homeservers to extend the information included in an event using other events that relate to it. This allows, for example, clients to quickly retrieve the reactions associated with a given message, or its latest edit.</p>
+<p>This release includes a number of notable performance improvements to calculating aggregations when responding to <code>/sync</code> requests. We continue to measure and investigate potential performance improvements in this area, which should end up greatly benefiting <code>/sync</code> response times.</p>
+<h2 id="fosdem">FOSDEM</h2>
+<p><a href="https://fosdem.org">FOSDEM</a>, one of the biggest gatherings around free and open-source software in the world, is happening next week! Just like last year, the conference will happen online and will be hosted on Matrix. And just like last year, it will be packed with super interesting Matrix-related (but not only) talks.</p>
+<p>One new addition this year is the presence of a whole devroom dedicated to Matrix. It will be hosted on February 6th, and you can already find its whole schedule of talks <a href="https://fosdem.org/2022/schedule/track/matrixorg_foundation_and_community/">right here</a>.</p>
+<p>The Synapse team will be giving a couple of talks during the day: <a href="https://fosdem.org/2022/schedule/event/matrix_events_uninitiatied/">Events for the Uninitiated</a> by Shay at 11:10, and <a href="https://fosdem.org/2022/schedule/event/matrix_extend_synapse/">Beyond the Matrix: Extend the capabilities of your Synapse homeserver</a> by yours truly at 16:40 (all times CET). Come say hi! 🙂</p>
+<h2 id="everything-else">Everything else</h2>
+<p>This release includes a couple of spaces-related bug fixes, specifically related to the <code>/_matrix/client/v1/room/{roomId}/hierarchy</code> API. One of them in particular targets a bug in spaces that include more than 50 rooms, and should make it much easier to look for a specific room inside a space.</p>
+<p>The <code>synapse_review_recent_signups</code> script, which allows homeserver administrators to review recent signups (e.g. in the event of a spam attack), was also improved with an option to exclude virtual users belonging to an application service from the results. See <code>synapse_review_recent_signups --help</code> for more information.</p>
+<p>Please see the Synapse <a href="https://github.com/matrix-org/synapse/blob/v1.51.0/CHANGES.md">release notes</a> for a complete list of changes in this release.</p>
+<p>Synapse is a Free and Open Source Software project, and we'd like to extend our thanks to everyone who contributed to this release, including (in no particular order) <a href="https://github.com/dklimpel">Dirk Klimpel</a>, <a href="https://github.com/br4nnigan">br4nnigan</a>, <a href="https://github.com/blastrock">Philippe Daouadi</a>, <a href="https://github.com/dsonck92">Daniël Sonck</a> and <a href="https://github.com/AndrewFerr">AndrewFerr</a>.</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2022&#x2F;01&#x2F;18&#x2F;synapse-1-50-released&#x2F;" title="Synapse 1.50 released">Synapse 1.50 released</a></h2>
+                <span>
+                    18.01.2022 18:34
+                    —
+                    <a href="/category/releases">
+                        Releases
+                    </a>
+                    —
+                    <a
+                        href="/author/brendan-abolivier">
+                        Brendan Abolivier
+                    </a>
+                </span>
+                <br>
+                <small>Last update: 18.01.2022 17:58</small>
+            </header>
+            <div>
+                
+                <p>Welcome all for the first Synapse release of 2022: <a href="https://github.com/matrix-org/synapse/releases/tag/v1.50.0">Synapse 1.50</a>!</p>
+<blockquote>
+<p>Note that, as per our <a href="https://matrix-org.github.io/synapse/v1.50/deprecation_policy.html">platform dependency deprecation policy</a>, Synapse no longer supports Python 3.6 and PostgreSQL 9.6 as of this version. As a result, we have also stopped shipping Debian packages for Ubuntu 18.04 LTS (Bionic Beaver), as it ships with Python 3.6.</p>
+<p>As a reminder, please note that Ubuntu 21.04 (Hirsute Hippo) reaches its own end of life <a href="https://lists.ubuntu.com/archives/ubuntu-announce/2021-December/000275.html">on January 20, 2022</a>. Past this date we will stop producing new packages for Ubuntu 21.04.</p>
+</blockquote>
+<h2 id="encrypted-application-services">Encrypted application services</h2>
+<p>Application services (sometimes called &quot;appservices&quot;), are privileged processes that can interact with a Matrix homeserver in a way a normal user cannot. This is especially useful for bridges, as it allows them to register and puppet multiple users on the homeserver to replicate activity from other platforms.</p>
+<p>One of the main shortcomings of application services currently is that they do not support end-to-end encryption. This means that messages sent through a bridge are never encrypted and always visible by the homeserver.</p>
+<p>We've recently started work to tackle this issue in the form of <a href="https://github.com/matrix-org/matrix-doc/pull/3202">MSC3202</a>. A first part of implementing this MSC (allowing application services to masquerade as specific devices) has landed in this release of Synapse; work is still ongoing towards a full implementation, so watch this space!</p>
+<h2 id="improved-reliability-on-device-list-updates">Improved reliability on device list updates</h2>
+<p>While working on this release, we identified a long-standing bug that could prevent Synapse from sending device lists update over federation if the server had a high number of active users and/or users with a lot of devices connected to their account.</p>
+<p>This bug was introduced back in <a href="https://github.com/matrix-org/synapse/releases/tag/v1.0.0">Synapse 1.0.0</a>, and meant that the homeserver would miss some device list updates when communicating with other homeservers if the amount of updates to send was too high. In practice, this means users on remote homeservers could see outdated device information for other users (including outdated device verification statuses).</p>
+<p>Synapse 1.50 includes a fix to this bug. This should contribute towards making the propagation of device list updates more reliable.</p>
+<h2 id="everything-else">Everything else</h2>
+<p>This release introduces support for <a href="https://github.com/matrix-org/matrix-doc/pull/3419">MSC3419</a>, which allows guest users to send arbitrary state events into a room. This will be especially useful to the ongoing work on <a href="https://github.com/matrix-org/matrix-doc/pull/3401">group VoIP calls</a>, which involves having users send new state events into the room to signal their participation in a call.</p>
+<p>We've also stabilised identifiers for cross-signing and fallback keys now that <a href="https://github.com/matrix-org/matrix-doc/pull/1756">MSC1756</a> and <a href="https://github.com/matrix-org/matrix-doc/pull/2732">MSC2732</a> have been merged into the Matrix spec.</p>
+<p>On the documentation side of things, the <a href="https://matrix-org.github.io/synapse/v1.50/turn-howto.html">page</a> on setting up and configuring a TURN server has been updated to feature instructions on how to deal with NATs. This is a much welcome addition as configuring TURN is something a lot of Synapse admins struggle with!</p>
+<p>Please see the Synapse <a href="https://github.com/matrix-org/synapse/blob/v1.50.0/CHANGES.md">release notes</a> for a complete list of changes in this release.</p>
+<p>Synapse is a Free and Open Source Software project, and we'd like to extend our thanks to everyone who contributed to this release, including <a href="https://github.com/dklimpel">Dirk Klimpel</a>, <a href="https://github.com/itchychips">Donny Johnson</a> and <a href="https://github.com/AndrewFerr">AndrewFerr</a>.</p>
+<blockquote>
+<p>Note: An issue preventing client logins (<a href="https://github.com/matrix-org/synapse/issues/11763">#11763</a>) was identified immediately following the release of Synapse 1.50.0. We released <a href="https://github.com/matrix-org/synapse/releases/tag/v1.50.1">Synapse 1.50.1</a> the same day with a fix for this issue.</p>
+</blockquote>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2021&#x2F;12&#x2F;14&#x2F;synapse-1-49-0-released&#x2F;" title="Synapse 1.49.0 released">Synapse 1.49.0 released</a></h2>
+                <span>
+                    14.12.2021 00:00
+                    —
+                    <a href="/category/releases">
+                        Releases
+                    </a>
+                    —
+                    <a
+                        href="/author/brendan-abolivier">
+                        Brendan Abolivier
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p><a href="https://github.com/matrix-org/synapse/releases/tag/v1.49.0">Synapse 1.49.0</a> is out now!</p>
+<h2 id="platform-deprecations">Platform deprecations</h2>
+<p>Synapse 1.49.0 is the last version of Synapse to officially support Python 3.6 and PostgreSQL 9.6. This follows our <a href="https://matrix-org.github.io/synapse/v1.49/deprecation_policy.html">platform dependency deprecation policy</a>.</p>
+<p>As a consequence of this, Synapse 1.49.0 is the last version of Synapse to support Ubuntu 18.04 LTS (Bionic Beaver), as it ships with Python 3.6.</p>
+<p>On the topic of supported Ubuntu releases, please note that Ubuntu 21.04 (Hirsute Hippo) reaches its own end of life <a href="https://lists.ubuntu.com/archives/ubuntu-announce/2021-December/000275.html">on January 20, 2022</a>. Past this date we will stop producing new packages for Ubuntu 21.04.</p>
+<h2 id="improved-documentation">Improved documentation</h2>
+<p>Up until now, a lot of very useful information was stored on the <a href="https://github.com/matrix-org/synapse/wiki">Synapse repo's wiki</a>, which wasn't well advertised nor well reviewed.</p>
+<p>With this release, we have migrated most of this information to Synapse's <a href="https://matrix-org.github.io/synapse/latest">documentation website</a>, so all the information you need to set up, maintain and troubleshoot a Synapse instance lives at the same place. Included in these new pages are the <a href="https://matrix-org.github.io/synapse/v1.49/usage/administration/admin_faq.html">server admin FAQ</a> and a <a href="https://matrix-org.github.io/synapse/v1.49/usage/administration/understanding_synapse_through_grafana_graphs.html">guide to Synapse's Grafana dashboard</a>.</p>
+<p>The <a href="https://matrix-org.github.io/synapse/v1.49/media_repository.html">media repository</a> documentation has also been updated with a lot of details about how Synapse stores media files.</p>
+<h2 id="refresh-tokens">Refresh tokens</h2>
+<p>When a Matrix client needs to authenticate a request to a homeserver, it uses what is called an access token. Sometimes server administrators might not want a user's access token to live forever (e.g. for security reasons). To address this concern, <a href="https://github.com/matrix-org/matrix-doc/pull/2918">MSC2918</a> introduces the concept of refresh tokens to Matrix.</p>
+<p>Initial support for refresh tokens in Synapse was introduced in <a href="https://github.com/matrix-org/synapse/releases/tag/v1.38.0">version 1.38.0</a>. Synapse 1.49.0 finalises and stabilises this implementation, allowing any client that supports this feature to use it as it is currently described in the related MSC.</p>
+<h2 id="everything-else">Everything else</h2>
+<p>This release introduces the last changes needed to Synapse for basic threading support. It also introduces support for <a href="https://github.com/matrix-org/matrix-doc/pull/3030">MSC3030</a>, which allows clients to jump to a specific date in a room's history (expect a sneak peek of this in the next episode of Matrix Live!).</p>
+<p>Another interesting point is the addition of a couple of <a href="https://matrix-org.github.io/synapse/v1.49/usage/administration/admin_api/federation.html">admin APIs for federation</a>. More specifically, they allow you to visualise all of the other homeservers your Synapse instance has been interacting with, as well as how successful the last attempts at communicating with them have been.</p>
+<p>Please see the Synapse <a href="https://github.com/matrix-org/synapse/blob/v1.49.0/CHANGES.md">release notes</a> for a complete list of changes in this release.</p>
+<p>Synapse is a Free and Open Source Software project, and we'd like to extend our thanks to everyone who contributed to this release, including <a href="https://github.com/dklimpel">Dirk Klimpel</a>, <a href="https://github.com/Ma27">Maximilian Bosch</a> and <a href="https://github.com/tulir">Tulir Asokan</a>.</p>
+<h2 id="till-next-year">Till next year</h2>
+<p>This is the last release of Synapse of 2021! The Synapse team will take a break for the holidays, pushing the next release of Synapse (1.50.0) to January 11, 2022.</p>
+<p>We'd like to thank everyone who has been using Synapse, contributing to it, and/or supporting us for the past year, and we hope to see you again in 2022! 🎆</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2021&#x2F;11&#x2F;30&#x2F;synapse-1-48-0-released&#x2F;" title="Synapse 1.48.0 released">Synapse 1.48.0 released</a></h2>
+                <span>
+                    30.11.2021 00:00
+                    —
+                    <a href="/category/releases">
+                        Releases
+                    </a>
+                    —
+                    <a
+                        href="/author/brendan-abolivier">
+                        Brendan Abolivier
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p><a href="https://github.com/matrix-org/synapse/releases/tag/v1.48.0">Synapse 1.48.0</a> is out now!</p>
+<blockquote>
+<p><strong>NOTE:</strong> Synapse 1.49, due out on December 14th, will be the <strong>last release of Synapse to support Python 3.6 or PostgreSQL 9.6</strong> per our <a href="https://matrix-org.github.io/synapse/v1.48/deprecation_policy.html">platform dependency deprecation policy</a>. Accordingly, we will remove support for Ubuntu 18.04 LTS (Bionic) at the same date, as it ships with Python 3.6.</p>
+</blockquote>
+<h2 id="password-resets-and-identity-servers">Password resets and identity servers</h2>
+<p>This release removes the long-deprecated <code>trust_identity_server_for_password_resets</code> configuration option. This option was initially deprecated in <a href="https://github.com/matrix-org/synapse/releases/tag/v1.4.0">Synapse 1.4.0</a> back in October 2019.</p>
+<p>Admins of servers still using this configuration option will need to update their Synapse configuration to send password resets through an SMTP server directly rather than relying on identity servers to send them on their behalf.</p>
+<h2 id="new-admin-apis-and-improved-alignment-with-matrix-1-1">New <a href="https://matrix-org.github.io/synapse/latest/usage/administration/admin_api/index.html">admin APIs</a> and improved alignment with Matrix 1.1</h2>
+<p>This release also introduces a handful of new admin APIs, allowing administrators to <a href="https://matrix-org.github.io/synapse/latest/admin_api/user_admin_api.html#controlling-whether-a-user-is-shadow-banned">un-shadow-ban users</a>, <a href="https://matrix-org.github.io/synapse/latest/admin_api/rooms.html#block-room-api">block a room</a>, and <a href="https://matrix-org.github.io/synapse/latest/usage/administration/admin_api/background_updates.html#run">run specific background updates</a> (but we'll talk about this last one a bit later on). The <a href="https://matrix-org.github.io/synapse/latest/admin_api/rooms.html#delete-room-api">delete room API</a> has also been updated to be able to run in the background or to block a room pre-emptively, even if the server doesn't know about it yet.</p>
+<p>This release also brings Synapse into greater alignment with version 1.1 of <a href="https://matrix.org/blog/2021/11/09/matrix-v-1-1-release">the Matrix specification</a> by adding support for API paths beginning <code>/_matrix/client/v3</code> and <code>/_matrix/media/v3</code>.</p>
+<h2 id="background-updates">Background updates</h2>
+<p>When Synapse updates from one version to another, it might need to run large scale updates on its database. In order to avoid blocking startup for too long while waiting for these updates to run, Synapse runs them in the background after starting.</p>
+<p>Lately the Synapse team has been doing some work to improve the performance of these background updates. More specifically, this release includes a <a href="https://github.com/matrix-org/synapse/pull/11421">performance fix</a> for a background update introduced in Synapse 1.47.0, as well as a <a href="https://matrix-org.github.io/synapse/latest/usage/administration/admin_api/background_updates.html#run">new admin API</a> to let admins rerun specific updates.</p>
+<p>Future Synapse updates will also include <a href="https://github.com/matrix-org/synapse/pull/11306">module capabilities</a> and <a href="https://github.com/matrix-org/synapse/issues/11260">more configuration options</a> for controlling background updates.</p>
+<h2 id="everything-else">Everything else</h2>
+<p>This release also includes some improved support of <a href="https://github.com/matrix-org/matrix-doc/pull/3440">MSC3440</a> to help threading. It also adds support for the stable identifiers from <a href="https://github.com/matrix-org/matrix-doc/pull/2778">MSC2778</a>, bringing Synapse closer to supporting end-to-end (or end-to-bridge) encryption support for application services.</p>
+<p>We also now publish a Docker image, <code>matrixdotorg/synapse:develop</code>, which tracks the development head of Synapse.</p>
+<p>Please see the Synapse <a href="https://github.com/matrix-org/synapse/blob/v1.48.0/CHANGES.md">Release Notes</a> for a complete list of changes in this release.</p>
+<p>Synapse is a Free and Open Source Software project, and we'd like to extend our thanks to everyone who contributed to this release, including <a href="https://github.com/dklimpel">Dirk Klimpel</a>, <a href="https://github.com/binarymaster">Stanislav Motylkov</a>, <a href="https://github.com/tulir">Tulir Asokan</a> and <a href="https://github.com/Neeeflix">Neeeflix</a>.</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2021&#x2F;11&#x2F;23&#x2F;synapse-1-47-1-released&#x2F;" title="Synapse 1.47.1 released">Synapse 1.47.1 released</a></h2>
+                <span>
+                    23.11.2021 12:46
+                    —
+                    <a href="/category/releases">
+                        Releases
+                    </a>
+                    —
+                    <a
+                        href="/author/david-robertson">
+                        David Robertson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Today we are releasing Synapse 1.47.1, a security update based on last week's release of <a href="https://matrix.org/blog/2021/11/17/synapse-1-47-0-released">Synapse 1.47.0</a>. This <a href="https://github.com/matrix-org/synapse/releases/tag/v1.47.1">release</a> patches one high severity issue affecting Synapse installations 1.47.0 and earlier using the media repository. An attacker could cause these Synapses to download a remote file and store it in a directory outside the media repository. </p>
+<p>Note that:</p>
+<ul>
+<li>This only affects homeservers using Synapse's built-in media repository, as opposed to <a href="https://github.com/matrix-org/synapse-s3-storage-provider">synapse-s3-storage-provider</a> or <a href="https://github.com/turt2live/matrix-media-repo">matrix-media-repo</a>.</li>
+<li>Attackers cannot control the exact name or destination of the stored file.</li>
+</ul>
+<p>To quote from the advisory:</p>
+<blockquote>
+<h3 id="ghsa-3hfw-x7gx-437c-cve-2021-41281-path-traversal-when-downloading-remote-media"><a href="https://github.com/matrix-org/synapse/security/advisories/GHSA-3hfw-x7gx-437c">GHSA-3hfw-x7gx-437c</a> / CVE-2021-41281: Path traversal when downloading remote media.</h3>
+<h4 id="impact">Impact</h4>
+<p>Synapse instances with the media repository enabled can be tricked into downloading a file from a remote server into an arbitrary directory, potentially outside the media store directory.</p>
+<p>The last two directories and file name of the path are chosen randomly by Synapse and cannot be controlled by an attacker, which limits the impact.</p>
+<p>Homeservers with the media repository disabled are unaffected. Homeservers configured with a federation whitelist are also unaffected.</p>
+</blockquote>
+<p>The <a href="https://github.com/matrix-org/synapse/security/advisories/GHSA-3hfw-x7gx-437c">advisory</a> has full details, including workarounds.</p>
+<p>This issue was discovered and fixed by our internal security team.</p>
+<p>Please update at your earliest convenience.</p>
+
+                
+            </div>
+        </article>
         
         <article class="post">
             <header>
@@ -440,309 +792,6 @@
 <p>We'd like to extend a special thanks to Fizzadar from <a href="https://www.beeper.com/">Beeper</a> for improving Synapse's <code>update_synapse_database</code> script (<a href="https://github.com/matrix-org/synapse/pull/10954">#10954</a>) to allow schema changes to occur while Synapse is running. This is a great step toward reducing the downtime associated with upgrades.</p>
 <p>These are just the highlights; please see the <a href="https://matrix-org.github.io/synapse/v1.45/upgrade.html#upgrading-to-v1450">Upgrade Notes</a> and <a href="https://github.com/matrix-org/synapse/blob/v1.45.0/CHANGES.md">Release Notes</a> for a complete list of changes in this release.</p>
 <p>Synapse is a Free and Open Source Software project, and we'd like to extend our thanks to everyone who contributed to this release, including <a href="https://github.com/AndrewFerr">AndrewFerr</a>, <a href="https://github.com/dklimpel">dklimpel</a>, <a href="https://github.com/Fizzadar">Fizzadar</a>, <a href="https://github.com/lukaslihotzki">lukaslihotzki</a>, and <a href="https://github.com/maxkratz">maxkratz</a>.</p>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2021&#x2F;10&#x2F;05&#x2F;synapse-1-44-0-released&#x2F;" title="Synapse 1.44.0 released">Synapse 1.44.0 released</a></h2>
-                <span>
-                    05.10.2021 23:44
-                    —
-                    <a href="/category/releases">
-                        Releases
-                    </a>
-                    —
-                    <a
-                        href="/author/dan-callahan">
-                        Dan Callahan
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Synapse 1.44.0 is out now!</p>
-<h2 id="loads-of-bug-fixes">Loads of Bug Fixes</h2>
-<p>This release primarily includes fixes for over a dozen long-standing bugs. For example:</p>
-<ul>
-<li>Messages containing null bytes are now properly indexed for search.</li>
-<li>The Room Search Admin API now allows searching for rooms with non-ascii titles.</li>
-<li>URL preview caches, which are meant to be ephemeral, are no longer mirrored from the local media store into other media providers.</li>
-</ul>
-<h2 id="faster-json-responses">Faster JSON Responses</h2>
-<p>We now stay within C code while generating large JSON objects for responses, which should be substantially faster than the previous technique, which fell back to Python for encoding.</p>
-<h2 id="new-extension-module-apis">New Extension Module APIs</h2>
-<p>Spam checker modules can now use a <code>user_may_create_room_with_invites</code> callback to inspect room creation events which include invitations to users via Matrix or other media (email, etc.).</p>
-<p>Additionally, the ModuleApi can now inspect IP and User Agent data, as well as checking whether Rooms and MXIDs are local to the current homeserver.</p>
-<h2 id="everything-else">Everything Else</h2>
-<p>We've also been busy refactoring. For example:</p>
-<ul>
-<li>Prometheus stats now distinguish between cache evictions due to entries expiring, and cache evictions due to the cache being full.</li>
-<li>The <code>synapse.handlers</code>, <code>synapse.rest</code>, and <code>synapse.storage.databases.state</code> modules are now fully type annotated and checked by mypy, among others.</li>
-<li>The user directory search code was cleaned up in preparation for future fixes.</li>
-<li>Another half dozen pull requests were merged with an aim toward clarifying federated event authentication code (and associated logging).</li>
-</ul>
-<p>Lastly, this release has seen considerable work toward supporting <a href="https://github.com/matrix-org/matrix-doc/pull/2716">MSC2716: Incrementally importing history into existing rooms</a>, along with an update to match the current state of <a href="https://github.com/matrix-org/matrix-doc/pull/3231">MSC3231: Token authenticated registration</a>.</p>
-<p>These are just the highlights; please see the <a href="https://matrix-org.github.io/synapse/v1.44/upgrade.html#upgrading-to-v1440">Upgrade Notes</a> and <a href="https://github.com/matrix-org/synapse/blob/v1.44.0/CHANGES.md">Release Notes</a> for a complete list of changes in this release.</p>
-<p>Synapse is a Free and Open Source Software project, and we'd like to extend our thanks to everyone who contributed to this release, including <a href="https://github.com/aaronraimist">aaronraimist</a>, <a href="https://github.com/cvwright">cvwright</a>, <a href="https://github.com/govynnus">govynnus</a>, <a href="https://github.com/Kokokokoka">Kokokokoka</a>, and <a href="https://github.com/tulir">tulir</a>.</p>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2021&#x2F;09&#x2F;21&#x2F;synapse-1-43-0-released&#x2F;" title="Synapse 1.43.0 released">Synapse 1.43.0 released</a></h2>
-                <span>
-                    21.09.2021 22:03
-                    —
-                    <a href="/category/releases">
-                        Releases
-                    </a>
-                    —
-                    <a
-                        href="/author/dan-callahan">
-                        Dan Callahan
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Synapse 1.43.0 is out now!</p>
-<h2 id="preparing-for-spaces">Preparing for Spaces</h2>
-<p>Quite a lot of work has gone into preparing for Spaces to graduate from beta testing. For example, Synapse now:</p>
-<ul>
-<li>Asks clients to prefer <a href="https://github.com/matrix-org/matrix-doc/pull/3375">room version 9</a> when creating restricted rooms (<a href="https://github.com/matrix-org/synapse/issues/10772">#10772</a>), via the API defined in <a href="https://github.com/matrix-org/matrix-doc/pull/3244">MSC3244: room version capabilities</a>.</li>
-<li>Allows the Spaces Summary APIs to be handled by worker processes.</li>
-<li>Omits rooms with unknown room versions from the Spaces Summary.</li>
-<li>Properly handles upgrades of Spaces to different room versions.</li>
-</ul>
-<h2 id="everything-else">Everything Else</h2>
-<p>This release of Synapse also:</p>
-<ul>
-<li>Includes initial work toward fully supporting oEmbed for embedding URL previews (<a href="https://github.com/matrix-org/synapse/issues/10714">#10714</a>, <a href="https://github.com/matrix-org/synapse/issues/10759">#10759</a>).</li>
-<li>Slightly speeds up room joins over federation (<a href="https://github.com/matrix-org/synapse/issues/10754">#10754</a>, <a href="https://github.com/matrix-org/synapse/issues/10755">#10755</a>, <a href="https://github.com/matrix-org/synapse/issues/10756">#10756</a>, <a href="https://github.com/matrix-org/synapse/issues/10780">#10780</a>, <a href="https://github.com/matrix-org/synapse/issues/10784">#10784</a>).</li>
-<li>Somewhat improves service restart times for large Synapse deployments.</li>
-<li>Significantly refactors federation event authentication code for greater clarity (<a href="https://github.com/matrix-org/synapse/issues/10744">#10744</a>, <a href="https://github.com/matrix-org/synapse/issues/10745">#10745</a>, <a href="https://github.com/matrix-org/synapse/issues/10746">#10746</a>, <a href="https://github.com/matrix-org/synapse/issues/10771">#10771</a>, <a href="https://github.com/matrix-org/synapse/issues/10773">#10773</a>, <a href="https://github.com/matrix-org/synapse/issues/10781">#10781</a>).</li>
-<li>Adds further static type hints to various modules.</li>
-</ul>
-<p>We've also spent quite a lot of time on SyTest, our integration test suite. In particular, many of the tests made assumptions about event processing which were not correct when targeting a multi-worker Synapse deployment. These flakey tests have plagued our continuous integration pipelines, and are finally being fixed.</p>
-<p>These are just the highlights; please see the <a href="https://github.com/matrix-org/synapse/blob/v1.43.0/CHANGES.md">Release Notes</a> for a complete list of changes in this release.</p>
-<p>Synapse is a Free and Open Source Software project, and we'd like to extend our thanks to everyone who contributed to this release, including <a href="https://github.com/AndrewFerr">AndrewFerr</a>, <a href="https://github.com/BramvdnHeuvel">BramvdnHeuvel</a>, and <a href="https://github.com/cuttingedge1109">cuttingedge1109</a>.</p>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2021&#x2F;09&#x2F;07&#x2F;synapse-1-42-0-released&#x2F;" title="Synapse 1.42.0 released">Synapse 1.42.0 released</a></h2>
-                <span>
-                    07.09.2021 00:00
-                    —
-                    <a href="/category/releases">
-                        Releases
-                    </a>
-                    —
-                    <a
-                        href="/author/dan-callahan">
-                        Dan Callahan
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Synapse 1.42.0 is out now!</p>
-<p>This release includes changes that you may need to be aware of before upgrading, such as the removal of two deprecated Admin APIs or a retroactive fix to ensure that email notifications are only sent to addresses which are presently associated with an account. Please see the  <a href="https://matrix-org.github.io/synapse/v1.42/upgrade.html#upgrading-to-v1420">Upgrade Notes</a> for details.</p>
-<h2 id="room-version-9-a-bugfix-for-restricted-rooms">Room Version 9: A Bugfix for Restricted Rooms</h2>
-<p>Synapse 1.42 includes support for <a href="https://github.com/matrix-org/matrix-doc/pull/3375">Room Version 9</a>, which fixes <a href="https://github.com/matrix-org/matrix-doc/issues/3373">an oversight</a> in the list of event fields which were protected from redaction in Room Version 8's <a href="https://github.com/matrix-org/matrix-doc/pull/3083">restricted rooms</a>. This makes it possible, in certain circumstances, for a restricted room to degrade into a state where participating servers will disagree about the room's membership.</p>
-<p>Because changing a room version's redaction algorithm also changes the way that event IDs are calculated, properly fixing this issue required the creation of a new room version.</p>
-<p>To ensure compatibility with existing servers, Synapse 1.42's <a href="https://github.com/matrix-org/matrix-doc/pull/3244">MSC3244: Room version capabilities</a> hints will continue to ask clients to prefer Room Version 8 when creating restricted rooms and Room Version 6 otherwise. A future release of Synapse will ask clients to prefer Room Version 9 for restricted rooms.</p>
-<h2 id="handling-unknown-rooms">Handling Unknown Rooms</h2>
-<p>Very rarely, users find themselves in rooms created with unstable or experimental room versions. Then, when Synapse removes support for these versions, bad things happen. The server no longer understands how to interact with that room version, which means <em>you</em> can't interact with that room. And if you can't interact with that room, you can't <em>leave</em>.</p>
-<p>In Synapse 1.42, rooms with unknown room versions are no longer returned down <code>/sync</code>. This prevents them from appearing in your client, though you may need to empty your client's cache and re-sync to see any effect.</p>
-<h2 id="new-mscs">New MSCs</h2>
-<p>In addition to Room Version 9 (<a href="https://github.com/matrix-org/matrix-doc/pull/3375">MSC3375</a>), this release includes:</p>
-<ul>
-<li>
-<p>An initial implementation of <a href="https://github.com/matrix-org/matrix-doc/pull/3231">MSC3231: Token authenticated registration</a>, which makes it possible for homeservers to disable user registration while still allowing new accounts to be made by people who know a pre-shared secret.</p>
-<p>This MSC and its implementations were produced as part of a Google Summer of Code (GSoC) project by Callum Brown.</p>
-</li>
-<li>
-<p>An updated implementation of <a href="https://github.com/matrix-org/matrix-doc/pull/2946">MSC2946: Spaces Summary</a> following recent changes to the proposal.</p>
-</li>
-<li>
-<p>Support for <a href="https://github.com/matrix-org/matrix-doc/pull/3283">MSC3283: Expose capabilities for profile actions</a>, which hints to clients whether or not a server allows users to change their display name, avatar, or email address.</p>
-</li>
-</ul>
-<h2 id="everything-else">Everything Else</h2>
-<p>In addition to the usual array of improvements to performance, type hints, error messages, and documentation:</p>
-<ul>
-<li>Custom Presence Router modules can now be built using Synapse's <a href="https://matrix-org.github.io/synapse/v1.42/modules.html#presence-router-callbacks">new, unified module interface</a> which debuted in Synapse 1.37.</li>
-<li>Code around federation event handling and authentication has been significantly refactored to improve reliability and maintainability, including extracting nearly 1,800 lines of code from the <code>FederationHandler</code> class into a separate <code>FederationEventHandler</code> class.</li>
-<li>Backfilling history and fetching missing events now use the same code paths, reducing the potential for bugs.</li>
-<li>Concurrently fetching the same large set of events (<a href="https://github.com/matrix-org/synapse/pull/10703">#10703</a>) is now much more efficient, preventing the process hangs which were possible in prior, extreme cases.</li>
-</ul>
-<p>These are just the highlights; please see the <a href="https://matrix-org.github.io/synapse/v1.42/upgrade.html#upgrading-to-v1420">Upgrade Notes</a> and <a href="https://github.com/matrix-org/synapse/blob/v1.42.0/CHANGES.md">Release Notes</a> for a complete list of changes in this release.</p>
-<p>Synapse is a Free and Open Source Software project, and we'd like to extend our thanks to everyone who contributed to this release, including <a href="https://github.com/aaronraimist">aaronraimist</a>, <a href="https://github.com/dklimpel">dklimpel</a>, <a href="https://github.com/govynnus">govynnus</a>, and <a href="https://github.com/HugoDelval">HugoDelval</a>.</p>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2021&#x2F;08&#x2F;31&#x2F;synapse-1-41-1-released&#x2F;" title="Synapse 1.41.1 released">Synapse 1.41.1 released</a></h2>
-                <span>
-                    31.08.2021 00:00
-                    —
-                    <a href="/category/releases">
-                        Releases
-                    </a>
-                    —
-                    <a
-                        href="/author/dan-callahan">
-                        Dan Callahan
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Today we are releasing Synapse 1.41.1, a security update based on last week's release of <a href="https://matrix.org/blog/2021/08/24/synapse-1-41-0-released">Synapse 1.41.0</a>. This release patches two moderate severity issues which could reveal metadata about private rooms:</p>
-<ul>
-<li>
-<p><strong><a href="https://github.com/matrix-org/synapse/security/advisories/GHSA-3x4c-pq33-4w3q">GHSA-3x4c-pq33-4w3q</a> / CVE-2021-39164: Enumerating a private room's list of members and their display names.</strong></p>
-<p>If an unauthorized user both knows the Room ID of a private room <em>and</em> that room's history visibility is set to <code>shared</code>, then they may be able to enumerate the room's members, including their display names.</p>
-<p>The unauthorized user must be on the same homeserver as a user who is a member of the target room.</p>
-</li>
-<li>
-<p><strong><a href="https://github.com/matrix-org/synapse/security/advisories/GHSA-jj53-8fmw-f2w2">GHSA-jj53-8fmw-f2w2</a> / CVE-2021-39163: Disclosing a private room's name, avatar, topic, and number of members.</strong></p>
-<p>If an unauthorized user knows the Room ID of a private room, then its name, avatar, topic, and number of members may be disclosed through Group / Community features.</p>
-<p>The unauthorized user must be on the same homeserver as a user who is a member of the target room, and their homeserver must allow non-administrators to create groups (<code>enable_group_creation</code> in the Synapse configuration; off by default).</p>
-</li>
-</ul>
-<p>Note that in both cases:</p>
-<ul>
-<li>The private room's Room ID must be known to the attacker.</li>
-<li>Another user on the attacker's homeserver must be a legitimate member of the target room.</li>
-<li>The information disclosed is <em>already</em> present in the database and thus legitimately known to the administrators of homeservers participating in the target room.</li>
-</ul>
-<p>We'd like to credit <a href="https://twitter.com/0xkasper">0xkasper</a> for discovering and responsibly disclosing these issues.</p>
-<p>This release also fixes a small regression in 1.41.0 (<a href="https://github.com/matrix-org/synapse/issues/10709">#10709</a>) which broke compatibility with older Twisted versions when Synapse was a configured to send email.</p>
-<p>Please update at your earliest convenience.</p>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2021&#x2F;08&#x2F;24&#x2F;synapse-1-41-0-released&#x2F;" title="Synapse 1.41.0 released">Synapse 1.41.0 released</a></h2>
-                <span>
-                    24.08.2021 00:00
-                    —
-                    <a href="/category/releases">
-                        Releases
-                    </a>
-                    —
-                    <a
-                        href="/author/dan-callahan">
-                        Dan Callahan
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Synapse 1.41.0 is out now!</p>
-<blockquote>
-<p><strong>NOTE:</strong> We anticipate publishing a <strong>security release</strong> next Tuesday, the 31st of August.</p>
-<p>Synapse 1.41.1 will contain fixes for two moderate severity issues.</p>
-</blockquote>
-<p>Synapse 1.41 includes changes to forward proxies, template settings, and media workers which may require your attention. Please see the  <a href="https://matrix-org.github.io/synapse/v1.41/upgrade.html#upgrading-to-v1410">Upgrade Notes</a> for details.</p>
-<p>Also, this release <strong>removes support for Ubuntu 20.10</strong> (Groovy Gorilla), which reached End of Life last month. Support for Ubuntu 18.04 LTS (Bionic Beaver) and Ubuntu 21.04 (Hirsute Hippo) will be withdrawn near the end of this year under our <a href="https://matrix-org.github.io/synapse/v1.41/deprecation_policy.html">platform deprecation policy</a>.</p>
-<h2 id="promoting-restricted-rooms">Promoting Restricted Rooms</h2>
-<p>Synapse 1.41 includes experimental support for <a href="https://github.com/matrix-org/matrix-doc/pull/3244">MSC3244: Room version capabilities</a>, which indicates to clients that they should use Room Version 8 when creating <a href="https://github.com/matrix-org/matrix-doc/pull/3083">restricted rooms</a>. For example, Element's clients will use the MSC3244 metadata, which is on by default in Synapse 1.41, to determine whether to show end users the UI for creating restricted rooms.</p>
-<p>Room Version 6 will remain the default for newly created rooms which do not explicitly request the restricted room capabilities at creation time. This strikes a balance between the broad compatibility of an older default room version, while still making newer features available upon request.</p>
-<h2 id="new-mscs">New MSCs</h2>
-<p>This version of Synapse implements experimental support for:</p>
-<ul>
-<li><a href="https://github.com/matrix-org/matrix-doc/pull/3266">MSC3266: Room summary API</a> which provides a simple way to obtain information about a specific room, such as its join rules, room type, etc.</li>
-<li><a href="https://github.com/matrix-org/matrix-doc/pull/3288">MSC3288: Add room type in store invite</a> which lets identity servers differentiate between invitations to rooms and invitations to Spaces.</li>
-<li><a href="https://github.com/matrix-org/matrix-doc/pull/3244">MSC3244: Room version capabilities</a> as described above.</li>
-</ul>
-<p>We've also added pagination to the Spaces Summary API based on updates to <a href="https://github.com/matrix-org/matrix-doc/pull/2946">MSC2946</a>.</p>
-<p>Work towards implementing <a href="https://github.com/matrix-org/matrix-doc/pull/2716">MSC2716: Incrementally importing history into existing rooms</a> continues, with several related pull requests landing in this release.</p>
-<h2 id="more-admin-apis">More Admin APIs</h2>
-<p>Synapse now has an Admin APIs to:</p>
-<ul>
-<li><a href="https://matrix-org.github.io/synapse/v1.41/admin_api/user_admin_api.html#delete-media-uploaded-by-a-user">Delete media uploaded by a user</a> from your homeserver's local media storage.</li>
-<li><a href="https://matrix-org.github.io/synapse/v1.41/admin_api/user_admin_api.html#create-or-modify-account">Edit the external ids</a> associated with a user by Single Sign-On / OpenID Connect providers.</li>
-<li><a href="https://matrix-org.github.io/synapse/v1.41/admin_api/user_admin_api.html#check-username-availability">Check if a username is available</a>, which behaves similarly to the <a href="https://matrix.org/docs/spec/client_server/r0.6.0#get-matrix-client-r0-register-available">related client-server API</a> in the Matrix Spec, but the Admin API version works even when registration is disabled on a homeserver.</li>
-</ul>
-<h2 id="everything-else">Everything Else</h2>
-<p>In addition to the usual boosts to performance and reliability like <a href="https://github.com/matrix-org/synapse/pull/10119">#10119</a> or <a href="https://github.com/matrix-org/synapse/pull/10513">#10513</a>, this release includes several notable improvements:</p>
-<ul>
-<li>The <code>/createRoom</code> endpoint can now be <a href="https://github.com/matrix-org/synapse/pull/10564">handled by workers</a>.</li>
-<li>Synapse can now route outbound federation requests, remote media downloads, and public key fetches through a <a href="https://matrix-org.github.io/synapse/v1.41/setup/forward_proxy.html">forward proxy</a>.</li>
-<li>Custom template configuration has now been centralized into a single <code>custom_templates_directory</code> <a href="https://matrix-org.github.io/synapse/v1.41/templates.html">configuration setting</a>.</li>
-<li>Matrix clients which allow users to <a href="https://matrix.org/docs/spec/client_server/latest#id64">set a <code>status_msg</code> with their presence</a> will find that Synapse no longer arbitrarily unsets the message when a user goes offline. Instead, each user's <code>status_msg</code> will persist until it is deliberately cleared by their client.</li>
-<li>The extension module API now exposes a function, <code>get_userinfo_by_id</code>, which accepts an MXID and returns a <code>UserInfo</code> object. This should simplify writing extension modules like spam checkers.</li>
-</ul>
-<p>These are just the highlights; please see the <a href="https://matrix-org.github.io/synapse/v1.41/upgrade.html#upgrading-to-v1410">Upgrade Notes</a> and <a href="https://github.com/matrix-org/synapse/blob/v1.41.0/CHANGES.md">Release Notes</a> for a complete list of changes in this release.</p>
-<p>Synapse is a Free and Open Source Software project, and we'd like to extend our thanks to everyone who contributed to this release, including <a href="https://github.com/Bubu">Bubu</a>, <a href="https://github.com/dklimpel">dklimpel</a>, <a href="https://github.com/H-Shay">H-Shay</a>, <a href="https://github.com/ilmari">ilmari</a>, <a href="https://github.com/Kentokamoto">Kentokamoto</a>, <a href="https://github.com/SimonBrandner">SimonBrandner</a>, and <a href="https://github.com/warricksothr">warricksothr</a>.</p>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2021&#x2F;08&#x2F;10&#x2F;synapse-1-40-0-released&#x2F;" title="Synapse 1.40.0 released">Synapse 1.40.0 released</a></h2>
-                <span>
-                    10.08.2021 00:00
-                    —
-                    <a href="/category/releases">
-                        Releases
-                    </a>
-                    —
-                    <a
-                        href="/author/dan-callahan">
-                        Dan Callahan
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Synapse 1.40.0 is out now!</p>
-<h2 id="support-for-room-version-8">Support for Room Version 8</h2>
-<p>This release of Synapse includes stable support for <a href="https://github.com/matrix-org/matrix-doc/pull/3289">Room Version 8</a>! Version 8 codifies a concept of &quot;<a href="https://github.com/matrix-org/matrix-doc/pull/3083">restricted rooms</a>&quot; which are private rooms joinable only by direct invitation or by being a member of other, designated Spaces / rooms.</p>
-<p>This means you can create a Matrix Space for your company, team, or guild, and instead of inviting people to the Space <em>and</em> directly to a bunch of private rooms, you can simply configure your private rooms such that membership in the Space <em>automatically</em> confers access to the private rooms.</p>
-<p>This is a major improvement to access control in Matrix, and we can't wait to use it ourselves.</p>
-<p>Note that client support for managing restricted rooms is still forthcoming, and you'll want to ensure that your users are on homeservers which support v8 before upgrading existing rooms. To ensure compatibility across federation, the default for newly created rooms remains at v6 for the time being.</p>
-<h2 id="everything-else">Everything Else</h2>
-<p>A few other items worth calling out:</p>
-<ul>
-<li>Synapse can now optionally recycle PostgreSQL connections after a specified number of transactions (<a href="https://github.com/matrix-org/synapse/pull/10440">#10440</a>), which may mitigate slow memory leaks in the database. Thanks to GitHub user hifi.</li>
-<li>We have a whole new documentation page explaining <a href="https://matrix-org.github.io/synapse/v1.40/development/room-dag-concepts.html">Room DAG Concepts</a> like depth, stream ordering, extremities, outliers, and state groups.</li>
-<li>The <a href="https://matrix-org.github.io/synapse/v1.40/admin_api/user_admin_api.html#list-accounts">Admin API for listing accounts</a> now returns a <code>creation_ts</code> property indicating when an account was created. Thanks to work by dklimpel.</li>
-<li>Synapse should better detect character encodings in URL previews thanks to a contribution by srividyut.</li>
-</ul>
-<p>In addition to further work towards implementing <a href="https://github.com/matrix-org/matrix-doc/pull/2716">MSC2716: Incrementally Importing History into Existing Rooms</a>, we've landed support for:</p>
-<ul>
-<li><a href="https://github.com/matrix-org/matrix-doc/pull/2033">MSC2033</a>: The <code>/account/whoami</code> endpoint now includes the <code>device_id</code> associated with the access token used to make the request.</li>
-<li>(Experimental) <a href="https://github.com/matrix-org/matrix-doc/pull/3244">MSC3244</a>: The <code>/_matrix/client/r0/capabilities</code> endpoint may include metadata about which room versions support which capabilities (like knocking on restricted joins).</li>
-<li>(Experimental) <a href="https://github.com/matrix-org/matrix-doc/pull/2285">MSC2285</a>: Clients may mark messages as read on the server without updating their externally visible read receipts, implemented by SimonBrandner.</li>
-</ul>
-<p>These are just the highlights; please see the <a href="https://github.com/matrix-org/synapse/blob/v1.40.0/CHANGES.md">Release Notes</a> for a complete list of changes in this release.</p>
-<p>Synapse is a Free and Open Source Software project, and we'd like to extend our thanks to everyone who contributed to this release, including <a href="https://github.com/dklimpel">dklimpel</a>, <a href="https://github.com/hifi">hifi</a>, <a href="https://github.com/SimonBrandner">SimonBrandner</a>, and <a href="https://github.com/srividyut">srividyut</a>.</p>
 
                 
             </div>

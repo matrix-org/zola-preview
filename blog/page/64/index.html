@@ -111,9 +111,312 @@
     
     <article class="post">
         <header>
-            <h1><a href="&#x2F;blog&#x2F;2014&#x2F;09&#x2F;09&#x2F;techcrunch-update&#x2F;" title="Techcrunch Update!">Techcrunch Update!</a></h1>
+            <h1><a href="&#x2F;blog&#x2F;2015&#x2F;03&#x2F;09&#x2F;synapse-0-8-0-android-0-2-2-sdk-app-ios-0-3-1-sdk-app-javascript-sdk-0-0-1-released-oh-my&#x2F;" title="Synapse 0.8.0, Android 0.2.2 SDK &amp; App, iOS 0.3.1 SDK &amp; App, JavaScript SDK 0.0.1 released! (oh my!)">Synapse 0.8.0, Android 0.2.2 SDK &amp; App, iOS 0.3.1 SDK &amp; App, JavaScript SDK 0.0.1 released! (oh my!)</a></h1>
             <span>
-                09.09.2014 00:00
+                09.03.2015 00:00
+                —
+                <a href="/category/tutorials">
+                    Tutorials
+                </a>
+                —
+                <a href="/author/matthew-hodgson">
+                    Matthew Hodgson
+                </a>
+            </span>
+            
+        </header>
+        <div>
+            <p>Hi all,</p>
+<p>What with the chaos of Mobile World Congress last week we seem to have been hoarding releases - so here's what's been happening!</p>
+<p><a href="https://github.com/matrix-org/synapse">Synapse 0.8.0</a> was released this afternoon.  This is a major performance/stability release, with lots of good stuff going on - especially adding more customisable push notification support APIs for iOS/Android; support for registering accounts from mobile devices; extensions to the new Application Service API and lots of federation improvements and bug fixes.  <b>Please upgrade at your earliest convenience.</b></p>
+<p>Meanwhile, we quietly released the <a href="https://play.google.com/store/apps/details?id=org.matrix.androidsdk.alpha">Matrix Console</a> Android example app to the Google Play last week, alongside <a href="https://github.com/matrix-org/matrix-android-sdk">v0.2.2 of the Android SDK</a> - release notes below.  There'll be a new version of the Android Console app out tomorrow, but mentioning here for completeness and to share the release notes.  Also, the <a href="https://github.com/matrix-org/matrix-ios-sdk">iOS SDK is now on v0.3.1</a>, with lots of performance and usability improvements.</p>
+<p>Finally, we have a whole new official <a href="https://github.com/matrix-org/matrix-js-sdk">Matrix client SDK for JavaScript</a>, all packaged up ready for use by Node developers and JS purists alike as an NPM with minimal dependencies.  Meanwhile, the <a href="https://github.com/matrix-org/matrix-angular-sdk">matrix-angular-sdk</a> has been switched to use matrix-js-sdk from now on.  You can use the plain JS API with a <code>npm install matrix-js-sdk</code> and then:</p>
+<pre>
+var sdk = require("matrix-js-sdk");
+var client = sdk.createClient("https://matrix.org");
+client.publicRooms(function(err, data) {'{'}
+    console.log("Public Rooms: %s", JSON.stringify(data));
+{'}'});
+
+</pre>
+<p>Meanwhile, release notes for all &amp; sundry lie below.</p>
+<pre>
+
+Changes in synapse v0.8.0 (2015-03-06)
+======================================
+
+General:
+
+* Add support for registration fallback. This is a page hosted on the server
+  which allows a user to register for an account, regardless of what client
+  they are using (e.g. mobile devices).
+
+* Added new default push rules and made them configurable by clients:
+
+  * Suppress all notice messages.
+  * Notify when invited to a new room.
+  * Notify for messages that don't match any rule.
+  * Notify on incoming call.
+
+Federation:
+
+* Added per host server side rate-limiting of incoming federation requests.
+* Added a ``/get_missing_events/`` API to federation to reduce number of
+  ``/events/`` requests.
+
+Configuration:
+
+* Added configuration option to disable registration:
+  ``disable_registration``.
+* Added configuration option to change soft limit of number of open file
+  descriptors: ``soft_file_limit``.
+* Make ``tls_private_key_path`` optional when running with ``no_tls``.
+
+Application services:
+
+* Application services can now poll on the CS API ``/events`` for their events,
+  by providing their application service ``access_token``.
+* Added exclusive namespace support to application services API.
+
+
+</pre>
+<pre>
+Changes in Matrix Android SDK in 0.2.2 (2015-02-27)
+===============================================
+
+-----
+ SDK
+-----
+  
+-----------------
+ Matrix Console
+-----------------
+Improvements:
+ * Exif management : the uploaded image is rotated according to the exif metadata
+   (if the device has enough free memory).
+ * Add a piechart while downloading an image 
+ * Add JSON representation of a message (tap on its row, “Message details”
+ * The public rooms list is now sorted according to the number of members.
+
+Features:
+ * Add configuration and skeleton classes for receiving GCM messages
+ * Add REST client for pushers API with add method for HTTP pushers.
+ * Add the account creation.
+
+Bug fixes:
+ * Reset the image thumbnail when a row is reused.
+ * SYAND-30 Notification should be away when entering a room.
+ * Some images thumbnails were downloaded several times.
+ * Restore the foreground service
+ * The medias cache was not cleared after logging out.
+ * The client crashed when joining #anime:matrix.org.
+ * SYAND-29 Messages in delivery status are not seen
+ * Some user display names were their matrix IDs.
+ * The room name/ topic were invalid when inviting to a room.
+
+
+</pre>
+<pre>
+Changes in Matrix iOS SDK in 0.3.1 (2015-03-03)
+===============================================
+
+-----
+ SDK
+-----
+Improvements:
+ * Improved push notifications documentation.
+ * MXSession: Slightly randomise reconnection times by up to 3s to prevent all
+   Matrix clients from retrying requests to the homeserver at the same time.
+ * Improved logs
+ 
+Bug fixes:
+ * SYIOS-90 - iOS can receive & display messages multiple times when on bad connections
+ 
+-----------------
+ Matrix Console
+-----------------
+Improvements:
+ * Fixed warnings with 64bits builds.
+ * Room history: Improve scrolling handling when keyboard appears.
+ * Contacts: Prompt user when local contacts tab is selected if constact sync is disabled.
+ 
+Bug fixes:
+ * Fix crash when switching rooms while the event stream is resuming.
+ * SYIOS-69 - On Screen Keyboard can end up hiding the most recent messages in a room.
+ * SYIOS-98 - Crash when attempting to attach image on iPad
+ 
+Changes in Matrix iOS SDK in 0.3.0 (2015-02-23)
+===============================================
+
+-----
+ SDK
+-----
+Breaks:
+ * [MXSession initWithMatrixRestClient: andStore: ] and the onStoreDataReady argument in
+   [MXSession start:] has been removed. The SDK client can now use the asynchronous
+   [MXSession setStore:] method to define a store and getting notified when the SDK can
+   read cached data from it. (SYIOS-62)
+ * MXStore implementations must now implement [MXStore openWithCredentials].
+ * All MXRestClient methods now return MXHTTPOperation objects.
+ 
+Improvements:
+ * Created the MXSession.notificationCenter component: it indicates when an event must be
+   notified to the user according to user's push rules settings.
+ * MXFileStore: Improved loading performance by 8x.
+ * Added an option (MXSession.loadPresenceBeforeCompletingSessionStart) to refresh presence
+   data in background when starting a session.
+ * Created MXLogger to redirect NSLog to file and to log crashes or uncaught exception.
+ * MXRestClient: Added [MXRestClient registerFallback].
+ * Logs: Make all NSLog calls follows the same format.
+ 
+Features:
+ * SYIOS-40 - Any HTTP request can fail due to rate-limiting on the server, and need to be retried.
+ * SYIOS-81 - Ability to send messages in the background.
+ 
+Bug fixes:
+ * SYIOS-67 - We should synthesise identicons for users with no avatar.
+ * MXSession: Fixed crash when closing the MXSession before the end of initial Sync.
+</pre>
+
+        </div>
+    </article>
+    
+    <article class="post">
+        <header>
+            <h1><a href="&#x2F;blog&#x2F;2015&#x2F;03&#x2F;02&#x2F;introduction-to-application-services&#x2F;" title="Introduction to Application Services">Introduction to Application Services</a></h1>
+            <span>
+                02.03.2015 00:00
+                —
+                <a href="/category/tutorials">
+                    Tutorials
+                </a>
+                —
+                <a href="/author/kegan-dougal">
+                    Kegan Dougal
+                </a>
+            </span>
+            
+        </header>
+        <div>
+            <p><strong>This post has now been edited into a guide - you can find <a href="https://github.com/matrix-org/matrix-doc/blob/master/supporting-docs/guides/2015-08-21-application_services.md">the source in github</a>, and the <a href="http://matrix.org/docs/guides/application-services">formatted guide on the matrix.org website</a>!</strong></p>
+<hr />
+<p>Hi everyone. I'm Kegan, one of the core developers on Matrix. I'd like to explain a bit more about one of the upcoming features in Matrix: Application Services. This is an entirely new component in the Matrix architecture which gives great power (along with great responsibility!) to the wielder.</p>
+<p>Application services are distinct modules which which sit alongside a home server providing arbitrary extensible functionality decoupled from the home server implementation. Just like the rest of Matrix, they communicate via HTTP using JSON. Application services function in a very similar way to traditional clients, but they are given much more power than a normal client. They can reserve entire namespaces of room aliases and user IDs for their own purposes. They can silently monitor events in rooms, or any events directed at any user ID. This power allows application services to have extremely useful abilities which overall enhance the end user experience.</p>
+<p>One of the main use cases for application services is for protocol bridges. As you may know, we have an IRC bridge bot on matrix.org which resides as a user on #matrix, #matrix-dev, #openwebrtc and #vuc which bridges into freenode. There is nothing special about this bot; it is just treated as a client. However, this limits the things the bot can do. For example, the bot cannot reserve the virtual user IDs it creates, and cannot lazily bridge arbitrary IRC rooms on-the-fly. By using application services, the IRC bot can do both of these things. This would allow any Matrix user to join a room alias which doesn't exist: say <code>#irc.freenode.python:matrix.org</code>, which would then tell the application service to create a new Matrix room, make the alias for it, join #python on freenode and bridge into it. Any IRC user on #python would then be provisioned as a virtual user e.g. <code>@irc.freenode.alice:matrix.org</code>. This also allows PMs to be sent directly to <code>@irc.freenode.alice:matrix.org</code>, no matter what channel Alice is on.</p>
+<p>Application services have enormous potential for creating new and exciting ways to transform and enhance the core Matrix protocol. For example, you could aggregate information from multiple rooms into a summary room, or create throwaway virtual user accounts to proxy messages for a fixed user ID on-the-fly. As you may expect, all of this power assumes a high degree of trust between application services and home servers. Only home server admins can allow an application service to link up with their home server, and the application service is in no way federated to other home servers. You can think of application services as additional logic on the home server itself, without messing around with the book-keeping that home servers have to do. This makes adding useful functionality very easy.</p>
+<p><strong>Example</strong></p>
+<p>The application service (AS) API itself uses webhooks to communicate from the home server to the AS:</p>
+<ul>
+<li>Room Alias Query API : The home server hits a URL on your application server to see if a room alias exists.</li>
+<li>User Query API : The home server hits a URL on your application server to see if a user ID exists.</li>
+<li>Push API : The home server hits a URL on your application server to notify you of new events for your users and rooms.</li>
+</ul>
+<p>A very basic application service may want to log all messages in rooms which have an alias starting with &quot;#logged_&quot; (side note: logging won't work if these rooms are using end-to-end encryption).</p>
+<p>Here's an example of a very basic application service using Python (with Flask and Requests) which logs room activity:</p>
+<pre># app_service.py:
+
+import json, requests  # we will use this later
+from flask import Flask, jsonify, request
+app = Flask(__name__)
+
+@app.route("/transactions/&lt;transaction&gt;", methods=["PUT"])
+def on_receive_events(transaction):
+    events = request.get_json()["events"]
+    for event in events:
+        print "User: %s Room: %s" % (event["user_id"], event["room_id"])
+        print "Event Type: %s" % event["type"]
+        print "Content: %s" % event["content"]
+    return jsonify({'{'}{'}'})
+
+if __name__ == "__main__":
+    app.run()
+</pre>
+<p>Set your new application service running on port 5000 with:</p>
+<pre>python app_service.py
+</pre>
+<p>The home server needs to know that the application service exists before it will send requests to it. This is done via a registration YAML file which is specified in Synapse's main config file e.g. <code>homeserver.yaml</code>. The server admin needs to add the application service registration configuration file as an entry to this file.</p>
+<pre># homeserver.yaml
+app_service_config_files:
+  - "/path/to/appservice/registration.yaml"
+</pre>
+<p>NB: Note the &quot;-&quot; at the start; this indicates a list element. The registration file <code>registration.yaml</code> should look like:</p>
+<pre># registration.yaml
+
+# this is the base URL of the application service
+url: "http://localhost:5000"
+
+# This is the token that the AS should use as its access_token when using the Client-Server API
+# This can be anything you want.
+as_token: wfghWEGh3wgWHEf3478sHFWE
+
+# This is the token that the HS will use when sending requests to the AS.
+# This can be anything you want.
+hs_token: ugw8243igya57aaABGFfgeyu
+
+# this is the local part of the desired user ID for this AS (in this case @logging:localhost)
+sender_localpart: logging
+namespaces:
+  users: []
+  rooms: []
+  aliases:
+    - exclusive: false
+      regex: "#logged_.*"
+</pre>
+<p><strong>You will need to restart the home server after editing the config file before it will take effect.</strong></p>
+<p>To test everything is working correctly, go ahead and explicitly create a room with the alias &quot;#logged_test:localhost&quot; and send a message into the room: the HS will relay the message to the AS by PUTing to /transactions/&lt;tid&gt; and you should see your AS print the event on the terminal. This will monitor any room which has an alias prefix of &quot;#logged_&quot;, but it won't lazily create room aliases if they don't already exist. This means it will only log messages in the room you created before: #logged_test:localhost. Try joining the room &quot;#logged_test2:localhost&quot; without creating it, and it will fail. Let's fix that and add in lazy room creation:</p>
+<pre>@app.route("/rooms/&lt;alias&gt;")
+def query_alias(alias):
+    alias_localpart = alias.split(":")[0][1:]
+    requests.post(
+        # NB: "TOKEN" is the as_token referred to in registration.yaml
+        "<a href="http://localhost:8008/_matrix/client/api/v1/createRoom?access_token=TOKEN" target="_blank">http://localhost:8008/_matrix/client/api/v1/createRoom?access_token=TOKEN</a>",
+        json.dumps({'{'}
+            "room_alias_name": alias_localpart
+        {'}'}),
+        headers={'{'}"Content-Type":"application/json"{'}'}
+    )
+    return jsonify({'{'}{'}'})
+</pre>
+<p>This makes the application service lazily create a room with the requested alias whenever the HS queries the AS for the existence of that alias (when users try to join that room), allowing any room with the alias prefix #logged_ to be sent to the AS. Now try joining the room &quot;#logged_test2:localhost&quot; and it will work as you'd expect.  You can see that if this were a real bridge, the AS would have checked for the existence of #logged_test2 in the remote network, and then lazily-created it in Matrix as required.</p>
+<p>Application services are powerful components which extend the functionality of home servers, but they are limited. They can only ever function in a &quot;passive&quot; way. For example, you cannot implement an application service which censors swear words in rooms, because there is no way to prevent the event from being sent. Aside from the fact that censoring will not work when using end-to-end encryption, all federated home servers would also need to reject the event in order to stop developing an inconsistent event graph. To &quot;actively&quot; monitor events, another component called a &quot;Policy Server&quot; is required, which is beyond the scope of this post.  Also, Application Services can result in a performance bottleneck, as all events on the homeserver must be ordered and sent to the registered application services.  If you are bridging huge amounts of traffic, you may be better off having your bridge directly talk the Server-Server federation API rather than the simpler Application Service API.</p>
+<p>I hope this post demonstrates how easy it is to create an application service, along with a few ideas of the kinds of things you can do with them. Obvious uses include build protocol bridges, search engines, invisible bots, etc. For more information on the AS HTTP API, check out the new <a href="http://matrix.org/docs/spec/#application-service-api">Application Service API</a> section in the spec, or the raw drafts and spec in <a href="https://github.com/matrix-org/matrix-doc/" target="_blank">https://github.com/matrix-org/matrix-doc/</a>.  The AS API is not yet frozen, so feedback is very welcome!</p>
+
+        </div>
+    </article>
+    
+    <article class="post">
+        <header>
+            <h1><a href="&#x2F;blog&#x2F;2015&#x2F;02&#x2F;26&#x2F;welcoming-the-openmarket-matrix-gateway&#x2F;" title="Welcoming the OpenMarket Matrix Gateway!">Welcoming the OpenMarket Matrix Gateway!</a></h1>
+            <span>
+                26.02.2015 00:00
+                —
+                <a href="/category/general">
+                    General
+                </a>
+                —
+                <a href="/author/oddvar-lovaas">
+                    Oddvar Lovaas
+                </a>
+            </span>
+            
+        </header>
+        <div>
+            <p>Last week, we mentioned that we released part of a first implementation of the long awaited <a title="Application Service (AS) API" href="http://matrix.org/docs/spec/#application-service-api">Application Service (AS) API</a> as part of the <a title="Synapse 0.7.1 released – with Application Service API" href="http://matrix.org/blog/2015/02/19/synapse-0-7-1-released-with-application-service-api/">0.7.1 release</a>. The AS API makes it dead simple to connect your service into the Matrix ecosystem using an existing standard Matrix server.</p>
+<p>And today we're very excited that the first implementation using this API has gone live! <a title="OpenMarket" href="http://openmarket.com">OpenMarket</a> just announced the <a title="OpenMarket Matrix Gateway" href="http://www.openmarket.com/matrix/">OpenMarket Matrix Gateway</a> which lets you chat with non-Matrix users via their phone number: as you send and receive instant messages from your Matrix chat room, they'll receive and send SMSes back to you, which will appear in your Matrix room as IM, extending your reach to any non-Matrix user.</p>
+<p>To use the new OpenMarket service just login to the matrix.org <a title="webclient" href="/beta/">webclient</a> and start a chat with your target mobile phone user by identifying him/her with a Matrix ID in the format <em>@+&lt;msisdn&gt;:matrix.openmarket.com</em> (msisdn being the internationally formatted phone number of your contact) - any messages to them will be sent via OpenMarket's SMS service. The SMSes will be sent from dynamically assigned numbers so that the recipient is able to respond to your message(s) - and the user will first receive an &quot;opt-in&quot; message from the OpenMarket Matrix Gateway to invite them to the conversation (just as they would if you invited them to a conversation in Matrix). Note that there are a finite set of these dynamically assigned numbers: OpenMarket reserves the right to recycle contact numbers if they have not been used to send or receive traffic for more than 2 months.</p>
+<p>Sending SMS through the OpenMarket Matrix Gateway will be free during the introductory beta testing period, and users will be warned when that changes - although usage is subject to a per-user fair-usage policy. Despite the free service today, you'll have to associate a valid PayPal account to your account in order to send messages for security purposes. OpenMarket will not (and cannot) charge this account without your consent. You can associate your PayPal account via the settings page of any reference Matrix web client which has been configured to be aware of the OpenMarket Matrix Gateway - for example, the matrix.org <a title="webclient" href="/beta/#/settings">webclient</a>.</p>
+<p>You'll also have to accept the OpenMarket Matrix API End User License Agreement to use the service.</p>
+<p>The OpenMarket Matrix Gateway is a great example of how the Application Service API can be used to extend Matrix, we're really happy to see it live and hope it's going to give our community lots of ideas! There are a lot of services that could mutually benefit from being integrated with Matrix, and the AS API makes this much easier to accomplish!</p>
+<p>Thus, we strongly urge you to have a look at the <a title="AS API" href="http://matrix.org/docs/spec/#application-service-api">AS API</a> - and as always we are happy to answer any questions at <a title="#matrix:matrix.org" href="/beta/#/room/#matrix:matrix.org">#matrix:matrix.org</a>!</p>
+
+        </div>
+    </article>
+    
+    <article class="post">
+        <header>
+            <h1><a href="&#x2F;blog&#x2F;2015&#x2F;02&#x2F;21&#x2F;matrix-at-mobile-world-congress-2015&#x2F;" title="Matrix at Mobile World Congress 2015">Matrix at Mobile World Congress 2015</a></h1>
+            <span>
+                21.02.2015 00:00
                 —
                 <a href="/category/events">
                     Events
@@ -126,43 +429,18 @@
             
         </header>
         <div>
-            <p>The Matrix team is at <a href="http://techcrunch.com/events/disrupt-sf-2014/">TechCrunch Disrupt SF 2014</a> this week - we had a great time at the hackathon on Saturday/Sunday where we were really excited to see several teams building their hacks on Matrix APIs - we stayed the night to support whilst building out our own hack (experimenting with sending collaborative 3D animations over Matrix as JSON)!  Huge thanks to everyone who built on top of Matrix - hope you had as much fun as we did :)</p>
-<p>Please come talk to us in person in Startup Alley (next to the Brazilian Pavilion) if you're attending Disrupt and find out all about Matrix first hand!</p>
-<p><a href="http://matrix.org/blog/wp-content/uploads/2014/09/6am.jpg"><img class="aligncenter size-large wp-image-138" src="http://matrix.org/blog/wp-content/uploads/2014/09/6am-1024x768.jpg" alt="6am Hackathon..." width="625" height="468" /></a></p>
-<p>(Photo shows us somehow surviving in the 6am slot.  Mental note to never try to do raycasting vector maths after being up for 24 hours again...)</p>
+            <p>Hi everyone,</p>
+<p>Just a quick heads up that we'll be attending <a href="http://www.mobileworldcongress.com">Mobile World Congress</a> (Mar 2-5) this year, chatting to the telco community about how they can benefit from Matrix; encouraging companies to build gateways, servers and clients and generally trying to grow the Matrix ecosystem.  If you're going to be there and are interested in finding out more, please mail us (matrix at matrix.org) to arrange a meeting - we'll be hanging out at the OpenMarket (8.1D113) and the Amdocs (3G10) booths.</p>
+<p>Thanks!</p>
 
         </div>
     </article>
     
     <article class="post">
         <header>
-            <h1><a href="&#x2F;blog&#x2F;2014&#x2F;09&#x2F;06&#x2F;high-level-tech-overview&#x2F;" title="High Level Overview">High Level Overview</a></h1>
+            <h1><a href="&#x2F;blog&#x2F;2015&#x2F;02&#x2F;19&#x2F;synapse-0-7-1-released-with-application-service-api&#x2F;" title="Synapse 0.7.1 released - with Application Service API">Synapse 0.7.1 released - with Application Service API</a></h1>
             <span>
-                06.09.2014 00:00
-                —
-                <a href="/category/general">
-                    General
-                </a>
-                —
-                <a href="/author/amandine-le-pape">
-                    Amandine Le Pape
-                </a>
-            </span>
-            
-        </header>
-        <div>
-            <p>Hey,</p>
-<p>We realized we're missing a high level overview highlighting the key points of the specifications and architecture of Matrix, which could be useful for those who don't feel like going straight into the specs. So here is a <a href="http://matrix.org/blog/wp-content/uploads/2014/09/Introducing-matrix.pdf">quick presentation</a> to fill in some of the gaps!</p>
-<p>Please fire away with any questions :)</p>
-
-        </div>
-    </article>
-    
-    <article class="post">
-        <header>
-            <h1><a href="&#x2F;blog&#x2F;2014&#x2F;09&#x2F;06&#x2F;synapse-v0-2-2-released&#x2F;" title="Synapse v0.2.2 released!">Synapse v0.2.2 released!</a></h1>
-            <span>
-                06.09.2014 00:00
+                19.02.2015 00:00
                 —
                 <a href="/category/general">
                     General
@@ -176,41 +454,55 @@
         </header>
         <div>
             <p>Hi all,</p>
-<p>We just pushed our first major update since matrix.org launched for Synapse, the reference Matrix homeserver:</p>
-<h3 id="changes-in-synapse-0-2-2-2014-09-06">Changes in synapse 0.2.2 (2014-09-06)</h3>
-<p>Webclient:</p>
+<p>We released Synapse 0.7.1 this morning - <strong>This release includes more critical federation stability and performance updates - please upgrade as soon as you can!</strong>.  You can get the code and installation instructions from <a href="http://github.com/matrix-org/synapse">http://github.com/matrix-org/synapse</a> as normal.</p>
+<p><b>Update:</b> You can also install and run Synapse now via <a href="http://docker.com">Docker</a>, thanks to a Dockerfile at <a href="https://registry.hub.docker.com/u/silviof/docker-matrix/">https://registry.hub.docker.com/u/silviof/docker-matrix/</a> contributed today by Silvio Fricke.  Thanks Silvio!!</p>
+<p>Other than the federation improvements, the big new feature that lands here is the long-awaited Application Service API.  This is a set of simple extensions to the Client-Server API to make it much easier to build powerful gateways and other application logic on top of Matrix.  You can think of it being somewhere between IRC Services, IMS application services and XMPP components - but with the simplicity of an IRC bot.  The extensions let you register application services as privileged Matrix clients, and create virtual users and virtual rooms in bulk within Matrix (e.g. bridging an entire IRC network into Matrix).  The API also lets your application service receive inbound events as HTTP pushes rather than having to poll.  The end result is that it's suddenly become <strong>a lot</strong> easier to bridge existing communities with Matrix!</p>
+<p>We'll post another blog post shortly to give a lot more information; in the interim you can read more about it in the newly updated spec at <a href="http://matrix.org/docs/spec/#application-service-api">http://matrix.org/docs/spec/#application-service-api</a>.</p>
+<br/>
+<pre>
+Changes in synapse v0.7.1 (2015-02-19)
+======================================
 <ul>
-<li>Fix desktop notifications</li>
-<li>Add support for captchas on registration</li>
-<li>Handle <code>m.room.aliases</code> events.</li>
-<li>Implement local echo when sending message</li>
-<li>Inform the UI when a message failed to send.</li>
-<li>Only autoscroll on receiving a new message if the user was already at the bottom of the screen.</li>
-<li>Add support for ban/kick reasons.</li>
-<li>Add /join support for IRC acolytes</li>
-<li>Make IRC-style commands a little more forgiving</li>
-</ul>
-<p>Homeserver:</p>
+<li>
+<p>Initial alpha implementation of parts of the Application Services API.
+Including:</p>
 <ul>
-<li>Validate <code>m.room.power_level</code> events.</li>
-<li>When the server returns state events it now also includes the previous content if any to aid pagination</li>
-<li>Add support for inviting people when creating a new room.</li>
-<li>Make the homeserver inform the room via <code>m.room.aliases</code> when a new alias is added for a room.</li>
+<li>AS Registration / Unregistration</li>
+<li>User Query API</li>
+<li>Room Alias Query API</li>
+<li>Push transport for receiving events.</li>
+<li>User/Alias namespace admin control</li>
 </ul>
-<p>The <a href="http://matrix.org/alpha">matrix.org homeserver</a> &amp; webclient has already been updated to the latest version - if you're running your own homeserver, please update. v0.2.2 retains backwards compatibility with previous homeserver releases.</p>
-<p>Get the code from <a href="http://github.com/matrix-org/synapse">http://github.com/matrix-org/synapse</a>!</p>
+</li>
+<li>
+<p>Add cache when fetching events from remote servers to stop repeatedly
+fetching events with bad signatures.</p>
+</li>
+<li>
+<p>Respect the per remote server retry scheme when fetching both events and
+server keys to reduce the number of times we send requests to dead servers.</p>
+</li>
+<li>
+<p>Inform remote servers when the local server fails to handle a received event.</p>
+</li>
+<li>
+<p>Turn off python bytecode generation due to problems experienced when
+upgrading from previous versions.</p>
+</li>
+</ul>
+</pre>
 
         </div>
     </article>
     
     <article class="post">
         <header>
-            <h1><a href="&#x2F;blog&#x2F;2014&#x2F;09&#x2F;03&#x2F;hello-world&#x2F;" title="Hello world">Hello world</a></h1>
+            <h1><a href="&#x2F;blog&#x2F;2015&#x2F;02&#x2F;12&#x2F;synapse-0-7-0-and-matrix-angular-sdk-0-6-2-released&#x2F;" title="Synapse 0.7.0 and matrix-angular-sdk 0.6.2 released!">Synapse 0.7.0 and matrix-angular-sdk 0.6.2 released!</a></h1>
             <span>
-                03.09.2014 00:00
+                12.02.2015 00:00
                 —
-                <a href="/category/general">
-                    General
+                <a href="/category/tech">
+                    Tech
                 </a>
                 —
                 <a href="/author/matthew-hodgson">
@@ -220,100 +512,232 @@
             
         </header>
         <div>
-            <p>I'm Matthew, and I'm responsible for the techie side of what we're up to with Matrix.</p>
-<p>Matrix is the result of a lot of work my team's done over the last 10 years or so (first at <a href="http://www.mxtelecom.com">MX Telecom</a>, then <a href="http://www.openmarket.com">OpenMarket</a>, and then <a href="http://www.amdocs.com/UnifiedCommunications">Amdocs</a>) in developing next-generation IP communication solutions.  First we started with an <a href="http://www.asterisk.org">Asterisk</a>-based platform running basic PSTN IVR services, and then shifted to an in-house IAX-based IVR platform built in Java, and then added circuit-switched (<a href="http://en.wikipedia.org/wiki/3G-324M">3G-324M</a>) video calling, then switched to SIP/RTP, C++ and a massively-distributed softswitch architecture affectionately called 'The Next Generation'.  Then the iPhone and Android came along, and we realised we didn't have to be constrained by built-in phone capabilities and ported our whole C++ SIP/RTP VoIP stack over to iOS/Android and got writing Video/VoIP calling apps.  This evolved to developing full-blown unified communication apps (e.g. <a href="http://www.blah.com">Blah</a>), using XMPP at first for messaging before switching to our own HTTP-based messaging APIs.</p>
-<p>Somewhere along the way it became painfully obvious that VoIP and IM hasn't really evolved as well as the rest of the internet.  Back when SIP/RTP first emerged, it simply wasn't mature enough to work on the open internet as well as HTTP or SMTP or even FTP - it needed STUN, ICE, TURN, Opus and many other refinements to be really usable in the wild.  And similarly XMPP hasn't taken over the world quite as much as we once hoped.  Meanwhile, many folks went and built their own proprietary walled-garden solutions (be it Skype, FaceTime, Viber, WhatsApp, or even our own efforts) and we've ended up in the current horrible situation where our online communication is fragmented across hundreds of isolated apps and websites.  It's like a world where email was never unified, and half the world is still stuck on Compuserve.  And it's counter to the whole ethos of the internet as an open platform for collaboration and communication.</p>
-<p>We decided that we want to fix this and so we have built and published a new open standard, together with open source (ASLv2) reference server (Python/Twisted) and client (JS/Angular, Python, Perl) codebases, and so provide new building blocks that can be used to build truly interoperable federated IM and VoIP functionality.  We consider this effectively an investment in the industry: by creating a strictly non-profit initiative like Matrix, we both make the world a better place for end users - as well as creating new business opportunities (both opensource and commercial) for the telecoms industry as a whole.</p>
-<p>The standard and code are all brand new and very much still in creation at this point, but we're releasing it early to get as much feedback and input from the community as early on as we possibly can. Right now our focus is on fully decentralised federated group messaging, but VoIP and identity management is coming together well too.  You can think of it as &quot;making VoIP/IM as interoperable and flexible as email&quot;, or perhaps &quot;the missing signalling layer for WebRTC&quot;, &quot;XMPP for an HTTP world&quot;, or “what would happen if IRC, XMPP, SIP, SMTP, IMAP and NNTP had kids?” Here are some reasons we think that you should use Matrix:</p>
+            <p>We just pushed out a major new release of <a href="http://github.com/matrix-org/synapse">Synapse 0.7.0</a>, the python reference server for Matrix, and a minor maintenance update for <a href="http://github.com/matrix-org/matrix-angular-sdk">matrix-angular-sdk 0.6.2</a>, the reference web client implementation.</p>
+<p>The emphasis here has been on federation performance and stability - with all the recent interest from <a href="https://fosdem.org/2015/schedule/event/matrix/">FOSDEM</a> and <a href="http://lwn.net/Articles/632572">LWN</a> and <a href="https://news.ycombinator.com/item?id=8997844">HackerNews</a> we've been getting a lot of traffic on matrix.org and new servers federating up, so we've been busy profiling and fixing performance on some of the hot paths by adding in-memory caches and similar.</p>
+<p><b>This release is <em>highly</em> recommended if you are running a federated server, as it fixes many denial-of-service failure modes in the federation implementation, as well as many performance improvements</b></p>
+<p>Behind the scenes, there's also lots of work going on for v2 of the Client-Server API (which lets you filter the events your client subscribes to in a room, and combines the 'initial sync' and 'eventstream' APIs into a single simplified '/sync' API) - the alpha of this has landed in 0.7.0, but we don't recommend trying to use it yet. Meanwhile the Application Service API is effectively finished, but hasn't landed on the master branch yet. Synapse also finally has initial support for push notifications for the iOS client now via the <a href="http://github.com/matrix-org/sygnal">sygnal</a> APNS gateway, although we need to actually document how to set this up to be usable in general.</p>
+<p>Finally, we have switched to recommending that synapse is installed in a virtualenv rather than into ~/.local, due to various problems with how setup.py's dependency management works. Instructions on setting up a virtualenv can be found in the <a href="http://github.com/matrix-org/synapse/README.rst">README</a>.</p>
+<p>On the clientside: we've improved performance, enabled identicons for unknown users, and now fully support OpenWebRTC for VoIP calling from Safari, Bowser, and other OpenWebRTC-capable browsers!</p>
+<p>Thanks to everyone running servers - please upgrade, tell your friends, and help us grow Matrix!</p>
+<pre>
+Changes in synapse v0.7.0 (2015-02-12)
+======================================
+
+* Add initial implementation of the query auth federation API, allowing
+  servers to agree on whether an event should be allowed or rejected.
+* Persist events we have rejected from federation, fixing the bug where
+  servers would keep requesting the same events.
+* Various federation performance improvements, including:
+  - Add in memory caches on queries such as:
+     * Computing the state of a room at a point in time, used for
+       authorization on federation requests.
+     * Fetching events from the database.
+     * User's room membership, used for authorizing presence updates.
+  - Upgraded JSON library to improve parsing and serialisation speeds.
+* Add default avatars to new user accounts using pydenticon library.
+* Correctly time out federation requests.
+* Retry federation requests against different servers.
+* Add support for push notifications and push rules.
+* Add alpha versions of proposed new CSv2 APIs, including ``/sync`` API.
+
+</pre>
+<pre>
+Changes in Matrix Angular SDK 0.6.2 (2015-02-12)
+================================================
+Bug fixes:
+ - Fixed a bug which caused OpenWebRTC to occasionally fail.
+ - Fixed a bug which caused multiple room initial syncs to occur in rapid
+   succession.
+
+Features:
+ - Display a "Joining Room" dialog when joining rooms.
+ - Display identicons for users with no avatar.
+ - Display m.notice events with full formatting.
+ - Add push notification rules to settings.
+
+Improvements:
+ - Modified the red/blue notification colours to be more noticeable on a wider
+   range of displays.
+ - Highlight room invitations in blue.
+ - Calculate room names for rooms of 3+ members.
+ - Improved page load performance.
+ 
+</pre>
+
+        </div>
+    </article>
+    
+    <article class="post">
+        <header>
+            <h1><a href="&#x2F;blog&#x2F;2015&#x2F;02&#x2F;05&#x2F;ios-sdk-and-matrix-console-0-2-2-released&#x2F;" title="iOS: SDK and Matrix Console 0.2.2 released">iOS: SDK and Matrix Console 0.2.2 released</a></h1>
+            <span>
+                05.02.2015 00:00
+                —
+                <a href="/category/tech">
+                    Tech
+                </a>
+                —
+                <a href="/author/emmanuel-rohee">
+                    Emmanuel Rohee
+                </a>
+            </span>
+            
+        </header>
+        <div>
+            <p>A new release of the iOS SDK and the iOS Matrix Console app is available on GitHub: <a title="https://github.com/matrix-org/matrix-ios-sdk" href="https://github.com/matrix-org/matrix-ios-sdk">https://github.com/matrix-org/matrix-ios-sdk</a>.</p>
+<p>If you use CocoaPods to manage your application dependencies, note that the Matrix SDK pod has been updated too.</p>
+<p>The changes since the last release are:</p>
+<h3 id="sdk">SDK</h3>
+<dl><dt>Improvements:</dt><dd>
 <ul>
-	<li><span style="font-size: 1rem; line-height: 1.714285714;">Simple pragmatic RESTful HTTP/JSON APIs.  No more XMPP or SIP stacks and wrestling XML streams or torture-testing SIP parsers.</span>
-</li>
-	<li><span style="font-size: 1rem; line-height: 1.714285714;">No single points of control for channels of communication (unless you really want it for moderation or similar). Room state for a room is synchronised with eventual consistency over all participating Matrix servers - no single server controls the room.</span>
-</li>
-	<li><span style="font-size: 1rem; line-height: 1.714285714;">No more netsplits - history re-heals itself if the matrix fractures</span>
-</li>
-	<li><span style="font-size: 1rem; line-height: 1.714285714;">All communication is group by default: 1:1 chat is just a subset of group chat.</span>
-</li>
-	<li><span style="font-size: 1rem; line-height: 1.714285714;">Multi-device aware: all state is stored and synchronised in realtime across all devices, and away-state and notifications are aware of multiple devices.</span>
-</li>
-	<li><span style="font-size: 1rem; line-height: 1.714285714;">Uses arbitrary 3rd party identifiers - doesn't rely on JIDs or SIP URIs for identity.</span>
-</li>
-	<li><span style="font-size: 1rem; line-height: 1.714285714;">Share the same simple HTTP signalling channel for messaging and VoIP</span>
-</li>
-	<li><span style="font-size: 1rem; line-height: 1.714285714;">Support more efficient transports if you want (e.g. low-bandwidth/low-roundtrip sync on mobile)</span>
-</li>
-	<li><span style="font-size: 1rem; line-height: 1.714285714;">Built for mobile - e.g. support push notification and low-bandwidth/low-latency client-server transports if needed (in progress)</span>
-</li>
-	<li><span style="font-size: 1rem; line-height: 1.714285714;">TLS (HTTPS) by default, either with self-signed certs with published public keys or proper SSL CA signed certs (in progress)</span>
-</li>
-	<li><span style="font-size: 1rem; line-height: 1.714285714;">End-to-end PKI encryption (in progress)</span>
-</li>
-	<li><span style="font-size: 1rem; line-height: 1.714285714;">Trusted federation of public identity servers available for publishing your PKI public keys and tracking your validated 3rd party IDs</span>
-</li>
+	<li>MXFileStore stores data on a separated thread to avoid blocking the UI thread.</li>
+	<li>MXRestClient: Callback blocks in all MXRestClient methods are now optional.</li>
+	<li>MXEvent: Cleaned up exposed properties and added a description for each of them.</li>
 </ul>
-If this sounds good to you, then please take a look at the <a href="http://matrix.org/docs/spec">spec</a>, or our <a href="http://matrix.org/docs/howtos">tutorials</a>, or jump straight into playing with the <a href="http://matrix.org/docs/api">APIs</a>, or try running your own Matrix homeserver, or sign up to our <a href="http://matrix.org/mailman">mailing lists</a> - and whatever else, come swing by <a href="http://matrix.org/alpha">#matrix:matrix.org</a> and say hi!
-<p><a href="http://xkcd.com/927/"><img class="aligncenter" style="box-shadow: 0 0 0 ! important" src="http://imgs.xkcd.com/comics/standards.png" alt="" /></a></p>
+</dd><dt>Features:</dt><dd>
+<ul>
+	<li>Added API for registering for push notifications.</li>
+	<li>Added generic API methods to make any kind of registration or login flow.</li>
+	<li>Added Identity server API: lookup3pid, requestEmailValidation, validateEmail and bind3PID.</li>
+	<li>Management of event redaction: there is a new method in the SDK to redact an event and the SDK updates its data on redaction event.</li>
+</ul>
+</dd><dt>Bug fixes:</dt><dd>
+<ul>
+	<li>SYIOS-5 - Expose registration API</li>
+	<li>SYIOS-44 - Credentials persist across logout</li>
+	<li>SYIOS-54 - Matrix Console app slightly freezes when receiving a message</li>
+	<li>SYIOS-59 - Infinite loop in case of back pagination on new created room</li>
+	<li>MXRoom: Fixed [MXRoom sendTextMessage]</li>
+</ul>
+</dd></dl>
+<h3 id="matrix-console">Matrix Console</h3>
+<dl><dt>Improvements:</dt><dd>
+<ul>
+	<li>When long pressing on a message, the app shows the JSON string of the Matrix event.</li>
+	<li>On this screen, the user can redact the event - if he has enough power level.</li>
+	<li>Use home server media repository facilities to use lower image size for thumbnails and avatars</li>
+	<li>Settings screen: show build version with the app version.</li>
+	<li>Settings screen: added an option to hide information related to redacted event.</li>
+	<li>Settings screen: added an option to enable reading of local phonebook. The country is required to internationalise phone numbers.</li>
+</ul>
+</dd><dt>Features:</dt><dd>
+<ul>
+	<li>Push notifications.</li>
+	<li>Added a contacts screen that displays Matrix users the user had interactions with and contacts from the device phonebook.</li>
+	<li>Contacts from the device phonebook who have an email linked to a Matrix user id are automatically recognised.</li>
+</ul>
+</dd><dt>Bug fixes:</dt><dd>
+<ul>
+	<li>SYIOS-53 - multilines text input that expands as you type mutiplines would be nice</li>
+	<li>SYIOS-45 - Need to check the thumbnail params requested by iOS</li>
+	<li>SYIOS-55 - High resolution avatars create memory pressure</li>
+	<li>SYIOS-57 - Back pagination does not work well for self chat</li>
+	<li>SYIOS-56 - add cache size handling in settings</li>
+	<li>SYIOS-60 - In a self chat, Console takes ages to paginate back even if messages are in cache</li>
+	<li>SYIOS-61 - Chat room : cannot scroll to bottom when keyboard is opened whereas the growing textview contains multi-lines text.</li>
+	<li>SYIOS-63 - calculate room names for 3+ members if no room name/alias</li>
+	<li>SYIOS-44 - Credentials persist across logout</li>
+	<li>SYIOS-64 - Chat room : unexpected blank lines are added into history when user types in growing textview</li>
+	<li>SYIOS-65 - IOS8 : in case of search in recents, keyboard is not dismisssed when user selects a room.</li>
+	<li>SYIOS-16 Add option in Console to join room thanks to its alias</li>
+</ul>
+</dd></dl>
 
         </div>
     </article>
     
     <article class="post">
         <header>
-            <h1><a href="&#x2F;blog&#x2F;2014&#x2F;09&#x2F;03&#x2F;welcome-to-the-matrix-blog&#x2F;" title="Welcome to the Matrix blog!">Welcome to the Matrix blog!</a></h1>
+            <h1><a href="&#x2F;blog&#x2F;2015&#x2F;02&#x2F;04&#x2F;back-from-fosdem&#x2F;" title="Back from FOSDEM!">Back from FOSDEM!</a></h1>
             <span>
-                03.09.2014 00:00
+                04.02.2015 00:00
                 —
                 <a href="/category/general">
                     General
                 </a>
                 —
-                <a href="/author/admin">
-                    admin
+                <a href="/author/oddvar-lovaas">
+                    Oddvar Lovaas
                 </a>
             </span>
             
         </header>
         <div>
-            <p>Today is a big day for us as we are launching Matrix.org, an open initiative which has the goal of making real-time communication over IP as seamless and interoperable as email.</p>
-<p>How do we want to achieve this? Very simply by creating a new federated, open-source ecosystem for VoIP and instant messaging on the internet! Ambitious right? :)</p>
-<p>Actually not that much! In practice it's fairly simple: we are publishing the specification of a pragmatic and lightweight open standard, some opensource reference implementations of the servers and clients, and pragmatic RESTful HTTP JSON APIs, all of which are available right now on <a title="Github" href="http://github.com/matrix-org" target="_blank">Github</a>!</p>
-<p>What does this mean for the world?</p>
-<p>For techies, it gives developers a new way of building and running their own communications functionality, or integrating existing services into the Matrix ecosystem.</p>
-<p>For consumers, it means that eventually they may be able to choose to use their favourite app from their trusted app provider, whilst reaching anyone they like given the entire Matrix ecosystem is interoperable.</p>
-<p>So this is the very high level description of Matrix, but it misses the reasons why we've started this. We thought that rather than summarizing the main reasons for launching this project in a faceless post it would be interesting to present it from different perspectives, so we've asked some of the core team to give their take on it:</p>
-<p style="padding-left: 30px;">- Read <strong><a href="http://matrix.org/blog/?p=62">Matthew's</a></strong> post and get an insight of Matrix' technical history and rationale.</p>
-<p style="padding-left: 30px;">- Check out <strong><a title="Why Matrix?" href="http://matrix.org/blog/?p=12">Amandine's </a></strong>view on why the users need Matrix.</p>
-<p style="text-align: right;">The Matrix Team</p>
-PS: Matrix is hoping to talk about the future of communication in general at <b>SXSW Interactive</b>  - if you like the idea of Matrix, please <strong>vote for us</strong> by clicking <a href="http://panelpicker.sxsw.com/vote/37949">here</a> before September 5th!
+            <p><a href="http://fosdem.org" title="FOSDEM">FOSDEM</a> was great fun! Two days full of conferences and demos; lots of interesting technologies and interested people - and most of all: talking to so many new faces about Matrix and potential uses and integration ideas. </p>
+<p>Both our lightning talk and IoT-devroom talk were completely filled up with huge queues outside (sorry folks), and our demos seemed to go down fairly well.  In fact several people <a href="/code">set up their own homeserver</a> and joined the federated network of Matrix servers during FOSDEM itself!</p>
+<p>Here's a <a href="http://twitter.com/matrixdotorg/status/561535884567130112" title="view from our stand">view from our stand</a>, from our <a href="http://twitter.com/matrixdotorg/status/561543011662696448" title="lightning talk">lightning talk</a> and from our <a href="http://twitter.com/thierrymarianne/status/561828001231695872" title="IoT-devroom talk">IoT-devroom talk</a>.</p>
+<p>If you missed the talks, recordings will (soon) be available from the FOSDEM site (links will be added here once available) - in the meantime you can check out the slides here: <a href="http://matrix.org/blog/wp-content/uploads/2015/02/2015-01-31-Matrix_FOSDEM.pdf" title="lightning talk">lightning talk</a> and <a href="http://matrix.org/blog/wp-content/uploads/2015/02/2015-02-01-Matrix-IoT-FOSDEM.pdf" title="IoT-devroom talk">IoT-devroom talk</a>.</p>
+<p>Thanks to everyone who came to have a chat about Matrix and/or help with setting up their own homeserver (or to play with <a href="https://www.youtube.com/watch?v=TyIw2AkYpeo">Sentinel, our mascot</a>) - please do reach out to us via our <a href="/beta/#/room/#matrix:matrix.org" title="Matrix HQ room">Matrix HQ room</a> or IRC (<a href="irc://irc.freenode.net/matrix">#matrix on freenode</a>) if you have any problems - or want to help us fix our python packaging ;)  Now is a great time to get involved as we are currently landing new APIs and soon will be offering an Application Server API to ease bridging to other services.</p>
 
         </div>
     </article>
     
     <article class="post">
         <header>
-            <h1><a href="&#x2F;blog&#x2F;2014&#x2F;09&#x2F;03&#x2F;why-matrix&#x2F;" title="Why Matrix?">Why Matrix?</a></h1>
+            <h1><a href="&#x2F;blog&#x2F;2015&#x2F;01&#x2F;29&#x2F;looking-forward-to-fosdem&#x2F;" title="Looking forward to FOSDEM!">Looking forward to FOSDEM!</a></h1>
             <span>
-                03.09.2014 00:00
+                29.01.2015 00:00
                 —
                 <a href="/category/general">
                     General
                 </a>
                 —
-                <a href="/author/amandine-le-pape">
-                    Amandine Le Pape
+                <a href="/author/oddvar-lovaas">
+                    Oddvar Lovaas
                 </a>
             </span>
             
         </header>
         <div>
-            <p>Hi, I'm Amandine and I look after the businessy bits of Matrix.org. I have a technical background and have always had the need to see the bigger picture. My motivation in starting Matrix has mainly been to make my dream of ubiquitous real-time communications come true and fix what felt broken in the industry. Here is the story.</p>
-<p>When studying telecoms I was fascinated by converging networks, the “Next Generation Network” as we called it. Wow, imagine! Having fixed lines, mobiles and computers able to communicate with each other? Call a number and have the ability to answer seamlessly on any device? And the capability to do video calls and share files? <i>That </i>was definitely Next Generation at the time! Especially given the best we could do with a mobile was bad GSM, MMS and WAP if you were lucky.... A decade later video calling is possible on any device; I can share anything I want with my contacts (pictures, videos, files, random stickers) thanks to hundreds of different apps; sometimes my history is even synced across several devices! And if I choose my mobile provider carefully I can even have a “One Number” service! :)</p>
-<p>But still, we're far away from the ubiquitous dream of 10 years ago. None of my apps are talking to each other. One number is more often “one login per app”. My conversation history is scattered across all the apps (who never experienced the “Did you tell me on Facebook, Whatsapp, Skype or SMS???” question followed by 10 minutes of intense fiddling with your phone which of course is running out of battery?). My address book and profile data is stored everywhere by companies like Facebook, Google and random startups, but who knows how much they really value your privacy...</p>
-<p>Is the tech not good enough yet? Only partially: most of the features, typically IM, video, VoIP,  are already available and widely used. However it is a reality that no tech has really imposed itself as an interoperability standard. What about economic blockers then? A better bet: what are the incentives for big companies and small startups to share their communities? Most of these corporations choose a business model that locks their users into walled gardens, directly linking their valuation to this user base. But ultimately this is bad for competition and bad for the users.</p>
-<p>What about phone networks then? Why don't they do anything? Well, they have tried. It's called RCS (Rich Communication Services), or joyn. It's a good initiative designed by committee and implemented as a functionality deeply embedded in the network rather than a light over-the-top deployment and consequently very expensive and time-consuming to put in place. Similarly as per telco's historical positioning, RCS is more focused on quality of service than quality of user experience. But RCS is facing a few challenges: communications over IP must be free for the user to compete with the Skype &amp; WhatsApp of this world, which limits a lot the return on investment of the deployment of an expensive network update, limiting the adoption of RCS by mobile networks. Besides quality of service is not necessarily what will trigger a success when competing with over the top apps which are 100% focused on providing the best user experience... And despite the GSMA's best efforts implementing interoperability between networks is proving very painful, limiting the growth of the ecosystem.</p>
-<p>But ultimately we all know that today success is driven by users. This multitude of minds which decides the exact split of fun and usefulness that will define the value of a product and make it crazily successful overnight. So why are users not pushing for this ubiquity? I see two reasons: first they often don't realize how useful it could be and second: there is nothing to push! Indeed it can easily be considered as handy to have one app per group of people I want to communicate with: Facebook messenger with my school friends, Whatsapp with international friends, Skype with my family, Snapchat with my boyfriend, Voxer with my best friend... But why can't I have only one app, the one <i>I</i> prefer, to get in touch with everyone, whatever they are using? And if I want a fancy Tango-like video experience then I couldstill launch Tango for this scenario and have the whole chat history there. I truly believe that once fragmentation will be over everyone will wonder how we could ever live with it.</p>
-<p>And what about privacy? Isn't it bad enough that the second I send an email to my friend asking if he's booked his flights to Madrid I get a flurry of airline adverts for flights to Spain? Even without going into the debate of whether governments should file every citizen, it's a question of principles - I'd rather have my communication history and my contacts stored by someone I trust and avoid useless adverts.  Some of you will say “Oh but you're French. ‘Vive la Révolution!' is your default motto...” - but think about it for a minute:</p>
-<p>Imagine: only install the apps <i>you</i> want on your phone for communication. Use the ones you prefer because the UX is great or you love their smileys. Your whole address book is there, correctly merged. All the conversation history with your friends and family is there. And you don't care what app they're using. Or how they logged in: your app discovers them based on any ID (email, phone number, Facebook): you just need to have them in your address book. You know where your data is - perhaps stored by a new startup using renewable energy for their data center, just because you want to save the planet. Or by your geeky brother running his own server under his bed (using end-to-end encryption if you think he might be nosy!). You can still have many apps but each allows you to do different fun stuff: fancy video, crazy pictures, drawings, imaginative stickers. You control your communication.  You decide what to you want to use, who you want to trust. Welcome to Matrix.</p>
+            <p>This weekend, Matrix is heading to FOSDEM (Free and Open Source Software Developers' European Meeting) in Brussels, Belgium. We will be hosting two events: a <a href="https://fosdem.org/2015/schedule/event/matrix/" title="lightning talk">lightning talk</a> on Saturday at 16:30 in room H.2215 (Ferrer), and an <a href="https://fosdem.org/2015/schedule/event/deviot04/" title="IoT devroom talk">IoT devroom talk</a> on Sunday morning at 11:00 in room H.2213.</p>
+<p>FOSDEM's <a href="https://fosdem.org/2015/schedule/" title="schedule">schedule</a> is looking very interesting and varied, and we hope we can learn about interesting projects - and of course show how and where Matrix can be used to lots of FOSDEM-attendees. Please come over and have a chat if you are interested; we have a stand on the second floor in the K building - just take a right after coming up the stairs and say hi! </p>
+<p>We have also set up a Matrix &lt;-&gt; IRC bridge on the #fosdem channel on freenode, which means that any conversation happening there will be copied over to <a href="/beta/#/room/#fosdem:matrix.org" title="#fosdem:matrix.org">#fosdem:matrix.org</a> - and vice versa. Making bridges to other services is currently being worked on as part of the <a href="https://github.com/matrix-org/matrix-doc/blob/application-services/drafts/application_services.rst" title="Application Services API">Application Services API</a> - we want to be able to connect different services together via Matrix.</p>
+<p>Finally, we are always available in the official <a href="/beta/#/room/#matrix:matrix.org" title="Matrix HQ room">Matrix HQ room</a> - please join and say hi!</p>
+
+        </div>
+    </article>
+    
+    <article class="post">
+        <header>
+            <h1><a href="&#x2F;blog&#x2F;2015&#x2F;01&#x2F;07&#x2F;synapse-0-6-1-released-and-other-news&#x2F;" title="Synapse 0.6.1 released and other news!">Synapse 0.6.1 released and other news!</a></h1>
+            <span>
+                07.01.2015 00:00
+                —
+                <a href="/category/tech">
+                    Tech
+                </a>
+                —
+                <a href="/author/matthew-hodgson">
+                    Matthew Hodgson
+                </a>
+            </span>
+            
+        </header>
+        <div>
+            <p>Happy 2015 from everyone at Matrix.org!</p>
+<p>We're excited to kick off the new year with a major performance upgrade for Synapse: having had a chance to do some profiling over the Christmas break, Synapse 0.6.1 improves performance by up to an order of magnitude thanks to optimising the way events are constructed and manipulated, DB optimisations, etc.  Suddenly things are feeling <em>much</em> more snappy and less of a PoC and more of a real system, which hopefully bodes well for 2015!  Please upgrade if you're running a homeserver, or install one if you're not - grab the code from <a href="http://github.com/matrix-org/synapse">http://github.com/matrix-org/synapse</a>.</p>
+<p>The iOS SDK and demo app has also been improving lots in the last few weeks - grab the latest code from <a href="http://github.com/matrix-org/matrix-ios-sdk">http://github.com/matrix-org/matrix-ios-sdk</a>.  We have zoomable image support; full support for the new media repository in Synapse 0.6.0; file transfer status UI; offline support; snappy message synchronisation and more...</p>
+<p>We also released a new simple Python SDK client library for Python called <a href="https://pypi.python.org/pypi/matrix-client">matrix-client</a>, which is now being used by <a href="https://github.com/Kegsay/Matrix-NEB">NEB</a> (our general-purpose Matrix helper bot).</p>
+<p>Meanwhile, our (constantly evolving) plan for the beginning of 2015 is:</p>
+<ul>
+	<li>Finish v2 of the client-server API based on all the lessons learnt since launch: <a href="https://github.com/matrix-org/matrix-doc/pull/4">draft in progress here</a></li>	 
+        <li>Finish the Application Services API to allow proper gateways and services in and out of Matrix at last:<a href="https://github.com/matrix-org/matrix-doc/pull/5">draft in progress here</a></li>
+        <li>Re-release the spec based on the above</li>
+        <li>Build robust gateways (IRC, XMPP, SIP and more) on top of the AS API</li>
+        <li>Polish and release the iOS, Android demo clients - including push notification and VoIP support!</li>
+        <li>Overhaul the identity server architecture and add end-to-end crypto</li>
+</ul>
+<p>Given the rate at which Matrix is maturing, the next few months should be really exciting - please come join us on <a href="http://matrix.org/beta">#matrix:matrix.org</a> and get involved!</p>
+<code>
+Changes in synapse 0.6.1 (2015-01-07)
+=====================================
+<ul>
+<li>Major optimizations to improve performance of initial sync and event sending
+in large rooms (by up to 10x)</li>
+<li>Media repository now includes a Content-Length header on media downloads.</li>
+<li>Improve quality of thumbnails by changing resizing algorithm.</li>
+</ul>
+</code>
 
         </div>
     </article>
@@ -324,8 +748,10 @@ PS: Matrix is hoping to talk about the future of communication in general at <b>
         <a href="&#x2F;blog&#x2F;page&#x2F;63&#x2F;">‹ Previous</a>
         
     </div>
-    <span class="page-number">64 / 64</span>
+    <span class="page-number">64 / 67</span>
     <div class="prev">
+        
+        <a href="&#x2F;blog&#x2F;page&#x2F;65&#x2F;">Next ›</a>
         
     </div>
 </nav>
