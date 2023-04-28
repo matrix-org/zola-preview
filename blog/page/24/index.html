@@ -111,6 +111,220 @@
     
     <article class="post">
         <header>
+            <h1><a href="&#x2F;blog&#x2F;2020&#x2F;11&#x2F;03&#x2F;how-we-fixed-synapse-s-scalability&#x2F;" title="How we fixed Synapse&#x27;s scalability!">How we fixed Synapse&#x27;s scalability!</a></h1>
+            <span>
+                03.11.2020 00:00
+                —
+                <a href="/category/releases">
+                    Releases
+                </a>
+                —
+                <a href="/author/matthew-hodgson">
+                    Matthew Hodgson
+                </a>
+            </span>
+            
+        </header>
+        <div>
+            <p>Hi all,</p>
+<p>We had a major break-through in Synapse 1.22 which we want to talk about in
+more detail: <strong>Synapse now scales horizontally across multiple python
+processes.</strong></p>
+<p>Horizontal scaling means that you can support more users and traffic by adding
+in more python processes (spread over more machines, if necessary) without
+there being a single bottleneck which all the traffic is passing through - as
+opposed to vertical scaling where you make things go faster overall by making
+the bottleneck go faster.</p>
+<p>After many years of having to vertically scale Synapse (by trying to make the
+main process go faster) we’re now finally at the point where you can configure
+Synapse so that <strong>messages no longer flow through the main process</strong> -
+eliminating the bottleneck entirely.  What’s more, the Matrix.org homeserver
+has now been successfully running in this config and enjoying the massive
+scalability improvements for the last 2 weeks! Huge kudos goes to Erik and the
+wider Synapse team for pulling this off.</p>
+<p>Some readers might wonder how this ties in with <a href="https://matrix.org/blog/2020/10/08/dendrite-is-entering-beta">Dendrite entering
+beta</a>, given one
+of Dendrite’s design goals is full horizontal scalability.  The answer is that
+we’re very much using Dendrite for experimentation and next-gen stuff at the
+moment (currently focused more on scaling downwards for P2P rather than
+scaling upwards for megaservers) - while Synapse is the stable and long-term
+supported option.</p>
+<p>So, that’s the context - now over to Erik with more than you could possibly
+ever want to know about how we actually did it...</p>
+<h2 id="background">Background</h2>
+<p>Synapse started life off back in 2014 as a single monolithic python process,
+and for quite a while we made it scale by adding more and more in-memory
+caches to speed things up by avoiding hitting the database (at the expense of
+RAM).  It looked like this:</p>
+<div style="margin: auto; max-width: 640px;">
+    <img src="/blog/img/2020-11-03-synapse1.png"/>
+</div>
+<p>Eventually the caches stopped helping and we needed more than one thread of
+execution in order to spread CPU across multiple cores. Python’s Global
+Interpreter Lock (<a href="https://wiki.python.org/moin/GlobalInterpreterLock">GIL</a>)
+means that Python can mainly only use one CPU core at a time, so starting more
+threads doesn’t help with scalability - you have to run multiple processes.</p>
+<p>Now, the vast majority of the work that Synapse does is related to “streams”.
+These are append only sequences of rows, such as the events stream, typing
+stream, receipts stream, etc. When a new event arrives (for example) we write
+it to the events stream, and then notify anything waiting that there has been
+an update. The <code>/sync</code> endpoint, for instance, will wait for updates to streams
+and send them down to long-polling Matrix clients. </p>
+<p>Streams support being added to concurrently, so have a concept of the
+“persisted up-to position”. This is the point where <strong>all</strong> rows before that
+point have finished persisting. Readers only read up to the current “persisted
+up-to position”, so that they don’t skip updates that haven’t finished
+persisting at that point. (E.g. if two events A and B get assigned positions 5
+and 6, but B finishes persisting first, then the persisted up to position will
+remain at 4 until A finishes persisting and then it jumps to 6).</p>
+<p>To split any meaningful amount of work into separate processes, we need to add
+a mechanism where processes can be told that updates to streams have happened
+(otherwise they’d have to repeatedly poll the DB, which would be deeply
+inefficient). The architecture ended up being one where we had the “main”
+process that streams updates via a custom replication protocol (initially
+long-polling HTTP; later custom TCP) to any number of “worker” processes. This
+meant that we could move sync stream handling (and other read apis) off the
+main process and onto workers, but also that all database writes had to go
+through the single main process (as it was a star topology, the main process
+could talk to all workers but workers could only talk to the main process and
+not each other).</p>
+<p><img src="/blog/img/2020-11-03-synapse2.png" alt="2020-11-03-synapse2.png" /></p>
+<p>As an aside: cache invalidations also had to be streamed down the replication
+connections, which has the side effect that we could only cache things that
+would only be invalidated on the main process.</p>
+<p>We continued to move more and more read APIs out onto separate workers. We
+also added workers in front of the main process that would e.g. handle the
+creation of the new events, authenticating, etc, and then call out to the main
+process with the event for it to persist the event.</p>
+<h2 id="moving-writes-off-the-main-process">Moving writes off the main process</h2>
+<p>Eventually we ran out of stuff to move out of the main process that didn’t
+involve writing to the DB. To write stuff from other processes we needed a way
+for the workers to stream updates to each other. The easiest and most obvious
+way was to just use Redis and its pub/sub support. </p>
+<p><img src="/blog/img/2020-11-03-synapse3.png" alt="2020-11-03-synapse3.png" /></p>
+<p>This almost allowed us to move writing of a particular stream to a different
+worker, <em>except</em> writing to streams generally also meant invalidating caches
+which in itself requires writing to a stream. We needed a way of writing to
+the cache invalidation stream from multiple workers at once.</p>
+<p>Sharding the cache invalidation thankfully turned out to be easy, as workers
+would simply call the cache invalidation function whenever they get an
+invalidation notice over replication. In particular, the ordering of
+invalidations from different workers doesn’t matter and so there isn’t a need
+to calculate a single “persisted up-to position”. Sharding then just becomes a
+case of adding the name of the worker that is writing the update to the
+replication stream, and then workers reading from it can basically treat the
+cache stream the same as if they were multiple streams, one per worker.</p>
+<p>This then unlocks the ability to move writing of streams off the main process
+and onto different workers - and so we added the “event persister” worker for
+offloading the main event stream off the main process:</p>
+<p><img src="/blog/img/2020-11-03-synapse4.png" alt="2020-11-03-synapse4.png" /></p>
+<h2 id="sharding-the-events-stream">Sharding the events stream</h2>
+<p>Eventually the worker responsible for doing nothing but persisting events
+started maxing out CPU. This meant that we had to look at sharding the events
+stream, i.e. writing to it from multiple workers.</p>
+<p>This is more complicated than sharding the cache invalidation stream as the
+ordering of the events does matter; we send them down sync streams, in order,
+with a token that indicates where the sync stream is up to in the events
+stream. This means that workers need to be able to calculate a “persisted
+up-to position” when getting updates from different workers. </p>
+<p>The easiest way of doing that is to simply set the persisted up-to position as
+the minimum position received over federation from all active writers. This
+works, except events would only be processed after all other writers have
+subsequently written events (to advance the persisted position past the point
+at which the event was written), which can add a lot of latency depending on
+how often events are written. </p>
+<p>A refinement is to note that if you have a persisted up-to position of 10,
+then receive updates at sequential positions 11, 12, 13 and 14, you know that
+everything between 10 and 14 has finished persisting (as you received updates
+about them), and so can set the persisted up-to position to 14. Annoyingly,
+it’s not required that positions are sequential without gaps (due to various
+technical considerations), and so in the worst case this still has the same
+problems as the naïve solution.</p>
+<p>To avoid these problems we change the persisted up-to position to be a <a href="https://en.wikipedia.org/wiki/Vector_clock">vector
+clock</a> of positions; tracking a
+vector of positions - one per writer. This still allows answering the query of
+“get all events after token X” (as events are written with the position and
+the name of the writer). The persisted up-to position is then calculated by
+just tracking the last position seen to arrive over replication from each
+writer. </p>
+<p>This allows writing events from multiple workers, while ensuring that other
+workers can correctly keep track of a “persisted up-to position”. Then it's
+just a matter of inspecting the code to ensure that it does not assume that it
+is the only writer to the stream. In the case of writing to the events stream,
+we note that the function persisting events assumes it's the only writer for a
+given room, so when sharding we have to ensure that there are no concurrent
+writes to the same room. This is most easily done by sharding based on room
+ID, and ensuring that the mapping of room ID to worker does not change
+(without coordination).</p>
+<p>The only thing left is to then encode the vector clock position into the sync
+tokens. We want to ensure that these tokens are not too long, as they get
+included as query string parameters (e.g. the <code>since=</code> parameter of <code>/sync</code>).
+By assigning persistent unique integer IDs to workers the vector clock can be
+persisted as a sequence of pairs of integers, which is relatively few bytes so
+long as we don’t have too many workers writing to the events stream. We can
+further reduce the size of the tokens by calculating an integer “persisted
+up-to position” as we did before, encoding that and only including positions
+for workers that are larger than the integer persisted upto position. (The
+idea here is that most of the time only a small number of workers will be
+ahead of the calculated persisted up-to position, and so we only need to
+encode those).</p>
+<p>And this is what we have today:</p>
+<p><img src="/blog/img/2020-11-03-synapse5.png" alt="2020-11-03-synapse5.png" /></p>
+<p>The major limitation of the current situation is that you can’t dynamically
+add/remove workers which persist events, as the sharding by room ID is
+calculated at startup, and so changing it requires restarting the whole
+system. This could be replaced by any system that allowed coordination over
+which persister is allowed to write to a room at any given point. However this
+is likely tricky to get right in practice, but would allow dynamic auto
+scaling of deployments, or automatically recovering from a worker that gets
+wedged/dies.</p>
+<p>Finally, it’s worth noting that sharding event persisters isn’t the only
+performance work that’s been going on - switching everything over to python 3
+and async twisted has helped, along with lots of smaller optimisations on the
+hot paths, and further rebalancing workers (e.g. moving background jobs off
+the master process to dedicated workers).  We’ve also benefited a lot from the
+maintainability of rolling out mypy typing throughout the codebase.  And next
+up, we’ll be going back to speeding up the codebase as a whole - starting with
+algorithmic state resolution improvements! 🎉</p>
+<h3 id="performance">Performance</h3>
+<p>So, how does it stack up?</p>
+<p>Here’s the send time heatmap on Matrix.org showing the step change on Oct 16th
+when we rolled out the second event persister (full disclosure: this also
+coincides with moving background processes off the main Synapse process to a
+background worker).  As you can see, we go from messages being spread over a
+huge range of durations (up to several seconds) to the sweet spot being 50ms
+or less - a spectacular improvement!</p>
+<p><img src="/blog/img/2020-11-03-synapse-heatmap.png" alt="2020-11-03-synapse-heatmap.png" /></p>
+<p>Meanwhile, here’s the actual CPU utilisation as we split the traffic from a
+single event persister (yellow) to two persisters (one yellow, one blue),
+showing the sharding beautifully horizontally balancing CPU between the two
+active/active worker processes:</p>
+<p><img src="/blog/img/2020-11-03-synapse-cpu.png" alt="2020-11-03-synapse-cpu.png" /></p>
+<p>We’ve yet to loadtest to see just how fast we can go now (before we start
+hitting bottlenecks on the postgres cluster), but it sure feels good to have
+all our CPU headroom back on Matrix.org again, ready for the next wave of
+users to arrive.</p>
+<h3 id="conclusion">Conclusion</h3>
+<p>So there you have it: folks running massive homeservers (50K+ concurrent
+users) like Matrix.org (and <em>cough</em> various high profile public sector
+deployments) are no longer held hostage by the bottleneck of the main synapse
+process and should feel free to experiment with setting up event persister
+workers to handle high traffic loads.  Otherwise, if you can spread your users
+over smaller servers, that’s also a good bet (assuming they don’t have
+massively overlapping room membership, like we see on Matrix.org.)</p>
+<p>The current <a href="https://github.com/matrix-org/synapse/blob/develop/docs/workers.md">worker
+documentation</a>
+is up-to-date, although does assume you are already very familiar with how to
+administer Synapse.  It’s also very much subject to change, as we keep adding
+new workers and improving the architecture.  However, now is a pretty good
+time to get involved if you’re interested in large-scale Matrix deployments.</p>
+<p>-- The Synapse Team</p>
+
+        </div>
+    </article>
+    
+    <article class="post">
+        <header>
             <h1><a href="&#x2F;blog&#x2F;2020&#x2F;10&#x2F;30&#x2F;this-week-in-matrix-2020-10-30&#x2F;" title="This Week in Matrix 2020-10-30">This Week in Matrix 2020-10-30</a></h1>
             <span>
                 30.10.2020 00:00
@@ -2153,230 +2367,6 @@ We are working on packaging solutions like snap and Flatpak. 😊</p>
 <p>Thanks anoa for TCB* the last two weeks! Was fun to be the one to read TWIM for myself. :D</p>
 <p>See you next week, and be sure to stop by <a href="https://matrix.to/#/#TWIM:matrix.org">#twim:matrix.org</a> with your updates!</p>
 <p>* Taking Care of Business</p>
-
-        </div>
-    </article>
-    
-    <article class="post">
-        <header>
-            <h1><a href="&#x2F;blog&#x2F;2020&#x2F;10&#x2F;08&#x2F;dendrite-is-entering-beta&#x2F;" title="Dendrite is entering Beta!">Dendrite is entering Beta!</a></h1>
-            <span>
-                08.10.2020 00:00
-                —
-                <a href="/category/releases">
-                    Releases
-                </a>
-                —
-                <a href="/author/matthew-hodgson">
-                    Matthew Hodgson
-                </a>
-            </span>
-            
-        </header>
-        <div>
-            <p>Hi all,</p>
-<p>We’re very excited to announce that Dendrite, the next-generation Matrix homeserver from the core Matrix team, is at last exiting alpha development and entering beta testing!</p>
-<p>The path we’ve taken to get here has been quite a curious one, and it’s worth recapping to give context on why it’s taken reality a little while to catch up with the dream. :)</p>
-<p>The Dendrite project has its roots in 2016 as <a href="https://github.com/matrix-org/dendron">Dendron</a>: an attempt to write a next-generation homeserver in Golang rather than Python, in order to benefit from Go’s stronger typing, ease of profiling (no twisted stack-shredding via deferredInlineCallbacks), multithreading and faster GC performance.  The idea for Dendron was to do a <a href="https://martinfowler.com/bliki/StranglerFigApplication.html">strangler pattern</a> rewrite of Synapse - where we’d insert Dendron in front of Synapse as a load balancer, and incrementally replace Synapse’s API endpoints with ones implemented by Dendron.</p>
-<p>However, as the project started to progress, it became clear that this was going to end up with many of Synapse’s architectural choices being baked into the project - particularly the DB schema and data flow architecture, such that the new endpoints could interoperate with the existing Python ones.  We got as far as putting Dendron live on matrix.org and moving some of the login/registration APIs over to it… but then work fizzled out due to Synapse demanding more urgent attention as traffic grew on Matrix.org, combined with concerns about whether Dendron was the right approach in general.</p>
-<p>So, towards the end of 2016 (after the rush to launch <del>Vector</del> <del>Riot</del> Element that summer), we went back to the drawing board to devise Dendrite—“Dendron done right!”—as opposed to Dendron, which in retrospect was Dendrite done wrong. ;) The new vision was:</p>
-<ul>
-<li>Build a massively horizontally scalable architecture, such that large Matrix deployments like matrix.org and big government deployments could run smoothly without the constant scalability headaches we were seeing at the time with Synapse</li>
-<li>Do so by splitting the server into well-defined microservice components, each of which could independently horizontally scale, each with its own DB (if desired)</li>
-<li>Connect the components together with a set of append-only logs via <a href="https://kafka.apache.org/">Kafka</a> or similar, easily letting components shard and maintain their databases from the logs, allowing rolling upgrades, possibly schema upgrades, and all sorts of other niceties.  The logs effectively become a primary source of truth rather than putting all the onus on a massive monolithic ever-growing database</li>
-</ul>
-<p>Rather than Dendron’s top-down approach, instead Dendrite started bottom-up with the very hardest bit: <a href="https://github.com/matrix-org/gomatrixserverlib">gomatrixserverlib</a>, a standalone Go library implementing the state resolution algorithms and performing federation requests (such that it might also someday be used as a general purpose way to add Matrix federation support to an existing Go codebase).</p>
-<p>Then we started building out the various components to implement the various services, starting with the roomserver (the service which models the history and state of one or more rooms in the server), then the syncserver (the service which implements the /sync API to let clients receive messages), etc. We even implemented a simplified in-memory version of Kafka named <a href="https://github.com/matrix-org/naffka">naffka</a>—useful for glueing together the microservice components when running them all within a single binary.</p>
-<p>Things were looking pretty positive by the summer of 2017: we had the server sending/receiving messages, federating with Synapse, and looking tantalisingly close:</p>
-<blockquote>
-<p lang="en" dir="ltr">We just sent the first ever synapse-&gt;dendrite federated traffic, including full dendrite media API (thumbnailing, fed, etc)!!! :D :D :D <a href="https://t.co/sBcM2jMAr6">pic.twitter.com/sBcM2jMAr6</a></p>&mdash; Matrix (@matrixdotorg) <a href="https://twitter.com/matrixdotorg/status/872861579141947392?ref_src=twsrc%5Etfw">June 8, 2017</a>
-</blockquote>
-<p>However, we then hit three fairly major obstacles:</p>
-<ul>
-<li><a href="https://matrix.org/blog/2017/07/07/a-call-to-arms-supporting-matrix">Matrix lost its funding</a></li>
-<li>In the ensuing uncertainty, the two lead developers (Mjark &amp; Kegan) went to work elsewhere</li>
-<li>Meanwhile, Matrix uptake was starting to explode and Synapse was failing to scale to handle the traffic on matrix.org (and elsewhere)</li>
-</ul>
-<p>At first, having formed what would become New Vector (now Element) to keep the rest of the core team hired, we pushed to see if we could get Dendrite finished fast enough to replace Synapse, with Erik &amp; richvdh jumping over from Synapse to pick up the remaining work.  However, it became clear that we urgently needed a quicker solution to address all the overloaded Synapses out there, and so they swung back to focus on improving Synapse (taking inspiration from some of the design of Dendrite - e.g. offloading endpoints onto worker processes connected via replication streams, and using <a href="https://opentracing.io/">OpenTracing</a> to debug traffic as it flows over the various services).</p>
-<p>At this point, Dendrite maintenance was in effect valiantly taken over by the community, with Brendan and later Anoa keeping the ball going in 2017, joined by APWhitehat in GSoC 2018 and cnly in GSoC 2019.  The fact that Dendrite is now here today is thanks in no small part to their work to keep the project alive in its “wilderness years” between Sept 2017 and Dec 2019.</p>
-<p>Meanwhile, it became clear that we were overdue getting Matrix itself out of beta - and the last thing we wanted to do was to split and dilute the implementation work of Matrix 1.0 over both Synapse and Dendrite - so we consciously made the decision to focus all our effort on Synapse for solving the remaining bugs and challenges.</p>
-<p>Then, in July 2019, <a href="https://matrix.org/blog/2019/06/11/introducing-matrix-1-0-and-the-matrix-org-foundation">Matrix and Synapse exited beta</a>, and we finally started to see light at the end of the tunnel.  In October we started dusting off Dendrite again - looking to use it as a relatively simple and flexible codebase for <a href="https://youtu.be/eA0KnTt4O7E?t=1423">experimenting with Peer-to-Peer Matrix</a>, not least because being Go it can compile to WebAssembly and run clientside, and because even though Dendrite was originally built with massive deployments in mind, it turns out the elastic scaling means it can also scale down pretty small too—as a part of the <a href="http://testflight.apple.com/join/Tgh2MEk6">iOS P2P demo</a>, we’ve even ran full Dendrite homeservers on iPhones embedded into Element iOS! :)</p>
-<p>In Dec 2019, we finally got to the point where Element could fund full-time dedicated development on Dendrite once again, with Neil Alexander joining the project and focusing fulltime on getting Dendrite out of alpha and getting it working for P2P and embedded usage (adding libp2p as a federation transport, and adding SQLite support) - and in Jan 2020 we got Dendrite <a href="https://archive.fosdem.org/2020/schedule/event/dip_p2p_matrix/">successfully running clientside in a WASM service worker</a> (just in time for FOSDEM!). Then, in Feb 2020, Kegan returned to the project to work fulltime on Dendrite - and the race began in earnest to get Dendrite ready for beta!</p>
-<p>Here’s a pretty picture courtesy of GitHub to visualise the progress:</p>
-<p><img src="/blog/img/2020-10-08-dendrite-contributors.png" alt="020-10-08-dendrite-contributors.png" /></p>
-<p>Throughout 2020 there’s been a huge amount of stabilisation work and polish:</p>
-<ul>
-<li>Refactoring much of Dendrite’s foundation to make the codebase more maintainable</li>
-<li>Created all-new user server, key server, signing key server microservices</li>
-<li>Moving some work from existing microservices (ultimately superseding the former currentstateserver, publicroomsapi and typingserver microservices altogether)</li>
-<li>Developing new testing infrastructure:
-<ul>
-<li><a href="https://github.com/matrix-org/complement">Complement</a> - our brand new Golang Matrix integration test harness</li>
-<li><a href="https://github.com/matrix-org/dendrite/blob/master/are-we-synapse-yet.py">Are We Synapse Yet</a> - an aggregator which parses sytest/complement output to compare how close Dendrite is to passing</li>
-</ul>
-</li>
-<li>All the Matrix 1.0 work - particularly state res v2 &amp; room version support</li>
-<li>Making it work with more P2P transports for <a href="https://matrix.org/blog/2020/06/02/introducing-p-2-p-matrix/">all the exciting P2P experiments</a></li>
-<li>Supporting backfill and fetching missing events</li>
-<li>Fixing up SQLite support to make it work as a first class citizen (with shared storage code where we can!)</li>
-<li>Supporting both sending and rejecting invites (even over federation)</li>
-<li>E2E encryption support (one-time keys, device lists, send-to-device support)</li>
-<li>Improved federation sender logic (resend retries, backoffs, blacklisting, metrics, resetting backoffs when receiving transactions)</li>
-<li>Handling both inbound and outbound redactions</li>
-<li>User interactive authentication (and implemented on various ‘sudo’ endpoints e.g. deleting devices and changing passwords)</li>
-<li>Respecting server ACLs</li>
-<li>Rejecting / soft-failing events properly</li>
-<li>Support for database schema upgrades</li>
-</ul>
-<p>... which brings us at last to the present day (Oct 2020), as we declare Dendrite sufficiently stable that we consider it ready for beta testing!</p>
-<p>In practice, this means **Dendrite is now ready for experimentation by adventurous Matrix sysadmins. It is <em>NOT</em> ready for production usage yet, but we need folks to test it and help us iron out the remaining bugs!  **Please do not trust it with sensitive data yet, and we don’t recommend trying to run it at scale yet as we haven’t done any serious optimisation work yet.</p>
-<p>That said, we do provide the following guarantees:</p>
-<ul>
-<li>We’re providing versioned releases from here on in, beginning with <a href="https://github.com/matrix-org/dendrite/releases/tag/v0.1.0">0.1.0</a></li>
-<li>We don’t expect any major breaking changes to the config or architecture before 1.0</li>
-<li>Ready for early adopters to try running Dendrite without experiencing ~daily breaking churn</li>
-<li>The database schema is now stable and will upgrade itself going forwards - your database should now be here to stay! (assuming we don’t hit any nasty data loss bugs during beta)</li>
-</ul>
-<p>In terms of comparison with Synapse, the main things you should get excited about are:</p>
-<ul>
-<li>Dendrite aims to provide an <strong>efficient</strong>, <strong>reliable</strong> and <strong>scalable</strong> alternative to Synapse:
-<ul>
-<li>Efficient: A small memory footprint with better baseline performance than an out-of-the-box Synapse</li>
-<li>Reliable: Implements the Matrix specification as written, using the <a href="https://github.com/matrix-org/sytest">same test suite</a> as Synapse as well as a <a href="https://github.com/matrix-org/complement">brand new Go test suite</a></li>
-<li>Scalable: can run on multiple machines and eventually scale to massive homeserver deployments</li>
-</ul>
-</li>
-<li>This means significantly less memory usage than Synapse (depends on joined rooms, often between 50MB - 400MB resident memory) - although we haven’t tuned this at all yet!</li>
-<li>All-new database model, where every microservice instance has its own database tables, letting them scale arbitrarily wide</li>
-<li>The ability to efficiently use all your available CPU cores without needing to split into separate processes, thanks to Go and our extensive use of goroutines.  No more Python global interpreter lock! :)</li>
-<li>Future experimental MSCs are likely to land in Dendrite before Synapse (e.g <a href="https://github.com/matrix-org/matrix-doc/blob/matthew/msc2753/proposals/2753-peeking-via-sync-v2.md">MSC2753 Peeking via /sync</a> and <a href="https://github.com/matrix-org/matrix-doc/blob/matthew/msc2444/proposals/2444-peeking-over-federation-peek-api.md">MSC2444 Peeking over Federation</a> are already being prototyped (<a href="https://github.com/matrix-org/dendrite/pull/1370">#1370</a> and <a href="https://github.com/matrix-org/dendrite/pull/1391">#1391</a>) in Dendrite rather than Synapse!)</li>
-</ul>
-<p>The provisos you should know about however are:</p>
-<ul>
-<li>We’re not feature complete yet: sytest reports 56% CS API coverage and 77% Federation coverage. <strong>NB: these are always going to be underestimates of how much Dendrite actually performs due to how the tests are spread out, in actuality it’s likely more 70% CS, 95% Fed.</strong></li>
-<li>No read receipts, membership lazy-loading, presence, push notifications, search, event context, key backups, cross-signing. See changelog for full limitations.</li>
-<li>Not battle-tested in the wild by many people (there are probably only ~10 dendrites on the open network today!) - so there’s likely to be a broad spectrum of bugs at first.</li>
-<li>Clients that require more exotic features, like lazy loading, may not behave properly yet</li>
-<li>Please <strong>use Postgres rather than SQLite wherever possible</strong>—it’s faster and has fewer issues regarding concurrency (some requests on SQLite Dendrites may 500 with ‘database is locked’ - though we’ve worked hard to eliminate most of these)</li>
-<li>Dendrite can run in either “monolith” or “polylith” mode. In monolith, all the microservices are linked into a single binary - and <strong>we recommend running in this configuration wherever possible</strong> for now. Monolith mode is <em>extremely</em> capable as it is and has fewer moving parts for things to go wrong and will be the right choice for the majority of beta deployments!</li>
-<li>Whilst Dendrite is nearly 100% federation compatible, there may still be situations where it will split-brain and disagree with the current room state that Synapse has calculated. We expect these issues to resolve as we get more user feedback.</li>
-</ul>
-<p>Architecture-wise, this is what Dendrite looks like under the hood today:</p>
-<p><img src="/blog/img/2020-10-08-dendrite-arch.svg" alt="2020-10-08-dendrite-arch.svg" /></p>
-<p>To get up and running, please install Go and head on over to the Get Started guide at <a href="https://github.com/matrix-org/dendrite#get-started">https://github.com/matrix-org/dendrite#get-started</a> to join the fun :)</p>
-<p>In terms of where we’re going next:</p>
-<ul>
-<li>Read receipts. It’s a major missing feature and impacts UX significantly.</li>
-<li>100% Federation coverage (according to sytest). It’s crucial that Dendrite instances play nicely with other servers. This will be the best metric we have for asserting that we are just as capable as Synapse at the fed level.</li>
-<li>Optimisation—<strong>Dendrite has not been optimised yet for speed or resource utilisation!</strong>
-<ul>
-<li>We plan to add benchmarks which will stress test different microservices in the presence of many different scaling factors (number of users, number of rooms, size of room, number of devices per user, number of sync requests, etc). This will hopefully allow us to identify early on bottlenecks and slow algorithms</li>
-<li>Good old fashioned pprof with known slow scenarios to see what’s consuming CPU/memory and fixing issues ad-hoc (which we’ve already done a bit of pre-beta). This may involve adding additional in-memory caches, with a healthy respect for the complexities it may introduce (which Synapse has been bitten by)</li>
-</ul>
-</li>
-<li>We plan to add first class feature flag support for experimental MSCs—experimentation is one thing which makes Dendrite notably different from Synapse, and supporting it more thoroughly going forwards will be important. This may mean adding additional hooks; potentially a dedicated microservice to cleanly separate experiments, we don’t know yet</li>
-<li>P2P work will continue with vigour now we have a working, featureful, and relatively stable HS to embed and play with</li>
-</ul>
-<p>Longer term, it’s pretty hard to say right now when we expect to exit beta (it took Synapse 5 years to exit beta, after all ;) - but obviously we’ll need Dendrite to have parity with Synapse and have no known serious bugs.</p>
-<p>Finally: you’re probably wondering what this means for Synapse.  Synapse is here to stay - with tens of thousands of deployments around the world serving tens of millions of users.  The majority of the core team is still focused on improving and optimising Synapse, and we’ll be keeping improving it for the foreseeable.</p>
-<p>However, we’ll certainly be experimenting with new stuff on Dendrite first - whether that’s P2P, portable accounts, new-style communities, peeking etc.  We expect Synapse to be the stable long-term-supported solution, while Dendrite (particularly while in beta) will be the more unstable and experimental platform. In the longer term we’ll provide ways of migrating from Synapse to Dendrite however (probably via portable accounts), and perhaps in future new deployments may choose to use Dendrite - a bit like you might choose to use nginx rather than Apache for a new web server these days. But this will be a long transition—meanwhile we expect to see more and more next-generation homeservers like <a href="http://conduit.rs/">Conduit</a>, <a href="https://gitlab.com/mascarene/mascarene">Mascarene</a> or <a href="https://github.com/matrix-construct/construct">Construct</a> coming of age too.</p>
-<p>So, there you have it. If you’re an intrepid sysadmin please spin up a Dendrite and start filing bugs! :)</p>
-<p>— Matthew, Neil Alexander, Kegan and the whole Matrix team.</p>
-<p>Here’s the official changelog:</p>
-<h3 id="client-server-api-features">Client-Server API Features</h3>
-<h4 id="account-registration-and-management">Account registration and management</h4>
-<ul>
-<li>Registration: By password only.</li>
-<li>Login: By password only. No fallback.</li>
-<li>Logout: Yes.</li>
-<li>Change password: Yes.</li>
-<li>Link email/msisdn to account: No.</li>
-<li>Deactivate account: Yes.</li>
-<li>Check if username is available: Yes.</li>
-<li>Account data: Yes.</li>
-<li>OpenID: No.</li>
-</ul>
-<h4 id="rooms">Rooms</h4>
-<ul>
-<li>Room creation: Yes, including presets.</li>
-<li>Joining rooms: Yes, including by alias or <code>?server_name=</code>.</li>
-<li>Event sending: Yes, including transaction IDs.</li>
-<li>Aliases: Yes.</li>
-<li>Published room directory: Yes.</li>
-<li>Kicking users: Yes.</li>
-<li>Banning users: Yes.</li>
-<li>Inviting users: Yes, but not third-party invites.</li>
-<li>Forgetting rooms: No.</li>
-<li>Room versions: All (v1 - v6)</li>
-<li>Tagging: Yes.</li>
-</ul>
-<h4 id="user-management">User management</h4>
-<ul>
-<li>User directory: Basic support.</li>
-<li>Ignoring users: No.</li>
-<li>Groups/Communities: No.</li>
-</ul>
-<h4 id="device-management">Device management</h4>
-<ul>
-<li>Creating devices: Yes.</li>
-<li>Deleting devices: Yes.</li>
-<li>Send-to-device messaging: Yes.</li>
-</ul>
-<h4 id="sync">Sync</h4>
-<ul>
-<li>Filters: Timeline limit only. Rest unimplemented.</li>
-<li>Deprecated <code>/events</code> and <code>/initialSync</code>: No.</li>
-</ul>
-<h4 id="room-events">Room events</h4>
-<ul>
-<li>Typing: Yes.</li>
-<li>Receipts: No.</li>
-<li>Read Markers: No.</li>
-<li>Presence: No.</li>
-<li>Content repository (attachments): Yes.</li>
-<li>History visibility: No, defaults to <code>joined</code>.</li>
-<li>Push notifications: No.</li>
-<li>Event context: No.</li>
-<li>Reporting content: No.</li>
-</ul>
-<h4 id="end-to-end-encryption">End-to-End Encryption</h4>
-<ul>
-<li>Uploading device keys: Yes.</li>
-<li>Downloading device keys: Yes.</li>
-<li>Claiming one-time keys: Yes.</li>
-<li>Querying key changes: Yes.</li>
-<li>Cross-Signing: No.</li>
-</ul>
-<h4 id="misc">Misc</h4>
-<ul>
-<li>Server-side search: No.</li>
-<li>Guest access: Partial.</li>
-<li>Room previews: No, partial support for Peeking via MSC2753.</li>
-<li>Third-Party networks: No.</li>
-<li>Server notices: No.</li>
-<li>Policy lists: No.</li>
-</ul>
-<h3 id="federation-features">Federation Features</h3>
-<ul>
-<li>Querying keys (incl. notary): Yes.</li>
-<li>Server ACLs: Yes.</li>
-<li>Sending transactions: Yes.</li>
-<li>Joining rooms: Yes.</li>
-<li>Inviting to rooms: Yes, but not third-party invites.</li>
-<li>Leaving rooms: Yes.</li>
-<li>Content repository: Yes.</li>
-<li>Backfilling / get_missing_events: Yes.</li>
-<li>Retrieving state of the room (<code>/state</code> and <code>/state_ids</code>): Yes.</li>
-<li>Public rooms: Yes.</li>
-<li>Querying profile data: Yes.</li>
-<li>Device management: Yes.</li>
-<li>Send-to-Device messaging: Yes.</li>
-<li>Querying/Claiming E2E Keys: Yes.</li>
-<li>Typing: Yes.</li>
-<li>Presence: No.</li>
-<li>Receipts: No.</li>
-<li>OpenID: No.</li>
-</ul>
 
         </div>
     </article>

@@ -111,6 +111,109 @@
     
     <article class="post">
         <header>
+            <h1><a href="&#x2F;blog&#x2F;2019&#x2F;06&#x2F;11&#x2F;introducing-matrix-1-0-and-the-matrix-org-foundation&#x2F;" title="Introducing Matrix 1.0 and the Matrix.org Foundation">Introducing Matrix 1.0 and the Matrix.org Foundation</a></h1>
+            <span>
+                11.06.2019 00:00
+                —
+                <a href="/category/general">
+                    General
+                </a>
+                —
+                <a href="/author/matthew-hodgson">
+                    Matthew Hodgson
+                </a>
+            </span>
+            
+        </header>
+        <div>
+            <h2 id="matrix-1-0">Matrix 1.0</h2>
+<p>Hi all,</p>
+<p>We are very excited to announce the first fully stable release of the Matrix protocol and specification across **all **APIs - as well as the Synapse 1.0 reference implementation which implements the full Matrix 1.0 API surface.</p>
+<p>This means that after just over 5 years since the initial work on Matrix began, we are proud to have finally <strong>exited beta</strong>!!  This is the conclusion of the work which we announced at <a href="https://matrix.org/blog/2019/02/04/matrix-at-fosdem-2019">FOSDEM 2019</a> when we cut the first stable release of the Server-Server API and began the Synapse 0.99 release series in anticipation of releasing a 1.0.</p>
+<p>Now, before you get too excited, it’s critical to understand that Matrix 1.0 is all about providing a <strong>stable, self-consistent, self-contained and secure version of the standard</strong> which anyone should be able to use to independently implement production-grade Matrix clients, servers, bots and bridges etc.  It does <strong>not</strong> mean that all planned or possible features in Matrix are now specified and implemented, but that the most important core of the protocol is a well-defined stable platform for everyone to build on.</p>
+<p>On the Synapse side, our focus has been exclusively on ensuring that Synapse correctly implements Matrix 1.0, to provide a stable and secure basis for participating in Matrix without risk of room corruption or other nastinesses.  However, we have deliberately <strong>not</strong> focused on performance or features in the 1.0 release - so I’m afraid that synapse’s RAM footprint will not have got significantly better, and your favourite long-awaited features (automatically defragmenting rooms with lots of forward extremities, configurable message retention, admin management web-interface etc) have not yet landed.  In other words, this is the opposite of the <a href="https://medium.com/@RiotChat/the-big-1-0-68fa7c6050be">Riot 1.0 release</a> (where the entire app was redesigned and radically improved its performance and UX) - instead, we have adopted the mantra to <a href="http://wiki.c2.com/?MakeItWorkMakeItRightMakeItFast">make it work, make it work right, and then (finally) make it fast</a>.  You can read the <a href="/blog/2019/06/11/synapse-1-0-0-released">full release notes</a> here.  It’s also worth looking at the <a href="https://github.com/matrix-org/synapse/blob/release-v1.0.0/CHANGES.md">full changelog</a> through the Synapse 0.99 release series to see the massive amount of polishing that’s been going on here.</p>
+<p>All this means that the main headline features which land in Matrix 1.0 are vitally important but relatively dry:</p>
+<ul>
+<li>Using X.509 certificates to trust servers rather than perspective notaries, to simplify and improve server-side trust.  This is a <strong>breaking change</strong> across Matrix, and we’ve given the community several months now to ensure their homeservers run a valid TLS certificate.  See <a href="https://github.com/matrix-org/synapse/blob/master/docs/MSC1711_certificates_FAQ.md">MSC1711</a> for full details, and the <a href="https://matrix.org/blog/2019/05/24/final-countdown-to-1-0">2 week warning</a> we gave.  As of ~9am UTC today, the matrix.org homeserver is running Synapse 1.0 and enforcing valid TLS certificates - the transition has begun (and so far we haven’t spotted any major breakage :).  Thank you to everyone who <a href="https://arewereadyyet.com">got ready</a> in advance!</li>
+<li>Using .well-known URIs to discover servers, in case you can’t get a valid TLS certificate for your server’s domain.</li>
+<li>Switching to <strong><a href="https://matrix.org/docs/spec/rooms/v4.html">room version 4</a> by default</strong> for creating new rooms.  This fixes the most important defects that the core room algorithm has historically encountered, particularly:
+<ul>
+<li>The new State Resolution algorithm to fix the <a href="https://github.com/matrix-org/synapse/issues/2432">Hotel California bug</a> and many others: <a href="https://github.com/matrix-org/matrix-doc/issues/1442">State Resolution Reloaded</a></li>
+<li><a href="https://github.com/matrix-org/matrix-doc/pull/1659">Collision resistant event IDs</a></li>
+</ul>
+</li>
+<li>Specifying the ability to upgrade between room versions</li>
+<li>Full specification of lazy loading room members</li>
+<li><a href="https://github.com/matrix-org/matrix-doc/issues/1267">Short Authentication String</a> (Emoji!) interactive verification of E2EE devices</li>
+<li>...and lots and lots and lots of bugfixes and spec omission fixes.</li>
+</ul>
+<p>That said, there is a <em>lot</em> of really exciting stuff in flight right now which sadly didn’t stabilise in time for Matrix 1.0, but will be landing as fast as we can finalise it now that 1.0 is at last out the door.  This includes:</p>
+<ul>
+<li>Editable messages!  (These are in Synapse 1.0 and Riot already, but still stabilising so not enabled by default)</li>
+<li>Reactions! (Similarly these are in develop)</li>
+<li>Threading!! (We’ve planted the seeds for this in the new ‘aggregations’ support which powers edits &amp; reactions - but full thread support is still a bit further out).</li>
+<li><a href="https://github.com/uhoreg/matrix-doc/blob/cross-signing2/proposals/1756-cross-signing.md">Cross-signed verification for end-to-end encryption</a> (This is on a branch, but due to land any day now).  We’ve also held off merging E2E backups into the Matrix 1.0 spec until cross-signing lands, given it may change the backup behaviour a bit.  Once this is done, we can seriously talk about turning on E2E by default everywhere.</li>
+<li>Live-tracking of room statistics and state in Synapse!  (This is in Synapse 1.0 already if you check out the new room_stats and room_state tables, but we need to provide a nice admin interface for it).</li>
+<li>Support for smaller footprint homeservers by reducing memory usage and stopping them from joining overly complex rooms.</li>
+</ul>
+<p>Then stuff which we haven’t yet started, but is now unlocked by the 1.0 release:</p>
+<ul>
+<li>Fixing extremities build-up (and so massively improving performance)</li>
+<li>Rewriting Communities.  Groups/Communities deliberately didn’t land in Matrix 1.0 as the current implementation has issues we want to fix first.  <a href="https://github.com/matrix-org/matrix-doc/pull/1772">MSC1772</a> has the details.</li>
+<li>Rewritten room directory using the new room stats/state tables to be super-speedy.</li>
+<li>Super-speedy <a href="https://github.com/matrix-org/synapse/pull/3122">incremental state resolution</a></li>
+<li>Removing MXIDs from events (<a href="https://github.com/matrix-org/matrix-doc/issues/1228">MSC1228</a>)</li>
+</ul>
+<p>Just to give a quick taster of the shape of things to come, here’s RiotX/Android, the all-new Riot client for Android, showing off Edits &amp; Reactions in the wild…</p>
+<div style="text-align: center">
+<img src="/blog/img/edits.jpg" style="height: 640px;"/>
+</div>
+<p>...and here’s a screenshot of the final test jig for cross-signing devices in end-to-end encryption, so you will never have to manually verify new devices for a trusted user ever again!  We demoed a <em>very</em> early version of this at FOSDEM, but this here is the testing harness for real deal, after several iterations of the spec and implementation to nail down the model. + means the device/user's cross-signing key is trusted, T means it's TOFU:</p>
+<div style="text-align: center">
+<img src="/blog/img/cross-signing.png" style="height: 480px; margin: auto"/>
+</div>
+<p>So, there you have it - welcome to Matrix 1.0, and we look forward to our backlog of feature work now landing!</p>
+<p>Massive massive thanks to everyone who has stuck with the project over the years and helped support and grow Matrix - little did we think back in May 2014 that it’d take us this long to exit beta, but hopefully you’ll agree that it’s been worth it :)</p>
+<p>Talking of which, we were looking through the photos we took from the first ever session hacking on Matrix back in May 2014…</p>
+<p><img src="/blog/img/nightmare.jpg" alt="Whiteboard 1" /></p>
+<p>...suffice it to say that of the architectural options, we went with #3 in the end...</p>
+<p><img src="/blog/img/pl.jpg" alt="Whiteboard 2" /></p>
+<p>...and that nowadays we actually know how power levels work, in excruciating and (hopefully) well-specified detail :)</p>
+<p>There has been an absolutely enormous amount of work to pull Matrix 1.0 together - both on the spec side (thanks to the Spec Core Team for corralling proposals, and everyone who's contributed proposals, and particularly to Travis for editing it all) and the implementation side (thanks to the whole Synapse team for the tedious task of cleaning up everything that was needed for 1.0).  And of course, huge thanks go to everyone who has been helping test and debug the Synapse 1.0 release candidates, or just supporting the project to get to this point :)</p>
+<h2 id="the-matrix-org-foundation">The Matrix.org Foundation</h2>
+<p>Finally, as promised, alongside Matrix 1.0, we are very happy to announce the official launch of the finalised Matrix.org Foundation!</p>
+<p>This has been a long-running project to ensure that Matrix’s future is governed by a neutral non-profit custodian for the benefit of everyone in the Matrix ecosystem.  We started the process nearly a year ago back with the initial proposal <a href="https://matrix.org/blog/2018/06/20/towards-open-governance-for-matrix-org">Towards Open Governance of Matrix.org</a>, and then legally <a href="https://matrix.org/blog/2018/10/29/introducing-the-matrix-org-foundation-part-1-of-2">incorporated the Foundation</a> in October, and published the <a href="https://github.com/matrix-org/matrix-doc/blob/matthew/msc1779/proposals/1779-open-governance.md">final governance proposal</a> in January.</p>
+<p>As of today the Foundation is finalised and operational, and all the assets for Matrix.org have been transferred from <a href="https://vector.im">New Vector</a> (the startup we formed in 2017 to hire the core Matrix team).  In fact you may already have seen Matrix.org Foundation notices popping up all over the Matrix codebase (as all of New Vector’s work on the public Matrix codebase for the foreseeable is being assigned to the Matrix.org Foundation).</p>
+<p>Most importantly, we’re excited to introduce the <strong>Guardians of the Matrix.org Foundation</strong>.  The Guardians are the legal directors of the non-profit Foundation, and are responsible for ensuring that the Foundation (and by extension the Spec Core Team) keeps on mission and neutrally protects the development of Matrix. Guardians are typically independent of the commercial Matrix ecosystem and may even not be members of today’s Matrix community, but are deeply aligned with the mission of the project. Guardians are selected to be respected and trusted by the wider community to uphold the guiding principles of the Foundation and keep the other Guardians honest.</p>
+<p>We have started the Foundation with five Guardians - two being the original founders of the Matrix project (Matthew and Amandine) and three being entirely independent, thus ensuring the original Matrix team forms a minority which can be kept in check by the rest of the Guardians. The new Guardians are:</p>
+<ul>
+<li>
+<p>Prof. Jon Crowcroft - Marconi Professor of Communications Systems in the Computer Lab at the University of Cambridge and the Turing Institute. Jon is a pioneer in the field of decentralised communication, and a fellow of the Royal Society, the ACM, the British Computer Society, the Institution of Engineering and Technology, the Royal Academy of Engineering and the Institute of Electrical and Electronics Engineers.</p>
+<p>Jon is a global expert in decentralisation and data privacy, and is excellently placed to help ensure Matrix stays true to its ideals.</p>
+</li>
+<li>
+<p>Ross Schulman - Ross is a senior counsel and senior policy technologist at New America’s Open Technology Institute, where he focuses on internet measurement, emerging technologies, surveillance, and decentralization. Prior to joining OTI, Ross worked for Google.</p>
+<p>Ross brings a unique perspective as a tech- and decentralisation-savvy lawyer to the Foundation, as well as being one of the first non-developers in the Matrix community to run his own homeserver. Ross has been known to walk around Mozfest clutching a battery-powered Synapse in a box, promoting decentralised communication for all.</p>
+</li>
+<li>
+<p>Dr. Jutta Steiner - As co-founder and CEO of Parity Technologies, Jutta is dedicated to building a better internet - Web 3.0 - where users’ privacy &amp; control come first. Parity Technologies is a leader in the blockchain space – known to many as the creator of one of the most popular Ethereum clients, it is also the creator of two ambitious new blockchain technlogies, Polkadot and Substrate, that make it easier to experiment and innovate on scalability, encryption and governance.</p>
+<p>Parity has been pioneering Matrix enterprise use since the moment they decided to rely on Matrix for their internal and external communication back in 2016, and now run their own high-volume deployment, with end-to-end encryption enabled by default. Jutta represents organisations who are professionally dependent on Matrix day-to-day, as well as bringing her unique experiences around decentralisation and ensuring that Web 3.0 will be a fair web for all.</p>
+</li>
+</ul>
+<p>We’d like to offer a very warm welcome to the new Guardians, and thank them profusely for giving up their time to join the Foundation and help ensure Matrix stays on course for the years to come.</p>
+<p>For the full update on the Foundation, please check out the new website content at <a href="https://matrix.org/foundation">https://matrix.org/foundation</a> which should tell you everything you could possibly want to know about the Foundation, the Guardians, the Foundation’s legal Articles of Association, and the day-to-day Rules which define the Open Governance process.</p>
+<h2 id="and-finally">And finally…</h2>
+<p>Matrix 1.0 has been a bit of an epic to release, but puts us on a much stronger footing for the future.</p>
+<p>However, it’s very unlikely that we’d have made it this far if most of the core dev team wasn’t able to work on Matrix as their day job.  Right now we are actively looking for large-scale donations to the Matrix.org Foundation (and/or investment in <a href="https://vector.im">New Vector</a>) to ensure that the team can maintain as tight a focus on core Matrix work as possible, and to ensure the project realises its full potential.  While Matrix is growing faster than ever, this perversely means we have more and more distractions - whether that’s keeping the Matrix.org server safe and operational, or handling support requests from the community, or helping new members of the ecosystem get up and running.  If you would like Matrix to succeed, please <a href="mailto:funding@matrix.org">get in touch</a> if you’d like to sponsor work, prioritise features, get support contracts, or otherwise support the project.  We’re particularly interested in sponsorship around decentralised reputation work (e.g. publishing a global room directory which users can filter based on their preferences).</p>
+<p>Finally, huge thanks to everyone who has continued to support us through thick and thin on <a href="https://patreon.com/matrixdotorg">Patreon</a>, <a href="https://liberapay.com/matrixdotorg">Liberapay</a> or other platforms.  Every little helps here, both in terms of practically keeping the lights on, and also inspiring larger donations &amp; financial support.</p>
+<p>So: thank you once again for flying Matrix.  We hope you enjoy 1.0, and we look forward to everything else landing on the horizon!</p>
+<p>- Matthew, Amandine &amp; the whole Matrix.org Team.</p>
+
+        </div>
+    </article>
+    
+    <article class="post">
+        <header>
             <h1><a href="&#x2F;blog&#x2F;2019&#x2F;06&#x2F;11&#x2F;synapse-1-0-0-released&#x2F;" title="Synapse 1.0.0 released">Synapse 1.0.0 released</a></h1>
             <span>
                 11.06.2019 00:00
@@ -1087,179 +1190,6 @@ Contributed by Christoph Müller. (<a href="https://github.com/matrix-org/synaps
 <li>Run <code>black</code> on the tests directory. (<a href="https://github.com/matrix-org/synapse/issues/5170">#5170</a>)</li>
 <li>Fix CI after new release of isort. (<a href="https://github.com/matrix-org/synapse/issues/5179">#5179</a>)</li>
 </ul>
-
-        </div>
-    </article>
-    
-    <article class="post">
-        <header>
-            <h1><a href="&#x2F;blog&#x2F;2019&#x2F;05&#x2F;10&#x2F;this-week-in-matrix-2019-05-10&#x2F;" title="This Week in Matrix 2019-05-10">This Week in Matrix 2019-05-10</a></h1>
-            <span>
-                10.05.2019 00:00
-                —
-                <a href="/category/this-week-in-matrix">
-                    This Week in Matrix
-                </a>
-                —
-                <a href="/author/ben-parsons">
-                    Ben Parsons
-                </a>
-            </span>
-            
-        </header>
-        <div>
-            <h2 id="matrix-live">Matrix Live</h2>
-<p>This week Neil and Matthew are talking about recent security issues - this is a really long and detailed chat, but you can skip to around the 32 minute mark to hear about other news - including progress on reactions. Reminder that for a good &quot;big picture&quot; overview of the progress of Matrix, you can look at the <a href="https://github.com/orgs/matrix-org/projects/9">Homeserver High Level Roadmap</a>.</p>
-<iframe src="https://www.youtube.com/embed/vSCfoQTVOE8" frameBorder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowFullScreen></iframe>
-<h2 id="dept-of-servers">Dept of Servers</h2>
-<h3 id="synapse">Synapse</h3>
-<p>Neil, Synapse-dev wrangler:</p>
-<blockquote>
-<p>Reactions continues at full speed, we have a draft PR and will be implementing over the coming week. The ability to blacklist IPs over federation will land imminently, as well as a nasty device management bug that led to a spate of E2E errors. Next week is all about Reactions, resuming work on the small homeserver project and finally getting back to Synapse 1.0 blockers following all the remediation drama of the past few weeks. With any luck we’ll have a new Synapse release for you next week.</p>
-</blockquote>
-<h2 id="dept-of-encryption">Dept of Encryption</h2>
-<h3 id="pantalaimon">Pantalaimon</h3>
-<p>Says <a href="https://github.com/poljar">poljar</a>:</p>
-<blockquote>
-<ul>
-<li><a href="https://github.com/matrix-org/pantalaimon">Pantalaimon</a> received a configuration file. The configuration file adds the ability to configure multiple Homeservers and pantalaimon will run having each Homeserver exposed on a different TCP port.</li>
-<li>The panctl utility has received support for more commands, it now has the ability to accept SAS requests, confirm them, import/export keys, list pan users as well as list devices of users. Completions for the commands were also added.</li>
-</ul>
-</blockquote>
-<h2 id="dept-of-clients">Dept of Clients</h2>
-<h3 id="pattle-big-update">Pattle - big update!</h3>
-<p><a href="https://matrix.to/#/@wilko:matrix.org">Wilko</a> announced:</p>
-<blockquote>
-<p>A new version of Pattle is available on F-droid!</p>
-<p>Lots of changes again, including:</p>
-<ul>
-<li>Render HTML formatting in messages!</li>
-<li>Replies are now rendered!</li>
-<li>Show date headers between messages of different days!</li>
-<li>Render usernames with a color in chat timeline</li>
-<li>Add loading indicators (when logging in, loading chats, etc.)</li>
-<li>Show error banner at the top if syncing failed</li>
-<li>Syncing now resumes after a failed attempt (no more restarting)</li>
-<li>Fix messages not being sent if connection was lost and the app restarted</li>
-</ul>
-<p>To install Pattle, add the following repo in F-droid:</p>
-<p><a href="https://fdroid.pattle.im/?fingerprint=E91F63CA6AE04F8E7EA53E52242EAF8779559209B8A342F152F9E7265E3EA729">https://fdroid.pattle.im/?fingerprint=E91F63CA6AE04F8E7EA53E52242EAF8779559209B8A342F152F9E7265E3EA729</a></p>
-<p>Follow development <a href="https://git.pattle.im/pattle/app">here</a> and in <a href="https://matrix.to/#/#pattle:matrix.org">#pattle:matrix.org</a>!</p>
-</blockquote>
-<p><img src="/blog/img/pattle-2019-05-10.png" alt="" /></p>
-<h3 id="fractal">Fractal</h3>
-<p><a href="https://matrix.to/#/@afranke:matrix.org">Alexandre Franke</a>:</p>
-<blockquote>
-<p>Although the development pace has been reduced lately, the Fractal team managed to make significant progress towards the 4.2 release. More specifically since our previous news, Chris has landed much of his adaptive view work to get Fractal in a mobile friendly state so it’s ready to run on the Librem 5 once Purism starts shipping them. But he didn’t stop there: eager to see his awesome work in the hands of many people (figuratively, the literal application will have to wait for the phone to be out 😛) as soon as possible, he tackled a few bugs that we really wanted to get sorted out before we got a new version out.</p>
-<p>Alexandre also <a href="https://gitlab.gnome.org/GNOME/fractal/commit/152255031400049a30667c581c0dc31a4ef03146">prepared the changelog</a> with a bird’s-eye view of all changes that happened since 4.0.</p>
-<p>Last but not least, we had a few external contributions for features such as network proxy support and typing notifications.</p>
-</blockquote>
-<h3 id="riot-web">Riot Web</h3>
-<blockquote>
-<p>Progress on message composer for editing messages.</p>
-</blockquote>
-<h3 id="riot-ios">Riot iOS</h3>
-<blockquote>
-<ul>
-<li>0.8.6 has been released on Tuesday</li>
-<li>We are working on reactions</li>
-</ul>
-</blockquote>
-<h3 id="riot-android">Riot Android</h3>
-<blockquote>
-<ul>
-<li>We have fixed some minor bugs, our efforts are now on RiotX</li>
-<li>New FDroid mode support for high service level, regardless of battery usage.</li>
-</ul>
-</blockquote>
-<h3 id="riotx-android">RiotX (Android)</h3>
-<blockquote>
-<ul>
-<li>Benoit has started to implement the crypto on RiotX. Basically all the legacy has been imported and a migration to the new architecture is done. Lots of plumbing and rework, but it should be the fastest way to support crypto on RiotX.</li>
-<li>Valere is working on the emoji picker and reactions, and has also added some actions on events (copy, share, view source, etc.)</li>
-<li>François has added room invitation support. It will be possible soon to see invitations, and accept or reject them.</li>
-</ul>
-</blockquote>
-<h3 id="continuum">continuum</h3>
-<p><a href="https://matrix.to/#/@uforia:matrix.org">yuforia</a> has news on <a href="https://github.com/koma-im/continuum-desktop">continuum</a>, a JavaFX-based client.</p>
-<blockquote>
-<p>this week in <a href="https://github.com/koma-im/continuum-desktop">continuum</a></p>
-<ul>
-<li>right-click on a room in the room list to send invitations</li>
-<li>experimental support for receiving invitations</li>
-<li>membership data are now also persisted in database</li>
-</ul>
-</blockquote>
-<h3 id="fluffychat-available-as-a-snap-package-plus-e2ee-progress">FluffyChat available as a Snap package, plus E2EE progress</h3>
-<p><a href="https://matrix.to/#/@krille:chat.regionetz.net">Krille</a> announced FluffyChat for Linux desktops:</p>
-<blockquote>
-<p>FluffyChat is now also available as a Snap package for desktop Linux<br />
-<a href="https://snapcraft.io/fluffychat">https://snapcraft.io/fluffychat</a> :D<br />
-It's a Matrix client written in Qml for Ubuntu Phones. Now it is working for Linux Desktop too.</p>
-</blockquote>
-<p>He also has news to share re E2E:</p>
-<blockquote>
-<p>Progress has been made at the end2end encryption for FluffyChat. Qml bindings for the libolm library are mostly ready and the app can now create keys and upload keys to the server. Device tracking is now implemented too.</p>
-</blockquote>
-<p>E2E when? SOON! See the branch here: https://gitlab.com/ChristianPauly/fluffychat/tree/e2eencryption</p>
-<h2 id="dept-of-bridges">Dept of Bridges</h2>
-<h3 id="new-hangouts-bridge-from-tulir-mautrix">New Hangouts bridge from tulir / mautrix</h3>
-<p><a href="https://matrix.to/#/@tulir:maunium.net">tulir</a> has been using his <a href="https://github.com/tulir/mautrix-python">mautrix-python</a> lib, which was recently used to enable his <a href="https://github.com/tulir/mautrix-facebook">mautrix-facebook</a> bridge, to bring a new method for Matrix-Hangouts bridging:</p>
-<blockquote>
-<p>New bridge again, this time it's Hangouts: https://github.com/tulir/mautrix-hangouts / <a href="https://matrix.to/#/#hangouts:maunium.net">#hangouts:maunium.net</a>. As with the Messenger bridge, currently the main difference to matrix-puppet-hangouts is multi-user support (also no hacky JS/Python mixing).</p>
-<p>Before making mautrix-hangouts, I put a bunch of the generic bridging parts of mautrix-facebook into mautrix-python's bridge module and used that in both bridges. After Debian 10 is released, I'll drop Python 3.5 compatibility in mautrix-telegram and move it to use mautrix-python and the bridge module too.</p>
-<p>Next week I'm planning on adding a bunch of features to both my new bridges, such as bridging formatting and remaining media types (so no new bridges planned for now :D).</p>
-</blockquote>
-<h2 id="dept-of-sdks-and-frameworks">Dept of SDKs and Frameworks</h2>
-<h3 id="qmatrixclient-is-now-quotient">QMatrixClient is now &quot;Quotient&quot;</h3>
-<p><a href="https://matrix.to/#/@kitsune:matrix.org">kitsune</a>:</p>
-<blockquote>
-<p>The vote on a new name for the QMatrixClient project has been going on over the past week.<br />
-<strong>We have a winner now, and the new name is &quot;Quotient&quot;!</strong> In the nearest weeks, expect changes in the library code (it's going to be libQuotient from the next release), room aliases (already ongoing), links to the repos etc. etc. Where possible, we're going to smoothen the migration path by providing legacy fallbacks (e.g., the new C++ namespace, Quotient, will be introduced but the old one, QMatrixClient, will stay its synonym, although deprecated).<br />
-Just in case you missed all the previous mentions of the topic - it's only related to the overall project and the library, but not the client - its name remains Quaternion.</p>
-</blockquote>
-<p>Why rename?</p>
-<blockquote>
-<p>Because the previous name has been a bit clumsy and, most importantly, the project is no more focusing just on client-side but on a wider set of applications of Matrix (no homeserver in plans though). See also the recent backlog of <a href="https://matrix.to/#/#qmatrixclient:matrix.org">#qmatrixclient:matrix.org</a> (now also <a href="https://matrix.to/#/#quotient:matrix.org">#quotient:matrix.org</a>) earlier this week for the whole discussion</p>
-</blockquote>
-<h3 id="ruby-matrix-sdk-hits-v0-1-0">Ruby Matrix SDK hits v0.1.0</h3>
-<p><a href="https://github.com/ananace/">Ananace</a>:</p>
-<blockquote>
-<p>Just published version 0.1.0 of the <a href="https://github.com/ananace/ruby-matrix-sdk">Ruby Matrix SDK</a>, and I've gotten enough testing written now where I feel comfortable not marking this as a pre-production release. So feel free to integrate it into more than just prototypes and experiments. 😃<br />
-Relevant links; <a href="https://github.com/ananace/ruby-matrix-sdk">GitHub page</a>, <a href="https://matrix.to/#/#ruby-matrix-sdk:kittenface.studio">#ruby-matrix-sdk:kittenface.studio</a>.</p>
-</blockquote>
-<h3 id="opsdroid-big-updates-with-focus-on-matrix">Opsdroid big updates, with focus on Matrix</h3>
-<p><a href="https://matrix.to/#/@cadair:cadair.com">Cadair</a>:</p>
-<blockquote>
-<p><a href="http://opsdroid.readthedocs.io/">Opsdroid</a> 0.15 has been released, with <em>a lot</em> of matrix focused updates. The biggest of which is support for sending and receiving images and files. There have also been a bunch of bug fixes such as clean exit of the matrix connector and correct handling of events which are not parsed. There are also a bunch of other not matrix specific changes like support for the awesome <a href="https://pypi.org/project/parse/">parse</a> library for string matching. Read all about it in the release blog: https://medium.com/opsdroid/event-dispatching-simple-parsing-and-more-in-v0-15-3f721b8a6d6c</p>
-</blockquote>
-<h3 id="pk-interfaces-for-ruby-olm">PK interfaces for ruby_olm</h3>
-<p><a href="https://matrix.to/#/@willem:canarymod.net">Willem</a>:</p>
-<blockquote>
-<p>This week I've been adding PK interfaces to <a href="https://github.com/cjhdev/ruby_olm">cjhdev's Ruby bindings for Olm</a>, in preparation of improving <a href="https://git.snt.utwente.nl/14mRh4X0r/tchap-proxy">my Tchap proxy</a>. The PK interfaces can be found in <a href="https://github.com/14mRh4X0r/ruby_olm">my fork of ruby_olm</a>. Building the native extensions for the gem has had a major overhaul, so no pull request yet.</p>
-</blockquote>
-<h2 id="dept-of-ops">Dept of Ops</h2>
-<h3 id="matrix-docker-ansible-deploy-update">matrix-docker-ansible-deploy update</h3>
-<p>It's been a few weeks since we heard from <a href="https://matrix.to/#/@slavi:devture.com">Slavi</a> about <a href="https://github.com/spantaleev/matrix-docker-ansible-deploy">matrix-docker-ansible-deploy</a>, but he's been working away on it:</p>
-<blockquote>
-<p>We haven't shared any <a href="https://github.com/spantaleev/matrix-docker-ansible-deploy">matrix-docker-ansible-deploy</a> updates lately, but we've had lots of community contributions.</p>
-<p>Most of it has been bug fixes and various internal improvements, but we've also landed a few large features.
-Here's what's most interesting lately:</p>
-<ul>
-<li><a href="https://github.com/spantaleev/matrix-docker-ansible-deploy/blob/master/docs/configuring-playbook-bridge-mautrix-facebook.md">Facebook bridging support</a> via <a href="https://github.com/tulir/mautrix-facebook">mautrix-facebook</a></li>
-<li><a href="https://github.com/spantaleev/matrix-docker-ansible-deploy/blob/master/docs/configuring-playbook-mxisd.md#mxisd-controlled-registration">Support for mxisd-controlled user Registration</a></li>
-<li><a href="https://github.com/spantaleev/matrix-docker-ansible-deploy/blob/master/CHANGELOG.md#caddy-webserver-examples">Examples</a> for how to use a <a href="https://caddyserver.com/">Caddy webserver</a> instead of the integrated nginx webserver</li>
-<li><a href="https://github.com/spantaleev/matrix-docker-ansible-deploy/blob/master/CHANGELOG.md#goofys-support-for-other-s3-compatible-object-stores">Goofys support for other S3-compatible object stores</a></li>
-</ul>
-</blockquote>
-<h2 id="dept-of-status-of-matrix">Dept of <em>Status of Matrix</em></h2>
-<p><a href="https://matrix.to/#/@jaywink:feneas.org">jaywink</a>, maintainer of <a href="https://the-federation.info">https://the-federation.info</a>, told us what we all know to be true: Matrix is great and is getting more popular:</p>
-<blockquote>
-<p>Matrix (Synapse) jumps to second place in <a href="https://the-federation.info">https://the-federation.info</a> site, which lists servers of the federated social web. Help us map the true size of the Matrixverse by adding your server by going a <code>https://the-federation.info/register/yourdomain.tld</code>. Note, SRV and well-known lookups not yet working, so registration needs to happen with the Matrix server real domain (and port if any).</p>
-</blockquote>
-<h2 id="that-s-all-i-know">That's all I know</h2>
-<p>See you next week, and be sure to stop by <a href="https://matrix.to/#/#TWIM:matrix.org">#twim:matrix.org</a> with your updates!</p>
-<p>PS to people who would normally be reading this in their own RSS reader - I apologise, we'll get the full-article feed back up soon.</p>
 
         </div>
     </article>

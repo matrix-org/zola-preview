@@ -111,6 +111,247 @@
     
     <article class="post">
         <header>
+            <h1><a href="&#x2F;blog&#x2F;2023&#x2F;03&#x2F;03&#x2F;this-week-in-matrix-2023-03-03&#x2F;" title="This Week in Matrix 2023-03-03">This Week in Matrix 2023-03-03</a></h1>
+            <span>
+                03.03.2023 00:00
+                —
+                <a href="/category/this-week-in-matrix">
+                    This Week in Matrix
+                </a>
+                —
+                <a href="/author/thib">
+                    Thib
+                </a>
+            </span>
+            
+        </header>
+        <div>
+            <h2 id="matrix-live">Matrix Live</h2>
+<iframe width="560" height="315" src="https://www.youtube.com/embed/YB0vBc81DvI" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+<h2 id="dept-of-spec-scroll">Dept of Spec 📜</h2>
+<p><a href="https://matrix.to/#/@andrewm:element.io">Andrew Morgan (anoa)</a> announces</p>
+<blockquote>
+<p>Here's your weekly spec update! The heart of Matrix is the specification - and this is modified by Matrix Spec Change (MSC) proposals. Learn more about how the process works at https://spec.matrix.org/proposals.</p>
+<h2 id="msc-status">MSC Status</h2>
+<p><strong>New MSCs:</strong></p>
+<ul>
+<li><a href="https://github.com/matrix-org/matrix-spec-proposals/pull/3973">MSC3973: Search users in the user directory with the Widget API</a></li>
+<li><a href="https://github.com/matrix-org/matrix-spec-proposals/pull/3972">MSC3972: Lexicographical strings as an ordering mechanism</a></li>
+<li><a href="https://github.com/matrix-org/matrix-spec-proposals/pull/3971">MSC3971: Sharing image packs</a></li>
+</ul>
+<p><strong>MSCs in Final Comment Period:</strong></p>
+<ul>
+<li><a href="https://github.com/matrix-org/matrix-spec-proposals/pull/3966">MSC3966: <code>event_property_contains</code> push rule condition</a> (merge)</li>
+<li><a href="https://github.com/matrix-org/matrix-spec-proposals/pull/3873">MSC3873: event_match dotted keys</a> (merge)</li>
+<li><a href="https://github.com/matrix-org/matrix-spec-proposals/pull/3758">MSC3758: Add <code>event_property_is</code> push rule condition kind</a> (merge)</li>
+</ul>
+<p><strong>Accepted MSCs:</strong></p>
+<ul>
+<li><em>No MSCs were accepted this week.</em></li>
+</ul>
+<p><strong>Closed MSCs:</strong></p>
+<ul>
+<li><a href="https://github.com/matrix-org/matrix-spec-proposals/pull/3887">MSC3887: List matching push rules</a></li>
+</ul>
+<h2 id="spec-updates">Spec Updates</h2>
+<p>Other than spec text fixes in the <a href="https://github.com/matrix-org/matrix-spec/pulls?q=is%3Apr+sort%3Aupdated-desc">matrix-spec repo</a>, the Spec Core Team has mainly been focusing on push notifications, push rules and generally improving notifications across Matrix. This includes improving behaviour such as accidentally notifying someone when you mention their name, accidentally notifying people when you reply to a message, accidentally notifying when you edit a message and so on. The relevant MSCs are <a href="https://github.com/matrix-org/matrix-spec-proposals/pull/3958">MSC3958</a>, <a href="https://github.com/matrix-org/matrix-spec-proposals/pull/3873">MSC3873</a>, <a href="https://github.com/matrix-org/matrix-spec-proposals/pull/3966">MSC3966</a> and <a href="https://github.com/matrix-org/matrix-spec-proposals/pull/3758">MSC3758</a>.</p>
+<p>In addition, review of <a href="https://github.com/matrix-org/matrix-spec-proposals/pull/3575">MSC3575</a> (Sliding Sync) and other sliding sync MSCs saw some in-depth review from <a href="https://github.com/deepbluev7">Nico</a>.</p>
+<h2 id="random-msc-of-the-week">Random MSC of the Week</h2>
+<p>The random MSC of the week is... <a href="https://github.com/matrix-org/matrix-spec-proposals/pull/3013">MSC3013: Encrypted Push</a>!</p>
+<p>When you get a push notification for a new message on your phone, you may wonder how that message travels from your homeserver to you. Typically it isn't done directly - instead, when you receive a message that should notify you, your homeserver will generate a push notification specifically for you, and send this off to a Matrix Push Gateway. That Push Gateway is then configured to send your notification off to a service which knows how to route it to your device. This is usually Apple's Push Notification Service in the case of iOS devices, or Google's Firebase Cloud Messaging service in the case of Android devices (though FCM supports iOS devices too!). Your phone's OS will keep a consistent connection to one of these services if an app has registered for push notifications, and thus you can receive notifications from apps even when your Matrix client is not running.</p>
+<p>But doesn't that leak all of your message notifications to Apple or Google? 😱 Not quite. While clients can choose to include all contents of a message in a push notification, most instead opt for only including the event's ID. When the push notification containing that event ID reaches your phone, it wakes up a small portion of your Matrix client which goes and fetches the full message content from the homeserver (plus encryption keys if the message needs to be decrypted). This way, you can still get a notification without your Matrix client needing to be open all the time. However, some metadata (such as when you are getting a notification) is still leaked to Apple/Google. Since the third-party service knows the event ID, it can correlate which users are in the same room by cross-referencing event IDs in notifications across multiple users.</p>
+<p>It's also a bit of a resource drain that the client needs to go and talk to the homeserver to fetch the full event content. Ideally we'd just include it all in the notification - but then we end up sharing too much information with the push provider!</p>
+<p>This MSC proposes a solution; encrypt the message content and send that in the notification! Message contents are encrypted using a public key provided by the client to the homeserver when registering for push notifications. The ciphertext passes through the Push Gateway (which may be run by a separate entity to your homeserver) and the Push Notification service (run by Apple, Google, etc.) and then finally down to your client where it is decrypted without the need for a web request as the private key will just be stored in the client.</p>
+<p>And since a separate encryption key is being used per-device, ciphertexts of the same event will differ when encrypted for different users - eliminating the Push Gateway/Push Notification Service from being to correlate notifications across users (timing attacks are still possible, but this can be reduced by introducing a small amount of jitter into when notifications are sent out).</p>
+<p>Anyhoo, if you're big on privacy (or security against those running Push Gateway/Notification Services), check out this MSC!</p>
+</blockquote>
+<h2 id="dept-of-servers-europea">Dept of Servers 🏢</h2>
+<h3 id="synapse-website">Synapse (<a href="https://github.com/matrix-org/synapse/">website</a>)</h3>
+<p>Synapse is a Matrix homeserver implementation developed by the matrix.org core team</p>
+<p><a href="https://matrix.to/#/@shayshay:matrix.org">Shay</a> announces</p>
+<blockquote>
+<p>Welcome to another edition of the Synapse section of TWIM. This week
+we've released Synapse v1.78.0, packed with features and bugfixes.</p>
+<p>Some notable highlights include:</p>
+<ul>
+<li>an update to the command line export data tool</li>
+<li>implemented the experimental <code>exact_event_match</code> push rule condition from <a href="https://github.com/matrix-org/matrix-spec-proposals/pull/3758">MSC3758</a></li>
+<li>implemented <a href="https://github.com/matrix-org/matrix-spec-proposals/pull/3873">MSC3873</a> to disambiguate push rule keys with dots in them.</li>
+<li>allow Synapse to use a specific Redis <a href="https://redis.io/commands/select/">logical database</a> in worker-mode deployments.</li>
+<li>fixed a bug introduced in Synapse 1.76 where 5 second delays would occasionally occur in deployments using workers.</li>
+</ul>
+<p>Plus much more! You can check out the details <a href="vector://vector/webapp/(https://matrix.org/blog/posts)">here</a> or take a deep dive in the release notes <a href="https://github.com/matrix-org/synapse/releases/tag/v1.78.0">here</a>.</p>
+</blockquote>
+<h3 id="construct-website">Construct (<a href="https://github.com/matrix-construct/construct">website</a>)</h3>
+<p>A performance-oriented homeserver with minimal dependencies.</p>
+<p><a href="https://matrix.to/#/@jevolk:matrix.org">Jason Volk</a> reports</p>
+<blockquote>
+<p>This week, seven additional endpoints from the synapse admin API have been ported to Construct. These include user room listings, account data, devices, pushers, and forward extremities pruning. This week it also became easier for admins to tune database options to meet their needs through the configuration system. To put things into perspective, the server now has 2184 configurable items which can be set by an environment variable. Construct also has 6177 statistical items which can be reported to a Prometheus metrics daemon.</p>
+<p>Lastly I would like to share good news on the compatibility front after taking some time to investigate why Construct and Conduit have trouble federating. I reached out with a patchset to the folks over at Ruma and I would like to take this opportunity to commend their hospitality. Their conduct has been nothing short of diplomatic, giving confidence we can now iron out any kinks in the coming weeks.</p>
+<p>Find it at <a href="https://matrix.to/#/#construct:zemos.net">#construct:zemos.net</a></p>
+</blockquote>
+<h2 id="dept-of-clients-iphone">Dept of Clients 📱</h2>
+<h3 id="neochat-website">Neochat (<a href="https://invent.kde.org/network/neochat">website</a>)</h3>
+<p>A client for matrix, the decentralized communication protocol</p>
+<p><a href="https://matrix.to/#/@carl:kde.org">Carl Schwan</a> says</p>
+<blockquote>
+<p>This Monday, I attended a workshop from the European Commission in Brussels around interoperability between messaging services under the Digital Market Act. This was quite interesting and I wrote about it on my blog https://carlschwan.eu/2023/03/02/digital-market-act-workshop-in-brussels</p>
+</blockquote>
+<h3 id="element-web-desktop-website">Element Web/Desktop (<a href="https://github.com/vector-im/element-web">website</a>)</h3>
+<p>Secure and independent communication, connected via Matrix. Come talk with us in <a href="https://matrix.to/#/#element-web:matrix.org">#element-web:matrix.org</a>!</p>
+<p><a href="https://matrix.to/#/@johannesm:element.io">Johannes Marbach</a> reports</p>
+<blockquote>
+<ul>
+<li>This week we’ve been really doubling down on fixing bugs from our backlog. Included in this are items such as ‘stuck notifications’ and ensuring that messages are sent in the correct order when connectivity is interrupted. </li>
+<li>While we’re looking at stuck notifications issues, we’re also taking the opportunity to redesign our notifications settings screen. We plan on simplifying the options by reducing some noise and improving the copy. </li>
+<li>We have also started a design investigation into how to improve the accessibility of our product with labels and greater contrast.</li>
+</ul>
+</blockquote>
+<h3 id="element-ios-website">Element iOS (<a href="https://github.com/vector-im/element-ios">website</a>)</h3>
+<p>Secure and independent communication for iOS, connected via Matrix. Come talk with us in <a href="https://matrix.to/#/#element-ios:matrix.org">#element-ios:matrix.org</a>!</p>
+<p><a href="https://matrix.to/#/@stefan.ceriu:matrix.org">Ștefan</a> announces</p>
+<blockquote>
+<ul>
+<li>This week we’ve been focussed on fixing the bug whereby a message will show as encrypted in the room list, but is actually decrypted when you’re viewing the timeline.</li>
+<li>In labs; Check out our rich text editor, it’s in progress and improving every update! As with all our features, please test them out and leave us feedback.</li>
+<li>The public test flight for Element X is now available. More details in <a href="https://matrix.to/#/#element-x-ios:matrix.org">#element-x-ios:matrix.org</a>
+<ul>
+<li>Work is progressing well and our current focus is joining and creating rooms</li>
+</ul>
+</li>
+</ul>
+</blockquote>
+<h3 id="element-android-website">Element Android (<a href="https://github.com/vector-im/element-android">website</a>)</h3>
+<p>Secure and independent communication for Android, connected via Matrix. Come talk with us in <a href="https://matrix.to/#/#element-android:matrix.org">#element-android:matrix.org</a>!</p>
+<p><a href="https://matrix.to/#/@benoit.marty:matrix.org">benoit</a> announces</p>
+<blockquote>
+<ul>
+<li>Improvements to polls are ongoing; specifically relating to the relationship between notifications and room member votes</li>
+<li>We’ve also added an unread indicator to the spaces icon so that you can see how many unread messages you have in other spaces.</li>
+<li>Also, our rich text editor is in Labs and getting regular updates and improvements. Check it out and let us know what you think.</li>
+</ul>
+</blockquote>
+<h2 id="dept-of-non-chat-clients-control-knobs">Dept of Non Chat Clients 🎛️</h2>
+<h3 id="somix-formerly-matrix-social">Somix (Formerly matrix-social)</h3>
+<p><a href="https://matrix.to/#/@imbev:matrix.org">imbev</a> announces</p>
+<blockquote>
+<p>Social Media app powered by Matrix</p>
+<p>matrix-social is now known as Somix.</p>
+<p>The git repo has been moved to https://codeberg.org/imbev/Somix</p>
+</blockquote>
+<h2 id="dept-of-sdks-and-frameworks">Dept of SDKs and Frameworks 🧰</h2>
+<h3 id="matrix-js-sdk">matrix-js-sdk</h3>
+<p><a href="https://matrix.to/#/@johannesm:element.io">Johannes Marbach</a> reports</p>
+<blockquote>
+<p>The team maintaining matrix-js-sdk are currently discussing deprecation of the browserify-based distribution channel. By our current analysis, usage seems fairly low while at the same time it's posing drastic technological challenges to us during the integration of matrix-rust-sdk's cryptography module. If you are a current user of the browserified release of the SDK, we'd like to hear from you in https://github.com/matrix-org/matrix-js-sdk/issues/3189.</p>
+</blockquote>
+<h3 id="mautrix-go">mautrix-go</h3>
+<p><a href="https://matrix.to/#/@tulir:maunium.net">tulir</a> announces</p>
+<blockquote>
+<p>mautrix-go has had e2ee support for a few years already, but previously the interface was quite difficult to use for making bots and other small programs, as it required implementing parts of the storage and other things manually. That has changed with the upcoming 0.15 release, which adds a crypto helper that can handle everything for you with just a few extra lines of code. The documentation is unfortunately not great yet, but the <a href="https://github.com/mautrix/go/blob/master/example/main.go">example</a> has been updated to use the new helper, so it should be a decent starting point for writing e2ee-capable bots in Go (and if it explodes, you can ask for help in <a href="https://matrix.to/#/#:maunium.net">#:maunium.net</a>)</p>
+</blockquote>
+<h3 id="elm-sdk">Elm SDK</h3>
+<p><a href="https://matrix.to/#/@mr-demo:matrix.org">mr-demo</a> says</p>
+<blockquote>
+<p>I'm excited to share that I've made significant progress on my Elm SDK for Matrix! Last time, I mentioned that a version 1.0.0 release was approaching, and today I have great news - I've got a working MVP! While it's not ready for use yet, it's a significant step forward.</p>
+<p>To give you a taste of what the SDK can do, I've written some simple code that demonstrates how to use it to authenticate with a Matrix server and send messages to a room. Take a look:</p>
+<pre data-lang="elm" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-elm "><code class="language-elm" data-lang="elm"><span style="color:#608b4e;">-- Example code from the MVP of the new Elm SDK for Matrix
+</span><span style="color:#608b4e;">-- It&#39;s a bit simplified, but it shows the idea of the SDK.
+</span><span style="color:#608b4e;">-- Functionality includes handling credentials, syncing rooms, and sending messages
+</span><span>
+</span><span style="color:#569cd6;">type </span><span style="color:#4ec9b0;">Msg
+</span><span>    </span><span style="color:#569cd6;">= </span><span style="color:#b4cea8;">Cred </span><span style="color:#569cd6;">(</span><span style="color:#b4cea8;">Result X</span><span style="color:#569cd6;">.</span><span style="color:#b4cea8;">Error CredUpdate</span><span style="color:#569cd6;">)
+</span><span>    </span><span style="color:#569cd6;">| </span><span style="color:#b4cea8;">PushButton String
+</span><span>
+</span><span style="color:#569cd6;">type alias </span><span style="color:#4ec9b0;">Model </span><span style="color:#569cd6;">=
+</span><span>    </span><span style="color:#b4cea8;">Credentials
+</span><span>
+</span><span>init </span><span style="color:#569cd6;">:</span><span> ( </span><span style="color:#569cd6;">Model</span><span>, </span><span style="color:#569cd6;">Cmd Msg</span><span> )
+</span><span>init </span><span style="color:#569cd6;">= 
+</span><span>	</span><span style="color:#569cd6;">let
+</span><span>		cred </span><span style="color:#569cd6;">= 
+</span><span>			</span><span style="color:#b4cea8;">Matrix</span><span style="color:#569cd6;">.</span><span>fromAccessToken
+</span><span>				{ baseUrl </span><span style="color:#569cd6;">= </span><span style="color:#d69d85;">&quot;https://matrix.example.org&quot;
+</span><span>				, accessToken </span><span style="color:#569cd6;">= </span><span style="color:#d69d85;">&quot;my-personal-access-token&quot;
+</span><span>				}
+</span><span>	</span><span style="color:#569cd6;">in
+</span><span>		</span><span style="color:#569cd6;">(</span><span> cred, </span><span style="color:#b4cea8;">Matrix</span><span style="color:#569cd6;">.</span><span>sync cred </span><span style="color:#569cd6;">)
+</span></code></pre>
+<p>I've built an incredibly basic client that managed to compress to under 36kB (for scale: Hydrogen is around 748kB) of gzipped JavaScript. The final version will be a bit larger, but this SDK might make way for very compact asset sizes.</p>
+<p>Feel free to reach out at Bram if you'd like to know more about when the first version is coming out!</p>
+</blockquote>
+<h3 id="matrix-rust-sdk-website">matrix-rust-sdk (<a href="https://github.com/matrix-org/matrix-rust-sdk">website</a>)</h3>
+<p>Next-gen crypto-included SDK for developing Clients, Bots and Appservices; written in Rust with bindings for Node, Swift and WASM</p>
+<p><a href="https://matrix.to/#/@jplatte:flipdot.org">Jonas Platte</a> announces</p>
+<blockquote>
+<ul>
+<li>The <a href="https://github.com/matrix-org/matrix-rust-sdk/issues/1579">sliding sync improvement meta-issue</a> seems really close to being finished off</li>
+<li>Added support for <a href="https://github.com/matrix-org/matrix-rust-sdk/pull/1577">encrypting and uploading files without creating the corresponding <code>m.room.message</code> attachment from it</a>, useful for custom event types (thanks to Sam Wedgwood!)</li>
+<li>We improved our examples to <a href="https://github.com/matrix-org/matrix-rust-sdk/pull/1565">show how to persist a session</a> (thanks to Kévin Commaille!)</li>
+<li>Our FFI layer is <a href="https://github.com/matrix-org/matrix-rust-sdk/pull/1587">close to exposing native async functions to foreign languages</a>, there is just a panic we need to debug before merging this</li>
+<li>A <a href="https://github.com/matrix-org/matrix-rust-sdk/pull/1571">PR for client user avatar URL caching</a> is currently in review</li>
+</ul>
+</blockquote>
+<h2 id="dept-of-ops">Dept of Ops 🛠</h2>
+<h3 id="mnotify">mnotify</h3>
+<p><a href="https://matrix.to/#/@rumpelsepp:hackbrettl.de">stefan</a> reports</p>
+<blockquote>
+<p>The Rust rewrite of <a href="https://github.com/rumpelsepp/mnotify">mnotify</a> got some updates and starts to get usable. The broken (password) login flow was fixed and the README received some polishing. I run it now to send E2E encrypted notifications from my servers to my phone. The rust-sdk does a very good job!</p>
+</blockquote>
+<h3 id="matrix-docker-ansible-deploy-website">matrix-docker-ansible-deploy (<a href="https://github.com/spantaleev/matrix-docker-ansible-deploy">website</a>)</h3>
+<p>Matrix server setup using Ansible and Docker</p>
+<p><a href="https://matrix.to/#/@slavi:devture.com">Slavi</a> reports</p>
+<blockquote>
+<p>Thanks to <a href="https://github.com/gnunicorn">Benjamin Kampmann</a>, <a href="https://github.com/spantaleev/matrix-docker-ansible-deploy">matrix-docker-ansible-deploy</a> can now install and configure the <a href="https://github.com/matrix-org/rageshake">Rageshake</a> bug report server.</p>
+<p>Additional details are available in our <a href="https://github.com/spantaleev/matrix-docker-ansible-deploy/blob/master/docs/configuring-playbook-rageshake.md">Setting up Rageshake</a> documentation page.</p>
+</blockquote>
+<p><a href="https://matrix.to/#/@slavi:devture.com">Slavi</a> says</p>
+<blockquote>
+<p><a href="https://github.com/spantaleev/matrix-docker-ansible-deploy">matrix-docker-ansible-deploy</a> continues its migration to <a href="https://traefik.io/">Traefik</a> as its main reverse-proxy like <a href="https://github.com/spantaleev/matrix-docker-ansible-deploy/blob/10b53503704d192d29008745f7d9c28e38f58e25/CHANGELOG.md#backward-compatibility-reverse-proxy-configuration-changes-and-initial-traefik-support">we've announced a few weeks ago</a>.</p>
+<p>Traces of <a href="https://nginx.org/">nginx</a> can still be found and we still keep nginx compatibility for now, but we've already <a href="https://github.com/spantaleev/matrix-docker-ansible-deploy/blob/10b53503704d192d29008745f7d9c28e38f58e25/CHANGELOG.md#traefik-is-the-default-reverse-proxy-now">switched the default reverse-proxy to Traefik</a> for new installations and are seriously urging existing users to make the switch as well.</p>
+</blockquote>
+<h2 id="dept-of-bots-robot-face">Dept of Bots 🤖</h2>
+<h3 id="flip-matrix-bot-website">flip-matrix-bot (<a href="https://gitlab.com/FriendlyLinuxPlayers/flip-matrix-bot">website</a>)</h3>
+<p>A Matrix bot for the <a href="https://friendlylinuxplayers.org/">Friendly Linux Players</a> community.</p>
+<p><a href="https://matrix.to/#/@HER0:matrix.org">HER0</a> reports</p>
+<blockquote>
+<p>Events can now be marked as not requiring ownership of the game in order to attend! For example, there is a <a href="https://friendlylinuxplayers.org/events/7a01da952805b191">Keep Talking and Nobody Explodes event</a> scheduled for later this month. Anyone can participate by joining our Mumble server at the scheduled time and having access to a web browser.</p>
+<p>In addition, when listing upcoming events (<code>!f events</code>), they are now sorted by the time that the event takes place at.</p>
+</blockquote>
+<h2 id="dept-of-ping">Dept of Ping</h2>
+<p>Here we reveal, rank, and applaud the homeservers with the lowest ping, as measured by <a href="https://github.com/maubot/echo">pingbot</a>, a <a href="https://github.com/maubot/maubot">maubot</a> that you can host on your own server.</p>
+<h3 id="ping-maunium-net"><a href="https://matrix.to/#/#ping:maunium.net">#ping:maunium.net</a></h3>
+<p>Join <a href="https://matrix.to/#/#ping:maunium.net">#ping:maunium.net</a> to experience the fun live, and to find out how to add YOUR server to the game.</p>
+<table><thead><tr><th style="text-align: center">Rank</th><th style="text-align: center">Hostname</th><th style="text-align: center">Median MS</th></tr></thead><tbody>
+<tr><td style="text-align: center">1</td><td style="text-align: center">willy.club</td><td style="text-align: center">340</td></tr>
+<tr><td style="text-align: center">2</td><td style="text-align: center">matrix.netho.tk</td><td style="text-align: center">446</td></tr>
+<tr><td style="text-align: center">3</td><td style="text-align: center">ilmari.org</td><td style="text-align: center">535</td></tr>
+<tr><td style="text-align: center">4</td><td style="text-align: center">koyax.org</td><td style="text-align: center">590</td></tr>
+<tr><td style="text-align: center">5</td><td style="text-align: center">nognu.de</td><td style="text-align: center">607.5</td></tr>
+<tr><td style="text-align: center">6</td><td style="text-align: center">pvv.ntnu.no</td><td style="text-align: center">611</td></tr>
+<tr><td style="text-align: center">7</td><td style="text-align: center">kitsunet.info</td><td style="text-align: center">734</td></tr>
+<tr><td style="text-align: center">8</td><td style="text-align: center">keks.club</td><td style="text-align: center">796</td></tr>
+<tr><td style="text-align: center">9</td><td style="text-align: center">coolegrane.farm</td><td style="text-align: center">800</td></tr>
+<tr><td style="text-align: center">10</td><td style="text-align: center">settgast.org</td><td style="text-align: center">1009</td></tr>
+</tbody></table>
+<h3 id="ping-no-synapse-maunium-net"><a href="https://matrix.to/#/#ping-no-synapse:maunium.net">#ping-no-synapse:maunium.net</a></h3>
+<p>Join <a href="https://matrix.to/#/#ping-no-synapse:maunium.net">#ping-no-synapse:maunium.net</a> to experience the fun live, and to find out how to add YOUR server to the game.</p>
+<table><thead><tr><th style="text-align: center">Rank</th><th style="text-align: center">Hostname</th><th style="text-align: center">Median MS</th></tr></thead><tbody>
+<tr><td style="text-align: center">1</td><td style="text-align: center">dendrite.s3cr3t.me</td><td style="text-align: center">283</td></tr>
+<tr><td style="text-align: center">2</td><td style="text-align: center">frai.se</td><td style="text-align: center">297.5</td></tr>
+<tr><td style="text-align: center">3</td><td style="text-align: center">dendrite.kootstra.frl</td><td style="text-align: center">347</td></tr>
+<tr><td style="text-align: center">4</td><td style="text-align: center">matrix.org</td><td style="text-align: center">703</td></tr>
+<tr><td style="text-align: center">5</td><td style="text-align: center">conduit.test.zemos.net:8447</td><td style="text-align: center">1072.5</td></tr>
+<tr><td style="text-align: center">6</td><td style="text-align: center">zemos.net</td><td style="text-align: center">1892</td></tr>
+</tbody></table>
+<h2 id="that-s-all-i-know">That's all I know</h2>
+<p>See you next week, and be sure to stop by <a href="https://matrix.to/#/#twim:matrix.org">#twim:matrix.org</a> with your updates!</p>
+
+        </div>
+    </article>
+    
+    <article class="post">
+        <header>
             <h1><a href="&#x2F;blog&#x2F;2023&#x2F;02&#x2F;28&#x2F;synapse-1-78-released&#x2F;" title="Synapse 1.78 released">Synapse 1.78 released</a></h1>
             <span>
                 28.02.2023 00:00
@@ -1653,264 +1894,6 @@ thanks to everyone who contributed to these releases, including: katlol, thezaid
 dklimpel, FSG-Cat, tjay27, emgrav, villepeh.</p>
 <p>We are also grateful to anyone helping us make Synapse better by sharing their
 feedback and reporting issues, or helping with community support questions.</p>
-
-        </div>
-    </article>
-    
-    <article class="post">
-        <header>
-            <h1><a href="&#x2F;blog&#x2F;2023&#x2F;01&#x2F;27&#x2F;this-week-in-matrix-2023-01-27&#x2F;" title="This Week in Matrix 2023-01-27">This Week in Matrix 2023-01-27</a></h1>
-            <span>
-                27.01.2023 21:12
-                —
-                <a href="/category/this-week-in-matrix">
-                    This Week in Matrix
-                </a>
-                —
-                <a href="/author/thib">
-                    Thib
-                </a>
-            </span>
-            <br>
-            <small>Last update: 27.01.2023 20:21</small>
-        </header>
-        <div>
-            <h2 id="matrix-live">Matrix Live</h2>
-<iframe width="560" height="315" src="https://www.youtube.com/embed/sbb3x41gGso" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-<h2 id="dept-of-gsoc-mortar-board">Dept of GSoC 🎓️</h2>
-<p><a href="https://matrix.to/#/@thib:ergaster.org">Thib</a> reports</p>
-<blockquote>
-<p>The Matrix Foundation is a candidate this year again to the GSoC programme. If you intend to mentor a student around your Matrix project, please ping me (@thib:ergaster.org) in the <a href="https://matrix.to/#/#gsoc:matrix.org">#gsoc:matrix.org</a> room. Your project doesn't have to be set in stone yet: we need to have a good estimate of the number of mentors and projects applying before FOSDEM (by the end of next week).</p>
-</blockquote>
-<h2 id="dept-of-servers-europea">Dept of Servers 🏢</h2>
-<h3 id="synapse-website">Synapse (<a href="https://github.com/matrix-org/synapse/">website</a>)</h3>
-<p>Synapse is a Matrix homeserver implementation developed by the matrix.org core team</p>
-<p><a href="https://matrix.to/#/@shayshay:matrix.org">Shay</a> announces</p>
-<blockquote>
-<p>Well it's friday - which means (somehow) another week had gone by! Here at Synapse we have 
-released v1.76.0rc2, with a host of new features and bugfixes. Of particular note is that 
-as of this release, faster joins are on by default! This means that when joining a room for 
-the first time, Synapse 1.76.0rc2 will request a partial join from the other server by default. 
-Previously, server admins had to opt-in to this using an experimental config flag.</p>
-<p>If you'd rather opt out of this feature for the time being you can use this setting</p>
-<pre data-lang="yaml" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-yaml "><code class="language-yaml" data-lang="yaml"><span style="background-color:#282828;color:#569cd6;">experimental</span><span>:
-</span><span>    </span><span style="background-color:#282828;color:#569cd6;">faster_joins</span><span>: </span><span style="color:#569cd6;">false
-</span></code></pre>
-<p>in your server config. Take it for a spin and let us know how it goes -- please file an issue <a href="https://github.com/matrix-org/synapse/issues/new?assignees=&amp;labels=&amp;template=BUG_REPORT.yml">here</a> if you find anything out of the ordinary after joining a room.</p>
-<p>In addition, this release updates the default room version to v10, adds support for push rules for Polls, and so much more.
-You can check out the release <a href="https://github.com/matrix-org/synapse/releases">here</a>.</p>
-</blockquote>
-<h3 id="dendrite-website">Dendrite (<a href="https://github.com/matrix-org/dendrite">website</a>)</h3>
-<p>Second generation Matrix homeserver</p>
-<p><a href="https://matrix.to/#/@biehdc:reactos.org">Hyperbased in Hyperspace</a> reports</p>
-<blockquote>
-<h2 id="federate-all-the-networks">Federate all the networks!</h2>
-<p>TL;DR: You can now run Dendrite inside the <a href="https://geti2p.net/en/">I2P network</a>. <a href="https://github.com/BieHDC/dendrite/tree/main/cmd/dendrite-demo-pinecone-i2p">Dendrite I2P Port Code</a> and <a href="https://github.com/BieHDC/dendrite/releases">the binaries</a>. The code and the binaries are also hosted on my I2P Site <a href="http://biehdc.i2p/?i2paddresshelper=OXPNfbmkPldhPj7m7iR8OtjUQWbCyBiM99Lghvo5x405c819uaQ-V2E-PubuJHw62NRBZsLIGIz30uCG-jnHjTlzzX25pD5XYT4-5u4kfDrY1EFmwsgYjPfS4Ib6OceNOXPNfbmkPldhPj7m7iR8OtjUQWbCyBiM99Lghvo5x405c819uaQ-V2E-PubuJHw62NRBZsLIGIz30uCG-jnHjTlzzX25pD5XYT4-5u4kfDrY1EFmwsgYjPfS4Ib6OceNOXPNfbmkPldhPj7m7iR8OtjUQWbCyBiM99Lghvo5x405c819uaQ-V2E-PubuJHw62NRBZsLIGIz30uCG-jnHjTlzzX25pD5XYT4-5u4kfDrY1EFmwsgYjPfS4Ib6OceNOXPNfbmkPldhPj7m7iR8OtjUQWbCyBiM99Lghvo5x405c819uaQ-V2E-PubuJHw62NRBZsLIGIz30uCG-jnHjXSigiRrao2DEfLFPof672O5yNJePrDxYPbVRD23bpidBQAEAAcAAA==">biehdc.i2p</a>.</p>
-<p>The last week i worked on getting Dendrite to work on the I2P Network. It makes use of the existing <a href="https://github.com/matrix-org/pinecone">Pinecone</a> infrastructure which gets enabled to dial on I2P with <a href="https://github.com/matrix-org/pinecone/compare/main...BieHDC:pinecone:main">a small patch</a>. This has the main advantage that servers will automatically discover each other if they share a node and you don't have to seek out others in the distributed network. I host a 24/7 Seednode for I2P right now. I have also put the work in to enable a landing page just like a monolith deployment would have and you can just <a href="http://3do33c5purkmidtcdxkqindjplcm3l6uv6qysc5a3pfa7fd7lv6q.b32.i2p/">browse to it</a>. This hopefully increases the visibility too!
-However, it can also dial into the Clearnet too. It is hardcoded to the Seednode run by the matrix and dendrite developers themselves and it is disabled by default, but can be enabled with a command line switch. It effectively is making a bridge between the I2P Network and Clearnet. In order to bridge the gap between Pinecone based servers and normal matrix servers as well, I have also made a very simple <a href="https://github.com/BieHDC/go-matrix2matrix-noobbridge">matrix2matrix bridge</a> which just connects to 2 (or more) Homeservers and exchanges the messages between 2 (or more) rooms. It also supports bridging and not-bridging files of any kind.
-You could add other networks too as long as you can tie them together with Pinecone. For example, the <a href="https://github.com/eyedeekay/onramp">library</a> i use to connect to I2P also supports Tor and it can be added to function just like the I2P implementation. All you need is something that exposes a HTTP Client and a listener.
-My personal goal is to make matrix independent from domain registrars, open ports, static IP addresses and anything that makes self hosting harder than it should be and thankfully all the software we need is already written, it just takes someone to tie it together.</p>
-<p><img src="/blog/img/20230127-twim.png" alt="" /></p>
-</blockquote>
-<h2 id="dept-of-clients-iphone">Dept of Clients 📱</h2>
-<h3 id="fluffychat-website">FluffyChat (<a href="https://fluffychat.im">website</a>)</h3>
-<p><a href="https://matrix.to/#/@krille:janian.de">Krille</a> announces</p>
-<blockquote>
-<p>I have updated FluffyChat to the new Flutter version 3.7 which improves the performance and adds some more Material 3 components. Especially the new toggles look quite nice</p>
-<p><img src="/blog/img/kNLjBjQDNuIMqYFxDzSwQfjk.png" alt="" /></p>
-</blockquote>
-<h3 id="element-web-desktop-website">Element Web/Desktop (<a href="https://github.com/vector-im/element-web">website</a>)</h3>
-<p>Secure and independent communication, connected via Matrix. Come talk with us in <a href="https://matrix.to/#/#element-web:matrix.org">#element-web:matrix.org</a>!</p>
-<p><a href="https://matrix.to/#/@daniellekirkwood:one.ems.host">Danielle</a> says</p>
-<blockquote>
-<p>This week the web team have been working on:</p>
-<ul>
-<li><a href="https://github.com/matrix-org/matrix-spec-proposals/pull/3946">MSC3946</a> Dynamic Room Predecessors</li>
-<li>Continuing to improve the release &amp; packaging processes</li>
-<li>Starting work on a design system</li>
-<li>Notifications improvements; including a design for a new settings page and defaults</li>
-<li>And if that wasn’t enough… There’s been lots of bug fixes, especially in voice broadcasts</li>
-</ul>
-</blockquote>
-<h3 id="element-ios-website">Element iOS (<a href="https://github.com/vector-im/element-ios">website</a>)</h3>
-<p>Secure and independent communication for iOS, connected via Matrix. Come talk with us in <a href="https://matrix.to/#/#element-ios:matrix.org">#element-ios:matrix.org</a>!</p>
-<p><a href="https://matrix.to/#/@stefan.ceriu:matrix.org">Ștefan</a> announces</p>
-<blockquote>
-<ul>
-<li>ElementX is continuing to make great strides as we now have:
-<ul>
-<li>state event rendering in both the timeline and room list</li>
-<li>user display names in the room list and emotes</li>
-<li>a mechanism for marking rooms as read on enter and exit (as a start)</li>
-<li>improved timestamps on the room list last messages</li>
-<li>a completely redesigned image loading mechanism</li>
-<li>sliding sync room subscriptions on enter</li>
-<li>design tweaks and improvements throughout the app</li>
-<li>and a ton of performance improvements and fixes</li>
-</ul>
-</li>
-<li>Meanwhile, Element 1.9.17 is ready to be released into the world
-<ul>
-<li>this version includes new formatting options in the Rich Text Editor (Labs):
-<ul>
-<li>you can now create lists, both bullet points and numbers, the choice is yours!</li>
-<li>additionally, support for inserting quotes and better code formatting is available</li>
-</ul>
-</li>
-<li>and the Voice Broadcast feature (Labs) is more reliable and saw many bug fixes</li>
-</ul>
-</li>
-</ul>
-</blockquote>
-<h3 id="element-android-website">Element Android (<a href="https://github.com/vector-im/element-android">website</a>)</h3>
-<p>Secure and independent communication for Android, connected via Matrix. Come talk with us in <a href="https://matrix.to/#/#element-android:matrix.org">#element-android:matrix.org</a>!</p>
-<p><a href="https://matrix.to/#/@benoit.marty:matrix.org">benoit</a> announces</p>
-<blockquote>
-<ul>
-<li>
-<p>Element 1.5.22 is ready and with some exciting feature updates and bug fixes, including:</p>
-<ul>
-<li>Updates to polls and rendering</li>
-<li>An improved Rich Text Editor experience (find it in Labs)</li>
-<li>Improvements to the new voice broadcast feature</li>
-</ul>
-</li>
-<li>
-<p>In Element X on Android we’re working on project setup and foundations, including automatic updates for the Rust SDK and custom themes.</p>
-</li>
-</ul>
-</blockquote>
-<h2 id="dept-of-non-chat-clients-control-knobs">Dept of Non Chat Clients 🎛️</h2>
-<h3 id="m-url"><a href="https://gitlab.com/mb-saces/murl">[M]Url</a></h3>
-<p>A curl like tool but just for matrix</p>
-<p><a href="https://matrix.to/#/@saces:c-base.org">saces</a> says</p>
-<blockquote>
-<p>Working with curl and matrix - especially in constrained environments like read only containers - drove me nuts. Nuts enough to build my own version of curl that fits my needs.</p>
-<p>main differences:</p>
-<ul>
-<li>return code 0 means its the data you asked for</li>
-<li>HTTP 429 (Rate limit) is retried by default, all other 'soft failures' fail</li>
-<li>pass token via <a href="https://gitlab.com/determinant/mxpassfile">mxpassfile</a></li>
-</ul>
-<p>Its still some work left, but things in the readme should work.</p>
-<p>Source: https://gitlab.com/mb-saces/murl</p>
-<p>Room: <a href="https://matrix.to/#/#murl:saces.de">#murl:saces.de</a></p>
-</blockquote>
-<h3 id="nheko-krunner-website">nheko-krunner (<a href="https://github.com/LorenDB/nheko-krunner">website</a>)</h3>
-<p>A KRunner plugin to list joined rooms and possibly other things from nheko.</p>
-<p><a href="https://matrix.to/#/@lorendb:matrix.org">LorenDB</a> reports</p>
-<blockquote>
-<h2 id="nheko-krunner-0-2-0">nheko-krunner 0.2.0</h2>
-<p>nheko-krunner has had a new release! 0.2.0 brings support for the latest version of nheko, but it also adds a new feature: the KRunner plugin can be configured from KDE's System Settings app! Currently, the only configuration option is to change whether you are shown unread counts for rooms in the search results, but I can see this expanding in the future to add other useful configurations</p>
-<p>If you are using openSUSE Tumbleweed, you should already have the update available to install!</p>
-</blockquote>
-<h2 id="dept-of-sdks-and-frameworks">Dept of SDKs and Frameworks 🧰</h2>
-<h3 id="trinity">Trinity</h3>
-<p>Matrix bots in Rust and WebAssembly. If you're interested to follow the project, feel free to join #trinity:delire.party or get the code on <a href="https://github.com/bnjbvr/trinity">Github</a>.</p>
-<p><a href="https://matrix.to/#/@bnjbvr:delire.party">bnjbvr</a> says</p>
-<blockquote>
-<p>This week, <a href="https://github.com/ahal">ahal</a> contributed the <em>linkify</em> module, which implements a generic way to create substitutions based on regular expressions and their matches in Matrix messages.</p>
-<p>For instance, it's possible to create a substitution so that when someone writes &quot;issue #21&quot; in the room, the bot will answer with &quot;https://github.com/bnjbvr/trinity/issues/21&quot;. And since it's configurable at runtime, you can create such substitutions with any format you want, create automated links as you'd like, and configure it per Matrix channel. This opens up a new world of possibilities! Also this generalizes what this bot's predecessor, <em>botzilla</em>, did with 3 different commands for expanding Github / Gitlab / Bugzilla links, so Trinity has now reached feature parity with it! Woohoo 🥳</p>
-</blockquote>
-<h3 id="trixnity-website">Trixnity (<a href="https://gitlab.com/trixnity/trixnity">website</a>)</h3>
-<p>Multiplatform Kotlin SDK for Matrix</p>
-<p><a href="https://matrix.to/#/@benedict:imbitbu.de">Benedict</a> says</p>
-<blockquote>
-<p>Trixnity <a href="https://gitlab.com/trixnity/trixnity/-/releases/v3.2.0">3.2.0</a> is released.</p>
-<h3 id="performance-improvements-and-fosdem-23">performance improvements and FOSDEM 23</h3>
-<p>The most exciting change regarding more performance are asynchronous database transactions. This means that the cache stores values not only for reading from, but also for writing to the database. So every database transaction is executed asynchronously to the caller who changes values. This allows really fast sync processing even on slow systems like smartphones. This also removes delays in the UI, because changes are immediately applied (on the cache level). This was a problem with databases which don't allow parallel write transactions (like realm). This problem also seems to appear in Element Android and its realm database (at least with my huge account). Despite that, I've made some other improvements regarding the cache and sync processing.</p>
-<p>I also added a simple benchmark to see how good the improvements are. The test creates 50 encrypted rooms and sends 10 messages to each room. The database is in-memory, but writing is simulated with a 10ms and reading with 5ms delay. Before the optimizations the sync needed 20s to be processed. After the optimizations it needed 5s. So 400% faster. In practice, with my relatively huge matrix account (200+ rooms) the initial sync took 2.5s (after waiting 30s for the server response) on the desktop. But this is just a teaser. If you want to know more, you'll have to wait another week for my Trixnity talk on FOSDEM 23. Contact me if you have topics that should definitely be included in the talk. 30 min are unfortunately filled quickly.</p>
-<h3 id="indexeddb-support">IndexedDB support</h3>
-<p>I've added IndexedDB as a new database and media backend for web. Really cool to see Trixnity in the web with a persistent database.</p>
-<h3 id="fallback-keys-and-room-key-requests">fallback keys and room key requests</h3>
-<p>Fallback keys are now supported by Trixnity. Furthermore room keys requests are answered and room keys are requested (when key backup is disabled) from own verified devices.</p>
-<h3 id="tl-dr">TL;DR</h3>
-<p>features/improvements:</p>
-<ul>
-<li>add async transactions</li>
-<li>add IndexedDB as database and media backend</li>
-<li>support olm fallback keys</li>
-<li>key sharing (room key requests)</li>
-<li>add <code>usersTyping</code> to <code>UserService</code></li>
-<li>use one large transaction for sync processing</li>
-<li>add SSO login type</li>
-</ul>
-<p>breaking changes:</p>
-<ul>
-<li>remove sqldelight as database</li>
-<li>API change in <code>Timeline</code> to get more information from <code>loadBefore</code> and <code>loadAfter</code></li>
-</ul>
-<p>bug fixes:</p>
-<ul>
-<li>don't calculate room name, when room summary did not change</li>
-<li>PBKDF2 salt should not be decoded as base64</li>
-</ul>
-</blockquote>
-<h2 id="dept-of-bots-robot-face">Dept of Bots 🤖</h2>
-<h3 id="flip-matrix-bot">flip-matrix-bot</h3>
-<p><a href="https://matrix.to/#/@HER0:matrix.org">HER0</a> says</p>
-<blockquote>
-<p>I created <a href="https://gitlab.com/FriendlyLinuxPlayers/flip-matrix-bot">flip-matrix-bot</a> to allow anyone in my inclusive Linux gaming community (<code>#community:flip.earth</code>) to schedule gaming events through a CLI-like chat interface. This recently reached a minimum viable state, and I'm excited to finally have community driven event hosting! This was made using the <a href="https://github.com/matrix-org/matrix-rust-sdk">matrix-rust-sdk</a>.</p>
-<p>While this currently has some hardcoded references to the FLiP community, and so has limited usefulness outside of it at the moment, anyone who is interested in the bot is welcome to join <code>#flip:flip.earth</code> to use it in production, or <code>#bots:flip.earth</code> to see it being tested.</p>
-</blockquote>
-<h2 id="dept-of-events-and-talks">Dept of Events and Talks 🗣️</h2>
-<h3 id="fosdem">FOSDEM</h3>
-<p><a href="https://matrix.to/#/@thib:ergaster.org">Thib</a> announces</p>
-<blockquote>
-<p>The Matrix Foundation and Community will gather at FOSDEM on February 5, in the morning in our in-person devroom, and in the afternoon in our online devroom. We have a <a href="https://fosdem.org/2023/schedule/track/matrix/">great line-up with exciting talks on Sunday</a>, and Matthew will tell you <a href="https://fosdem.org/2023/schedule/event/matrix20/">How we're making Matrix go voom</a> in a main track talk, holding <a href="https://matrix.org/blog/2022/08/15/the-matrix-summer-special-2022#matrix-20">the promise we made this summer</a>.</p>
-<p>We will also have a stand and we can't wait to see you there in person if you have the opportunity to come!</p>
-</blockquote>
-<p><a href="https://matrix.to/#/@kim:sosnowkadub.de">HarHarLinks</a> says</p>
-<blockquote>
-<h4 id="fosdem23-community-meetup-matrix-org"><a href="https://matrix.to/#/#fosdem23-community-meetup:matrix.org">#fosdem23-community-meetup:matrix.org</a></h4>
-<p>This is a quick reminder about the matrix community meetup/<a href="https://en.wikipedia.org/wiki/BarCamp">barcamp</a> next ~~TWIMday~~Friday February 3 starting 13:00 local time (in the <a href="https://fosdem.org/2023/fringe/">FOSDEM fringe</a>). We meet at HSBXL who are kindly offering their space for us to use (<a href="https://hsbxl.be/contact/">how to get there</a>, <a href="https://hsbxl.be/enter/">how to get in</a>). There will be food and drinks thanks to our sponsors.</p>
-<p>A note from HSBXL:</p>
-<blockquote>
-<p>I would recommend to dress warm. HSBXL is located in an old industrial building, therefore the location is not especially well isolated.  We will fire up the heaters but warm close are still recommended. </p>
-</blockquote>
-<p>Find all info <a href="https://matrix.to/#/!eeSPmUJitRLAkJPaam:matrix.org/$HrWSAozbTwv_OyGdtsuGSV9gRIOkeRW9iTgQdTlvjo4?via=matrix.org&amp;via=datanauten.de&amp;via=sosnowkadub.de">here</a> and join <a href="https://matrix.to/#/#fosdem23-community-meetup:matrix.org">#fosdem23-community-meetup:matrix.org</a> if you are thinking about attending.</p>
-<p>See you in Brussels!</p>
-</blockquote>
-<h3 id="matrix-user-meetup-berlin">Matrix User Meetup Berlin</h3>
-<p><a href="https://matrix.to/#/@saces:c-base.org">saces</a> says</p>
-<blockquote>
-<p>Next Matrix user meetup 1.2.2023, 8 pm @ c-base</p>
-<p>Meet other matrix users, chat about Matrix, the rest, and everything else, discuss your Matrix ideas, sign each other in persona, and maybe spice the evening with a good mate or beer.</p>
-<p>Every first Wednesday of the month in the c-base at 8pm ('til the next pandemic).</p>
-<p>Matrix room: <a href="https://matrix.to/#/#mumb:c-base.org">#mumb:c-base.org</a></p>
-</blockquote>
-<h2 id="dept-of-ping">Dept of Ping</h2>
-<p>Here we reveal, rank, and applaud the homeservers with the lowest ping, as measured by <a href="https://github.com/maubot/echo">pingbot</a>, a <a href="https://github.com/maubot/maubot">maubot</a> that you can host on your own server.</p>
-<h3 id="ping-maunium-net"><a href="https://matrix.to/#/#ping:maunium.net">#ping:maunium.net</a></h3>
-<p>Join <a href="https://matrix.to/#/#ping:maunium.net">#ping:maunium.net</a> to experience the fun live, and to find out how to add YOUR server to the game.</p>
-<table><thead><tr><th style="text-align: center">Rank</th><th style="text-align: center">Hostname</th><th style="text-align: center">Median MS</th></tr></thead><tbody>
-<tr><td style="text-align: center">1</td><td style="text-align: center">nognu.de</td><td style="text-align: center">302</td></tr>
-<tr><td style="text-align: center">2</td><td style="text-align: center">joeth.uk</td><td style="text-align: center">325</td></tr>
-<tr><td style="text-align: center">3</td><td style="text-align: center">trygve.me</td><td style="text-align: center">354.5</td></tr>
-<tr><td style="text-align: center">4</td><td style="text-align: center">keks.club</td><td style="text-align: center">393.5</td></tr>
-<tr><td style="text-align: center">5</td><td style="text-align: center">oswald-cloud.de</td><td style="text-align: center">402</td></tr>
-<tr><td style="text-align: center">6</td><td style="text-align: center">shortestpath.dev</td><td style="text-align: center">422</td></tr>
-<tr><td style="text-align: center">7</td><td style="text-align: center">dendrite.babel.sh</td><td style="text-align: center">425.5</td></tr>
-<tr><td style="text-align: center">8</td><td style="text-align: center">rom4nik.pl</td><td style="text-align: center">469.5</td></tr>
-<tr><td style="text-align: center">9</td><td style="text-align: center">veri.dev</td><td style="text-align: center">560</td></tr>
-<tr><td style="text-align: center">10</td><td style="text-align: center">matrix.org</td><td style="text-align: center">577</td></tr>
-</tbody></table>
-<h3 id="ping-no-synapse-maunium-net"><a href="https://matrix.to/#/#ping-no-synapse:maunium.net">#ping-no-synapse:maunium.net</a></h3>
-<p>Join <a href="https://matrix.to/#/#ping-no-synapse:maunium.net">#ping-no-synapse:maunium.net</a> to experience the fun live, and to find out how to add YOUR server to the game.</p>
-<table><thead><tr><th style="text-align: center">Rank</th><th style="text-align: center">Hostname</th><th style="text-align: center">Median MS</th></tr></thead><tbody>
-<tr><td style="text-align: center">1</td><td style="text-align: center">babel.sh</td><td style="text-align: center">98.5</td></tr>
-<tr><td style="text-align: center">2</td><td style="text-align: center">dendrite.babel.sh</td><td style="text-align: center">183</td></tr>
-<tr><td style="text-align: center">3</td><td style="text-align: center">matrix.org</td><td style="text-align: center">278</td></tr>
-<tr><td style="text-align: center">4</td><td style="text-align: center">midnightthoughts.space</td><td style="text-align: center">335</td></tr>
-<tr><td style="text-align: center">5</td><td style="text-align: center">dendrite.kootstra.frl</td><td style="text-align: center">538</td></tr>
-<tr><td style="text-align: center">6</td><td style="text-align: center">grin.hu</td><td style="text-align: center">590</td></tr>
-<tr><td style="text-align: center">7</td><td style="text-align: center">willian.wang</td><td style="text-align: center">611</td></tr>
-<tr><td style="text-align: center">8</td><td style="text-align: center">forlorn.day</td><td style="text-align: center">726</td></tr>
-<tr><td style="text-align: center">9</td><td style="text-align: center">cringe.chat</td><td style="text-align: center">734</td></tr>
-<tr><td style="text-align: center">10</td><td style="text-align: center">zemos.net</td><td style="text-align: center">900.5</td></tr>
-</tbody></table>
-<h2 id="that-s-all-i-know">That's all I know</h2>
-<p>See you next week, and be sure to stop by <a href="https://matrix.to/#/#twim:matrix.org">#twim:matrix.org</a> with your updates!</p>
 
         </div>
     </article>
