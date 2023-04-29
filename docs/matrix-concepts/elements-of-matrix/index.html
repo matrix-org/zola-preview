@@ -10,7 +10,7 @@
     <meta name="twitter:site" content="@matrixdotorg" />
     <meta name="twitter:creator" content="@matrixdotorg" />
 
-    <title>Matrix.org - Rooms &amp; Events</title>
+    <title>Matrix.org - Elements of Matrix</title>
     <link rel="shortcut icon" href="/assets/favicon.ico" />
     <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
     <link rel="stylesheet" href="/style.css" />
@@ -113,157 +113,166 @@
 
 
 
-
-
 <div class="docs-body">
     <div class="docs-content">
         <article class="content">
             <header>
-                <h1>Rooms &amp; Events</h1>
+                <h1>Elements of Matrix</h1>
                 
                 <span class="last-updated">
-                    Last updated: <time datetime="2023-02-23"> 2023-02-23</time>
+                    Last updated: <time datetime="2023-02-08"> 2023-02-08</time>
                 </span>
             </header>
 
-            <p>Users on a server can send <em>events</em> into <em>rooms</em>. An event is a particular json
-object, describing what a user is trying to do (join a room, send a message,
-update a specific value…). An event will look like the following</p>
-<pre data-lang="json" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-json "><code class="language-json" data-lang="json"><span>{
-</span><span>  </span><span style="color:#d69d85;">&quot;content&quot;</span><span>: {
-</span><span>    </span><span style="color:#d69d85;">&quot;body&quot;</span><span>: </span><span style="color:#d69d85;">&quot;This is an example text message&quot;</span><span>,
-</span><span>    </span><span style="color:#d69d85;">&quot;format&quot;</span><span>: </span><span style="color:#d69d85;">&quot;org.matrix.custom.html&quot;</span><span>,
-</span><span>    </span><span style="color:#d69d85;">&quot;formatted_body&quot;</span><span>: </span><span style="color:#d69d85;">&quot;&lt;b&gt;This is an example text message&lt;/b&gt;&quot;</span><span>,
-</span><span>    </span><span style="color:#d69d85;">&quot;msgtype&quot;</span><span>: </span><span style="color:#d69d85;">&quot;m.text&quot;
-</span><span>  },
-</span><span>  </span><span style="color:#d69d85;">&quot;event_id&quot;</span><span>: </span><span style="color:#d69d85;">&quot;$143273582443PhrSn:example.org&quot;</span><span>,
-</span><span>  </span><span style="color:#d69d85;">&quot;origin_server_ts&quot;</span><span>: </span><span style="color:#b5cea8;">1432735824653</span><span>,
-</span><span>  </span><span style="color:#d69d85;">&quot;room_id&quot;</span><span>: </span><span style="color:#d69d85;">&quot;!jEsUZKDJdhlrceRyVU:example.org&quot;</span><span>,
-</span><span>  </span><span style="color:#d69d85;">&quot;sender&quot;</span><span>: </span><span style="color:#d69d85;">&quot;@example:example.org&quot;</span><span>,
-</span><span>  </span><span style="color:#d69d85;">&quot;type&quot;</span><span>: </span><span style="color:#d69d85;">&quot;m.room.message&quot;</span><span>,
-</span><span>  </span><span style="color:#d69d85;">&quot;unsigned&quot;</span><span>: {
-</span><span>    </span><span style="color:#d69d85;">&quot;age&quot;</span><span>: </span><span style="color:#b5cea8;">1234
-</span><span>  }
-</span><span>}
-</span></code></pre>
-<p>In the case of instant messaging, clients display rooms very similarly to Slack,
-Discord or IRC channels. Most of the events in such rooms are messages. Rooms
-have a unique technical identifier, and zero or more human-readable aliases.
-Aliases are made of a room name, and a server part, and are sometimes referred
-to as &quot;addresses&quot;. A typical room alias would be:</p>
-<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>#goodfriends:example.com
-</span></code></pre>
-<p>From a technical perspective, a room is a series of json objects. The schema
-below represents a room with dumbed down events. It is up to the clients to
-read, parse, and display the events properly.</p>
+            <p>Matrix works like email, but for instant messaging. People need to use a client
+to be able to write and receive messages, and they need providers to provide
+them an account on their homeserver.</p>
 <figure>
-    <img src=".&#x2F;events.svg" alt="The room #goodfriends:example.com with simplified events" />
-    <figcaption>The room #goodfriends:example.com with simplified events</figcaption>
+    <img src=".&#x2F;federation.svg" alt="Schema of clients connected to homeservers. The servers are federated together" />
+    <figcaption>Schema of clients connected to homeservers. The servers are federated together</figcaption>
 </figure>
-<h2 id="local-copies">Local copies</h2>
-<p>Homeservers are federated: the Matrix specification defines a <a href="https://spec.matrix.org/latest/server-server-api/">Sever-Server API</a>
-(also known as Federation API) to describe interactions between servers.
-Whenever a user is in a room, their homeserver needs to have a local copy of
-that room.</p>
-<p>For example, if <code>@alice:example.com</code> is the first user from <code>example.com</code> to try
-to join <code>#goodfriends:matrix.org</code>, then her homeserver is going to reach out to
-<code>matrix.org</code> to get a copy of the room. <code>example.com</code> and <code>matrix.org</code> then stay
-in touch to synchronise their copy of the room.</p>
+<p>Let's explore what those are.</p>
+<h2 id="homeserver">Homeserver</h2>
+<p>A homeserver is a piece of software hosting accounts of Matrix users. It is
+bound to a single domain that cannot change over time. The accounts on a server
+have an identifier made of a local part (the username), and a server part, which
+is the (vanity) domain of the homeserver. A typical identifier would be</p>
+<pre data-lang="txt" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-txt "><code class="language-txt" data-lang="txt"><span>@username:example.com
+</span></code></pre>
+<p>The Matrix ID of the users on the schema above look like below.</p>
 <figure>
-    <img src=".&#x2F;room_federated.svg" alt="Three homeservers keeping their local copy of the room in sync" />
-    <figcaption>Three homeservers keeping their local copy of the room in sync</figcaption>
+    <img src=".&#x2F;federation_matrix_ids.svg" alt="Schema of clients connected to federated homeservers. All users have a Matrix ID" />
+    <figcaption>Schema of clients connected to federated homeservers. All users have a Matrix ID</figcaption>
 </figure>
-<h2 id="administration-privileges">Administration &amp; privileges</h2>
-<p>Whenever the homeserver receives new events, it's in charge of parsing them,
-perform checks on the event, and take action accordingly (e.g. sending messages
-from users on the homeserver to other participating homeservers, or distributing
-messages from other participating homeservers to users). The expected behaviour
-of homeservers is described fully in the <a href="https://spec.matrix.org">Matrix Specification</a>.</p>
-<p>It could seem dangerous to think that everyone has their own local copy of the
-room. Doesn't that mean anyone can become administrator of the room and do nasty
-things? Fortunately, no. The privileges of people in the room are defined by
-Power Levels.</p>
-<p>Power levels define a hierarchy in the room. All of the actions in a room
-require a minimum power level. Posting a message in a room requires having the
-power level 0, redacting someone else's message usually requires having power
-level 50, changing the room address usually requires having power level 100.</p>
-<p>For more details on power levels, please check the relevant section of the
-community management documentation.</p>
+<p>You can find a list of existing homeserver implementations in the
+<a href="/ecosystem/servers">Ecosystem &gt; Servers</a> section of this website. Most of them
+are open source, so you can explore how they work. Please also refer to their
+documentation if you want to deploy them either for testing or in production.</p>
 <div class="page_card">
-    <a href="&#x2F;docs&#x2F;communities&#x2F;moderation&#x2F;#power-levels" alt="Link to Power Levels">
+    <a href="&#x2F;ecosystem&#x2F;servers" alt="Link to Servers">
         <div class="wrapper">
             <div class="card_content">
-                <h4>Power Levels</h4>
-                <p>Discover how power levels are used in practice.</p>
+                <h4>Servers</h4>
+                <p>Discover all the homeserver implementations.</p>
             </div>
             <div class="arrow"></div>
         </div>
     </a>
 </div>
-<h3 id="at-room-creation">At room creation</h3>
-<p>A power level is an integer usually between 0 and 100 bound to an account in a
-room. According to the spec recommendations, when someone creates a room, their
-account gets power level 100 in that room. So if Alice creates the room
-<code>#goodfriends</code> on example.com, her account <code>@alice:example.com</code> will get the
-power level 100 in all the local copies of <code>#goodfriends:example.com</code>, whether
-the copy is on example.com, matrix.org or ergaster.org.</p>
+<h2 id="client">Client</h2>
+<p>Homeservers communicate between each other with the Server-Server / Federation
+API, but they also communicate with clients in a standard way: the Client-Server
+API.</p>
+<p>Clients are pieces of software that can use a Matrix account to send and receive
+events from a specific homeserver. The clients themselves only ever talk to the
+homeserver of the account they're using. If a client uses the
+<code>@alice:example.com</code> account, they will only talk to <code>example.com</code>.</p>
+<p>The most common kinds of client are the user facing ones. In the case of instant
+messaging, those clients show rooms as timeline of messages, with users joining,
+leaving, redacting messages…</p>
+<p>To get a better idea of what clients look like in practice, you can find a list
+on <a href="/ecosystem/clients">Ecosystem &gt; Clients</a> and give them a go.</p>
+<div class="page_card">
+    <a href="&#x2F;ecosystem&#x2F;clients" alt="Link to Clients">
+        <div class="wrapper">
+            <div class="card_content">
+                <h4>Clients</h4>
+                <p>Discover all the Matrix clients.</p>
+            </div>
+            <div class="arrow"></div>
+        </div>
+    </a>
+</div>
+<p>If you're more interested in writing your own client to bring a new experience
+to users, you may want to rely on an existing SDK (see
+<a href="/ecosystem/sdks">Ecosystem &gt; SDKs</a>). Those will do significant part of the
+Matrix heavy-lifting and allow you to focus on the UX you want to build.
+Finally, if you're interested in learning more about the interactions between
+clients and servers, please head to
+<a href="https://spec.matrix.org/latest/client-server-api/">the Client-Server section of the Matrix Specification</a>.</p>
+<div class="page_card">
+    <a href="&#x2F;ecosystem&#x2F;sdks" alt="Link to SDKs">
+        <div class="wrapper">
+            <div class="card_content">
+                <h4>SDKs</h4>
+                <p>Browse SDKs to write your own client.</p>
+            </div>
+            <div class="arrow"></div>
+        </div>
+    </a>
+</div>
+<h2 id="appservice-bridges-and-some-bots">AppService (bridges and some bots)</h2>
+<p>Many Matrix bots are non-human clients. They can be built with the same SDKs as
+regular clients, and instead of showing a UI to display what is happening they
+will listen to events, parse them, and for example send automatic replies.</p>
+<h3 id="simple-and-advanced-bots">Simple and advanced bots</h3>
+<p>A good example of simple bot would be a RSS bot: it subscribes to a RSS feed
+completely outside of Matrix and whenever it sees a new item in the feed it
+posts a message in a specific Matrix room, with the name of the item. Such a bot
+is nothing more than a very limited and specialised client.</p>
+<p>But sometimes you need to get a more global view of what is happening on your
+homeserver to take action. If you want to write an anti-spam module for example,
+you want to be able to read each and every message from public rooms to detect
+patterns and ring the alarm or take action directly.</p>
+<p>To do it with a bot, you would need to invite the bot in each and every room
+where you want the monitoring to happen. An appservice is able to monitor all
+the <em>unencrypted</em> events (messages sent/edited/redacted, people joining or 
+leaving rooms) within its namespace.</p>
+<h3 id="bridges">Bridges</h3>
+<p>Sometimes you need to do even more than being an all-seeing eye: you need to be
+able to create users and rooms automatically. A typical use case for this is
+<a href="/ecosystem/bridges">bridges</a>. Bridges allow you to connect a Matrix community
+to a third-party platform such as IRC, Discord or Slack. Users on these
+communities appear as native users on Matrix, and ideally the other way around
+on the third-party platform as well.</p>
+<ul>
+<li>The users created on the Matrix side by the bridge to mimic users on the
+third-party platform are called <code>ghosts</code>.</li>
+<li>The users created on the third-party platform by the bridge to mimic Matrix
+users are called <code>puppets</code>.</li>
+</ul>
 <figure>
-    <img src=".&#x2F;room_creation.svg" alt="Alice creates the room and automatically gets Power Level 100" />
-    <figcaption>Alice creates the room and automatically gets Power Level 100</figcaption>
+    <img src=".&#x2F;bridge.svg" alt="A schema of a room bridged between matrix.org and slack.com" />
+    <figcaption>A schema of a room bridged between matrix.org and slack.com</figcaption>
 </figure>
-<h3 id="at-room-join">At room join</h3>
-<p>When someone else joins the room, whether they are on the same homeserver as the
-creator or another homeserver, by default they are assigned the power level 0.
-If Bob on ergaster.org joins <code>#goodfriends:example.com</code>, his server is going to
-ask Alice's example.com a local copy of the room, and stay in sync with it.</p>
-<figure>
-    <img src=".&#x2F;room_join.svg" alt="Bob joins the room and automatically gets Power Level 0" />
-    <figcaption>Bob joins the room and automatically gets Power Level 0</figcaption>
-</figure>
-<p>If Carol joins from her homeserver matrix.org, she will also get the power level
-0.</p>
-<figure>
-    <img src=".&#x2F;room_federated.svg" alt="Carol joins the room and automatically gets Power Level 0 as well.
-    The power levels are the same on every local copy of the room." />
-    <figcaption>Carol joins the room and automatically gets Power Level 0 as well.
-    The power levels are the same on every local copy of the room.</figcaption>
-</figure>
-<h3 id="altering-a-local-copy-of-the-room">Altering a local copy of the room</h3>
-<p>Let's now consider Walter. Walter is the homeserver administrator of
-example.com, the homeserver Alice used to create the <code>#goodfriends:example.com</code>
-room.</p>
-<p>When he joins the room, Walter gets the power level 0 by default, as everyone
-else.</p>
-<figure>
-    <img src=".&#x2F;walter_joins.svg" alt="Walter joins the room and gets Power Level 0: he is a regular user" />
-    <figcaption>Walter joins the room and gets Power Level 0: he is a regular user</figcaption>
-</figure>
-<p>If Walter fiddled with its homeserver database to alter its local copy of the
-room, his change would not propagate: nobody has granted him power level 0: when
-the other homeservers would want to update their local copy of the room, they
-would reject the change making Walter administrator of the room.</p>
-<h3 id="impersonating-others">Impersonating others</h3>
-<p>Some homeserver implementations like Synapse have a non-standard <a href="https://matrix-org.github.io/synapse/latest/usage/administration/admin_api/index.html">Admin API</a>
-and more particularly an <a href="https://matrix-org.github.io/synapse/latest/admin_api/rooms.html#make-room-admin-api">API to make someone the room admin</a>.
-This doesn't mean homeserver administrators can't take over rooms as they
-please.</p>
-<p>When Walter calls the Make Room Admin API, Synapse is going to control Alice's
-account to grant Walter the same Power Level as her. Alice is Power Level 100,
-she is allowed to promote Walter to the same Power Level. This is valid
-according to the Matrix Spec, so when the other homeservers will update their
-local copy of the room they will accept the change.</p>
-<figure>
-    <img src=".&#x2F;walter_escalate_ok.svg" alt="Alice&#x27;s account is used by Synapse to give Walter the same power level" />
-    <figcaption>Alice&#x27;s account is used by Synapse to give Walter the same power level</figcaption>
-</figure>
-<p>What if Walter was the homeserver administrator of ergaster.org instead? Every
-user of ergaster.org in this room have the Power Level 0. If Walter called this
-API, his homeserver would only be able to control a user with Power Level 0, and
-would not be able to promote him.</p>
-<figure>
-    <img src=".&#x2F;walter_escalate_ko.svg" alt="Walter cannot control any account to escalate his power level" />
-    <figcaption>Walter cannot control any account to escalate his power level</figcaption>
-</figure>
+<p>To do so, the bridge needs to be able to create and impersonate users on Matrix,
+and to control rooms as well. In order to limit the risks of abuse, bridges can
+be limited to controlling a namespace.</p>
+<p>To get a high level view of bridges concepts and see which platforms Matrix can
+be bridged to, please head to <a href="/ecosystem/bridges">Ecosystem &gt; Bridges</a> on this
+website. If you're interested in writing your own bridge, you will very likely
+want to rely on an existing SDK, in which case you check the existing ones in
+<a href="/ecosystem/sdks">Ecosystem &gt; SDKs</a> and have a look at the
+<a href="https://spec.matrix.org/latest/application-service-api/">Application Service section of the specification</a>.</p>
+<div class="page_card">
+    <a href="&#x2F;ecosystem&#x2F;bridges" alt="Link to Bridges">
+        <div class="wrapper">
+            <div class="card_content">
+                <h4>Bridges</h4>
+                <p>Discover the platforms you can bridge to and how.</p>
+            </div>
+            <div class="arrow"></div>
+        </div>
+    </a>
+</div>
+<h2 id="the-specification">The Specification</h2>
+<p>We have been mentioning the <a href="https://spec.matrix.org">Matrix Specification</a>
+several times already. The Matrix Specification is a document describing
+interactions between the various components of the Matrix ecosystem
+(homeservers, clients, appservices). For a given  feature, implementation
+details may vary, but Matrix aims for a consistent behaviour and wants to avoid
+the need for negotiation between parties.</p>
+<p>The specification is open, versioned, and can be freely browsed at
+<a href="https://spec.matrix.org">spec.matrix.org</a>. Its governance and decision process
+are public, so anybody can make a proposal to extend it via Matrix Spec Change.</p>
+<p>A Matrix Spec Change (MSC) is a document describing how the author would like to
+amend the Matrix Specification, to introduce a change in the interactions
+between the components of the ecosystem. Such documents are discussed publicly,
+and when the author think they have addressed all of the important concerns they
+can bring the <a href="/about#the-spec-core-team">Spec Core Team</a>'s attention to it and
+start the formal review process.</p>
+<p>The <a href="https://spec.matrix.org/proposals/">Matrix Spec Process</a> is detailed on
+<a href="https://spec.matrix.org">spec.matrix.org</a>.</p>
 
         </article>
     </div>
@@ -449,9 +458,9 @@ would not be able to promote him.</p>
         
         
         <div>
-            <input id="Technical docs-submenu-checkbox" type="checkbox" class="submenu-checkbox"
+            <input id="Matrix concepts-submenu-checkbox" type="checkbox" class="submenu-checkbox"
                 aria-hidden="true" checked>
-            <label for="Technical docs-submenu-checkbox" class="submenu-title">Technical docs
+            <label for="Matrix concepts-submenu-checkbox" class="submenu-title">Matrix concepts
                 <div class="arrow"></div>
             </label>
             <ul class="section-submenu-wrap">
@@ -459,22 +468,22 @@ would not be able to promote him.</p>
                 
                 
                 <li>
-                    <a href="&#x2F;docs&#x2F;technical&#x2F;elements-of-matrix&#x2F;">Elements of Matrix</a>
+                    <a href="&#x2F;docs&#x2F;matrix-concepts&#x2F;elements-of-matrix&#x2F;">Elements of Matrix</a>
                     <ul>
                         
-                        <a href="&#x2F;docs&#x2F;technical&#x2F;elements-of-matrix&#x2F;#homeserver">
+                        <a href="&#x2F;docs&#x2F;matrix-concepts&#x2F;elements-of-matrix&#x2F;#homeserver">
                             <li>Homeserver</li>
                         </a>
                         
-                        <a href="&#x2F;docs&#x2F;technical&#x2F;elements-of-matrix&#x2F;#client">
+                        <a href="&#x2F;docs&#x2F;matrix-concepts&#x2F;elements-of-matrix&#x2F;#client">
                             <li>Client</li>
                         </a>
                         
-                        <a href="&#x2F;docs&#x2F;technical&#x2F;elements-of-matrix&#x2F;#appservice-bridges-and-some-bots">
+                        <a href="&#x2F;docs&#x2F;matrix-concepts&#x2F;elements-of-matrix&#x2F;#appservice-bridges-and-some-bots">
                             <li>AppService (bridges and some bots)</li>
                         </a>
                         
-                        <a href="&#x2F;docs&#x2F;technical&#x2F;elements-of-matrix&#x2F;#the-specification">
+                        <a href="&#x2F;docs&#x2F;matrix-concepts&#x2F;elements-of-matrix&#x2F;#the-specification">
                             <li>The Specification</li>
                         </a>
                         
@@ -482,14 +491,14 @@ would not be able to promote him.</p>
                     
                 
                 <li>
-                    <a href="&#x2F;docs&#x2F;technical&#x2F;rooms_and_events&#x2F;">Rooms &amp; Events</a>
+                    <a href="&#x2F;docs&#x2F;matrix-concepts&#x2F;rooms_and_events&#x2F;">Rooms &amp; Events</a>
                     <ul>
                         
-                        <a href="&#x2F;docs&#x2F;technical&#x2F;rooms_and_events&#x2F;#local-copies">
+                        <a href="&#x2F;docs&#x2F;matrix-concepts&#x2F;rooms_and_events&#x2F;#local-copies">
                             <li>Local copies</li>
                         </a>
                         
-                        <a href="&#x2F;docs&#x2F;technical&#x2F;rooms_and_events&#x2F;#administration-privileges">
+                        <a href="&#x2F;docs&#x2F;matrix-concepts&#x2F;rooms_and_events&#x2F;#administration-privileges">
                             <li>Administration &amp; privileges</li>
                         </a>
                         
