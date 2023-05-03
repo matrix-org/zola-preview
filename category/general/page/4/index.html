@@ -114,7 +114,7 @@
     <div class="content">
         <header>
             <h1>General</h1>
-            133 posts tagged with "General" <a href="/category">(See all Category)</a>
+            136 posts tagged with "General" <a href="/category">(See all Category)</a>
             
             <h2>
                 <small><a href="/category/general/atom.xml">Atom Feed</a></small>
@@ -122,6 +122,156 @@
             
         </header>
 
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2020&#x2F;06&#x2F;16&#x2F;matrix-decomposition-an-independent-academic-analysis-of-matrix-state-resolution&#x2F;" title="Matrix Decomposition: an independent academic analysis of Matrix State Resolution">Matrix Decomposition: an independent academic analysis of Matrix State Resolution</a></h2>
+                <span>
+                    16.06.2020 20:15
+                    —
+                    <a href="/category/general">
+                        General
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                <br>
+                <small>Last update: 16.06.2020 19:09</small>
+            </header>
+            <div>
+                
+                <p>Hi all,</p>
+<p>Regular readers of <a href="https://matrix.org/blog/category/this-week-in-matrix/">TWIM</a> may be familiar with the <a href="https://dsn.tm.kit.edu/english/index.php">Decentralized Systems and Network Services Research Group</a> at Karlsruhe Institute of Technology, who have been busy over the last few years analysing Matrix from an independent academic point of view.  The work started in 2018 with Florian Jacob’s <a href="https://dsn.tm.kit.edu/matrix/traveller/explained.html">DSN Traveler</a> spidering project, resulting in the <a href="https://publikationen.bibliothek.kit.edu/1000100364">Glimpse of the Matrix</a> paper analysing Matrix’s scale and room/server distribution (at least as it was back then).</p>
+<p>Last week, they released an entirely new paper: <a href="https://dl.acm.org/doi/10.1145/3381991.3395399">Matrix Decomposition: Analysis of an Access Control Approach on Transaction-based DAGs without Finality</a> by Florian Jacob, Luca Becker, Jan Grashöfer and Hannes Hartenstein, presented at <a href="https://www.sacmat.org/2020/index.php">ACM SACMAT ‘20</a>.</p>
+<p>Now, the new paper is an absolutely fascinating deep dive analysis into <a href="https://github.com/matrix-org/matrix-doc/blob/master/proposals/1442-state-resolution.md">State Resolution v2</a> - the algorithm at the heart of Matrix which defines how servers merge together their potentially conflicting copies of a given room, such that everyone ends up eventually with a consistent view… even in the face of bad actors. This means that Matrix effectively implements a decentralised access control system - ensuring that users stay banned, and only users with permission can ban, etc.  You can see the <a href="https://matrix.org/blog/img/SACMAT_2020_Talk_Matrix_Decomposition.pdf">slides</a> below, and read the <a href="https://dl.acm.org/doi/pdf/10.1145/3381991.3395399">full paper</a> here. The video of Florian’s talk from SACMAT should be published shortly.</p>
+<br/>
+<p><object data="https://matrix.org/blog/img/SACMAT_2020_Talk_Matrix_Decomposition.pdf" type="application/pdf" width="1024" height="768"></object></p>
+<br/>
+<p>To give some context from the Matrix side: designing and implementing State Resolution v2 back in 2018 was a bit of a mission. Our original v1 implementation had some bugs which meant that the result of the merge could unexpectedly favour historical state over the current state (so called ‘state resets’) - thus giving an attacker a way to maliciously revert the state of the room.  In v2 we thought much more carefully about the algorithm, considering state present in one version of the room but not the other as a conflict, separating and applying access control events from regular events, and adding additional ordering of the state in the room by considering events in the context of their authorisation chain (the ‘auth DAG’).  The end result is that we feel confident in v2 State Res, and we haven’t seen any problems with it in the wild since we shipped it in July 2018.</p>
+<p>However: state resolution is not intuitive at first - for instance, when you merge two versions of a room together, you treat the state events as unordered sets… even though they are ordered in the context of the room DAG.  The reason is that state res needs to work even if you don’t have a copy of the whole room DAG (otherwise you’d have to download way too much data to participate in a large room).  Another example is the sequence in which orderings are then applied to the state events - and how that interacts with re-authorising those events, to stop malicious ones creeping in.  In the core team, we’ve end up describing it several different ways to try to help folks understand: first Erik’s original <a href="https://github.com/matrix-org/matrix-doc/blob/erikj/state_res_msc/proposals/1442-state-resolution.md">MSC1442</a>, then uhoreg’s <a href="https://matrix.uhoreg.ca/stateres/reloaded.html">literary Haskell implementation</a>, then the terse reference version in <a href="https://matrix.org/docs/spec/rooms/v2">the Spec</a> itself, and most recently Neil Alexander’s <a href="https://matrix.org/docs/guides/implementing-stateres">State Resolution v2 for the Hopelessly Unmathematical</a>.</p>
+<p>As a result we are <strong>very</strong> excited and happy that Florian and the DSN team have now published the first ever independent in-depth analysis of the algorithm, particularly in the context of decentralised access control (i.e. enforcing bans, power levels, etc).  We’re pleasantly surprised that apparently “To the best of our knowledge, Matrix is the only system that implements access control based on an eventually consistent partial order without finality and without a consensus algorithm”.</p>
+<p>Even better, the DSN team found some remaining thinkos in Synapse’s implementation and the Matrix specification, which could have caused resolution results to diverge from other implementations, specifically:</p>
+<ol>
+<li>we weren’t enforcing integers in JSON to be within range [-2<sup>53</sup>+1, 2<sup>53</sup>-1], fixed in <a href="https://github.com/matrix-org/synapse/pull/7381">https://github.com/matrix-org/synapse/pull/7381</a> and <a href="https://github.com/matrix-org/matrix-doc/blob/clokep/json-validation-room-ver/proposals/2540-stricter-event-validation.md">MSC2540</a></li>
+<li>we forgot to include the notification field when authing power level events, fixed in  <a href="https://github.com/matrix-org/synapse/issues/7501">https://github.com/matrix-org/synapse/issues/7501</a> and <a href="https://github.com/lucavb/matrix-doc/blob/master/proposals/2209-auth-rules-other-keys-in-m.room.power.levels.md">MSC2209</a> (thanks to Luca from DSN for the MSC!)</li>
+<li>we forgot to spec the limit that one should apply to the number of parents of an event in the DAG (fixed in <a href="https://github.com/matrix-org/matrix-doc/pull/2538">https://github.com/matrix-org/matrix-doc/pull/2538</a>)</li>
+<li>we missed that moderators could set server ACLs which could let them undermine room admins (fixed in <a href="https://github.com/matrix-org/synapse/pull/6834">https://github.com/matrix-org/synapse/pull/6834</a>).</li>
+</ol>
+<p>All of these have now been fixed in Synapse and the latest versions of the spec (room v6), and we’d like to sincerely thank Florian and Luca for rapidly and responsibly disclosing the issues to us.  In other words: this research is directly improving Matrix, and it’s even more exciting that the stated future work for the DSN team is to work on a <a href="https://en.wikipedia.org/wiki/Formal_verification">formal verification</a> for the security of Matrix’s authorisation rules and state resolution.  This stuff is tough, as anyone who’s played with <a href="https://en.wikipedia.org/wiki/TLA%2B">TLA<sup>+</sup></a> will know, and we are incredibly glad that the research community is helping out to formalise and hopefully prove that State Res v2 is as good as we think it is.</p>
+<p>We should stress that DSN’s work is completely independent of The Matrix.org Foundation or anyone else building on the protocol; we’re just writing about it here because we think it’s incredibly cool and deserves the attention of the whole Matrix ecosystem.</p>
+<p>Thanks again to Florian and the team - we look forward to seeing what comes next!</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2020&#x2F;06&#x2F;02&#x2F;introducing-p2p-matrix&#x2F;" title="Introducing P2P Matrix">Introducing P2P Matrix</a></h2>
+                <span>
+                    02.06.2020 00:00
+                    —
+                    <a href="/category/general">
+                        General
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>TL;DR: we shipped a major update (v0.1.1) to <a href="https://p2p.riot.im">https://p2p.riot.im</a> - fire up a desktop Chrome or Firefox in not-private-browsing mode and give it a go!</p>
+<p>Hi folks,</p>
+<p>As many know by now, a few of us have been working away since mid-December on experimenting with running Matrix in a peer-to-peer architecture - one where every user has absolute total autonomy and ownership of their conversations, because the only place their conversations exist is on the devices they own.</p>
+<p>In some ways this is the logical end goal of Matrix: our aim has always been to empower users to have full control over their communication rather than being beholden to any given service provider, and in a P2P world we completely return power over secure communication to the people.</p>
+<h3 id="why-p2p">Why P2P?</h3>
+<p>P2P Matrix is about more than just letting users store their own conversations: it can also avoid dependencies on the Internet itself by working over local networks, mesh networks, or situations where the Internet has been cut off.  Even more interestingly, without homeservers, there is nowhere for metadata to accumulate about who is talking to who, and when - which is a legitimate complaint about today’s Matrix network, given the homeservers of all users in a given conversation necessarily have to store that conversation’s metadata.  P2P also lets us radically simplify signup for new users if they don’t have to pick a server to get going - and we avoid the unintentional centralisation of users piling onto public servers.</p>
+<p>P2P also forces us to solve many of the hardest remaining problems in Matrix: e.g multi-homed accounts, given multi-device P2P requires your account to exist in multiple places. This in turn unlocks high availability and geo-redundancy for accounts on today’s Matrix network (imagine having a primary and backup homeserver that magically did the right thing!), as well as account portability, and thus also vhosting and load-balancing accounts between servers, and even improved GDPR compliance (for if your user IDs are ephemeral they are no longer personally identifying information baked into your Matrix rooms).  We’ll also need better safety mechanisms to avoid folks exploiting the anonymous nature of the network for abuse, accelerating the work we’re already doing for today’s Matrix network.</p>
+<p>The way we’ve been approaching P2P is the “<a href="https://twitter.com/Lucid00/status/1263974339294175232">hamfisted but genius</a>” approach of taking homeservers and running them on the client, alongside or within your Matrix client - meaning that there are literally <strong>no</strong> changes required for any Matrix client to talk P2P Matrix, and so P2P Matrix can instantly benefit from all the work which has gone into Riot and other apps.  As a result, P2P is also a huge motivator towards developing much smaller homeservers which can run efficiently clientside (e.g. Dendrite!) - which is of course great news for Matrix as a whole.  It also forces us to develop more scalable routing algorithms (as you don’t want your client to have to talk to every other device in a room every time it sends a message!) and also spurs development of low bandwidth Matrix transports (as you don’t want the additional chatter of talking to multiple peers to consume all your bandwidth).  Finally, it forces us to really ruggedize federation, given nodes are constantly appearing and disappearing, giving the federation much more of a stress test than we see with today’s relatively static homeservers.</p>
+<h3 id="p2p-in-practice">P2P in Practice</h3>
+<p>So, P2P has been acting as fuel for a lot of our longer term Matrix work over the last few months.  There have been three main experiments so far: at <a href="https://fosdem.org/2020/schedule/event/dip_p2p_matrix/">FOSDEM</a> we showed off running our next-gen Dendrite homeserver running clientside using HTTP over <a href="https://libp2p.io/">libp2p</a> as the transport.  We also highlighted Timothée Floure’s <a href="https://www.epfl.ch/labs/dedis/wp-content/uploads/2020/01/presentation-2019-2-Timothee-Floure-Experimenting-with-Matrix-federation-over-Yggdrasil.pdf">project at EPFL</a> experimenting with Synapse talking P2P CoAP over yggdrasil as the transport via a proxy.</p>
+<p>Most recently, however, we’ve been experimenting with compiling Dendrite down to Web Assembly and running it embedded in Riot Web as a Service Worker, using HTTP over libp2p’s websocket transport (coordinated via a websocket rendezvous server).  Architecturally, it looks like this:</p>
+<p><img src="/blog/img/p2p-diag.png" alt="P2P Architecture Diagram" /></p>
+<p>Today, we’re shipping a major new alpha (v0.1.1) of this P2P demo up at <a href="https://p2p.riot.im">https://p2p.riot.im</a> (requires desktop Chrome or Firefox in non-private-browsing mode) - which hopefully should give a really usable and concrete taste of the shape of things to come.</p>
+<p>The main features are:</p>
+<ul>
+<li>Your conversations are now persisted in your browser storage (via IndexedDB), meaning that as long as all the browsers participating in a given conversation don’t clear their local storage, rooms on the P2P network are here to stay!</li>
+<li>Your room directory lists all the aliases for all the rooms published by active nodes on the network.  Moreover, we now automatically publish a local room alias whenever you join a public room, so that others will be able to discover that room via you, even if the server who originally created the alias has disappeared.</li>
+<li>Lots and lots of federation improvements between the nodes - for instance, when a node comes online, others should now automatically detect and send scrollback to it.  Invites should work, and there should no longer be any unexpectedly redacted messages.</li>
+</ul>
+<p>Needless to say, all the code for this is open source under the Apache license, and if you’re feeling particularly adventurous you can embed your very own P2P Dendrite into Riot Web by using the Dockerfile at <a href="https://github.com/matrix-org/dendrite/blob/master/build/docker/DendriteJS.Dockerfile">https://github.com/matrix-org/dendrite/blob/master/build/docker/DendriteJS.Dockerfile</a> or following the instructions at  <a href="https://github.com/matrix-org/dendrite/blob/master/docs/p2p.md">https://github.com/matrix-org/dendrite/blob/master/docs/p2p.md</a>.</p>
+<p>Please report bugs to <a href="https://github.com/matrix-org/dendrite/issues">https://github.com/matrix-org/dendrite/issues</a>!</p>
+<p>Finally, please understand that the demo is very likely <strong>not</strong> what the final version of P2P Matrix will look like - this is just one step in a series of experiments as we investigate the best paths forward :)</p>
+<h3 id="what-s-next">What’s next?</h3>
+<p>For the current demo, there’s still lots of stuff remaining, including:</p>
+<ul>
+<li>More federation debugging (and hooking in <a href="https://github.com/matrix-org/tardis">tardis</a> and writing up everything we’ve learned about implementing federation in Dendrite!)</li>
+<li>Making the content repository work in-browser (gotta fill up those IndexedDBs with some GIFs!)</li>
+<li>Hooking up E2E Encryption APIs in Dendrite (not that it buys us much in a pure P2P world)</li>
+<li>WebRTC transports.  Turns out that service workers aren’t allowed to speak WebRTC, so we’ll have to shim through to Riot to speak true peer-to-peer WebRTC data channels rather than relaying all the traffic through the websocket rendezvous server.</li>
+<li>Decentralised accounts for multidevice support - reviewing <a href="https://github.com/matrix-org/matrix-doc/blob/rav/proposal/remove_mxids_from_events/proposals/1228-removing-mxids-from-events.md">MSC1228</a> and getting Dendrite supporting multihoming accounts!</li>
+<li>Finishing all of Dendrite’s other remaining APIs.</li>
+</ul>
+<p>Beyond this, there are some bigger picture questions left to be answered in future experiments.</p>
+<p>Firstly: we do not yet have a solution for “store and forward” nodes which can relay messages on behalf of a room if all the participating devices are offline.  A first cut will be to run a P2P-capable homeserver server-side for this, but then metadata will start to accumulate server-side for the conversations it hosts.  A more interesting approach would be to use a store and forward system which obfuscates who is talking to who, such as a mixnet, and could even provide resistance to network traffic pattern analysis.  This is very much an open area of research, but one we are getting into :D</p>
+<p>Secondly: we want to experiment more with other transports, and find out which works best for Matrix.  Libp2p has some really exciting new stuff in the form of <a href="https://blog.ipfs.io/2020-05-20-gossipsub-v1.1">Gossipsub v1.1</a> - a much smarter routing algorithm for pubsub traffic in libp2p, which David Dias gave us a <a href="https://youtu.be/APVp-20ATLk?t=3598">VIP tour</a> of at the first Open Tech Will Save Us meetup.  So we’ll need to restructure our libp2p transport as pubsub to see how it works in practice.  Separately, we also want to play with hooking up <a href="https://yggdrasil-network.github.io/">Yggdrasil</a> (the encrypted overlay network) as a transport as a totally different approach - Yggdrasil will easily let us span different underlying network transports, but comes with different tradeoffs (e.g. no browser support yet).  We also want to take a look at the <a href="https://dat.foundation/">DAT</a> / <a href="https://github.com/hypercore-protocol/hypercore">hypercore</a> / <a href="https://github.com/hyperswarm/hyperswarm">hyperswarm</a> / <a href="https://cabal.chat/">Cabal</a> ecosystem to see if there’s a match :)</p>
+<p>Thirdly and finally: we obviously want to unify the new P2P Matrix network with today’s federated one.  The ideal outcome here would be to have a hybrid model, where teams who want their users to have a dedicated homeserver (for availability, IT policies, etc) can continue to have one as they do today - but newbies who have just installed Riot would float around on P2P unless they decided to consciously put down roots on a server or two.  Best of all, it would let us turn off the matrix.org homeserver: the best public homeserver is one you run yourself on your own phone ;)  The approach we take for linking P2P and today’s Matrix will depend very much on the transport we select for P2P in the long run, but the likelihood is that today’s homeservers will sprout P2P gateways to link the networks.</p>
+<h2 id="conclusion">Conclusion</h2>
+<p>So, there you have it.  P2P Matrix exists, and is developing at an alarming speed - and pushing Dendrite development along with it.  Most excitingly, there have been no changes yet to the Matrix spec for P2P at all; we’ve just swapped https for http-over-libp2p as the transport.  So <strong>all</strong> of the work we’ve been doing making Dendrite work in a P2P world has directly translated into making Dendrite work on today’s Matrix too  You can now stand up a Dendrite and have it federate pretty reliably with the wider Matrix network, although we’re still rushing through implementing APIs (we’re up to 35% passing <a href="https://github.com/matrix-org/sytest">sytest</a> coverage - although that 35% does contain most of the important tests :)</p>
+<p>Finally, in case you’re worried about why the Matrix core team is off chasing P2P dreams rather than improving Riot’s UX, or implementing Communities, or Extensible Profiles, or working through the MSC backlog etc... in practice only two people (ignoring Matthew) have been working on P2P - Neil Alexander (author of the original FOSDEM demo, Dendrite wrangler and Yggdrasil co-maintainer) and Kegan Dougal (of the original Matrix dev team, one of the original authors of Dendrite, and now wrangling the WASM P2P work too).  Huge thanks to Kegan &amp; Neil for pushing P2P forwards - and huge thanks to everyone else on the core team and the wider community for keeping today’s Matrix advancing too!</p>
+<p>Hope this has given a tempting glimpse of the shape of things to come.  Honestly we never thought we’d get as far as P2P when we started Matrix back in 2014, but it’s really fun to be finally catching up with the future :D</p>
+<p>-- Matthew</p>
+<p>P.S. You can read more about this from Neil Alexander’s point of view <a href="https://neilalexander.dev/2020/06/02/thoughts-p2p-matrix.html">over at his blog</a> (including more thoughts on the potential Yggdrasil demo!)</p>
+<p>P.P.S You can read the gory details of the P2P and WASM implementation from Kegan's point of view <a href="https://github.com/matrix-org/dendrite/wiki/How-p2p.riot.im-works">over at the Dendrite wiki</a>.</p>
+<p>P.P.P.S Comments over at <a href="https://news.ycombinator.com/item?id=23393935">HN</a></p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2020&#x2F;05&#x2F;21&#x2F;welcoming-automattic-to-matrix&#x2F;" title="Welcoming Automattic to Matrix!">Welcoming Automattic to Matrix!</a></h2>
+                <span>
+                    21.05.2020 01:42
+                    —
+                    <a href="/category/general">
+                        General
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                <br>
+                <small>Last update: 21.05.2020 01:28</small>
+            </header>
+            <div>
+                
+                <p><img src="https://matrix.org/blog/img/2020-05-21-automattic.png" alt="Automattic ♥️ Matrix" /></p>
+<p>Hi all,</p>
+<p>We’re very excited indeed to announce that <a href="https://automattic.com/">Automattic</a>, the creators of <a href="https://wordpress.com/">WordPress.com</a>, are jumping head first into the Matrix ecosystem with a strategic investment of almost $5M into <a href="https://vector.im">New Vector</a> (the company which makes <a href="https://riot.im">Riot</a> and <a href="https://modular.im">Modular.im</a>, founded by the core Matrix team in 2017).  More importantly, Matt Mullenweg (co-founder of WordPress and founder of Automattic) and the Automattic gang are committing to make the most of Matrix in their work going forwards!</p>
+<p>This is huge news, not least because WordPress literally runs over 36% of the websites on today’s web - and the potential of bringing Matrix to all those users is incredible.  Imagine if every WP site automatically came with its own Matrix room or community?  Imagine if all content in WP automatically was published into Matrix as well as the Web?  (This isn’t so far fetched an idea - turns out that Automattic already runs a XMPP bridge for wordpress.com over at <a href="https://im.wordpress.com">im.wordpress.com</a>!).  Imagine there was an excellent Matrix client available as a WordPress plugin for embedding realtime chat into your site? Imagine if <a href="https://tumblr.com">Tumblr</a> (which is part of Automattic these days) became decentralised!?</p>
+<p>In fact, if you’re a developer in either the Matrix or WordPress communities, now might be a good time to think about how to cross the streams.... not least because Automattic just opened up a role for a <a href="https://automattic.com/work-with-us/matrix-integrations-engineer/">Matrix.org/WordPress Integrations Engineer</a>! Quite aside from the investment, this shows Automattic is serious about Matrix - and we’d like to thank them for opening up jobs in these challenging times to further accelerate Matrix.  Perhaps some day Matrix Engineer will be as common a career choice as Web Developer ;)</p>
+<p>That said, it’s super early days for integration work, and there isn’t a concrete project to announce yet beyond the investment in New Vector (which is effectively an extension of the funding NV raised in October) and Automattic’s Job opening - but these are the sort of ideas we’ve been kicking around. And at the very least, we should expect to see Automattic’s communities migrating over to Matrix in the coming months.</p>
+<p>It’s been loads of fun working with Matt and the team on this: we see a huge overlap in terms of a genuine love for the open web, open source and open standards.  It’s also no coincidence that Matt (independently of Automattic) donated substantially to Matrix via Patreon back in 2017 when we needed it the most.  We’re also looking forward to benefiting from Automattic’s experience in sustainably and responsibly funding and growing open source projects in general - WordPress.com is an excellent example of how one can support development of a project like WordPress without compromising its open source nature.</p>
+<p>So, we’d like to formally welcome WordPress and the rest of the Automattic family into Matrix.  It’s incredibly exciting times, and we can’t wait to see what will come of the partnership!  And meanwhile, if any other massive open source organisations want to join Automattic and <a href="https://matrix.org/blog/2019/12/19/welcoming-mozilla-to-matrix">Mozilla</a> in leaping into Matrix, you know where to find us… :D</p>
+<p>Huge thanks go to Matt for believing in Matrix - watch this space for updates.</p>
+<ul>
+<li>Matthew, Amandine &amp; the Matrix Team.</li>
+</ul>
+
+                
+            </div>
+        </article>
         
         <article class="post">
             <header>
@@ -973,253 +1123,6 @@ directories with finer grained access control, etc) - but until this is sorted,
 please heed this advice.</p>
 <p>If you have concerns about randoms having managed to discover or join rooms
 which should have been private, please contact security@matrix.org.</p>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2019&#x2F;10&#x2F;03&#x2F;matrix-appservice-slack-bridge-1-0-is-here&#x2F;" title="matrix-appservice-slack bridge 1.0 is here!">matrix-appservice-slack bridge 1.0 is here!</a></h2>
-                <span>
-                    03.10.2019 00:00
-                    —
-                    <a href="/category/general">
-                        General
-                    </a>
-                    —
-                    <a
-                        href="/author/half-shot">
-                        Half-Shot
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Hello Matrix enthusiasts! Yesterday we released <a href="https://github.com/matrix-org/matrix-appservice-slack/releases/tag/1.0.0">matrix-appservice-slack 1.0</a>. This marks a major milestone
-in bridge development for the Matrix.org team, being our first bridge to ever reach 1.0. The decision to
-release this version came after we decided that the bridge had gained enough features and reached a point
-of stability where it could be deployed in the wild with minimal risk.</p>
-<p>For those not in the know, the Slack bridge is Node.JS based, and bridges slack channels &amp; users into Matrix
-seamlessly. And for those wondering, yes it works with Mattermost too (since their API is compatible with Slack)!
-In previous versions only a limited subset of features were supported, making heavy usage of Slack’s
-webhook API. As of 1.0, the bridge now makes use of the newer Slack Events/RTM API which gives us all we need for
-a richer bridging experience. Everything from edits and reactions to typing notifications is supported in the 1.0 release.</p>
-<p>Finally for those who are self hosting, we are pleased to offer the ability to &quot;puppet&quot; your Slack account using the
-bridge. Puppeting is the process in which the bridge will send messages as if you were sending them from the Slack client
-directly, when you talk using your Matrix account. This opens the door to seamless bridging and direct messaging support.</p>
-<p>For those wishing to bridge their whole workspace across, <a href="https://github.com/SolarDrew/skill-picard">picard</a> exists
-as a tool to manage large scale Slack bridge deployments. This tool is provided by <a href="https://matrix.to/#/@Cadair:matrix.org">Cadair</a> and <a href="https://matrix.to/#/@SolarDrew:matrix.org">SolarDrew</a></p>
-<p><img src="/blog/img/2019-10-03-slack1.0-threading.png" alt="Slack Screenshot" />
-Threading &amp; Reactions!</p>
-<p>The bridge has undergone some pretty serious code surgery as well. The whole codebase has been rewritten in
-TypeScript to take advantage of type checking and generic types. The bridge is currently based upon the
-<a href="https://github.com/matrix-org/matrix-appservice-bridge/">matrix-appservice-bridge</a> library. The datastore interface now supports PostgreSQL, which allows for administrators to inspect and edit the database while the bridge is running, as well as offering  helpful performance boost over the NeDB datastore format that was used previously. Finally, the codebase has proper Unit and Integration Tests to ensure new changes will not cause any regressions in behaviour. In short, <strong>now is an excellent time to get involved and hack on the bridge</strong>. There is already a <a href="https://github.com/matrix-org/matrix-appservice-slack/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22">crafted list of easy issues</a> for new and experienced bridge devs.</p>
-<p><img src="/blog/img/2019-10-03-slack1.0-perfmem.png" alt="Grafana memory usage graph" />
-Memory usage of the bridge comparison</p>
-<p><img src="/blog/img/2019-10-03-slack1.0-perfcpu.png" alt="Grafana CPU usage graph" />
-CPU usage of the bridge comparison</p>
-<p>In terms of how many users matrix.org is currently serving at the moment, we present to you some figures:</p>
-<ul>
-<li>2562 bridged rooms</li>
-<li>764 teams connected to the bridge</li>
-<li>103711 events have passed through the bridge since the launch of 0.3.2</li>
-</ul>
-<p>Of course, our work doesn’t stop at 1.0. The plan for the immediate future of the bridge
-is to continue adding support for other event types coming from Matrix and Slack to create
-an ever richer experience. Obvious features are things like topic changes, and syncing membership
-across the bridge. In the long term future we would also like to add community support to the bridge,
-so whole Slack workspaces can be bridged across with a single click.</p>
-<p>That’s all from me, and I would like to say a massive thank you to <a href="https://matrix.to/#/@Cadair:matrix.org">Cadair</a>
-and <a href="https://matrix.to/#/@benpa:matrix.org">Ben</a> for both their code and review work on the project and as always,
-thank you to the community for using the bridge and reporting issues. 🙂</p>
-<p>Useful links:</p>
-<ul>
-<li><a href="https://matrix.to/#/#matrix_appservice_slack:matrix.org">Matrix Room</a></li>
-<li><a href="https://github.com/matrix-org/matrix-appservice-slack">Project Home</a></li>
-<li><a href="https://matrix-appservice-slack.readthedocs.io/en/stable/">Docs</a></li>
-</ul>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2019&#x2F;07&#x2F;17&#x2F;5-user-matrix-homeserver-hosting-now-available-from-modular&#x2F;" title="5-user Matrix homeserver hosting now available from Modular">5-user Matrix homeserver hosting now available from Modular</a></h2>
-                <span>
-                    17.07.2019 00:00
-                    —
-                    <a href="/category/general">
-                        General
-                    </a>
-                    —
-                    <a
-                        href="/author/modular-im">
-                        Modular.im
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Hi all,</p>
-<p>If you’ve been looking for a way to have you own Matrix homeserver without having to run it yourself, you may be interested to hear that <a href="https://modular.im">Modular</a> (the Matrix hosting provider run by <a href="https://vector.im">New Vector</a>, the startup which hires many of the Matrix core team) is now offering a personal-sized small homeserver hosting service, supporting a minimum size of 5 user servers.</p>
-<p>A lot of recent performance work on Synapse has been driven by the need to make smaller dedicated servers more efficient to run - and so if you run your own homeserver you’ll be benefiting from all this work too :)  Meanwhile, if you choose to outsource your server hosting to Modular, you’ll be indirectly supporting core Matrix and Synapse development, given most of the core Matrix team work for New Vector - it’s through buying services like this which lets us keep folks able to hack on Matrix as their day job.</p>
-<p>See more details <a href="https://modular.im/personal-hosted-homeservers">over at the Modular blog post</a>!</p>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2019&#x2F;06&#x2F;30&#x2F;tightening-up-privacy-in-matrix&#x2F;" title="Tightening up privacy in Matrix">Tightening up privacy in Matrix</a></h2>
-                <span>
-                    30.06.2019 00:00
-                    —
-                    <a href="/category/general">
-                        General
-                    </a>
-                    —
-                    <a
-                        href="/author/matthew-hodgson">
-                        Matthew Hodgson
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Hi all,</p>
-<p>A few weeks ago there was <a href="https://news.ycombinator.com/item?id=20178267">some
-discussion</a> around the privacy
-of typical Matrix configurations, particularly how Riot's default config uses
-vector.im as an Identity Server (for discovering users on Matrix by their email
-address or phone number) and scalar.vector.im as an Integration Manager (i.e.
-the mechanism for adding hosted bots/bridges/widgets into rooms). This means
-that Riot, even if using a custom homeserver and running from a custom Riot
-deployment, will try to talk to *.vector.im (run  by New Vector; the company formed by the core
-Matrix team in 2017) for some operations unless an alternative IS or IM has
-been specified in the config.</p>
-<p>We haven't done as good a job at explaining this as we could have, and this
-blog post is a progress update on how we're fixing that and improving other
-privacy considerations in general.</p>
-<p>Firstly, the reason Riot is configured like this is for the user's convenience:
-in general, we believe most users just want to discover other people on Matrix
-as easily as possible, and a logically-centralised server for looking up user
-matrix IDs by email/phone number (called third party IDs, or 3PIDs) is the only
-comprehensive way of doing so.  Decentralising this data while protecting the
-privacy of the 3PIDs and their matrix IDs is a Hard Problem which we're unaware
-of anyone having solved yet.  Alternatively, you could run a local identity
-server, but it will end up having to delegate to a centralised identity server
-anyway for IDs it has no other way to know about. Similarly, providing a
-default integration server that just works out of the box (rather than
-mandating the user configures their own) is a matter of trying to keep Riot's
-UX simple, especially when onboarding users, and especially given Riot's
-reputation for complexity at the best of times.</p>
-<p>That said, the discussion highlighted some areas for improvement.
-Specifically:</p>
-<ol>
-<li>When doing work on making Matrix <a href="https://matrix.org/blog/2018/05/08/gdpr-compliance-in-matrix">GDPR
-compliant</a>
-back in May 2018, we set up a single <a href="https://github.com/vector-im/policies/blob/master/docs/matrix-org/privacy_notice.md">privacy
-policy</a>
-for the services we run, and got users to agree to it by locking them out of
-the matrix.org homeserver until they did.  However, we missed that users not
-on the matrix.org homeserver might still be using our Identity Service (IS)
-&amp; Integration Manager (IM) without accepting the privacy policy.  Over the
-last few weeks we've been working on addressing this - it turns out that
-it's a pain to fix, given the Identity Service doesn't have the concept of
-users, so tracking which users have agreed to the policy policy or not means
-some fairly major changes. The current proposal is to change the Identity
-Service to use a form of OpenID to authenticate users against their
-homeserver in order to check they've accepted the IS's terms of use - see
-<a href="https://github.com/matrix-org/matrix-doc/pull/2140">MSC2140</a> for the gory
-details.</li>
-</ol>
-<p>Meanwhile, Riot is being updated to prompt the user to accept the IS &amp; IM terms
-of use (if different to the HS's), and thus make it crystal clear to the user
-that they are using an IS &amp; IM and that they have the option not to if desired - see https://github.com/vector-im/riot-web/issues/10167 and associated
-<a href="https://github.com/vector-im/riot-web/issues?utf8=%E2%9C%93&amp;q=is%3Aissue+label%3Ap1+label%3Aprivacy+label%3Aphase%3A1+identity">issues</a>.
-This includes also explicitly prompting the user as to whether they want
-3PIDs they provide at registration to be discoverable, as per
-https://github.com/vector-im/riot-web/issues/10091.</p>
-<ol start="2">
-<li>
-<p>Riot on iOS &amp; Android gives the option of scanning your local addressbook to
-discover which of your contacts are on Matrix.  The wording explaining this
-wasn't clear enough on Android - which we <a href="https://news.ycombinator.com/item?id=20181515">promptly
-fixed</a>.  Separately, the
-contact details sent to the server are currently not obfuscated.  This is
-partially because we hadn't got to it, and partially because obfuscating
-them doesn't actually help much with privacy, given an attacker can just
-scan through possible obfuscated phone numbers and email addresses to
-deobfuscate them.  However, we've been working through obfuscating the
-contact details anyway by hashing as per
-<a href="https://github.com/matrix-org/matrix-doc/pull/2134">MSC2134</a>, which has all
-the details.  We're also adding an explicit lookup warning in Riot/Web, as
-per https://github.com/vector-im/riot-web/issues/10093.</p>
-</li>
-<li>
-<p>There was a bug where Riot/Web was querying the Integration Manager every
-time you opened a room, even if that room had no integrations (actually, it
-did it 3 times in a row).  This got <a href="https://github.com/matrix-org/matrix-react-sdk/pull/3115">fixed and
-released</a> in
-Riot/Web 1.2.2 back on June 19th.</p>
-</li>
-<li>
-<p>Matrix needs to authenticate whether events were actually sent by the server
-that claimed to send them.  We do this by having servers sign their events
-when they create them, and publishing the public half of their signing keys
-for anyone to query.  However, this poses problems if you receive an event
-which is signed by a server which isn't currently online.  To solve this, we
-have the concept of <code>trusted_key_servers</code> (aka notary servers), which your
-server can query to see if they know about the missing server's keys.  By
-default, matrix.org is configured as Synapse's trusted notary, but you can
-of course change this. If you choose an unreliable server as the notary
-(e.g. by not setting one at all) then there's a risk that you won't be able
-to look up signing keys, and a splitbrain will result where your server
-can't receive certain events, but other servers in the room can.  This can
-then result in your server being unable to participate in the room entirely,
-if it's missing key events in the room's lifetime.</p>
-<p>Our plan here is to get rid of notaries entirely by changing how event
-signing works as per
-<a href="https://github.com/matrix-org/matrix-doc/issues/1228">MSC1228</a>, but this is
-going to take a while.  Meanwhile we're going to check Synapse's code to
-ensure it doesn't talk to the notary server unnecessarily.  (E.g. it should
-be caching the signing keys locally, and it should only use the notary
-server if the remote server is down.)</p>
-</li>
-<li>
-<p>When doing VoIP in Matrix, clients need to use a TURN server to discover
-their network conditions and perform firewall traversal.  The TURN server
-should be specified by your homeserver (and each homeserver deployment
-should ideally include a TURN server).  However, for users who have not
-configured a TURN server, Riot (on all 3 platforms) defaulted to use
-Google's public STUN service (<code>stun.l.google.com</code>).  STUN is a subset of
-TURN which provides firewall discovery, but not traffic relaying.  This
-slightly increased the chances of calls working for users without a proper
-TURN server, but not by much - and rather than fall back to Google, we've
-decided to simply remove it from Riot (e.g.
-https://github.com/matrix-org/matrix-ios-sdk/commit/24832a2b14fb72ae6f051d5aba40262d11eef65d).
-This means that VoIP might get less reliable for users who were relying on
-this fallback, but you really should be running your own TURN server anyway
-if you want VoIP to work reliably on your homeserver.</p>
-</li>
-<li>
-<p>We should make it clearer in Riot that device names are world-readable, and
-not just for the user's own personal reference. This is
-https://github.com/vector-im/riot-web/issues/10216</p>
-</li>
-</ol>
-<p>As you can see, much of the work on improving these issues is still in full
-swing, although some has already shipped.  As should also be obvious, these
-issues are categorically not malicious: Matrix (and Riot) literally exists to give users full control and autonomy over their communication, and privacy is a key part of that. These are avoidable issues which can and will be solved.  It's worth noting that we have to prioritise privacy issues alongside all the other development in Matrix however: there's no point in having excellent privacy if there are other bugs stopping the platform from being usable.</p>
-<p>We'll do another blog post to confirm once most of the fixes here have landed -
-meanwhile, hopefully this post provides some useful visibility on how we're
-going about improving things.</p>
 
                 
             </div>

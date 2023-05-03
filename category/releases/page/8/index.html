@@ -114,7 +114,7 @@
     <div class="content">
         <header>
             <h1>Releases</h1>
-            138 posts tagged with "Releases" <a href="/category">(See all Category)</a>
+            141 posts tagged with "Releases" <a href="/category">(See all Category)</a>
             
             <h2>
                 <small><a href="/category/releases/atom.xml">Atom Feed</a></small>
@@ -122,6 +122,425 @@
             
         </header>
 
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2020&#x2F;11&#x2F;16&#x2F;dendrite-0-3-0-released&#x2F;" title="Dendrite 0.3.0 released">Dendrite 0.3.0 released</a></h2>
+                <span>
+                    16.11.2020 17:44
+                    —
+                    <a href="/category/releases">
+                        Releases
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Hi all,</p>
+<p>Heads up that we just cut another beta release of Dendrite - now at 0.3.0!</p>
+<p>This is a really fun release given almost all the changes are contributed from
+the wider community - so huge thanks to <a href="https://github.com/S7evinK">S7evinK</a>,
+<a href="https://github.com/MayeulC">MayeulC</a> and <a href="https://github.com/felix">felix</a>!</p>
+<p>The main new feature is full Read Receipt support thanks to S7evinK, which
+makes an enormous perceptual improvement when using Dendrite - so especial
+thanks are due there :)</p>
+<p>So, if you're interested in helping us test, please spin up a copy from
+https://github.com/matrix-org/dendrite and let us know how it goes - and if you're
+already running one, now is an excellent time to upgrade!</p>
+<p>Full changelog (including 0.2.1, which we forgot to blog about) follows:</p>
+<h2 id="dendrite-0-3-0-2020-11-16">Dendrite 0.3.0 (2020-11-16)</h2>
+<h3 id="features">Features</h3>
+<ul>
+<li>Read receipts (both inbound and outbound) are now supported (contributed by <a href="https://github.com/S7evinK">S7evinK</a>)</li>
+<li>Forgetting rooms is now supported (contributed by <a href="https://github.com/S7evinK">S7evinK</a>)</li>
+<li>The <code>-version</code> command line flag has been added (contributed by <a href="https://github.com/S7evinK">S7evinK</a>)</li>
+</ul>
+<h3 id="fixes">Fixes</h3>
+<ul>
+<li>User accounts that contain the <code>=</code> character can now be registered</li>
+<li>Backfilling should now work properly on rooms with world-readable history visibility (contributed by <a href="https://github.com/MayeulC">MayeulC</a>)</li>
+<li>The <code>gjson</code> dependency has been updated for correct JSON integer ranges</li>
+<li>Some more client event fields have been marked as omit-when-empty (contributed by <a href="https://github.com/S7evinK">S7evinK</a>)</li>
+<li>The <code>build.sh</code> script has been updated to work properly on all POSIX platforms (contributed by <a href="https://github.com/felix">felix</a>)</li>
+</ul>
+<h2 id="dendrite-0-2-1-2020-10-22">Dendrite 0.2.1 (2020-10-22)</h2>
+<h3 id="fixes-1">Fixes</h3>
+<ul>
+<li>Forward extremities are now calculated using only references from other extremities, rather than including outliers, which should fix cases where state can become corrupted (<a href="https://github.com/matrix-org/dendrite/pull/1556">#1556</a>)</li>
+<li>Old state events will no longer be processed by the sync API as new, which should fix some cases where clients incorrectly believe they have joined or left rooms (<a href="https://github.com/matrix-org/dendrite/pull/1548">#1548</a>)</li>
+<li>More SQLite database locking issues have been resolved in the latest events updater (<a href="https://github.com/matrix-org/dendrite/pull/1554">#1554</a>)</li>
+<li>Internal HTTP API calls are now made using H2C (HTTP/2) in polylith mode, mitigating some potential head-of-line blocking issues (<a href="https://github.com/matrix-org/dendrite/pull/1541">#1541</a>)</li>
+<li>Roomserver output events no longer incorrectly flag state rewrites (<a href="https://github.com/matrix-org/dendrite/pull/1557">#1557</a>)</li>
+<li>Notification levels are now parsed correctly in power level events (<a href="https://github.com/matrix-org/gomatrixserverlib/pull/228">gomatrixserverlib#228</a>, contributed by <a href="https://github.com/Pestdoktor">Pestdoktor</a>)</li>
+<li>Invalid UTF-8 is now correctly rejected when making federation requests (<a href="https://github.com/matrix-org/gomatrixserverlib/pull/229">gomatrixserverlib#229</a>, contributed by <a href="https://github.com/Pestdoktor">Pestdoktor</a>)</li>
+</ul>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2020&#x2F;11&#x2F;03&#x2F;how-we-fixed-synapse-s-scalability&#x2F;" title="How we fixed Synapse&#x27;s scalability!">How we fixed Synapse&#x27;s scalability!</a></h2>
+                <span>
+                    03.11.2020 00:00
+                    —
+                    <a href="/category/releases">
+                        Releases
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Hi all,</p>
+<p>We had a major break-through in Synapse 1.22 which we want to talk about in
+more detail: <strong>Synapse now scales horizontally across multiple python
+processes.</strong></p>
+<p>Horizontal scaling means that you can support more users and traffic by adding
+in more python processes (spread over more machines, if necessary) without
+there being a single bottleneck which all the traffic is passing through - as
+opposed to vertical scaling where you make things go faster overall by making
+the bottleneck go faster.</p>
+<p>After many years of having to vertically scale Synapse (by trying to make the
+main process go faster) we’re now finally at the point where you can configure
+Synapse so that <strong>messages no longer flow through the main process</strong> -
+eliminating the bottleneck entirely.  What’s more, the Matrix.org homeserver
+has now been successfully running in this config and enjoying the massive
+scalability improvements for the last 2 weeks! Huge kudos goes to Erik and the
+wider Synapse team for pulling this off.</p>
+<p>Some readers might wonder how this ties in with <a href="https://matrix.org/blog/2020/10/08/dendrite-is-entering-beta">Dendrite entering
+beta</a>, given one
+of Dendrite’s design goals is full horizontal scalability.  The answer is that
+we’re very much using Dendrite for experimentation and next-gen stuff at the
+moment (currently focused more on scaling downwards for P2P rather than
+scaling upwards for megaservers) - while Synapse is the stable and long-term
+supported option.</p>
+<p>So, that’s the context - now over to Erik with more than you could possibly
+ever want to know about how we actually did it...</p>
+<h2 id="background">Background</h2>
+<p>Synapse started life off back in 2014 as a single monolithic python process,
+and for quite a while we made it scale by adding more and more in-memory
+caches to speed things up by avoiding hitting the database (at the expense of
+RAM).  It looked like this:</p>
+<div style="margin: auto; max-width: 640px;">
+    <img src="/blog/img/2020-11-03-synapse1.png"/>
+</div>
+<p>Eventually the caches stopped helping and we needed more than one thread of
+execution in order to spread CPU across multiple cores. Python’s Global
+Interpreter Lock (<a href="https://wiki.python.org/moin/GlobalInterpreterLock">GIL</a>)
+means that Python can mainly only use one CPU core at a time, so starting more
+threads doesn’t help with scalability - you have to run multiple processes.</p>
+<p>Now, the vast majority of the work that Synapse does is related to “streams”.
+These are append only sequences of rows, such as the events stream, typing
+stream, receipts stream, etc. When a new event arrives (for example) we write
+it to the events stream, and then notify anything waiting that there has been
+an update. The <code>/sync</code> endpoint, for instance, will wait for updates to streams
+and send them down to long-polling Matrix clients. </p>
+<p>Streams support being added to concurrently, so have a concept of the
+“persisted up-to position”. This is the point where <strong>all</strong> rows before that
+point have finished persisting. Readers only read up to the current “persisted
+up-to position”, so that they don’t skip updates that haven’t finished
+persisting at that point. (E.g. if two events A and B get assigned positions 5
+and 6, but B finishes persisting first, then the persisted up to position will
+remain at 4 until A finishes persisting and then it jumps to 6).</p>
+<p>To split any meaningful amount of work into separate processes, we need to add
+a mechanism where processes can be told that updates to streams have happened
+(otherwise they’d have to repeatedly poll the DB, which would be deeply
+inefficient). The architecture ended up being one where we had the “main”
+process that streams updates via a custom replication protocol (initially
+long-polling HTTP; later custom TCP) to any number of “worker” processes. This
+meant that we could move sync stream handling (and other read apis) off the
+main process and onto workers, but also that all database writes had to go
+through the single main process (as it was a star topology, the main process
+could talk to all workers but workers could only talk to the main process and
+not each other).</p>
+<p><img src="/blog/img/2020-11-03-synapse2.png" alt="2020-11-03-synapse2.png" /></p>
+<p>As an aside: cache invalidations also had to be streamed down the replication
+connections, which has the side effect that we could only cache things that
+would only be invalidated on the main process.</p>
+<p>We continued to move more and more read APIs out onto separate workers. We
+also added workers in front of the main process that would e.g. handle the
+creation of the new events, authenticating, etc, and then call out to the main
+process with the event for it to persist the event.</p>
+<h2 id="moving-writes-off-the-main-process">Moving writes off the main process</h2>
+<p>Eventually we ran out of stuff to move out of the main process that didn’t
+involve writing to the DB. To write stuff from other processes we needed a way
+for the workers to stream updates to each other. The easiest and most obvious
+way was to just use Redis and its pub/sub support. </p>
+<p><img src="/blog/img/2020-11-03-synapse3.png" alt="2020-11-03-synapse3.png" /></p>
+<p>This almost allowed us to move writing of a particular stream to a different
+worker, <em>except</em> writing to streams generally also meant invalidating caches
+which in itself requires writing to a stream. We needed a way of writing to
+the cache invalidation stream from multiple workers at once.</p>
+<p>Sharding the cache invalidation thankfully turned out to be easy, as workers
+would simply call the cache invalidation function whenever they get an
+invalidation notice over replication. In particular, the ordering of
+invalidations from different workers doesn’t matter and so there isn’t a need
+to calculate a single “persisted up-to position”. Sharding then just becomes a
+case of adding the name of the worker that is writing the update to the
+replication stream, and then workers reading from it can basically treat the
+cache stream the same as if they were multiple streams, one per worker.</p>
+<p>This then unlocks the ability to move writing of streams off the main process
+and onto different workers - and so we added the “event persister” worker for
+offloading the main event stream off the main process:</p>
+<p><img src="/blog/img/2020-11-03-synapse4.png" alt="2020-11-03-synapse4.png" /></p>
+<h2 id="sharding-the-events-stream">Sharding the events stream</h2>
+<p>Eventually the worker responsible for doing nothing but persisting events
+started maxing out CPU. This meant that we had to look at sharding the events
+stream, i.e. writing to it from multiple workers.</p>
+<p>This is more complicated than sharding the cache invalidation stream as the
+ordering of the events does matter; we send them down sync streams, in order,
+with a token that indicates where the sync stream is up to in the events
+stream. This means that workers need to be able to calculate a “persisted
+up-to position” when getting updates from different workers. </p>
+<p>The easiest way of doing that is to simply set the persisted up-to position as
+the minimum position received over federation from all active writers. This
+works, except events would only be processed after all other writers have
+subsequently written events (to advance the persisted position past the point
+at which the event was written), which can add a lot of latency depending on
+how often events are written. </p>
+<p>A refinement is to note that if you have a persisted up-to position of 10,
+then receive updates at sequential positions 11, 12, 13 and 14, you know that
+everything between 10 and 14 has finished persisting (as you received updates
+about them), and so can set the persisted up-to position to 14. Annoyingly,
+it’s not required that positions are sequential without gaps (due to various
+technical considerations), and so in the worst case this still has the same
+problems as the naïve solution.</p>
+<p>To avoid these problems we change the persisted up-to position to be a <a href="https://en.wikipedia.org/wiki/Vector_clock">vector
+clock</a> of positions; tracking a
+vector of positions - one per writer. This still allows answering the query of
+“get all events after token X” (as events are written with the position and
+the name of the writer). The persisted up-to position is then calculated by
+just tracking the last position seen to arrive over replication from each
+writer. </p>
+<p>This allows writing events from multiple workers, while ensuring that other
+workers can correctly keep track of a “persisted up-to position”. Then it's
+just a matter of inspecting the code to ensure that it does not assume that it
+is the only writer to the stream. In the case of writing to the events stream,
+we note that the function persisting events assumes it's the only writer for a
+given room, so when sharding we have to ensure that there are no concurrent
+writes to the same room. This is most easily done by sharding based on room
+ID, and ensuring that the mapping of room ID to worker does not change
+(without coordination).</p>
+<p>The only thing left is to then encode the vector clock position into the sync
+tokens. We want to ensure that these tokens are not too long, as they get
+included as query string parameters (e.g. the <code>since=</code> parameter of <code>/sync</code>).
+By assigning persistent unique integer IDs to workers the vector clock can be
+persisted as a sequence of pairs of integers, which is relatively few bytes so
+long as we don’t have too many workers writing to the events stream. We can
+further reduce the size of the tokens by calculating an integer “persisted
+up-to position” as we did before, encoding that and only including positions
+for workers that are larger than the integer persisted upto position. (The
+idea here is that most of the time only a small number of workers will be
+ahead of the calculated persisted up-to position, and so we only need to
+encode those).</p>
+<p>And this is what we have today:</p>
+<p><img src="/blog/img/2020-11-03-synapse5.png" alt="2020-11-03-synapse5.png" /></p>
+<p>The major limitation of the current situation is that you can’t dynamically
+add/remove workers which persist events, as the sharding by room ID is
+calculated at startup, and so changing it requires restarting the whole
+system. This could be replaced by any system that allowed coordination over
+which persister is allowed to write to a room at any given point. However this
+is likely tricky to get right in practice, but would allow dynamic auto
+scaling of deployments, or automatically recovering from a worker that gets
+wedged/dies.</p>
+<p>Finally, it’s worth noting that sharding event persisters isn’t the only
+performance work that’s been going on - switching everything over to python 3
+and async twisted has helped, along with lots of smaller optimisations on the
+hot paths, and further rebalancing workers (e.g. moving background jobs off
+the master process to dedicated workers).  We’ve also benefited a lot from the
+maintainability of rolling out mypy typing throughout the codebase.  And next
+up, we’ll be going back to speeding up the codebase as a whole - starting with
+algorithmic state resolution improvements! 🎉</p>
+<h3 id="performance">Performance</h3>
+<p>So, how does it stack up?</p>
+<p>Here’s the send time heatmap on Matrix.org showing the step change on Oct 16th
+when we rolled out the second event persister (full disclosure: this also
+coincides with moving background processes off the main Synapse process to a
+background worker).  As you can see, we go from messages being spread over a
+huge range of durations (up to several seconds) to the sweet spot being 50ms
+or less - a spectacular improvement!</p>
+<p><img src="/blog/img/2020-11-03-synapse-heatmap.png" alt="2020-11-03-synapse-heatmap.png" /></p>
+<p>Meanwhile, here’s the actual CPU utilisation as we split the traffic from a
+single event persister (yellow) to two persisters (one yellow, one blue),
+showing the sharding beautifully horizontally balancing CPU between the two
+active/active worker processes:</p>
+<p><img src="/blog/img/2020-11-03-synapse-cpu.png" alt="2020-11-03-synapse-cpu.png" /></p>
+<p>We’ve yet to loadtest to see just how fast we can go now (before we start
+hitting bottlenecks on the postgres cluster), but it sure feels good to have
+all our CPU headroom back on Matrix.org again, ready for the next wave of
+users to arrive.</p>
+<h3 id="conclusion">Conclusion</h3>
+<p>So there you have it: folks running massive homeservers (50K+ concurrent
+users) like Matrix.org (and <em>cough</em> various high profile public sector
+deployments) are no longer held hostage by the bottleneck of the main synapse
+process and should feel free to experiment with setting up event persister
+workers to handle high traffic loads.  Otherwise, if you can spread your users
+over smaller servers, that’s also a good bet (assuming they don’t have
+massively overlapping room membership, like we see on Matrix.org.)</p>
+<p>The current <a href="https://github.com/matrix-org/synapse/blob/develop/docs/workers.md">worker
+documentation</a>
+is up-to-date, although does assume you are already very familiar with how to
+administer Synapse.  It’s also very much subject to change, as we keep adding
+new workers and improving the architecture.  However, now is a pretty good
+time to get involved if you’re interested in large-scale Matrix deployments.</p>
+<p>-- The Synapse Team</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2020&#x2F;10&#x2F;27&#x2F;synapse-1-22-0-released&#x2F;" title="Synapse 1.22.0 released">Synapse 1.22.0 released</a></h2>
+                <span>
+                    27.10.2020 17:01
+                    —
+                    <a href="/category/releases">
+                        Releases
+                    </a>
+                    —
+                    <a
+                        href="/author/dan-callahan">
+                        Dan Callahan
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p><a href="https://github.com/matrix-org/synapse/releases/tag/v1.22.0">Synapse 1.22.0</a> now available!</p>
+<p>This release focused on improving Synapse's horizontal scalability, including:</p>
+<ul>
+<li>Support for running background tasks in separate worker processes.</li>
+<li>Fixes to sharded event persisters, which were experimentally introduced in 1.21.0.</li>
+<li>Fixing a message duplication bug with worker-based deployments. (<a href="https://github.com/matrix-org/synapse/issues/8476">#8476</a>)</li>
+</ul>
+<p>Synapse 1.22.0 also has a few other notable changes:</p>
+<ul>
+<li>Defaulting to <a href="https://matrix.org/docs/spec/rooms/v6">version 6</a> rooms, per <a href="https://github.com/matrix-org/matrix-doc/pull/2788/">MSC2788</a>.</li>
+<li>Initial support for three new experimental MSCs:
+<ul>
+<li><a href="https://github.com/matrix-org/matrix-doc/pull/2732">MSC2732</a>: Supporting olm fallback keys</li>
+<li><a href="https://github.com/matrix-org/matrix-doc/pull/2697">MSC2697</a>: Supporting device dehydration</li>
+<li><a href="https://github.com/matrix-org/matrix-doc/pull/2409">MSC2409</a>: Allowing appservices to receive ephemeral events like read receipts, presence, and typing indicators.</li>
+</ul>
+</li>
+<li>Multi-arch Docker images, covering <code>arm64</code> and <code>arm/v7</code> in addition to <code>amd64</code>.</li>
+</ul>
+<p>Installation instructions are available <a href="https://github.com/matrix-org/synapse/blob/master/INSTALL.md">on GitHub</a>, as is the <code>v1.22.0</code> <a href="https://github.com/matrix-org/synapse/releases/tag/v1.22.0">release tag</a>.</p>
+<p>Lastly, Synapse is a Free and Open Source Software project, and we'd like to extend our thanks to everyone who contributed to this release, including <a href="https://github.com/Akkowicz">@Akkowicz</a>, <a href="https://github.com/BBBSnowball">@BBBSnowball</a>, <a href="https://github.com/maquis196">@maquis196</a>, and <a href="https://github.com/samuel-p">@samuel-p</a>.</p>
+<p>The full changelog for 1.22.0 is as follows:</p>
+<h1 id="synapse-1-22-0-2020-10-27">Synapse 1.22.0 (2020-10-27)</h1>
+<p>No significant changes.</p>
+<h1 id="synapse-1-22-0rc2-2020-10-26">Synapse 1.22.0rc2 (2020-10-26)</h1>
+<h2 id="bugfixes">Bugfixes</h2>
+<ul>
+<li>Fix bugs where ephemeral events were not sent to appservices. Broke in v1.22.0rc1. (<a href="https://github.com/matrix-org/synapse/issues/8648">#8648</a>, <a href="https://github.com/matrix-org/synapse/issues/8656">#8656</a>)</li>
+<li>Fix <code>user_daily_visits</code> table to not have duplicate rows per user/device due to multiple user agents. Broke in v1.22.0rc1. (<a href="https://github.com/matrix-org/synapse/issues/8654">#8654</a>)</li>
+</ul>
+<h1 id="synapse-1-22-0rc1-2020-10-22">Synapse 1.22.0rc1 (2020-10-22)</h1>
+<h2 id="features">Features</h2>
+<ul>
+<li>Add a configuration option for always using the &quot;userinfo endpoint&quot; for OpenID Connect. This fixes support for some identity providers, e.g. GitLab. Contributed by Benjamin Koch. (<a href="https://github.com/matrix-org/synapse/issues/7658">#7658</a>)</li>
+<li>Add ability for <code>ThirdPartyEventRules</code> modules to query and manipulate whether a room is in the public rooms directory. (<a href="https://github.com/matrix-org/synapse/issues/8292">#8292</a>, <a href="https://github.com/matrix-org/synapse/issues/8467">#8467</a>)</li>
+<li>Add support for olm fallback keys (<a href="https://github.com/matrix-org/matrix-doc/pull/2732">MSC2732</a>). (<a href="https://github.com/matrix-org/synapse/issues/8312">#8312</a>, <a href="https://github.com/matrix-org/synapse/issues/8501">#8501</a>)</li>
+<li>Add support for running background tasks in a separate worker process. (<a href="https://github.com/matrix-org/synapse/issues/8369">#8369</a>, <a href="https://github.com/matrix-org/synapse/issues/8458">#8458</a>, <a href="https://github.com/matrix-org/synapse/issues/8489">#8489</a>, <a href="https://github.com/matrix-org/synapse/issues/8513">#8513</a>, <a href="https://github.com/matrix-org/synapse/issues/8544">#8544</a>, <a href="https://github.com/matrix-org/synapse/issues/8599">#8599</a>)</li>
+<li>Add support for device dehydration (<a href="https://github.com/matrix-org/matrix-doc/pull/2697">MSC2697</a>). (<a href="https://github.com/matrix-org/synapse/issues/8380">#8380</a>)</li>
+<li>Add support for <a href="https://github.com/matrix-org/matrix-doc/pull/2409">MSC2409</a>, which allows sending typing, read receipts, and presence events to appservices. (<a href="https://github.com/matrix-org/synapse/issues/8437">#8437</a>, <a href="https://github.com/matrix-org/synapse/issues/8590">#8590</a>)</li>
+<li>Change default room version to &quot;6&quot;, per <a href="https://github.com/matrix-org/matrix-doc/pull/2788">MSC2788</a>. (<a href="https://github.com/matrix-org/synapse/issues/8461">#8461</a>)</li>
+<li>Add the ability to send non-membership events into a room via the <code>ModuleApi</code>. (<a href="https://github.com/matrix-org/synapse/issues/8479">#8479</a>)</li>
+<li>Increase default upload size limit from 10M to 50M. Contributed by @Akkowicz. (<a href="https://github.com/matrix-org/synapse/issues/8502">#8502</a>)</li>
+<li>Add support for modifying event content in <code>ThirdPartyRules</code> modules. (<a href="https://github.com/matrix-org/synapse/issues/8535">#8535</a>, <a href="https://github.com/matrix-org/synapse/issues/8564">#8564</a>)</li>
+</ul>
+<h2 id="bugfixes-1">Bugfixes</h2>
+<ul>
+<li>Fix a longstanding bug where invalid ignored users in account data could break clients. (<a href="https://github.com/matrix-org/synapse/issues/8454">#8454</a>)</li>
+<li>Fix a bug where backfilling a room with an event that was missing the <code>redacts</code> field would break. (<a href="https://github.com/matrix-org/synapse/issues/8457">#8457</a>)</li>
+<li>Don't attempt to respond to some requests if the client has already disconnected. (<a href="https://github.com/matrix-org/synapse/issues/8465">#8465</a>)</li>
+<li>Fix message duplication if something goes wrong after persisting the event. (<a href="https://github.com/matrix-org/synapse/issues/8476">#8476</a>)</li>
+<li>Fix incremental sync returning an incorrect <code>prev_batch</code> token in timeline section, which when used to paginate returned events that were included in the incremental sync. Broken since v0.16.0. (<a href="https://github.com/matrix-org/synapse/issues/8486">#8486</a>)</li>
+<li>Expose the <code>uk.half-shot.msc2778.login.application_service</code> to clients from the login API. This feature was added in v1.21.0, but was not exposed as a potential login flow. (<a href="https://github.com/matrix-org/synapse/issues/8504">#8504</a>)</li>
+<li>Fix error code for <code>/profile/{userId}/displayname</code> to be <code>M_BAD_JSON</code>. (<a href="https://github.com/matrix-org/synapse/issues/8517">#8517</a>)</li>
+<li>Fix a bug introduced in v1.7.0 that could cause Synapse to insert values from non-state <code>m.room.retention</code> events into the <code>room_retention</code> database table. (<a href="https://github.com/matrix-org/synapse/issues/8527">#8527</a>)</li>
+<li>Fix not sending events over federation when using sharded event writers. (<a href="https://github.com/matrix-org/synapse/issues/8536">#8536</a>)</li>
+<li>Fix a long standing bug where email notifications for encrypted messages were blank. (<a href="https://github.com/matrix-org/synapse/issues/8545">#8545</a>)</li>
+<li>Fix increase in the number of <code>There was no active span...</code> errors logged when using OpenTracing. (<a href="https://github.com/matrix-org/synapse/issues/8567">#8567</a>)</li>
+<li>Fix a bug that prevented errors encountered during execution of the <code>synapse_port_db</code> from being correctly printed. (<a href="https://github.com/matrix-org/synapse/issues/8585">#8585</a>)</li>
+<li>Fix appservice transactions to only include a maximum of 100 persistent and 100 ephemeral events. (<a href="https://github.com/matrix-org/synapse/issues/8606">#8606</a>)</li>
+</ul>
+<h2 id="updates-to-the-docker-image">Updates to the Docker image</h2>
+<ul>
+<li>Added multi-arch support (arm64,arm/v7) for the docker images. Contributed by @maquis196. (<a href="https://github.com/matrix-org/synapse/issues/7921">#7921</a>)</li>
+<li>Add support for passing commandline args to the synapse process. Contributed by @samuel-p. (<a href="https://github.com/matrix-org/synapse/issues/8390">#8390</a>)</li>
+</ul>
+<h2 id="improved-documentation">Improved Documentation</h2>
+<ul>
+<li>Update the directions for using the manhole with coroutines. (<a href="https://github.com/matrix-org/synapse/issues/8462">#8462</a>)</li>
+<li>Improve readme by adding new shield.io badges. (<a href="https://github.com/matrix-org/synapse/issues/8493">#8493</a>)</li>
+<li>Added note about docker in manhole.md regarding which ip address to bind to. Contributed by @Maquis196. (<a href="https://github.com/matrix-org/synapse/issues/8526">#8526</a>)</li>
+<li>Document the new behaviour of the <code>allowed_lifetime_min</code> and <code>allowed_lifetime_max</code> settings in the room retention configuration. (<a href="https://github.com/matrix-org/synapse/issues/8529">#8529</a>)</li>
+</ul>
+<h2 id="deprecations-and-removals">Deprecations and Removals</h2>
+<ul>
+<li>Drop unused <code>device_max_stream_id</code> table. (<a href="https://github.com/matrix-org/synapse/issues/8589">#8589</a>)</li>
+</ul>
+<h2 id="internal-changes">Internal Changes</h2>
+<ul>
+<li>Check for unreachable code with mypy. (<a href="https://github.com/matrix-org/synapse/issues/8432">#8432</a>)</li>
+<li>Add unit test for event persister sharding. (<a href="https://github.com/matrix-org/synapse/issues/8433">#8433</a>)</li>
+<li>Allow events to be sent to clients sooner when using sharded event persisters. (<a href="https://github.com/matrix-org/synapse/issues/8439">#8439</a>, <a href="https://github.com/matrix-org/synapse/issues/8488">#8488</a>, <a href="https://github.com/matrix-org/synapse/issues/8496">#8496</a>, <a href="https://github.com/matrix-org/synapse/issues/8499">#8499</a>)</li>
+<li>Configure <code>public_baseurl</code> when using demo scripts. (<a href="https://github.com/matrix-org/synapse/issues/8443">#8443</a>)</li>
+<li>Add SQL logging on queries that happen during startup. (<a href="https://github.com/matrix-org/synapse/issues/8448">#8448</a>)</li>
+<li>Speed up unit tests when using PostgreSQL. (<a href="https://github.com/matrix-org/synapse/issues/8450">#8450</a>)</li>
+<li>Remove redundant database loads of stream_ordering for events we already have. (<a href="https://github.com/matrix-org/synapse/issues/8452">#8452</a>)</li>
+<li>Reduce inconsistencies between codepaths for membership and non-membership events. (<a href="https://github.com/matrix-org/synapse/issues/8463">#8463</a>)</li>
+<li>Combine <code>SpamCheckerApi</code> with the more generic <code>ModuleApi</code>. (<a href="https://github.com/matrix-org/synapse/issues/8464">#8464</a>)</li>
+<li>Additional testing for <code>ThirdPartyEventRules</code>. (<a href="https://github.com/matrix-org/synapse/issues/8468">#8468</a>)</li>
+<li>Add <code>-d</code> option to <code>./scripts-dev/lint.sh</code> to lint files that have changed since the last git commit. (<a href="https://github.com/matrix-org/synapse/issues/8472">#8472</a>)</li>
+<li>Unblacklist some sytests. (<a href="https://github.com/matrix-org/synapse/issues/8474">#8474</a>)</li>
+<li>Include the log level in the phone home stats. (<a href="https://github.com/matrix-org/synapse/issues/8477">#8477</a>)</li>
+<li>Remove outdated sphinx documentation, scripts and configuration. (<a href="https://github.com/matrix-org/synapse/issues/8480">#8480</a>)</li>
+<li>Clarify error message when plugin config parsers raise an error. (<a href="https://github.com/matrix-org/synapse/issues/8492">#8492</a>)</li>
+<li>Remove the deprecated <code>Handlers</code> object. (<a href="https://github.com/matrix-org/synapse/issues/8494">#8494</a>)</li>
+<li>Fix a threadsafety bug in unit tests. (<a href="https://github.com/matrix-org/synapse/issues/8497">#8497</a>)</li>
+<li>Add user agent to user_daily_visits table. (<a href="https://github.com/matrix-org/synapse/issues/8503">#8503</a>)</li>
+<li>Add type hints to various parts of the code base. (<a href="https://github.com/matrix-org/synapse/issues/8407">#8407</a>, <a href="https://github.com/matrix-org/synapse/issues/8505">#8505</a>, <a href="https://github.com/matrix-org/synapse/issues/8507">#8507</a>, <a href="https://github.com/matrix-org/synapse/issues/8547">#8547</a>, <a href="https://github.com/matrix-org/synapse/issues/8562">#8562</a>, <a href="https://github.com/matrix-org/synapse/issues/8609">#8609</a>)</li>
+<li>Remove unused code from the test framework. (<a href="https://github.com/matrix-org/synapse/issues/8514">#8514</a>)</li>
+<li>Apply some internal fixes to the <code>HomeServer</code> class to make its code more idiomatic and statically-verifiable. (<a href="https://github.com/matrix-org/synapse/issues/8515">#8515</a>)</li>
+<li>Factor out common code between <code>RoomMemberHandler._locally_reject_invite</code> and <code>EventCreationHandler.create_event</code>. (<a href="https://github.com/matrix-org/synapse/issues/8537">#8537</a>)</li>
+<li>Improve database performance by executing more queries without starting transactions. (<a href="https://github.com/matrix-org/synapse/issues/8542">#8542</a>)</li>
+<li>Rename <code>Cache</code> to <code>DeferredCache</code>, to better reflect its purpose. (<a href="https://github.com/matrix-org/synapse/issues/8548">#8548</a>)</li>
+<li>Move metric registration code down into <code>LruCache</code>. (<a href="https://github.com/matrix-org/synapse/issues/8561">#8561</a>, <a href="https://github.com/matrix-org/synapse/issues/8591">#8591</a>)</li>
+<li>Replace <code>DeferredCache</code> with the lighter-weight <code>LruCache</code> where possible. (<a href="https://github.com/matrix-org/synapse/issues/8563">#8563</a>)</li>
+<li>Add virtualenv-generated folders to <code>.gitignore</code>. (<a href="https://github.com/matrix-org/synapse/issues/8566">#8566</a>)</li>
+<li>Add <code>get_immediate</code> method to <code>DeferredCache</code>. (<a href="https://github.com/matrix-org/synapse/issues/8568">#8568</a>)</li>
+<li>Fix mypy not properly checking across the codebase, additionally, fix a typing assertion error in <code>handlers/auth.py</code>. (<a href="https://github.com/matrix-org/synapse/issues/8569">#8569</a>)</li>
+<li>Fix <code>synmark</code> benchmark runner. (<a href="https://github.com/matrix-org/synapse/issues/8571">#8571</a>)</li>
+<li>Modify <code>DeferredCache.get()</code> to return <code>Deferred</code>s instead of <code>ObservableDeferred</code>s. (<a href="https://github.com/matrix-org/synapse/issues/8572">#8572</a>)</li>
+<li>Adjust a protocol-type definition to fit <code>sqlite3</code> assertions. (<a href="https://github.com/matrix-org/synapse/issues/8577">#8577</a>)</li>
+<li>Support macOS on the <code>synmark</code> benchmark runner. (<a href="https://github.com/matrix-org/synapse/issues/8578">#8578</a>)</li>
+<li>Update <code>mypy</code> static type checker to 0.790. (<a href="https://github.com/matrix-org/synapse/issues/8583">#8583</a>, <a href="https://github.com/matrix-org/synapse/issues/8600">#8600</a>)</li>
+<li>Re-organize the structured logging code to separate the TCP transport handling from the JSON formatting. (<a href="https://github.com/matrix-org/synapse/issues/8587">#8587</a>)</li>
+<li>Remove extraneous unittest logging decorators from unit tests. (<a href="https://github.com/matrix-org/synapse/issues/8592">#8592</a>)</li>
+<li>Minor optimisations in caching code. (<a href="https://github.com/matrix-org/synapse/issues/8593">#8593</a>, <a href="https://github.com/matrix-org/synapse/issues/8594">#8594</a>)</li>
+</ul>
+
+                
+            </div>
+        </article>
         
         <article class="post">
             <header>
@@ -853,290 +1272,13 @@ Bugfixes</p>
             </div>
         </article>
         
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2020&#x2F;08&#x2F;17&#x2F;synapse-1-19-0-released&#x2F;" title="Synapse 1.19.0 released">Synapse 1.19.0 released</a></h2>
-                <span>
-                    17.08.2020 00:00
-                    —
-                    <a href="/category/releases">
-                        Releases
-                    </a>
-                    —
-                    <a
-                        href="/author/neil-johnson">
-                        Neil Johnson
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Synapse 1.19.0 is here and ready for action.</p>
-<p>1.19.0 contains lots of async/await changes, 27 separate PRs to be precise(thanks Patrick). These changes will provide some level of performance improvement, but the real value to us is that it will improve our ability to profile Synapse more effectively.</p>
-<p>It also features improved logging performance, this is in part to reduce IO but also to reduce the total amount logged. We’d be really interested to get some feedback on if the changes help. You may also want to take a look at our new logging defaults to see if they would help reduce total disk space usage.</p>
-<p>Some admins will rejoice that we have added a <code>/health</code> end point to every configured HTTP listener which should make it easier to monitor multi-worker installs.</p>
-<p>Finally 1.19.0 contains improvements to the Admin API allowing the admin to optionally purge rooms on deletion.</p>
-<p>Get the new releases from any of the usual sources mentioned at https://github.com/matrix-org/synapse/blob/master/INSTALL.md. 1.19.0 is on github <a href="https://github.com/matrix-org/synapse/releases/tag/v1.19.0">here</a>.</p>
-<p>Changelog for 1.19.0 follows:</p>
-<h1 id="synapse-1-19-0-2020-08-17">Synapse 1.19.0 (2020-08-17)</h1>
-<p>No significant changes since 1.19.0rc1.</p>
-<h2 id="removal-warning">Removal warning</h2>
-<p>As outlined in the <a href="https://github.com/matrix-org/synapse/releases/tag/v1.18.0">previous release</a>, we are no longer publishing Docker images with the <code>-py3</code> tag suffix. On top of that, we have also removed the <code>latest-py3</code> tag. Please see <a href="https://github.com/matrix-org/synapse/blob/develop/UPGRADE.rst#upgrading-to-v1180">the announcement in the upgrade notes for 1.18.0</a>.</p>
-<h1 id="synapse-1-19-0rc1-2020-08-13">Synapse 1.19.0rc1 (2020-08-13)</h1>
-<h2 id="features">Features</h2>
-<ul>
-<li>Add option to allow server admins to join rooms which fail complexity checks. Contributed by @lugino-emeritus. (<a href="https://github.com/matrix-org/synapse/issues/7902">#7902</a>)</li>
-<li>Add an option to purge room or not with delete room admin endpoint (<code>POST /_synapse/admin/v1/rooms/&lt;room_id&gt;/delete</code>). Contributed by @dklimpel. (<a href="https://github.com/matrix-org/synapse/issues/7964">#7964</a>)</li>
-<li>Add rate limiting to users joining rooms. (<a href="https://github.com/matrix-org/synapse/issues/8008">#8008</a>)</li>
-<li>Add a <code>/health</code> endpoint to every configured HTTP listener that can be used as a health check endpoint by load balancers. (<a href="https://github.com/matrix-org/synapse/issues/8048">#8048</a>)</li>
-<li>Allow login to be blocked based on the values of SAML attributes. (<a href="https://github.com/matrix-org/synapse/issues/8052">#8052</a>)</li>
-<li>Allow guest access to the <code>GET /_matrix/client/r0/rooms/{room_id}/members</code> endpoint, according to MSC2689. Contributed by Awesome Technologies Innovationslabor GmbH. (<a href="https://github.com/matrix-org/synapse/issues/7314">#7314</a>)</li>
-</ul>
-<h2 id="bugfixes">Bugfixes</h2>
-<ul>
-<li>Fix a bug introduced in Synapse v1.7.2 which caused inaccurate membership counts in the room directory. (<a href="https://github.com/matrix-org/synapse/issues/7977">#7977</a>)</li>
-<li>Fix a long standing bug: 'Duplicate key value violates unique constraint &quot;event_relations_id&quot;' when message retention is configured. (<a href="https://github.com/matrix-org/synapse/issues/7978">#7978</a>)</li>
-<li>Fix &quot;no create event in auth events&quot; when trying to reject invitation after inviter leaves. Bug introduced in Synapse v1.10.0. (<a href="https://github.com/matrix-org/synapse/issues/7980">#7980</a>)</li>
-<li>Fix various comments and minor discrepancies in server notices code. (<a href="https://github.com/matrix-org/synapse/issues/7996">#7996</a>)</li>
-<li>Fix a long standing bug where HTTP HEAD requests resulted in a 400 error. (<a href="https://github.com/matrix-org/synapse/issues/7999">#7999</a>)</li>
-<li>Fix a long-standing bug which caused two copies of some log lines to be written when synctl was used along with a MemoryHandler logger. (<a href="https://github.com/matrix-org/synapse/issues/8011">#8011</a>, <a href="https://github.com/matrix-org/synapse/issues/8012">#8012</a>)</li>
-</ul>
-<h2 id="updates-to-the-docker-image">Updates to the Docker image</h2>
-<ul>
-<li>We no longer publish Docker images with the <code>-py3</code> tag suffix, as <a href="https://github.com/matrix-org/synapse/blob/develop/UPGRADE.rst#upgrading-to-v1180">announced in the upgrade notes</a>. (<a href="https://github.com/matrix-org/synapse/issues/8056">#8056</a>)</li>
-</ul>
-<h2 id="improved-documentation">Improved Documentation</h2>
-<ul>
-<li>Document how to set up a client .well-known file and fix several pieces of outdated documentation. (<a href="https://github.com/matrix-org/synapse/issues/7899">#7899</a>)</li>
-<li>Improve workers docs. (<a href="https://github.com/matrix-org/synapse/issues/7990">#7990</a>, <a href="https://github.com/matrix-org/synapse/issues/8000">#8000</a>)</li>
-<li>Fix typo in <code>docs/workers.md</code>. (<a href="https://github.com/matrix-org/synapse/issues/7992">#7992</a>)</li>
-<li>Add documentation for how to undo a room shutdown. (<a href="https://github.com/matrix-org/synapse/issues/7998">#7998</a>, <a href="https://github.com/matrix-org/synapse/issues/8010">#8010</a>)</li>
-</ul>
-<h2 id="internal-changes">Internal Changes</h2>
-<ul>
-<li>Reduce the amount of whitespace in JSON stored and sent in responses. Contributed by David Vo. (<a href="https://github.com/matrix-org/synapse/issues/7372">#7372</a>)</li>
-<li>Switch to the JSON implementation from the standard library and bump the minimum version of the canonicaljson library to 1.2.0. (<a href="https://github.com/matrix-org/synapse/issues/7936">#7936</a>, <a href="https://github.com/matrix-org/synapse/issues/7979">#7979</a>)</li>
-<li>Convert various parts of the codebase to async/await. (<a href="https://github.com/matrix-org/synapse/issues/7947">#7947</a>, <a href="https://github.com/matrix-org/synapse/issues/7948">#7948</a>, <a href="https://github.com/matrix-org/synapse/issues/7949">#7949</a>, <a href="https://github.com/matrix-org/synapse/issues/7951">#7951</a>, <a href="https://github.com/matrix-org/synapse/issues/7963">#7963</a>, <a href="https://github.com/matrix-org/synapse/issues/7973">#7973</a>, <a href="https://github.com/matrix-org/synapse/issues/7975">#7975</a>, <a href="https://github.com/matrix-org/synapse/issues/7976">#7976</a>, <a href="https://github.com/matrix-org/synapse/issues/7981">#7981</a>, <a href="https://github.com/matrix-org/synapse/issues/7987">#7987</a>, <a href="https://github.com/matrix-org/synapse/issues/7989">#7989</a>, <a href="https://github.com/matrix-org/synapse/issues/8003">#8003</a>, <a href="https://github.com/matrix-org/synapse/issues/8014">#8014</a>, <a href="https://github.com/matrix-org/synapse/issues/8016">#8016</a>, <a href="https://github.com/matrix-org/synapse/issues/8027">#8027</a>, <a href="https://github.com/matrix-org/synapse/issues/8031">#8031</a>, <a href="https://github.com/matrix-org/synapse/issues/8032">#8032</a>, <a href="https://github.com/matrix-org/synapse/issues/8035">#8035</a>, <a href="https://github.com/matrix-org/synapse/issues/8042">#8042</a>, <a href="https://github.com/matrix-org/synapse/issues/8044">#8044</a>, <a href="https://github.com/matrix-org/synapse/issues/8045">#8045</a>, <a href="https://github.com/matrix-org/synapse/issues/8061">#8061</a>, <a href="https://github.com/matrix-org/synapse/issues/8062">#8062</a>, <a href="https://github.com/matrix-org/synapse/issues/8063">#8063</a>, <a href="https://github.com/matrix-org/synapse/issues/8066">#8066</a>, <a href="https://github.com/matrix-org/synapse/issues/8069">#8069</a>, <a href="https://github.com/matrix-org/synapse/issues/8070">#8070</a>)</li>
-<li>Move some database-related log lines from the default logger to the database/transaction loggers. (<a href="https://github.com/matrix-org/synapse/issues/7952">#7952</a>)</li>
-<li>Add a script to detect source code files using non-unix line terminators. (<a href="https://github.com/matrix-org/synapse/issues/7965">#7965</a>, <a href="https://github.com/matrix-org/synapse/issues/7970">#7970</a>)</li>
-<li>Log the SAML session ID during creation. (<a href="https://github.com/matrix-org/synapse/issues/7971">#7971</a>)</li>
-<li>Implement new experimental push rules for some users. (<a href="https://github.com/matrix-org/synapse/issues/7997">#7997</a>)</li>
-<li>Remove redundant and unreliable signature check for v1 Identity Service lookup responses. (<a href="https://github.com/matrix-org/synapse/issues/8001">#8001</a>)</li>
-<li>Improve the performance of the register endpoint. (<a href="https://github.com/matrix-org/synapse/issues/8009">#8009</a>)</li>
-<li>Reduce less useful output in the newsfragment CI step. Add a link to the changelog section of the contributing guide on error. (<a href="https://github.com/matrix-org/synapse/issues/8024">#8024</a>)</li>
-<li>Rename storage layer objects to be more sensible. (<a href="https://github.com/matrix-org/synapse/issues/8033">#8033</a>)</li>
-<li>Change the default log config to reduce disk I/O and storage for new servers. (<a href="https://github.com/matrix-org/synapse/issues/8040">#8040</a>)</li>
-<li>Add an assertion on <code>prev_events</code> in <code>create_new_client_event</code>. (<a href="https://github.com/matrix-org/synapse/issues/8041">#8041</a>)</li>
-<li>Add a comment to <code>ServerContextFactory</code> about the use of <code>SSLv23_METHOD</code>. (<a href="https://github.com/matrix-org/synapse/issues/8043">#8043</a>)</li>
-<li>Log <code>OPTIONS</code> requests at <code>DEBUG</code> rather than <code>INFO</code> level to reduce amount logged at <code>INFO</code>. (<a href="https://github.com/matrix-org/synapse/issues/8049">#8049</a>)</li>
-<li>Reduce amount of outbound request logging at <code>INFO</code> level. (<a href="https://github.com/matrix-org/synapse/issues/8050">#8050</a>)</li>
-<li>It is no longer necessary to explicitly define <code>filters</code> in the logging configuration. (Continuing to do so is redundant but harmless.) (<a href="https://github.com/matrix-org/synapse/issues/8051">#8051</a>)</li>
-<li>Add and improve type hints. (<a href="https://github.com/matrix-org/synapse/issues/8058">#8058</a>, <a href="https://github.com/matrix-org/synapse/issues/8064">#8064</a>, <a href="https://github.com/matrix-org/synapse/issues/8060">#8060</a>, <a href="https://github.com/matrix-org/synapse/issues/8067">#8067</a>)</li>
-</ul>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2020&#x2F;07&#x2F;30&#x2F;synapse-1-18-0-released&#x2F;" title="Synapse 1.18.0 released">Synapse 1.18.0 released</a></h2>
-                <span>
-                    30.07.2020 18:34
-                    —
-                    <a href="/category/releases">
-                        Releases
-                    </a>
-                    —
-                    <a
-                        href="/author/neil-johnson">
-                        Neil Johnson
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Synapse 1.18.0 has landed.</p>
-<p>The most important thing to know about 1.18.0 is that it contains support for sharding multiple workers. Specifically this means being able to run multiple federation senders, multiple client readers to handle registration and multiple push workers. This will be important for anyone running a large scale install of Synapse. You can read more about how to benefit from these changes in <a href="https://github.com/matrix-org/synapse/blob/develop/docs/workers.md">docs/workers.md</a>. In the same spirit we also moved typing notifications from the main process.</p>
-<p>Aside from that, we have new admin API support to list the users in a room, support for oEmbed for media previews (you can unfurl tweets again!) and a general slew of federation bug fixes.</p>
-<p>Get the new releases from any of the usual sources mentioned at https://github.com/matrix-org/synapse/blob/master/INSTALL.md. 1.18.0 is on github <a href="https://github.com/matrix-org/synapse/releases/tag/v1.18.0">here</a>.</p>
-<p>Changelog for 1.18.0 follows:</p>
-<h1 id="synapse-1-18-0-2020-07-30">Synapse 1.18.0 (2020-07-30)</h1>
-<h2 id="improved-documentation">Improved Documentation</h2>
-<ul>
-<li>Update worker docs with latest enhancements. (<a href="https://github.com/matrix-org/synapse/issues/7969">#7969</a>)</li>
-</ul>
-<h1 id="synapse-1-18-0rc2-2020-07-28">Synapse 1.18.0rc2 (2020-07-28)</h1>
-<h2 id="bugfixes">Bugfixes</h2>
-<ul>
-<li>Fix an <code>AssertionError</code> exception introduced in v1.18.0rc1. (<a href="https://github.com/matrix-org/synapse/issues/7876">#7876</a>)</li>
-<li>Fix experimental support for moving typing off master when worker is restarted, which is broken in v1.18.0rc1. (<a href="https://github.com/matrix-org/synapse/issues/7967">#7967</a>)</li>
-</ul>
-<h2 id="internal-changes">Internal Changes</h2>
-<ul>
-<li>Further optimise queueing of inbound replication commands. (<a href="https://github.com/matrix-org/synapse/issues/7876">#7876</a>)</li>
-</ul>
-<h1 id="synapse-1-18-0rc1-2020-07-27">Synapse 1.18.0rc1 (2020-07-27)</h1>
-<h2 id="features">Features</h2>
-<ul>
-<li>Include room states on invite events that are sent to application services. Contributed by @Sorunome. (<a href="https://github.com/matrix-org/synapse/issues/6455">#6455</a>)</li>
-<li>Add delete room admin endpoint (<code>POST /_synapse/admin/v1/rooms/&lt;room_id&gt;/delete</code>). Contributed by @dklimpel. (<a href="https://github.com/matrix-org/synapse/issues/7613">#7613</a>, <a href="https://github.com/matrix-org/synapse/issues/7953">#7953</a>)</li>
-<li>Add experimental support for running multiple federation sender processes. (<a href="https://github.com/matrix-org/synapse/issues/7798">#7798</a>)</li>
-<li>Add the option to validate the <code>iss</code> and <code>aud</code> claims for JWT logins. (<a href="https://github.com/matrix-org/synapse/issues/7827">#7827</a>)</li>
-<li>Add support for handling registration requests across multiple client reader workers. (<a href="https://github.com/matrix-org/synapse/issues/7830">#7830</a>)</li>
-<li>Add an admin API to list the users in a room. Contributed by Awesome Technologies Innovationslabor GmbH. (<a href="https://github.com/matrix-org/synapse/issues/7842">#7842</a>)</li>
-<li>Allow email subjects to be customised through Synapse's configuration. (<a href="https://github.com/matrix-org/synapse/issues/7846">#7846</a>)</li>
-<li>Add the ability to re-activate an account from the admin API. (<a href="https://github.com/matrix-org/synapse/issues/7847">#7847</a>, <a href="https://github.com/matrix-org/synapse/issues/7908">#7908</a>)</li>
-<li>Add experimental support for running multiple pusher workers. (<a href="https://github.com/matrix-org/synapse/issues/7855">#7855</a>)</li>
-<li>Add experimental support for moving typing off master. (<a href="https://github.com/matrix-org/synapse/issues/7869">#7869</a>, <a href="https://github.com/matrix-org/synapse/issues/7959">#7959</a>)</li>
-<li>Report CPU metrics to prometheus for time spent processing replication commands. (<a href="https://github.com/matrix-org/synapse/issues/7879">#7879</a>)</li>
-<li>Support oEmbed for media previews. (<a href="https://github.com/matrix-org/synapse/issues/7920">#7920</a>)</li>
-<li>Abort federation requests where the client disconnects before the ratelimiter expires. (<a href="https://github.com/matrix-org/synapse/issues/7930">#7930</a>)</li>
-<li>Cache responses to <code>/_matrix/federation/v1/state_ids</code> to reduce duplicated work. (<a href="https://github.com/matrix-org/synapse/issues/7931">#7931</a>)</li>
-</ul>
-<h2 id="bugfixes-1">Bugfixes</h2>
-<ul>
-<li>Fix detection of out of sync remote device lists when receiving events from remote users. (<a href="https://github.com/matrix-org/synapse/issues/7815">#7815</a>)</li>
-<li>Fix bug where Synapse fails to process an incoming event over federation if the server is missing too much of the event's auth chain. (<a href="https://github.com/matrix-org/synapse/issues/7817">#7817</a>)</li>
-<li>Fix a bug causing Synapse to misinterpret the value <code>off</code> for <code>encryption_enabled_by_default_for_room_type</code> in its configuration file(s) if that value isn't surrounded by quotes. This bug was introduced in v1.16.0. (<a href="https://github.com/matrix-org/synapse/issues/7822">#7822</a>)</li>
-<li>Fix bug where we did not always pass in <code>app_name</code> or <code>server_name</code> to email templates, including e.g. for registration emails. (<a href="https://github.com/matrix-org/synapse/issues/7829">#7829</a>)</li>
-<li>Errors which occur while using the non-standard JWT login now return the proper error: <code>403 Forbidden</code> with an error code of <code>M_FORBIDDEN</code>. (<a href="https://github.com/matrix-org/synapse/issues/7844">#7844</a>)</li>
-<li>Fix &quot;AttributeError: 'str' object has no attribute 'get'&quot; error message when applying per-room message retention policies. The bug was introduced in Synapse 1.7.0. (<a href="https://github.com/matrix-org/synapse/issues/7850">#7850</a>)</li>
-<li>Fix a bug introduced in Synapse 1.10.0 which could cause a &quot;no create event in auth events&quot; error during room creation. (<a href="https://github.com/matrix-org/synapse/issues/7854">#7854</a>)</li>
-<li>Fix a bug which allowed empty rooms to be rejoined over federation. (<a href="https://github.com/matrix-org/synapse/issues/7859">#7859</a>)</li>
-<li>Fix 'Unable to find a suitable guest user ID' error when using multiple client_reader workers. (<a href="https://github.com/matrix-org/synapse/issues/7866">#7866</a>)</li>
-<li>Fix a long standing bug where the tracing of async functions with opentracing was broken. (<a href="https://github.com/matrix-org/synapse/issues/7872">#7872</a>, <a href="https://github.com/matrix-org/synapse/issues/7961">#7961</a>)</li>
-<li>Fix &quot;TypeError in <code>synapse.notifier</code>&quot; exceptions. (<a href="https://github.com/matrix-org/synapse/issues/7880">#7880</a>)</li>
-<li>Fix deprecation warning due to invalid escape sequences. (<a href="https://github.com/matrix-org/synapse/issues/7895">#7895</a>)</li>
-</ul>
-<h2 id="updates-to-the-docker-image">Updates to the Docker image</h2>
-<ul>
-<li>Base docker image on Debian Buster rather than Alpine Linux. Contributed by @maquis196. (<a href="https://github.com/matrix-org/synapse/issues/7839">#7839</a>)</li>
-</ul>
-<h2 id="improved-documentation-1">Improved Documentation</h2>
-<ul>
-<li>Provide instructions on using <code>register_new_matrix_user</code> via docker. (<a href="https://github.com/matrix-org/synapse/issues/7885">#7885</a>)</li>
-<li>Change the sample config postgres user section to use <code>synapse_user</code> instead of <code>synapse</code> to align with the documentation. (<a href="https://github.com/matrix-org/synapse/issues/7889">#7889</a>)</li>
-<li>Reorder database paragraphs to promote postgres over sqlite. (<a href="https://github.com/matrix-org/synapse/issues/7933">#7933</a>)</li>
-<li>Update the dates of ACME v1's end of life in <a href="https://github.com/matrix-org/synapse/blob/master/docs/ACME.md"><code>ACME.md</code></a>. (<a href="https://github.com/matrix-org/synapse/issues/7934">#7934</a>)</li>
-</ul>
-<h2 id="deprecations-and-removals">Deprecations and Removals</h2>
-<ul>
-<li>Remove unused <code>synapse_replication_tcp_resource_invalidate_cache</code> prometheus metric. (<a href="https://github.com/matrix-org/synapse/issues/7878">#7878</a>)</li>
-<li>Remove Ubuntu Eoan from the list of <code>.deb</code> packages that we build as it is now end-of-life. Contributed by @gary-kim. (<a href="https://github.com/matrix-org/synapse/issues/7888">#7888</a>)</li>
-</ul>
-<h2 id="internal-changes-1">Internal Changes</h2>
-<ul>
-<li>Switch parts of the codebase from <code>simplejson</code> to the standard library <code>json</code>. (<a href="https://github.com/matrix-org/synapse/issues/7802">#7802</a>)</li>
-<li>Add type hints to the http server code and remove an unused parameter. (<a href="https://github.com/matrix-org/synapse/issues/7813">#7813</a>)</li>
-<li>Add type hints to synapse.api.errors module. (<a href="https://github.com/matrix-org/synapse/issues/7820">#7820</a>)</li>
-<li>Ensure that calls to <code>json.dumps</code> are compatible with the standard library json. (<a href="https://github.com/matrix-org/synapse/issues/7836">#7836</a>)</li>
-<li>Remove redundant <code>retry_on_integrity_error</code> wrapper for event persistence code. (<a href="https://github.com/matrix-org/synapse/issues/7848">#7848</a>)</li>
-<li>Consistently use <code>db_to_json</code> to convert from database values to JSON objects. (<a href="https://github.com/matrix-org/synapse/issues/7849">#7849</a>)</li>
-<li>Convert various parts of the codebase to async/await. (<a href="https://github.com/matrix-org/synapse/issues/7851">#7851</a>, <a href="https://github.com/matrix-org/synapse/issues/7860">#7860</a>, <a href="https://github.com/matrix-org/synapse/issues/7868">#7868</a>, <a href="https://github.com/matrix-org/synapse/issues/7871">#7871</a>, <a href="https://github.com/matrix-org/synapse/issues/7873">#7873</a>, <a href="https://github.com/matrix-org/synapse/issues/7874">#7874</a>, <a href="https://github.com/matrix-org/synapse/issues/7884">#7884</a>, <a href="https://github.com/matrix-org/synapse/issues/7912">#7912</a>, <a href="https://github.com/matrix-org/synapse/issues/7935">#7935</a>, <a href="https://github.com/matrix-org/synapse/issues/7939">#7939</a>, <a href="https://github.com/matrix-org/synapse/issues/7942">#7942</a>, <a href="https://github.com/matrix-org/synapse/issues/7944">#7944</a>)</li>
-<li>Add support for handling registration requests across multiple client reader workers. (<a href="https://github.com/matrix-org/synapse/issues/7853">#7853</a>)</li>
-<li>Small performance improvement in typing processing. (<a href="https://github.com/matrix-org/synapse/issues/7856">#7856</a>)</li>
-<li>The default value of <code>filter_timeline_limit</code> was changed from -1 (no limit) to 100. (<a href="https://github.com/matrix-org/synapse/issues/7858">#7858</a>)</li>
-<li>Optimise queueing of inbound replication commands. (<a href="https://github.com/matrix-org/synapse/issues/7861">#7861</a>)</li>
-<li>Add some type annotations to <code>HomeServer</code> and <code>BaseHandler</code>. (<a href="https://github.com/matrix-org/synapse/issues/7870">#7870</a>)</li>
-<li>Clean up <code>PreserveLoggingContext</code>. (<a href="https://github.com/matrix-org/synapse/issues/7877">#7877</a>)</li>
-<li>Change &quot;unknown room version&quot; logging from 'error' to 'warning'. (<a href="https://github.com/matrix-org/synapse/issues/7881">#7881</a>)</li>
-<li>Stop using <code>device_max_stream_id</code> table and just use <code>device_inbox.stream_id</code>. (<a href="https://github.com/matrix-org/synapse/issues/7882">#7882</a>)</li>
-<li>Return an empty body for OPTIONS requests. (<a href="https://github.com/matrix-org/synapse/issues/7886">#7886</a>)</li>
-<li>Fix typo in generated config file. Contributed by @ThiefMaster. (<a href="https://github.com/matrix-org/synapse/issues/7890">#7890</a>)</li>
-<li>Import ABC from <code>collections.abc</code> for Python 3.10 compatibility. (<a href="https://github.com/matrix-org/synapse/issues/7892">#7892</a>)</li>
-<li>Remove unused functions <code>time_function</code>, <code>trace_function</code>, <code>get_previous_frames</code>
-and <code>get_previous_frame</code> from <code>synapse.logging.utils</code> module. (<a href="https://github.com/matrix-org/synapse/issues/7897">#7897</a>)</li>
-<li>Lint the <code>contrib/</code> directory in CI and linting scripts, add <code>synctl</code> to the linting script for consistency with CI. (<a href="https://github.com/matrix-org/synapse/issues/7914">#7914</a>)</li>
-<li>Use Element CSS and logo in notification emails when app name is Element. (<a href="https://github.com/matrix-org/synapse/issues/7919">#7919</a>)</li>
-<li>Optimisation to /sync handling: skip serializing the response if the client has already disconnected. (<a href="https://github.com/matrix-org/synapse/issues/7927">#7927</a>)</li>
-<li>When a client disconnects, don't log it as 'Error processing request'. (<a href="https://github.com/matrix-org/synapse/issues/7928">#7928</a>)</li>
-<li>Add debugging to <code>/sync</code> response generation (disabled by default). (<a href="https://github.com/matrix-org/synapse/issues/7929">#7929</a>)</li>
-<li>Update comments that refer to Deferreds for async functions. (<a href="https://github.com/matrix-org/synapse/issues/7945">#7945</a>)</li>
-<li>Simplify error handling in federation handler. (<a href="https://github.com/matrix-org/synapse/issues/7950">#7950</a>)</li>
-</ul>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2020&#x2F;07&#x2F;13&#x2F;synapse-1-17-0-released&#x2F;" title="Synapse 1.17.0 released">Synapse 1.17.0 released</a></h2>
-                <span>
-                    13.07.2020 16:38
-                    —
-                    <a href="/category/releases">
-                        Releases
-                    </a>
-                    —
-                    <a
-                        href="/author/neil-johnson">
-                        Neil Johnson
-                    </a>
-                </span>
-                <br>
-                <small>Last update: 13.07.2020 16:21</small>
-            </header>
-            <div>
-                
-                <p>Synapse 1.17.0 is here!</p>
-<p>Hot on the heels of Synapse 1.16.1, 1.17.0 is a bug fix release most notably containing a fix for <a href="https://github.com/matrix-org/synapse/issues/2181">'stuck invites'</a> which happen when we are unable to reject a room invite received over federation.</p>
-<p>Get the new releases from any of the usual sources mentioned at https://github.com/matrix-org/synapse/blob/master/INSTALL.md. 1.17.0 is on github <a href="https://github.com/matrix-org/synapse/releases/tag/v1.17.0">here</a>.</p>
-<p>Changelog for 1.17.0 follows:</p>
-<h1 id="synapse-1-17-0-2020-07-13">Synapse 1.17.0 (2020-07-13)</h1>
-<p>Synapse 1.17.0 is identical to 1.17.0rc1, with the addition of the fix that was included in <a href="https://github.com/matrix-org/synapse/releases/v1.16.1">1.16.1</a>.</p>
-<h1 id="synapse-1-17-0rc1-2020-07-09">Synapse 1.17.0rc1 (2020-07-09)</h1>
-<h2 id="bugfixes">Bugfixes</h2>
-<ul>
-<li>Fix inconsistent handling of upper and lower case in email addresses when used as identifiers for login, etc. Contributed by @dklimpel. (<a href="https://github.com/matrix-org/synapse/issues/7021">#7021</a>)</li>
-<li>Fix &quot;Tried to close a non-active scope!&quot; error messages when opentracing is enabled. (<a href="https://github.com/matrix-org/synapse/issues/7732">#7732</a>)</li>
-<li>Fix incorrect error message when database CTYPE was set incorrectly. (<a href="https://github.com/matrix-org/synapse/issues/7760">#7760</a>)</li>
-<li>Fix to not ignore <code>set_tweak</code> actions in Push Rules that have no <code>value</code>, as permitted by the specification. (<a href="https://github.com/matrix-org/synapse/issues/7766">#7766</a>)</li>
-<li>Fix synctl to handle empty config files correctly. Contributed by @kotovalexarian. (<a href="https://github.com/matrix-org/synapse/issues/7779">#7779</a>)</li>
-<li>Fixes a long standing bug in worker mode where worker information was saved in the devices table instead of the original IP address and user agent. (<a href="https://github.com/matrix-org/synapse/issues/7797">#7797</a>)</li>
-<li>Fix 'stuck invites' which happen when we are unable to reject a room invite received over federation. (<a href="https://github.com/matrix-org/synapse/issues/7804">#7804</a>, <a href="https://github.com/matrix-org/synapse/issues/7809">#7809</a>, <a href="https://github.com/matrix-org/synapse/issues/7810">#7810</a>)</li>
-</ul>
-<h2 id="updates-to-the-docker-image">Updates to the Docker image</h2>
-<ul>
-<li>Include libwebp in the Docker file to properly handle webp image uploads. (<a href="https://github.com/matrix-org/synapse/issues/7791">#7791</a>)</li>
-</ul>
-<h2 id="improved-documentation">Improved Documentation</h2>
-<ul>
-<li>Improve the documentation of the non-standard JSON web token login type. (<a href="https://github.com/matrix-org/synapse/issues/7776">#7776</a>)</li>
-<li>Update doc links for caddy. Contributed by Nicolai Søborg. (<a href="https://github.com/matrix-org/synapse/issues/7789">#7789</a>)</li>
-</ul>
-<h2 id="internal-changes">Internal Changes</h2>
-<ul>
-<li>Refactor getting replication updates from database. (<a href="https://github.com/matrix-org/synapse/issues/7740">#7740</a>)</li>
-<li>Send push notifications with a high or low priority depending upon whether they may generate user-observable effects. (<a href="https://github.com/matrix-org/synapse/issues/7765">#7765</a>)</li>
-<li>Use symbolic names for replication stream names. (<a href="https://github.com/matrix-org/synapse/issues/7768">#7768</a>)</li>
-<li>Add early returns to <code>_check_for_soft_fail</code>. (<a href="https://github.com/matrix-org/synapse/issues/7769">#7769</a>)</li>
-<li>Fix up <code>synapse.handlers.federation</code> to pass mypy. (<a href="https://github.com/matrix-org/synapse/issues/7770">#7770</a>)</li>
-<li>Convert the appserver handler to async/await. (<a href="https://github.com/matrix-org/synapse/issues/7775">#7775</a>)</li>
-<li>Allow to use higher versions of prometheus_client &lt;0.9.0 which are expected to introduce no breaking changes. Contributed by Oliver Kurz. (<a href="https://github.com/matrix-org/synapse/issues/7780">#7780</a>)</li>
-<li>Update linting scripts and codebase to be compatible with <code>isort</code> v5. (<a href="https://github.com/matrix-org/synapse/issues/7786">#7786</a>)</li>
-<li>Stop populating unused table <code>local_invites</code>. (<a href="https://github.com/matrix-org/synapse/issues/7793">#7793</a>)</li>
-<li>Ensure that strings (not bytes) are passed into JSON serialization. (<a href="https://github.com/matrix-org/synapse/issues/7799">#7799</a>)</li>
-<li>Switch from simplejson to the standard library json. (<a href="https://github.com/matrix-org/synapse/issues/7800">#7800</a>)</li>
-<li>Add <code>signing_key</code> property to <code>HomeServer</code> to save code duplication. (<a href="https://github.com/matrix-org/synapse/issues/7805">#7805</a>)</li>
-<li>Improve stacktraces from exceptions in background processes. (<a href="https://github.com/matrix-org/synapse/issues/7808">#7808</a>)</li>
-<li>Fix various spelling errors in comments and log lines. (<a href="https://github.com/matrix-org/synapse/issues/7811">#7811</a>)</li>
-</ul>
-
-                
-            </div>
-        </article>
-        
         <nav class="pagination">
     <div class="prev">
         
         <a href="&#x2F;category&#x2F;releases&#x2F;page&#x2F;7&#x2F;">‹ Previous</a>
         
     </div>
-    <span class="page-number">8 / 14</span>
+    <span class="page-number">8 / 15</span>
     <div class="prev">
         
         <a href="&#x2F;category&#x2F;releases&#x2F;page&#x2F;9&#x2F;">Next ›</a>

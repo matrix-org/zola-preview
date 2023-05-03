@@ -114,10 +114,240 @@
     <div class="content">
         <header>
             <h1>Matthew Hodgson</h1>
-            147 posts tagged with "Matthew Hodgson" <a href="/author">(See all Author)</a>
+            149 posts tagged with "Matthew Hodgson" <a href="/author">(See all Author)</a>
             
         </header>
 
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2020&#x2F;12&#x2F;18&#x2F;introducing-cerulean&#x2F;" title="Introducing Cerulean">Introducing Cerulean</a></h2>
+                <span>
+                    18.12.2020 00:00
+                    —
+                    <a href="/category/general">
+                        General
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Hi all,</p>
+<p>We have a bit of an unexpected early Christmas present for you today…</p>
+<p>Alongside all the normal business-as-usual Matrix stuff, we’ve found some time to do a mad science experiment over the last few weeks - to test the question: “Is it possible to build a serious Twitter-style decentralised microblogging app using Matrix?”</p>
+<p>It turns out the answer is a firm “yes” - and as a result we’d like to present a <strong>very</strong> early sneak preview of <a href="https://cerulean.matrix.org">Cerulean</a>: a highly experimental new microblogging app for Matrix, complete with first-class support for arbitrarily nested threading, with both Twitter-style (“vertical”) and HN/Reddit-style (“horizontal”) layout… and mobile web support!</p>
+<p><a href="https://cerulean.matrix.org/@kegan:dendrite.matrix.org/!bHe21S4P3axekSRD:dendrite.matrix.org/$0QE6vqMZiS9169Y-3C84dkQui-1G5uG2eGFsYzPrhx8"><img src="https://matrix.org/blog/img/2020-12-18-cerulean-screenshot.jpg" alt="Cerulean screenie" /></a></p>
+<p>Cerulean is unusual in many ways:</p>
+<ul>
+<li>It’s (currently) <a href="https://github.com/matrix-org/cerulean">a very minimal javascript app</a> - only 2,500 lines of code.</li>
+<li>It has zero dependencies (other than React).
+<ul>
+<li>This is to show just how simple a fairly sophisticated Matrix client can be...</li>
+<li>...and so the code can be easily understood by folks unfamiliar with Matrix...</li>
+<li>...and so we can iterate fast while figuring out threading...</li>
+<li>...and because none of the SDKs support threading yet :D</li>
+</ul>
+</li>
+<li>It relies on <a href="https://github.com/matrix-org/matrix-doc/pull/2836">MSC2836: Threading</a> - our highly experimental Matrix Spec Change to extend relationships (as used by reaction &amp; edit aggregations) to support free-form arbitrary depth threading.</li>
+<li>As such, <strong>it only works on Dendrite</strong>, as that’s where we’ve been experimenting with implementing MSC2836.  (We’re now running an <a href="https://matrix.org/blog/2020/12/15/dendrite-2020-progress-update">official public Dendrite server instance</a> at dendrite.matrix.org though, which makes it easy to test - and our test Cerulean instance <a href="https://cerulean.matrix.org">https://cerulean.matrix.org</a> points at it by default).</li>
+</ul>
+<p>This is **very much a proof of concept.  **We’re releasing it today as a sneak preview so that intrepid Matrix experimenters can play with it, and to open up the project for contributions! (PRs welcome - it should be dead easy to hack on!).  Also, we give no guarantees about data durability: both Cerulean and dendrite.matrix.org are highly experimental; do not trust them yet with important data; we reserve the right to delete it all while we iterate on the design.</p>
+<h3 id="what-can-it-do">What can it do?</h3>
+<p>So for the first cut, we’ve implemented the minimal features to make this something you can just about use and play with for real :)</p>
+<ul>
+<li>Home view (showing recent posts from folks you follow)</li>
+<li>Timeline view (showing the recent posts or replies from a given user)</li>
+<li>Thread view (showing a post and its replies as a thread)</li>
+<li>Live updating (It’s Matrix, after all! We’ve disabled it for guests though.)</li>
+<li>Posting plain text and images</li>
+<li>Fully decentralised thanks to Matrix (assuming you’re on Dendrite)</li>
+<li>Twitter-style “Vertical” threading (replies form a column; you indent when someone forks the conversation)</li>
+<li>HN/Reddit/Email-style “Horizontal” threading (each reply is indented; forks have the same indentation)</li>
+<li>Basic Registration &amp; Login</li>
+<li>Guest support (slightly faked with non-guest users, as Dendrite’s guest support isn’t finished yet)</li>
+<li>Super-experimental proof-of-concept support for <a href="https://matrix.org/blog/2020/10/19/combating-abuse-in-matrix-without-backdoors">decentralised reputation filtering</a>(!) </li>
+</ul>
+<p>Obviously, there’s a huge amount of stuff needed for parity with a proper Twitter-style system:</p>
+<ul>
+<li>Configurable follows.  Currently the act of viewing someone’s timeline automatically follows them.  This is because Dendrite doesn’t peek over federation yet (but <a href="https://github.com/matrix-org/dendrite/pull/1391">it’s close</a>), so you have to join a room to view its contents - and the act of viewing someone’s timeline room is how you follow them in Cerulean. </li>
+<li>Likes (i.e. plain old Matrix reactions, although we might need to finally sort out federating them as aggregations rather than individually, if people use them like they use them on Twitter!)</li>
+<li>Retweets (dead easy)</li>
+<li>Pagination / infinite scrolling (just need to hook it up)</li>
+<li>Protect your posts (dead easy; you just switch your timeline room to invite-only!)</li>
+<li>Show (some) replies to messages in the Home view</li>
+<li>Show parent and sibling context as well as child context in the Thread view</li>
+<li>Mentions (we need to decide how to notify folks when they’re mentioned - perhaps Matrix’s push notifications should be extended to let you subscribe to keywords for public rooms you’re not actually in?)</li>
+<li>Notifications (although this is just because Dendrite doesn’t do notifs yet)</li>
+<li>Search (again, just needs to be implemented in Dendrite - although how do you search beyond the data in your current homeserver? Folks are used to global search)</li>
+<li>Hashtags (it’s just search, basically)</li>
+<li>Symlinks (see below)</li>
+<li>Figure out how to handle lost unthreaded messages (see below)</li>
+<li>Offline support? (if we were using a proper Matrix SDK, we’d hopefully get this for free, but currently Cerulean doesn’t store any state locally at all).</li>
+</ul>
+<h3 id="how-does-it-work">How does it work?</h3>
+<p>Every message you send using Cerulean goes into two Matrix rooms, dubbed the &quot;timeline&quot; room and the &quot;thread&quot; room. The &quot;timeline&quot; room (with an alias of <a href="https://matrix.to/#/#@matthew:dendrite.matrix.org">#@matthew:dendrite.matrix.org</a> or whatever your matrix id is) is a room with all of your posts and no one else's. The &quot;thread&quot; room is a normal Matrix room which represents the message thread itself. Creating a new &quot;Post&quot; will create a new &quot;thread&quot; room. Replying to a post will join the existing &quot;thread&quot; room and send a message into that room. MSC2836 is used to handle threading of messages in the &quot;thread” room - the replies refer to their parent via an m.relationship field in the event.</p>
+<p>These semantics play nicely with existing Matrix clients, who will see one room per thread and a flattened chronological view of the thread itself (unless the client natively supports MSC2836, but none do yet apart from Cerulean). However, as Cerulean only navigates threaded messages with an m.reference relationship (eg it only ever uses the new /event_relationships API rather than /messages to pull in history), <strong>normal messages sent by Matrix into a thread or timeline room will not yet show up in Cerulean.</strong></p>
+<p>In this initial version, Cerulean literally posts the message twice into both rooms - but we’re also experimenting with the idea of adding “symlinks” to Matrix, letting the canonical version of the event be in the timeline room, and then the instance of the event in the thread room be a ‘symlink’ to the one in the timeline.  This means that the threading metadata could be structured in the thread room, and let the user do things like turn their timeline private (or vice versa) without impacting the threading metadata.  We could also add an API to both post to timeline and symlink into a thread in one fell swoop, rather than manually sending two events.  It’d look something like this:</p>
+<p><img src="https://matrix.org/blog/img/2020-12-18-cerulean-diagram.png" alt="Cerulean diagram" /></p>
+<p>We also experimented with cross-room threading (letting Bob’s timeline messages directly respond to Alice’s timeline messages and vice versa), but it posed some nasty problems - for instance, to find out what cross-room replies a message has, you’d need to store forward references somehow which the replier would need permission to create.  Also, if you didn’t have access to view the remote room, the thread would break. So we’ve punted cross-room threading to a later MSC for now.</p>
+<p>Needless to say, once we’re happy with how threading works at the protocol level, we’ll be looking at getting it into the UX of Element and mainstream Matrix chat clients too!</p>
+<h3 id="what-s-with-the-decentralised-reputation-button">What’s with the decentralised reputation button?</h3>
+<p>Cerulean is very much a test jig for new ideas (e.g. threading, timeline rooms, peeking), and we’re taking the opportunity to also use it as an experiment for our first forays into publishing and subscribing to reputation greylists; giving users the option to filter out content by default they might not want to see… but doing so on their own terms by subscribing to whatever reputation feed they prefer, while clearly visualising the filtering being applied.  In other words, this is the first concrete experimental implementation of the work proposed in the second half of <a href="https://matrix.org/blog/2020/10/19/combating-abuse-in-matrix-without-backdoors">Combating Abuse in Matrix without Backdoors</a>.  This is super early days, and we haven’t even published a proto-MSC for the event format being used, but if you’re particularly interested in this domain it’s easy enough to figure out - just head over to <a href="https://matrix.to/#/#nsfw:dendrite.matrix.org">#nsfw:dendrite.matrix.org</a> (warning: not actually NSFW, yet) and look in /devtools to see what’s going on.</p>
+<p>So, there you have it - further evidence that Matrix is not just for Chat, and a hopefully intriguing taste of the shape of things to come! Please check out the demo at <a href="https://cerulean.matrix.org">https://cerulean.matrix.org</a> or try playing with your own from <a href="https://github.com/matrix-org/cerulean">https://github.com/matrix-org/cerulean</a>, and then head over to <a href="https://matrix.to/#/#cerulean:matrix.org">#cerulean:matrix.org</a> and let us know what you think! :)</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2020&#x2F;12&#x2F;07&#x2F;gitter-now-speaks-matrix&#x2F;" title="Gitter now speaks Matrix!">Gitter now speaks Matrix!</a></h2>
+                <span>
+                    07.12.2020 00:00
+                    —
+                    <a href="/category/general">
+                        General
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Hi all,</p>
+<p>It’s been just over 2 months since we revealed that <a href="https://matrix.org/blog/2020/09/30/welcoming-gitter-to-matrix">Gitter was going to join Matrix</a> - and
+we are incredibly proud to announce that Gitter has officially turned on true native Matrix connectivity:
+<strong>all public Gitter rooms are now available natively via Matrix, and all Gitter users now natively exist on Matrix.</strong>
+So, if you wanted to join the official Node.js language support room at <a href="https://gitter.im/nodejs/node">https://gitter.im/nodejs/node</a>
+from Matrix, just head over to <a href="https://matrix.to/#/#nodejs_node:gitter.im">#nodejs_node:gitter.im</a> and *boom*, you’re in!</p>
+<p>This means Gitter is now running a Matrix homeserver at gitter.im which exposes all the active public rooms - so if you go to the the room directory in Element (for instance) and select gitter.im as a homeserver, you can jump straight in:</p>
+<p><img src="https://matrix.org/blog/img/2020-12-07-gitter-roomdir.png" alt="Gitter room directory" /></p>
+<p>Once you’re in, you can chat back and forth transparently between users on the Gitter side and the Matrix side, and you no longer have the ugly “Matrixbot” user faking the messages back and forth - these are ‘real’ users talking directly to one another, and every public msg in every public room is now automatically exposed into Matrix.</p>
+<p><img src="https://matrix.org/blog/img/2020-12-07-gitter-matrix.gif" alt="Gitter and Matrix going native!" /></p>
+<p>So, suddenly all the developer communities previously living only in Gitter (<a href="https://gitter.im/scala">Scala</a>, <a href="https://gitter.im/nodejs/home">Node</a>, <a href="https://gitter.im/webpack">Webpack</a>, <a href="https://gitter.im/angular">Angular</a>, <a href="https://gitter.im/rails">Rails</a> and thousands of others) are now available to anyone anywhere on Matrix - alongside communities bridged from Freenode and Slack; the native Matrix communities for Mozilla, KDE, GNOME communities etc. We’re hopeful that glueing everything together via Matrix will usher in a new age of open and defragmented dev collaboration, a bit like we used to have on IRC, back in the day.</p>
+<p>This is also great news for mobile Gitter users - as the original mobile Gitter clients have been in a <a href="https://gitlab.com/gitlab-org/gitter/webapp/-/issues/2281">holding pattern for over a year</a>, and native Matrix support for Gitter means they are now officially deprecated in favour of Element (or indeed any other mobile Matrix client).</p>
+<h2 id="what-features-are-ready">What features are ready?</h2>
+<p>Now, this is the first cut of native Matrix support in Gitter: much of the time since Gitter joined Element has been spent migrating stuff over from Gitlab to Element, and it’s only really been a month of work so far in hooking up Matrix. As a result: all the important features work, but there’s also stuff that’s yet to land:</p>
+<p>Features ready today:</p>
+<ul>
+<li>Ability to join rooms from Matrix via #org_repo:gitter.im</li>
+<li>Bridging Edits, Replies (mapped to Threads on Gitter), Deletes, File transfer</li>
+<li>Bridging Markdown &amp; Emoji</li>
+</ul>
+<p>What remains:</p>
+<ul>
+<li>Ability to send/receive Direct Messages</li>
+<li>Ability to plumb existing Matrix rooms into Gitter natively</li>
+<li>Ability to view past Gitter history from Matrix. This is planned thanks to <a href="https://github.com/matrix-org/matrix-doc/pull/2716">https://github.com/matrix-org/matrix-doc/pull/2716</a></li>
+<li>Synchronising the full Gitter membership list to Matrix. Currently the membership syncs incrementally as people speak</li>
+<li>Turning off the old Gitter bridge</li>
+<li>Bridging emotes (/me support) (almost landed!)</li>
+<li>Bridging read receipts</li>
+<li>Synchronising room avatars</li>
+<li>Bridge LaTeX</li>
+</ul>
+<p>Stuff we’re not planning to support:</p>
+<ul>
+<li>Ability to join arbitrary rooms on Matrix from Gitter. This could consume huge resources on Gitter, and we’re not in a rush to mirror all of Matrix into Gitter. This will get addressed when Gitter merges with Element into a pure Matrix client.</li>
+<li>Bridging Reactions. Gitter doesn’t have these natively today, and rather than adding them to Gitter, we’d rather work on merging Gitter &amp; Element together.</li>
+</ul>
+<p>For more details, we strongly recommend checking out the <a href="https://gitlab.com/groups/gitterHQ/-/epics/10">native Matrix epic on Gitlab</a> for the unvarnished truth straight from the coal-face!</p>
+<h2 id="how-do-you-make-an-existing-chat-system-talk-matrix">How do you make an existing chat system talk Matrix?</h2>
+<p>In terms of the work which has gone into this - Gitter has been an excellent case study of how you can easily plug an existing large established chat system into Matrix.</p>
+<p>At high level, the core work needed was as simple as:</p>
+<ul>
+<li>Add ‘virtual users’, so remote Matrix users can be modelled and represented in Gitter correctly: <a href="https://gitlab.com/gitterHQ/webapp/-/merge_requests/2027/diffs">https://gitlab.com/gitterHQ/webapp/-/merge_requests/2027/diffs</a>.
+<ul>
+<li>This can be accomplished by simply adding a <code>virtualUser</code> property to your chat message/post/tweet schema which holds the mxid, displayName, and avatar as an alternative to your <code>author</code> field. Then display the <code>virtualUser</code> whenever available over the <code>author</code>.</li>
+</ul>
+</li>
+<li>Add an application service to Gitter to bridge traffic in &amp; out of Matrix: <a href="https://gitlab.com/gitterHQ/webapp/-/merge_requests/2041/diffs">https://gitlab.com/gitterHQ/webapp/-/merge_requests/2041/diffs</a>
+<ul>
+<li>This &quot;application service&quot; comes pre-packaged for you in many cases, so for example you can simply drop in a library like <a href="https://github.com/matrix-org/matrix-appservice-bridge">matrix-appservice-bridge</a> in a Node.js application, and all of the Matrix talking complexity is handled for you.</li>
+</ul>
+</li>
+<li>Polish it!</li>
+</ul>
+<p>In practice, Eric (lead Gitter dev) laid out the waypoints of the full journey:</p>
+<ol>
+<li>First big step was to add the concept of virtual users to Gitter. We could also have created a new Gitter user for every new matrix ID that appears, but tagging them as virtual users is a bit cleaner.</li>
+<li>Figuring out how to balance the Matrix traffic coming into/out of Gitter.
+<ol>
+<li>Spreading the inbound load comes for free via our existing load-balancer setup (ELB) where we already have 8 webapp servers running the various services of gitter.im. We just run the Matrix bridge on those servers alongside each web and api process, and then the load-balancer’s <code>matrix.gitter.im</code> spreads out to the servers.</li>
+<li>Events from Matrix then hit the load balancer and reach one of the servers (no duplication when processing events).</li>
+<li>If something on Gitter happens, the action occurs on one server and we just propagate it over to Matrix (no duplication or locking needed).</li>
+</ol>
+</li>
+<li>We have realtime websockets and Faye subscriptions already in the app which are backed by Mongoose database hooks whenever something changes. We just tapped into the same thing to be able to bridge across new information to Matrix as we receive it on Gitter.</li>
+<li>Hooking up the official Matrix bridging <a href="https://github.com/matrix-org/matrix-appservice-bridge">matrix-appservice-bridge</a> library to use Gitter’s existing MongoDB for storage instead of nedb.</li>
+<li>Figuring out how to namespace the mxids of the gitter users:
+<ol>
+<li>It’s nice to have the mxid as human readable as possible instead of just the numerical userId in your service.</li>
+<li>But if people can change their username in your service, you can’t change your mxid on Matrix. In the future, we’ll have portable accounts in Matrix to support this (<a href="https://github.com/matrix-org/matrix-doc/pull/2787">MSC2787</a>) but sadly these are still vapourware at this point.</li>
+<li>If you naively just switch the user’s mxid when they rename their username, then you could end up leaking conversation history between mxids(!)</li>
+<li>So we went with <code>@username-userid:gitter.im</code> for the Matrix ID to make it a bit more human readable but also unique so any renames can happen without affecting anything.</li>
+</ol>
+</li>
+<li>For room aliases, we decided to change our <code>community/room</code> URI syntax to underscores for the room aliases, <code>#community_room:gitter.im</code></li>
+<li>Figuring out how to bridge features correctly;
+<ol>
+<li>Emoji - mapping between <code>:shortcode:</code> and unicode emojis</li>
+<li>Mapping between Gitter threaded conversations &lt;-&gt; Matrix replies</li>
+<li>Mapping between Matrix mentions and Gitter mentions</li>
+</ol>
+</li>
+<li>Keeping users and room data in sync
+<ol>
+<li>We haven’t gotten there yet, but the data comes through the same Mongoose hook and we can update the bridged data as they change on the Gitter end.</li>
+</ol>
+</li>
+</ol>
+<p>Meanwhile, the Matrix side of gitter.im is hosted by <a href="https://element.io/matrix-services">Element Matrix Services</a> and is a plain old Synapse, talking through to Gitter via the Application Service API. An alternative architecture would be to have got Gitter directly federating with Matrix by embedding a “homeserver library” into it (e.g. embedding <a href="https://github.com/matrix-org/dendrite">Dendrite</a>). However, given Dendrite is still beta and assumes it is storing its data itself (rather than persisting in an existing backend such as Gitter’s mongodb), we went for the simpler option to start with.</p>
+<p>It’s been really interesting to see how this has played out week by week in the Gitter updates in This Week in Matrix: you can literally track the progress and see how the integration came to life between <a href="https://matrix.org/blog/2020/10/09/this-week-in-matrix-2020-10-09#gitter">Oct 9</a>, <a href="https://matrix.org/blog/2020/10/23/this-week-in-matrix-2020-10-23#gitter">Oct 23</a>, <a href="https://matrix.org/blog/2020/11/06/this-week-in-matrix-2020-11-06#gitter">Nov 6</a>, <a href="https://matrix.org/blog/2020/11/27/this-week-in-matrix-2020-11-27#gitter">Nov 27</a> and finally <a href="https://matrix.org/blog/2020/12/04/this-week-in-matrix-2020-12-04#gitter">Dec 4</a>.</p>
+<p>Huge thanks go to Eric Eastwood, the lead dev of Gitter and mastermind behind the project - and also to Half-Shot and Christian who’ve been providing all the support and review from the Matrix bridging team.</p>
+<h2 id="what-s-next">What’s next?</h2>
+<p>First and foremost we’re going to be working through the “What remains” section of the list above: killing off the old bridge, sorting out plumbed rooms, hooking up DMs, importing old Gitter history into Matrix, etc. This should then give us an exceptionally low impedance link between Gitter &amp; Matrix.</p>
+<p>Then, <a href="https://matrix.org/blog/2020/09/30/welcoming-gitter-to-matrix">as per our original announcement</a>, the plan is:</p>
+<p><em>In the medium/long term, it’s simply not going to be efficient for the combined Element/Gitter team to split our efforts maintaining two high-profile Matrix clients. Our plan is instead to merge Gitter’s features into Element (or next generations of Element) itself and then - if and only if Element has achieved parity with Gitter - we expect to upgrade the deployment on gitter.im to a Gitter-customised version of Element. The inevitable side-effect is that we’ll be adding new features to Element rather than Gitter going forwards.</em></p>
+<p>Now, that means implementing some features in Matrix/Element to match...</p>
+<ul>
+<li>Instant live room peeking (less than a second to load the webapp into a live-view of a massive room with 20K users!!)</li>
+<li>Seamless onboarding thanks to using GitLab &amp; GitHub for accounts</li>
+<li>Curated hierarchical room directory</li>
+<li>Magical creation of rooms on demand for every GitLab and GitHub project ever</li>
+<li>GitLab/GitHub activity as a first-class citizen in a room’s side-panel</li>
+<li>Excellent search-engine-friendly static content and archives</li>
+<li>KaTeX support for Maths communities</li>
+<li>Threads!</li>
+</ul>
+<p>...and this work is in full swing:</p>
+<ul>
+<li>We have a proposal for fast peeking (via lazy-loading state over federation) at <a href="https://github.com/matrix-org/matrix-doc/blob/matthew/msc2775/proposals/2775-lazy-loading-over-federation.md">MSC2775</a> and the new peek APIs at <a href="https://github.com/matrix-org/matrix-doc/blob/matthew/msc2753/proposals/2753-peeking-via-sync-v2.md">MSC2753</a> and <a href="https://github.com/matrix-org/matrix-doc/blob/matthew/msc2444/proposals/2444-peeking-over-federation-peek-api.md">MSC2444</a> (and even implemented by Dendrite)</li>
+<li>Social Login for seamless onboarding via GitLab, GitHub &amp; friends is almost landed in Element: <a href="https://github.com/matrix-org/matrix-react-sdk/pull/5426">https://github.com/matrix-org/matrix-react-sdk/pull/5426</a></li>
+<li>Spaces gives a curated hierarchical room directory: <a href="https://github.com/vector-im/roadmap/issues/2">https://github.com/vector-im/roadmap/issues/2</a></li>
+<li>KaTeX support landed in Element Web a few weeks ago thanks to <a href="https://github.com/akissinger">akissinger</a> and <a href="https://github.com/thosgood">thosgood</a></li>
+<li>Threads are on the horizon, thanks to <a href="https://github.com/matrix-org/matrix-doc/pull/2836">MSC2836</a>.</li>
+</ul>
+<p>The only bits which aren’t already progressing yet are tighter GL/GH integration, and better search engine optimised static archives.</p>
+<p>So, the plan is to get cracking on the rest of the feature parity, then merge Gitter &amp; Element together - and meanwhile continue getting the rest of the world into Matrix :)</p>
+<p>We live in exciting times: open standards-based interoperable communication is on the rise again, and we hope Gitter’s new life in Matrix is the beginning of a new age of cross-project developer collaboration, at last escaping the fragmentation we’ve suffered over the last few years.</p>
+<p>Finally, please do give feedback via <a href="https://gitter.im/matrix-org/gitter">Gitter</a> or <a href="https://matrix.to/#/#matrix-org_gitter:gitter.im">Matrix</a> (or <a href="mailto:matrix@matrix.org">mail</a>!) on the integration and where you’d like to see it go next!</p>
+<p>Thanks for flying Matrix and Gitter,</p>
+<p>-- The Matrix Team</p>
+
+                
+            </div>
+        </article>
         
         <article class="post">
             <header>
@@ -991,122 +1221,6 @@ approach to combatting online abuse.</p>
 <p>P.S. You can read more about this from Neil Alexander’s point of view <a href="https://neilalexander.dev/2020/06/02/thoughts-p2p-matrix.html">over at his blog</a> (including more thoughts on the potential Yggdrasil demo!)</p>
 <p>P.P.S You can read the gory details of the P2P and WASM implementation from Kegan's point of view <a href="https://github.com/matrix-org/dendrite/wiki/How-p2p.riot.im-works">over at the Dendrite wiki</a>.</p>
 <p>P.P.P.S Comments over at <a href="https://news.ycombinator.com/item?id=23393935">HN</a></p>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2020&#x2F;05&#x2F;21&#x2F;welcoming-automattic-to-matrix&#x2F;" title="Welcoming Automattic to Matrix!">Welcoming Automattic to Matrix!</a></h2>
-                <span>
-                    21.05.2020 01:42
-                    —
-                    <a href="/category/general">
-                        General
-                    </a>
-                    —
-                    <a
-                        href="/author/matthew-hodgson">
-                        Matthew Hodgson
-                    </a>
-                </span>
-                <br>
-                <small>Last update: 21.05.2020 01:28</small>
-            </header>
-            <div>
-                
-                <p><img src="https://matrix.org/blog/img/2020-05-21-automattic.png" alt="Automattic ♥️ Matrix" /></p>
-<p>Hi all,</p>
-<p>We’re very excited indeed to announce that <a href="https://automattic.com/">Automattic</a>, the creators of <a href="https://wordpress.com/">WordPress.com</a>, are jumping head first into the Matrix ecosystem with a strategic investment of almost $5M into <a href="https://vector.im">New Vector</a> (the company which makes <a href="https://riot.im">Riot</a> and <a href="https://modular.im">Modular.im</a>, founded by the core Matrix team in 2017).  More importantly, Matt Mullenweg (co-founder of WordPress and founder of Automattic) and the Automattic gang are committing to make the most of Matrix in their work going forwards!</p>
-<p>This is huge news, not least because WordPress literally runs over 36% of the websites on today’s web - and the potential of bringing Matrix to all those users is incredible.  Imagine if every WP site automatically came with its own Matrix room or community?  Imagine if all content in WP automatically was published into Matrix as well as the Web?  (This isn’t so far fetched an idea - turns out that Automattic already runs a XMPP bridge for wordpress.com over at <a href="https://im.wordpress.com">im.wordpress.com</a>!).  Imagine there was an excellent Matrix client available as a WordPress plugin for embedding realtime chat into your site? Imagine if <a href="https://tumblr.com">Tumblr</a> (which is part of Automattic these days) became decentralised!?</p>
-<p>In fact, if you’re a developer in either the Matrix or WordPress communities, now might be a good time to think about how to cross the streams.... not least because Automattic just opened up a role for a <a href="https://automattic.com/work-with-us/matrix-integrations-engineer/">Matrix.org/WordPress Integrations Engineer</a>! Quite aside from the investment, this shows Automattic is serious about Matrix - and we’d like to thank them for opening up jobs in these challenging times to further accelerate Matrix.  Perhaps some day Matrix Engineer will be as common a career choice as Web Developer ;)</p>
-<p>That said, it’s super early days for integration work, and there isn’t a concrete project to announce yet beyond the investment in New Vector (which is effectively an extension of the funding NV raised in October) and Automattic’s Job opening - but these are the sort of ideas we’ve been kicking around. And at the very least, we should expect to see Automattic’s communities migrating over to Matrix in the coming months.</p>
-<p>It’s been loads of fun working with Matt and the team on this: we see a huge overlap in terms of a genuine love for the open web, open source and open standards.  It’s also no coincidence that Matt (independently of Automattic) donated substantially to Matrix via Patreon back in 2017 when we needed it the most.  We’re also looking forward to benefiting from Automattic’s experience in sustainably and responsibly funding and growing open source projects in general - WordPress.com is an excellent example of how one can support development of a project like WordPress without compromising its open source nature.</p>
-<p>So, we’d like to formally welcome WordPress and the rest of the Automattic family into Matrix.  It’s incredibly exciting times, and we can’t wait to see what will come of the partnership!  And meanwhile, if any other massive open source organisations want to join Automattic and <a href="https://matrix.org/blog/2019/12/19/welcoming-mozilla-to-matrix">Mozilla</a> in leaping into Matrix, you know where to find us… :D</p>
-<p>Huge thanks go to Matt for believing in Matrix - watch this space for updates.</p>
-<ul>
-<li>Matthew, Amandine &amp; the Matrix Team.</li>
-</ul>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2020&#x2F;05&#x2F;06&#x2F;cross-signing-and-end-to-end-encryption-by-default-is-here&#x2F;" title="Cross-signing and End-to-end Encryption by Default is HERE!!!">Cross-signing and End-to-end Encryption by Default is HERE!!!</a></h2>
-                <span>
-                    06.05.2020 00:00
-                    —
-                    <a href="/category/general">
-                        General
-                    </a>
-                    —
-                    <a
-                        href="/author/matthew-hodgson">
-                        Matthew Hodgson
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Hi all,</p>
-<p>As of today, Matrix is end-to-end encrypted <strong>by default</strong> for private conversations.</p>
-<p>Three years have passed since we <a href="https://matrix.org/blog/2016/11/21/matrixs-olm-end-to-end-encryption-security-assessment-released-and-implemented-cross-platform-on-riot-at-last">first announced End-to-end Encryption in
-Matrix</a>
-and started to beta test it in Riot - and after an enormous amount of
-polishing and refinement on its user experience, we are finally declaring it
-out of beta and enabling it by default for all new private conversations in
-Riot.  As Riot is currently the most common Matrix client, this means that
-Matrix as a whole should now be considered end-to-end encrypted by default for
-DMs and invite-only rooms.</p>
-<p>Work on E2EE in Matrix has progressed in waves since we first shipped it - including:</p>
-<ul>
-<li>adding keysharing (letting you share encryption keys between your devices to improve reliability)</li>
-<li>making Riot Web's encryption resilient to running concurrently in multiple tabs</li>
-<li>adding online key backup (so you don't lose all your history if you lose all your devices)</li>
-<li>making encryption resilient to restoring the app from a backup</li>
-<li>adding interactive key verification via emoji to make the verification process easier.</li>
-</ul>
-<p>However, our goal was always to enable E2EE by default for all private rooms,
-which means having feature parity between unencrypted and E2EE Matrix so that
-we can enable encryption without <em>any</em> negative impact on usability.  The
-high-level remaining items were significant:</p>
-<ul>
-<li>Cross-signing: verifying your own logins so others don’t have to.</li>
-<li>Adding QR codes for even better verification UX, to make cross-signing as painless as possible.</li>
-<li>Replacing the old prototype UI for E2EE with final polished UI/UX.</li>
-<li>Ability to support non-E2EE clients.</li>
-<li>Ability to search encrypted rooms.</li>
-<li>Ability to view file indexes in encrypted rooms.</li>
-<li>Fixing the remaining “Unable to decrypt” errors.</li>
-</ul>
-<p>Over the last few months the Riot team has been almost entirely focused on
-implementing solutions to these items - and we're finally at the point where
-the switch can be flipped and as of Riot Web/Desktop 1.6, Riot iOS 0.11.1 and
-RiotX Android 0.19, all new private rooms will be encrypted by default;
-completing the transition we began at <a href="https://fosdem.org/2020/schedule/event/matrix/">FOSDEM
-2020</a> when we landed
-cross-signing E2E-by-default in the development branches of Riot.</p>
-<p><strong>For full details, please go check out the <a href="https://blog.riot.im/e2e-encryption-by-default-cross-signing-is-here/">massive deep dive over at the Riot
-blog</a></strong> - also featuring all the other recent progress in Riot!</p>
-<p>Heads up that encrypted traffic is slightly heavier on the server than
-unencrypted (due to exchanging keys, verification traffic, and keybackup
-traffic), and so there is a risk that the already-over-popular Matrix.org
-server instance may feel a little hugged to death.  However, unprecedented
-Synapse performance breakthroughs are on the horizon in the coming weeks which
-will fix this - and, of course, you can (and should!) be using your own
-instance anyway.</p>
-<p>Thanks everyone for helping us test encryption over the years and getting us
-to this point: cross-signing provides a more secure way of tracking device
-trust than almost any other comms system out there, and we hope that you'll
-agree the improved UX has been worth the wait.</p>
-<p>Next stop: Synapse performance, and rebuilding Riot's first time user experience!</p>
-<p>thanks,</p>
-<p>Matthew, Amandine &amp; the Matrix Team.</p>
-<p>(Comments over at <a href="https://news.ycombinator.com/item?id=23107564">HN</a>)</p>
 
                 
             </div>

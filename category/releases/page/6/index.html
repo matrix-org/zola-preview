@@ -114,7 +114,7 @@
     <div class="content">
         <header>
             <h1>Releases</h1>
-            138 posts tagged with "Releases" <a href="/category">(See all Category)</a>
+            141 posts tagged with "Releases" <a href="/category">(See all Category)</a>
             
             <h2>
                 <small><a href="/category/releases/atom.xml">Atom Feed</a></small>
@@ -122,6 +122,161 @@
             
         </header>
 
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2021&#x2F;07&#x2F;26&#x2F;dendrite-0-4-1-released&#x2F;" title="Dendrite 0.4.1 Released">Dendrite 0.4.1 Released</a></h2>
+                <span>
+                    26.07.2021 00:00
+                    —
+                    <a href="/category/releases">
+                        Releases
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>It's only been two weeks since Dendrite 0.4 landed, but there's already a
+significant new release with Dendrite 0.4.1 (it's amazing how much work we
+can do on Dendrite when not off chasing low-bandwidth and P2P Matrix!)</p>
+<p>This release further improves memory performance and radically improves
+state resolution performance (rumour has it that it's a 10x speed-up).
+Meanwhile, SS API sytest coverage is up to 91%(!!) and CS API is now at 63%.</p>
+<p>We're going to try to keep the pressure up over the coming weeks - and once
+sytest is at 100% coverage (and we're not missing any big features which sytest
+doesn't cover yet) we'll be declaring a 1.0 :)</p>
+<p>If you're running Dendrite, please upgrade.  If not, perhaps this would be a
+good version to give it a try?  You can get it, as always from,
+https://github.com/matrix-org/dendrite/releases/tag/v0.4.1.  The changelog
+follows:</p>
+<h3 id="features">Features</h3>
+<ul>
+<li>Support for room version 7 has been added</li>
+<li>Key notary support is now more complete, allowing Dendrite to be used as a notary server for looking up signing keys</li>
+<li>State resolution v2 performance has been optimised further by caching the create event, power levels and join rules in memory instead of parsing them repeatedly</li>
+<li>The media API now handles cases where the maximum file size is configured to be less than 0 for unlimited size</li>
+<li>The <code>initial_state</code> in a <code>/createRoom</code> request is now respected when creating a room</li>
+<li>Code paths for checking if servers are joined to rooms have been optimised significantly</li>
+</ul>
+<h3 id="fixes">Fixes</h3>
+<ul>
+<li>A bug resulting in <code>cannot xref null state block with snapshot</code> during the new state storage migration has been fixed</li>
+<li>Invites are now retired correctly when rejecting an invite from a remote server which is no longer reachable</li>
+<li>The DNS cache <code>cache_lifetime</code> option is now handled correctly (contributed by <a href="https://github.com/S7evinK">S7evinK</a>)</li>
+<li>Invalid events in a room join response are now dropped correctly, rather than failing the entire join</li>
+<li>The <code>prev_state</code> of an event will no longer be populated incorrectly to the state of the current event</li>
+<li>Receiving an invite to an unsupported room version will now correctly return the <code>M_UNSUPPORTED_ROOM_VERSION</code> error code instead of <code>M_BAD_JSON</code> (contributed by <a href="https://github.com/meenal06">meenal06</a>)</li>
+</ul>
+<p>-- Team Dendrite</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2021&#x2F;07&#x2F;13&#x2F;synapse-1-38-0-released&#x2F;" title="Synapse 1.38.0 released">Synapse 1.38.0 released</a></h2>
+                <span>
+                    13.07.2021 00:00
+                    —
+                    <a href="/category/releases">
+                        Releases
+                    </a>
+                    —
+                    <a
+                        href="/author/dan-callahan">
+                        Dan Callahan
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Synapse 1.38.0 is out now!</p>
+<blockquote>
+<p><strong>NOTE:</strong> We released Synapse 1.38.1 on Thursday, July 22nd. It <a href="https://github.com/matrix-org/synapse/issues/10456">mitigates</a> a client bug with Synapse 1.38.0's smaller sync responses which prevented new Element Android sessions from successfully participating in encrypted conversations. Server administrators are strongly encouraged to upgrade.</p>
+</blockquote>
+<h2 id="big-integers">(Big) Integers</h2>
+<p>Synapse's database schema used <code>integer</code> columns in a few places where values could potentially overflow a maximum value of 2<sup>31</sup>. One such column is <code>events.stream_ordering</code>, which surpassed 2<sup>31</sup> on matrix.org last week.</p>
+<p>To prevent overflows, Synapse 1.38 will automatically convert several <code>integer</code> columns to <code>bigint</code> as a background update. While homeservers will function normally during this task, it could result in increased disk I/O for several hours or days. Note that <strong>homeservers may need several gigabytes of free space</strong> to successfully rebuild associated database indexes and complete the upgrade.</p>
+<p>See the <a href="https://matrix-org.github.io/synapse/v1.38/upgrade.html#upgrading-to-v1380">upgrade notes</a> for more details.</p>
+<h2 id="expiring-caches">Expiring Caches</h2>
+<p>Synapse has a new configuration option, <code>caches.expiry_time</code>, which can be set to enable evicting items from caches if they go too long without being accessed. This helps servers reclaim memory used by large yet infrequently used caches.</p>
+<h2 id="smaller-sync-responses">Smaller Sync Responses</h2>
+<p>The response to <code>/sync</code> now omits optional keys when they would otherwise be empty. This can significantly reduce the size of incremental syncs, as demonstrated in <a href="https://github.com/matrix-org/synapse/issues/6579">#6579</a>. Thanks to deepbluev7 for  initially submitting this in <a href="https://github.com/matrix-org/synapse/pull/9919">#9919</a>, which made it into this release via <a href="https://github.com/matrix-org/synapse/pull/10214">#10214</a>.</p>
+<h2 id="everything-else">Everything Else</h2>
+<p>A few other items worth calling out:</p>
+<ul>
+<li>This release includes an experimental implementation of <a href="https://github.com/matrix-org/matrix-doc/pull/2918">MSC2918: Refresh tokens</a>, which adds initial support for complementary access / refresh tokens in line with OAuth best practices (<a href="https://github.com/matrix-org/synapse/pull/9450">#9450</a>).</li>
+<li>Synapse now <a href="https://github.com/matrix-org/synapse/pull/10290">ships a script</a> to review recently registered accounts, which can be useful in cleaning up servers in the wake of malicious, automated registrations like we witnessed during last month's <a href="https://matrix.org/blog/2021/06/30/security-update-synapse-1-37-1-released">spam attack</a>.</li>
+<li>We've also fixed a few rough edges (<a href="https://github.com/matrix-org/synapse/pull/10263">#10263</a>, <a href="https://github.com/matrix-org/synapse/pull/10303">#10303</a>, <a href="https://github.com/matrix-org/synapse/pull/10336">#10336</a>) in the spam mitigations from 1.37.1, and would encourage you to update.</li>
+<li>The <a href="https://matrix-org.github.io/synapse/v1.38/admin_api/user_admin_api.html">Admin API for querying user information</a> now includes information about a user's SSO identities in its response.</li>
+</ul>
+<p>These are just the highlights; please see the <a href="https://matrix-org.github.io/synapse/v1.38/upgrade.html#upgrading-to-v1380">Upgrade Notes</a> and <a href="https://github.com/matrix-org/synapse/blob/v1.38.0/CHANGES.md">Release Notes</a> for a complete list of changes in this release.</p>
+<p>Synapse is a Free and Open Source Software project, and we'd like to extend our thanks to everyone who contributed to this release, including <a href="https://github.com/deepbluev7">deepbluev7</a>, <a href="https://github.com/dklimpel">dklimpel</a>, <a href="https://github.com/fkr">fkr</a>, and <a href="https://github.com/sideshowbarker">sideshowbarker</a></p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2021&#x2F;07&#x2F;12&#x2F;dendrite-0-4-0-released&#x2F;" title="Dendrite 0.4.0 Released">Dendrite 0.4.0 Released</a></h2>
+                <span>
+                    12.07.2021 00:00
+                    —
+                    <a href="/category/releases">
+                        Releases
+                    </a>
+                    —
+                    <a
+                        href="/author/neil-alexander">
+                        Neil Alexander
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>After quite a significant gap between releases — version 0.3.11 was released at the beginning of March — we're happy to finally announce the release of Dendrite 0.4.0 today!</p>
+<p>The full changelog for the release is <a href="https://github.com/matrix-org/dendrite/releases/tag/v0.4.0">available on GitHub</a>, but we wanted to take the opportunity to talk a little about some of the changes that have gone into this release.</p>
+<p>Recently our release cadence for Dendrite has slowed as we have spent more time within the team working on <a href="https://github.com/matrix-org/pinecone">Pinecone</a> and <a href="https://github.com/matrix-org/lb">Low Bandwidth Matrix</a>. These are major areas of research for us which we hope will unlock a number of new opportunities within the Matrix ecosystem, allowing us to <a href="https://matrix.org/blog/2021/05/06/introducing-the-pinecone-overlay-network">build on Matrix anywhere</a> and to <a href="https://matrix.org/blog/2021/06/10/low-bandwidth-matrix-an-implementation-guide">reduce the protocol-level footprint</a>. However, Dendrite has not been forgotten amidst the excitement and we will be spending more time working on Dendrite again in the coming months.</p>
+<h3 id="state-storage">State storage</h3>
+<p>One of the major features in v0.4.0 is that we've introduced newly-refactored state storage in the roomserver database. The goal here is to make state storage significantly more efficient by ensuring that we deduplicate state  blocks and snapshots wherever we can. By ensuring that all state blocks and snapshots are ordered strictly, and by enforcing uniqueness constraints on the hashes of the blocks/snapshots, we've been able to achieve this.</p>
+<p>This was largely spurred on by watching <code>dendrite.matrix.org</code> consuming a rather alarming amount of disk space on a daily basis. In this particular instance, moving to the new state storage resulted in a 15x improvement on disk utilisation for state blocks and a further 2x improvement for state snapshot references immediately after the migration, and the growth rate of the database has slowed substantially since. </p>
+<p>Ensuring that we don't waste disk space is one of the most important factors in ensuring that Dendrite operates well at any scale — future datacentre deployments supporting many users will find storage overheads decreased and small/embedded single-user deployments (such as P2P, on mobile devices or in the browser) will fit much more effectively onto resource-constrained targets.</p>
+<p>After upgrading to v0.4.0, Dendrite will run an automatic migration to update your homeserver to the new state storage format. This might take a while on larger databases so please expect some downtime. </p>
+<h3 id="optimisations">Optimisations</h3>
+<p>We've continued to squeeze further optimisations into the federation and state resolution code, aiming to reduce the amount of CPU burn and memory utilisation. Some of the feedback that we receive most often from those that have been experimenting with the Dendrite betas is around the sudden spikes in resource usage, especially when joined to large rooms.</p>
+<p>The bulk of this resource usage comes either from attempting to reconcile missing events or running state resolution in rooms with lots of members, as potentially large state sets of events need to be brought into memory in order to do so. We've introduced some transaction-level caches for dealing with missing auth/prev events to reduce the memory pressure and we've also tweaked the caching around around <code>/get_missing_events</code> to ensure we don't duplicate any state events in memory.</p>
+<p>Resource spikes aren't completely eliminated but this should smooth out CPU and memory utilisation significantly. In the case of <code>dendrite.matrix.org</code>,  which is joined to some 6500 rooms at present, memory utilisation of the Dendrite process typically sits around 1.5GB at present. </p>
+<p>State Resolution v2 has also seen further optimisations in the power-level checking, which should reduce CPU usage even more.</p>
+<h3 id="bridges">Bridges</h3>
+<p>Thanks to Half-Shot's perseverance and contributions, we've merged a couple PRs and worked on some further fixes for getting Application Services working correctly in Dendrite. Whilst not entirely feature-complete and with a number of features still to go, enough support is now present to support basic bridging functionality.</p>
+<p>We've done quite a bit of preliminary testing with <a href="https://github.com/matrix-org/matrix-appservice-irc">matrix-appservice-irc</a> and have also heard a number of success stories from the community with <a href="https://github.com/tulir/mautrix-whatsapp">mautrix-whatsapp</a> and <a href="https://github.com/tulir/mautrix-telegram">mautrix-telegram</a>. Others may work too — let us know what you find!</p>
+<h3 id="bug-hunting">Bug-hunting</h3>
+<p>A number of bugs in various places (including the roomserver, federation API and media API) which could cause Dendrite to crash have also been fixed.  Some of these have been contributed by the community in pull requests, so we extend our thanks to anyone who has submitted a fix to the project.</p>
+<p>A special mention also goes to Jakob Varmose Bentzen for reporting a security issue to us around the legacy <code>/v1/register</code> endpoint, where a flaw in the legacy shared secret registration allowed malicious users to create accounts. We've since removed this legacy endpoint and the vulnerability is now fixed. </p>
+<h3 id="what-s-next">What's next</h3>
+<p>There are still a number of missing user-facing features which we will be working on over the coming months, as well as some architectural issues that we will look to address.</p>
+<p>A notable area of work involves attempting to remove the dependency on Kafka for polylith deployments. Kafka is very resource-heavy in operation and somewhat limits us to the types of interactions that we can perform between components. It's also very difficult to manage retention correctly, in the interests of not endlessly consuming disk space here either.</p>
+<p>As usual, Dendrite is still considered beta so you may not want to rely on it for production systems, although it should be stable enough to experiment with. If you find any bugs or anything that doesn't look right, please let us know:</p>
+<ul>
+<li><a href="https://matrix.to/#/#dendrite:matrix.org">#dendrite:matrix.org</a></li>
+<li><a href="https://github.com/matrix-org/dendrite/issues">GitHub Issues</a></li>
+</ul>
+<p>We're also open to contributions, so don't be afraid to open pull requests. Finally, thanks for your continued support!</p>
+<p>— Team Dendrite</p>
+
+                
+            </div>
+        </article>
         
         <article class="post">
             <header>
@@ -440,114 +595,13 @@
             </div>
         </article>
         
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2021&#x2F;04&#x2F;06&#x2F;synapse-1-31-0-released&#x2F;" title="Synapse 1.31.0 released">Synapse 1.31.0 released</a></h2>
-                <span>
-                    07.04.2021 00:00
-                    —
-                    <a href="/category/releases">
-                        Releases
-                    </a>
-                    —
-                    <a
-                        href="/author/dan-callahan">
-                        Dan Callahan
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>We've released <a href="https://github.com/matrix-org/synapse/releases/tag/v1.31.0">Synapse 1.31.0</a>!</p>
-<p>Mainly internal changes this time (type hints, code lints, etc.) but we've also landed <a href="https://github.com/matrix-org/synapse/pull/9643">some</a> <a href="https://github.com/matrix-org/synapse/pull/9652">initial</a> <a href="https://github.com/matrix-org/synapse/pull/9653">work</a> on <a href="https://github.com/matrix-org/matrix-doc/pull/2946">MSC2946: Spaces Summary</a>. And speaking of MSCs, Synapse 1.31 has an experimental flag which can enable support for the draft <a href="https://github.com/matrix-org/matrix-doc/pull/3026">MSC3026: &quot;busy&quot; presence state</a>.</p>
-<p>Synapse 1.31 can now restrict OpenID Connect logins based on <a href="https://github.com/matrix-org/synapse/pull/9609">userinfo attributes</a> (Thanks, HubbeKing!).</p>
-<p>This release <a href="https://github.com/matrix-org/synapse/pull/9634">fixes a rare infinite loop</a> when fetching cross-signing keys or handling device list updates, and <a href="https://github.com/matrix-org/synapse/pull/9640">further</a> <a href="https://github.com/matrix-org/synapse/pull/9639">improves</a> the speed of federation catchup. It also makes Admin APIs around user reactivation <a href="https://github.com/matrix-org/synapse/pull/9636">behave correctly</a> when account passwords are disabled.</p>
-<p>See the  <a href="https://github.com/matrix-org/synapse/releases/tag/v1.31.0">Release Notes</a> for further information.</p>
-<h3 id="the-final-python-3-5-release">The Final Python 3.5 Release</h3>
-<p>This is the last release of Synapse to support Python 3.5 or PostgreSQL 9.5, and the last release of official packages for Debian 9 (Stretch) and Ubuntu 16.04 LTS (Xenial).</p>
-<p>Future releases of Synapse will follow upstream end-of-life dates for <a href="https://endoflife.date/python">Python</a> and <a href="https://endoflife.date/postgresql">Postgres</a>.</p>
-<p>Accordingly, we anticipate ending support for Python 3.6 and PostgreSQL 9.6 in December of this year. We will also cease producing packages for Ubuntu 18.04 LTS (Bionic) at that time.</p>
-<h3 id="thank-you">Thank You</h3>
-<p>Synapse is a Free and Open Source Software project, and we'd like to extend our thanks to everyone who contributed to this release, including <a href="http://github.com/ankitdobhal">ankitdobhal</a>, <a href="http://github.com/blakehawkins">blakehawkins</a>, <a href="http://github.com/dklimpel">dklimpel</a>, <a href="http://github.com/fuzzmz">fuzzmz</a>, <a href="http://github.com/HubbeKing">HubbeKing</a>, <a href="http://github.com/languitar">languitar</a>, <a href="http://github.com/sandhose">sandhose</a>, and <a href="http://github.com/ShadowJonathan">ShadowJonathan</a>.</p>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2021&#x2F;03&#x2F;26&#x2F;synapse-1-30-1-released&#x2F;" title="Synapse 1.30.1 released">Synapse 1.30.1 released</a></h2>
-                <span>
-                    26.03.2021 16:12
-                    —
-                    <a href="/category/releases">
-                        Releases
-                    </a>
-                    —
-                    <a
-                        href="/author/dan-callahan">
-                        Dan Callahan
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p><a href="https://github.com/matrix-org/synapse/releases/tag/v1.30.1">Synapse 1.30.1</a> is now available. This release is identical to Synapse 1.30.0, with the exception of explicitly setting a minimum version of the Python Cryptography library to ensure that users of Synapse are protected from yesterday's <a href="https://mta.openssl.org/pipermail/openssl-announce/2021-March/000198.html">OpenSSL security advisories</a>, especially CVE-2021-3449.</p>
-<p>Note that Cryptography defaults to bundling its own statically linked copy of OpenSSL, which means that you may not be protected by your operating system's security updates.</p>
-<p>It's also worth noting that Cryptography no longer supports Python 3.5, so admins deploying to older environments like Debian 9 (Stretch) or Ubuntu 16.04 (Xenial) may not be protected against this or future vulnerabilities.</p>
-<p>The next release of Synapse will be the last to support Python 3.5.</p>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2021&#x2F;03&#x2F;22&#x2F;synapse-1-30-0-released&#x2F;" title="Synapse 1.30.0 released">Synapse 1.30.0 released</a></h2>
-                <span>
-                    22.03.2021 16:56
-                    —
-                    <a href="/category/releases">
-                        Releases
-                    </a>
-                    —
-                    <a
-                        href="/author/dan-callahan">
-                        Dan Callahan
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>We've released <a href="https://github.com/matrix-org/synapse/releases/tag/v1.30.0">Synapse 1.30.0</a>!</p>
-<p>A key theme of this release was stability and resilience around federation. We've landed changes to be <a href="https://github.com/matrix-org/synapse/pull/9561">less eager about entering catch up mode</a> and to <a href="https://github.com/matrix-org/synapse/pull/9567">retry on HTTP 500 errors</a>, while also <a href="https://github.com/matrix-org/synapse/pull/9597">rejecting transactions</a> which arrive before we've completed processing earlier transactions from that same server. We've significantly <a href="https://github.com/matrix-org/synapse/pull/9601">optimized how we handle missing events</a> when receiving incoming federation traffic, and we've found a way to <a href="https://github.com/matrix-org/synapse/pull/9576">re-use the chain cover index</a> (from <a href="https://matrix.org/blog/2021/01/28/synapse-1-26-0-released">Synapse 1.26</a>) when responding to the <code>state_ids</code> endpoint.</p>
-<p>That last one turns out to be a pretty big deal: we've seen an order of magnitude improvement in both the CPU and DB cost of the <code>state_ids</code> endpoint. For example, the average CPU usage by that endpoint on matrix.org dropped from few seconds to well under 100ms:</p>
-<p><img src="/blog/img/2021-03-22-synapse-1.30rc1-state_ids-cpu.png" alt="CPU usage graph" /></p>
-<p>Enjoy. 🙂</p>
-<p>This release also includes further improves to our SSO support, including allowing spam checkers to <a href="https://github.com/matrix-org/synapse/pull/9626">distinguish between new registrations and first-time SSO users</a> and <a href="https://github.com/matrix-org/synapse/pull/9587">fixing account reactivation when local passwords are disabled</a>. Now that <em><a href="https://github.com/matrix-org/matrix-doc/pull/2858">MSC2858: Multiple SSO Identity Providers</a></em> has passed its Final Comment Period, we've also updated Synapse to respond to the stable versions of endpoints introduced by that MSC.</p>
-<p>See the  <a href="https://github.com/matrix-org/synapse/releases/tag/v1.30.0">Release Notes</a> for further information.</p>
-<h3 id="python-platform-deprecations">Python / Platform Deprecations</h3>
-<p>As a reminder, the next release of Synapse (1.31, scheduled for April 5th) will be the last to support Python 3.5 or PostgreSQL 9.5, both of which have reached their upstream end of life.</p>
-<p>We will also cease building packages for Ubuntu 16.04 (Xenial) and Debian 9 (Stretch) at the same time.</p>
-<h3 id="application-service-registration-changes">Application Service Registration Changes</h3>
-<p>Note that Application Services <em>must</em> provide a <code>type</code> parameter with the value <code>&quot;m.login.application_service&quot;</code> when calling <code>POST /_matrix/client/r0/register</code>. Synapse currently allows registration without an explicit <code>type</code>, but this <a href="https://github.com/matrix-org/synapse/pull/9548">divergence from the spec</a> will be resolved in a future release.</p>
-<h3 id="thanks">Thanks</h3>
-<p>Synapse is a Free and Open Source Software project, and we'd like to extend our thanks to everyone who contributed to this release, including <a href="https://github.com/dklimpel">dklimpel</a>, <a href="https://github.com/ShadowJonathan">ShadowJonathan</a>, and <a href="https://github.com/tlvb">tlvb</a>.</p>
-
-                
-            </div>
-        </article>
-        
         <nav class="pagination">
     <div class="prev">
         
         <a href="&#x2F;category&#x2F;releases&#x2F;page&#x2F;5&#x2F;">‹ Previous</a>
         
     </div>
-    <span class="page-number">6 / 14</span>
+    <span class="page-number">6 / 15</span>
     <div class="prev">
         
         <a href="&#x2F;category&#x2F;releases&#x2F;page&#x2F;7&#x2F;">Next ›</a>

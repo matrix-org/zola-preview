@@ -114,10 +114,140 @@
     <div class="content">
         <header>
             <h1>Matthew Hodgson</h1>
-            147 posts tagged with "Matthew Hodgson" <a href="/author">(See all Author)</a>
+            149 posts tagged with "Matthew Hodgson" <a href="/author">(See all Author)</a>
             
         </header>
 
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2017&#x2F;05&#x2F;12&#x2F;update-on-matrix-org-homeserver-reliability&#x2F;" title="Update on Matrix.org homeserver reliability">Update on Matrix.org homeserver reliability</a></h2>
+                <span>
+                    12.05.2017 00:00
+                    —
+                    <a href="/category/tech">
+                        Tech
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Hi folks,</p>
+<p>We've had a few outages over the last week on the Matrix.org homeserver which have caused problems for folks using bridges or accounts hosted on matrix.org itself - we'd like to apologise to everyone who's been caught in the crossfire.  In the interests of giving everyone visibility on what's going on and what we're doing about it (and so folks can learn from our mistakes! :), here's a quick writeup (all times are UTC):</p>
+<ul>
+ 	<li>2017-05-04 21:05: The datacenter where we host matrix.org performs an emergency unscheduled upgrade of the VM host where the main matrix.org HS & DB master lives.  This means a live-migration of the VM onto another host, which freezes the (huge) VM for 9 minutes, during which service is (obviously) down.  Monitoring fires; we start investigating and try to get in on the console, but by the point we're considering failing over to the hot-spare, the box has come back and recovers fine other than a load spike as all the traffic catches up.  The clock however is off by 9 minutes due to its world having paused.</li>
+ 	<li>2017-05-04 22:30: We step NTP on the host to fix the clock (maximum clock skew on ISC ntpd is 500ppm, meaning it would take weeks to reconverge naturally, during which time we're issuing messages with incorrect timestamps).</li>
+ 	<li>2017-05-05 01:25: Network connectivity breaks between the matrix.org homeserver and the DC where all of our bridges/bots are hosted.</li>
+ 	<li>2017-05-05 01:40: Monitoring alerts fire for bridge traffic activity and are picked up.  After trying to restart the VPN between the DC a few times, it turns out that the IP routes needed for the VPN have mysteriously disappeared.</li>
+ 	<li>2017-05-05 02:23: Routes are manually readded and VPN recovers and traffic starts flowing again.  It turns out that the routes are meant to be maintained by a post-up script in /etc/network/interfaces, which assumes that /sbin/ip is on the path.  Historically this hasn't been a problem as the DHCP lease on the host has never expired (only been renewed every 6 hours) - but the time disruption caused by the live-migration earlier means that on this renewal cycle the lease actually expires and the routes are lost and not-readded.  Basic bridging traffic checks are done (e.g. Freenode-&gt;Matrix).</li>
+ 	<li>2017-05-05 08:30: Turns out that whilst Freenode-&gt;Matrix traffic was working, Matrix-&gt;Freenode was wedged due to a missing HTTP timeout in the AS logic on Synapse.  Synapse is restarted and the bug fixed.</li>
+ 	<li>...the week goes by...</li>
+ 	<li>2017-05-11 18:00: (Unconnected to the rest of this outage, an IRC DDoS on GIMPnet cause intermittent load problems and delayed messages on matrix.org; we turn off the bridge for a few hours until it subsides).</li>
+ 	<li>2017-05-12 02:50: The postgres partition on the matrix.org DB master diskfills and postgres halts.  Monitoring alerts fire (once, phone alerts), but the three folks on call manage to sleep through their phone ringing.</li>
+ 	<li>2017-05-12 04:45: Folks get woken up and notice the outage; clear up diskspace; restart postgres. Meanwhile, synapse appears to recover, other than mysteriously refusing to send messages from local users.  Investigation commences in the guts of the database to try to see what corruption has happened.</li>
+ 	<li>2017-05-12 06:00: We realise that nobody has actually restarted synapse since the DB outage begun, and the failure is probably a known issue where worker replication can get fail and cause the master synapse process to fail to process writes.  Synapse is restarted; everything recovers (including bridges).</li>
+ 	<li>2017-05-12 06:20: Investigation into the cause of the diskfill reveals it to be due to postgres replication logs (WALs) stacking up on the DB master, due to replication having broken to a DB slave during the previous networking outage.  Monitoring alerts triggered but weren't escalated due to a problem in PagerDuty.</li>
+</ul>
+Lessons learned:
+<ul>
+ 	<li>Test your networking scripts and always check your box self-recovers after a restart (let alone a DHCP renewal).</li>
+ 	<li>Don't use DHCP in production datacenters unless you really have no choice; it just adds potential ways for everything to break.</li>
+ 	<li>We need better end-to-end monitoring for bridged traffic.</li>
+ 	<li>We need to ensure HS&lt;-&gt;Bridge traffic is more reliable (improved by fixing timeout logic in synapse).</li>
+ 	<li>We need better monitoring and alerting of DB replication traffic.</li>
+ 	<li>We need to escalate PagerDuty phone alerts more aggressively (done).</li>
+ 	<li>We need better alerting for disk fill thresholds (especially "time until fill", remembering to take into account the emergency headroom reserved by the filesystem for the superuser).</li>
+ 	<li>We should probably have scripts to rapidly (or even automatedly) switch between synapse master & hot-spare, and to promote DB slaves in the event of a master failure.</li>
+</ul>
+Hopefully this is the last we've seen of this root cause; we'll be working through the todo list above.  Many apologies again for the instability - however please do remember that you can (and should!) run your own homeserver & bridges to stay immune to whatever operational dramas we have with the matrix.org instance!
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2017&#x2F;04&#x2F;11&#x2F;synapse-0-20-0-is-released&#x2F;" title="Synapse 0.20.0 is released!">Synapse 0.20.0 is released!</a></h2>
+                <span>
+                    11.04.2017 00:00
+                    —
+                    <a href="/category/tech">
+                        Tech
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Hi folks,</p>
+<p>Synapse 0.20.0 was released a few hours ago - this is a major new release with loads of stability and performance fixes and some new features too. The main headlines are:</p>
+<ul>
+ 	<li>Support for using phone numbers as 3rd party identifiers as well as email addresses!  This is huge: letting you discover other users on Matrix based on whether they've linked their phone number to their matrix account, and letting you log in using your phone number as your identifier if you so desire.  Users of systems like WhatsApp should find this both familiar and useful ;)</li>
+ 	<li>Fixes some very nasty failure modes where the state of a room could be reset if a homeserver received an event it couldn't verify.  Folks who have suffered rooms suddenly losing their name/icon/topic should particularly upgrade - this won't fix the rooms retrospectively (your server will need to rejoin the room), but it should fix the problem going forwards.</li>
+ 	<li>Improves the retry schedule over federation significantly - previously there were scenarios where synapse could try to retry aggressively on servers which were offline.  This fixes that.</li>
+ 	<li>Significant performance improvements to /publicRooms, /sync, and other endpoints.</li>
+ 	<li>Lots of juicy bug fixes.</li>
+</ul>
+We highly recommend upgrading (or installing!) asap - <a href="https://github.com/matrix-org/synapse">https://github.com/matrix-org/synapse</a> has the details as usual.  Full changelog follows:
+<h3 id="changes-in-synapse-v0-20-0-2017-04-11">Changes in synapse v0.20.0 (2017-04-11)</h3>
+<p>Bug fixes:</p>
+<ul>
+ 	<li>Fix joining rooms over federation where not all servers in the room saw the
+new server had joined (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2094" data-url="https://github.com/matrix-org/synapse/issues/2094" data-id="218965094" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2094</a>)</li>
+</ul>
+<h3 id="changes-in-synapse-v0-20-0-rc1-2017-03-30">Changes in synapse v0.20.0-rc1 (2017-03-30)</h3>
+<p>Features:</p>
+<ul>
+ 	<li>Add delete_devices API (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1993" data-url="https://github.com/matrix-org/synapse/issues/1993" data-id="213824583" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1993</a>)</li>
+ 	<li>Add phone number registration/login support (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1994" data-url="https://github.com/matrix-org/synapse/issues/1994" data-id="213848637" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1994</a>, <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2055" data-url="https://github.com/matrix-org/synapse/issues/2055" data-id="216534040" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2055</a>)</li>
+</ul>
+Changes:
+<ul>
+ 	<li>Use JSONSchema for validation of filters. Thanks <a class="user-mention" href="https://github.com/pik"><span class="ghh-user-x tooltipstered" title="">@pik</span></a>! (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1783" data-url="https://github.com/matrix-org/synapse/issues/1783" data-id="199444033" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1783</a>)</li>
+ 	<li>Reread log config on SIGHUP (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1982" data-url="https://github.com/matrix-org/synapse/issues/1982" data-id="213371227" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1982</a>)</li>
+ 	<li>Speed up public room list (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1989" data-url="https://github.com/matrix-org/synapse/issues/1989" data-id="213745739" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1989</a>)</li>
+ 	<li>Add helpful texts to logger config options (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1990" data-url="https://github.com/matrix-org/synapse/issues/1990" data-id="213753788" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1990</a>)</li>
+ 	<li>Minor <code>/sync</code> performance improvements. (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2002" data-url="https://github.com/matrix-org/synapse/issues/2002" data-id="214132328" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2002</a>, <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2013" data-url="https://github.com/matrix-org/synapse/issues/2013" data-id="214406942" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2013</a>, <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2022" data-url="https://github.com/matrix-org/synapse/issues/2022" data-id="214680616" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2022</a>)</li>
+ 	<li>Add some debug to help diagnose weird federation issue (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2035" data-url="https://github.com/matrix-org/synapse/issues/2035" data-id="215462812" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2035</a>)</li>
+ 	<li>Correctly limit retries for all federation requests (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2050" data-url="https://github.com/matrix-org/synapse/issues/2050" data-id="216250274" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2050</a>, <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2061" data-url="https://github.com/matrix-org/synapse/issues/2061" data-id="216778245" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2061</a>)</li>
+ 	<li>Don't lock table when persisting new one time keys (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2053" data-url="https://github.com/matrix-org/synapse/issues/2053" data-id="216424415" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2053</a>)</li>
+ 	<li>Reduce some CPU work on DB threads (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2054" data-url="https://github.com/matrix-org/synapse/issues/2054" data-id="216518578" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2054</a>)</li>
+ 	<li>Cache hosts in room (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2060" data-url="https://github.com/matrix-org/synapse/issues/2060" data-id="216759034" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2060</a>)</li>
+ 	<li>Batch sending of device list pokes (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2063" data-url="https://github.com/matrix-org/synapse/issues/2063" data-id="216807144" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2063</a>)</li>
+ 	<li>Speed up persist event path in certain edge cases (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2070" data-url="https://github.com/matrix-org/synapse/issues/2070" data-id="217311121" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2070</a>)</li>
+</ul>
+Bug fixes:
+<ul>
+ 	<li>Fix bug where current_state_events renamed to current_state_ids (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1849" data-url="https://github.com/matrix-org/synapse/issues/1849" data-id="202563705" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1849</a>)</li>
+ 	<li>Fix routing loop when fetching remote media (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1992" data-url="https://github.com/matrix-org/synapse/issues/1992" data-id="213822848" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1992</a>)</li>
+ 	<li>Fix current_state_events table to not lie (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1996" data-url="https://github.com/matrix-org/synapse/issues/1996" data-id="214035508" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1996</a>)</li>
+ 	<li>Fix CAS login to handle PartialDownloadError (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1997" data-url="https://github.com/matrix-org/synapse/issues/1997" data-id="214074229" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1997</a>)</li>
+ 	<li>Fix assertion to stop transaction queue getting wedged (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2010" data-url="https://github.com/matrix-org/synapse/issues/2010" data-id="214372154" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2010</a>)</li>
+ 	<li>Fix presence to fallback to last_active_ts if it beats the last sync time.
+Thanks <a class="user-mention" href="https://github.com/Half-Shot"><span class="ghh-user-x tooltipstered" title="">@Half-Shot</span></a>! (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="Add fallback to last_active_ts if it beats the last sync time on a presence timeout." href="https://github.com/matrix-org/synapse/pull/2014" data-id="214424439" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2014</a>)</li>
+ 	<li>Fix bug when federation received a PDU while a room join is in progress (PR
+<a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2016" data-url="https://github.com/matrix-org/synapse/issues/2016" data-id="214476894" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2016</a>)</li>
+ 	<li>Fix resetting state on rejected events (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2025" data-url="https://github.com/matrix-org/synapse/issues/2025" data-id="215024206" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2025</a>)</li>
+ 	<li>Fix installation issues in readme. Thanks <a class="user-mention" href="https://github.com/ricco386"><span class="ghh-user-x tooltipstered" title="">@ricco386</span></a> (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2037" data-url="https://github.com/matrix-org/synapse/issues/2037" data-id="215522808" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2037</a>)</li>
+ 	<li>Fix caching of remote servers' signature keys (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2042" data-url="https://github.com/matrix-org/synapse/issues/2042" data-id="216072789" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2042</a>)</li>
+ 	<li>Fix some leaking log context (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2048" data-url="https://github.com/matrix-org/synapse/issues/2048" data-id="216246880" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2048</a>, <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="Fix a couple of logcontext leaks" href="https://github.com/matrix-org/synapse/pull/2049" data-id="216247053" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2049</a>, <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2057" data-url="https://github.com/matrix-org/synapse/issues/2057" data-id="216590150" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2057</a>, <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2058" data-url="https://github.com/matrix-org/synapse/issues/2058" data-id="216594461" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2058</a>)</li>
+ 	<li>Fix rejection of invites not reaching sync (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/2056" data-url="https://github.com/matrix-org/synapse/issues/2056" data-id="216535804" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2056</a>)</li>
+</ul>
+
+                
+            </div>
+        </article>
         
         <article class="post">
             <header>
@@ -166,7 +296,7 @@ Nowadays the hardware problem is effectively solved: the <a href="https://www.vi
 Video calling requires a WebRTC-capable browser (Chrome or Firefox). Unfortunately no iOS browsers support it yet. If you have dedicated VR hardware (Vive or Rift), you'll have to configure your browser appropriately to use the demo - see <a href="https://webvr.rocks">https://webvr.rocks</a> for the latest details.
 <p>Needless to say, the demo's open sourced under the Apache License like all things Matrix - you can check out the code from <a href="https://github.com/matrix-org/matrix-vr-demo">https://github.com/matrix-org/matrix-vr-demo</a>.  Huge kudos to Richard Lewis, Rob Swain and Ben Lewis for building this out - and to Aidan Taub and Tom Elliott for providing the 360 degree video footage!</p>
 <p>The demo is quite high-bandwidth and hardware intensive, so here's a video of it in action, just in case:</p>
-<iframe src="https://www.youtube.com/embed/nk0nMlVXkbk" width="560" height="315" frameBorder="0" allowFullScreen="allowfullscreen"></iframe>
+<iframe src="https://www.youtube.com/embed/nk0nMlVXkbk" frameBorder="0" allowFullScreen="allowfullscreen"></iframe>
 <p>Now, it's important to understand that here we're using Matrix as a standard communications API for VR, but we're not using Matrix to store any VR world data (yet).  The demo uses plain A-Frame via aframe-react to render its world: we are not providing an API which exposes the world itself onto the network for folks to interact with and extend.  This is because Matrix is currently optimised for storing and synchronising two types of data structure: decentralised timelines of conversation data, and arbitrary decentralised key-value data (e.g. room names, membership, topics).</p>
 <p>However, the job of storing arbitrary world data requires storing and flexibly querying it as an object graph of some kind - e.g. as a scene graph hierarchy.  Doing this efficiently whilst supporting Matrix's decentralised eventual consistency model is tantamount to evolving Matrix into being a generic decentralised object-graph database (whilst upholding the constraints of that virtual world).  This is tractable, but it's a bunch more work than just supporting the eventually-consistent timeline &amp; key-value store we have today.  It's something we're thinking about though. :)</p>
 <p>Also, Matrix is currently not super low-latency - on a typical busy Synapse deployment event transmission between clients has a latency of 50-200ms (ignoring network).  This is fine for instant messaging and setting up VoIP calls etc, but useless for publishing the realtime state of a virtual world: having to wait 200ms to be told that something happened in an interactive virtual world would be a terrible experience.  However, there are various fixes we can do here: Matrix itself is getting faster; Dendrite is expected to be one or two orders of magnitude faster than Synapse.  We could also use Matrix simply as a signalling layer in order to negotiate a lower latency realtime protocol to describe world data updates (much as we use Matrix as a signalling layer for setting up RTP streams for VoIP calls or MIDI sessions).</p>
@@ -475,146 +605,6 @@ The good news of course is that you can run your own synapse today to avoid gett
 <p>You can watch the video of the talks from the FOSDEM website <a href="https://fosdem.org/2017/schedule/event/encrypting_matrix/">here</a> and <a href="https://fosdem.org/2017/schedule/event/matrix_future/">here</a>.  Both talks necessarily include the similar exposition for folks unfamiliar with Matrix, so apologies for the duplication - also, the &quot;future of decentralised communication&quot; talk ended up a bit rushed; 20 minutes is not a lot of time to both explain Matrix and give an overview of the challenges we face in fixing spam, identity, moderation etc.  But if you like hearing overenthusiastic people talking too fast about how amazing Matrix is, you may wish to check out the videos :)  You can also get at the slides as PDF <a href="/blog/wp-content/uploads/2017/02/2017-02-03.1-FOSDEM-Encrypting-Matrix.pdf">here (E2E Encryption)</a> and <a href="/blog/wp-content/uploads/2017/02/2017-02-04-FOSDEM-Future.pdf">here (Future of Decentralisation)</a>.</p>
 <p>Huge thanks to evevryone who came to the talks or came and spoke to us at the stand or around the campus.  We had an amazing time, and are already looking forward to next year!</p>
 <p>Matthew &amp; the team</p>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2017&#x2F;02&#x2F;04&#x2F;synapse-0-19-is-here-just-in-time-for-fosdem&#x2F;" title="Synapse 0.19 is here, just in time for FOSDEM!">Synapse 0.19 is here, just in time for FOSDEM!</a></h2>
-                <span>
-                    04.02.2017 00:00
-                    —
-                    <a href="/category/tech">
-                        Tech
-                    </a>
-                    —
-                    <a
-                        href="/author/matthew-hodgson">
-                        Matthew Hodgson
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Hi all,</p>
-<p>We're happy to announce the release of Synapse 0.19.0 (same as 0.19.0-rc4) today, just in time for anyone discovering Matrix for the first time at FOSDEM 2017!  In fact, here's Erik doing the release right now (with moral support from Luke):</p>
-<img class="aligncenter size-large wp-image-1900" src="/blog/wp-content/uploads/2017/02/release-1024x768.jpg" alt="release" width="1024" height="768" />
-<p>This is a pretty big release, with a bunch of new features and lots and lots of debugging and optimisation work following on some of the dramas that we had with 0.18 over the Christmas break.  The biggest things are:</p>
-<ul>
- 	<li>IPv6 Support (unless you have an IPv6 only resolver), thanks to contributions from Glyph from Twisted and Kyrias!</li>
- 	<li>A new API for tracking the E2E devices present in a room (required for fixing many of the remaining E2E bugs...)</li>
- 	<li>Rewrite the 'state resolution' algorithm to be orders of magnitude more performant</li>
- 	<li>Lots of tuning to the caching logic.</li>
-</ul>
-If you're already running a server, please upgrade!  And if you're not, go grab yourself a <a href="https://github.com/matrix-org/synapse">brand new Synapse</a> from Github. Debian packages will follow shortly (as soon as Erik can figure out the necessary backporting required for Twisted 16.6.0)
-<p>And here's the full changelog...</p>
-<h2 id="changes-in-synapse-v0-19-0-2017-02-04">Changes in synapse v0.19.0 (2017-02-04)</h2>
-<p>No changes since RC 4.</p>
-<h2 id="changes-in-synapse-v0-19-0-rc4-2017-02-02">Changes in synapse v0.19.0-rc4 (2017-02-02)</h2>
-<ul>
- 	<li>Bump cache sizes for common membership queries (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1879" data-url="https://github.com/matrix-org/synapse/issues/1879" data-id="204961298" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1879</a>)</li>
-</ul>
-<h2 id="changes-in-synapse-v0-19-0-rc3-2017-02-02">Changes in synapse v0.19.0-rc3 (2017-02-02)</h2>
-<ul>
- 	<li>Fix email push in pusher worker (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1875" data-url="https://github.com/matrix-org/synapse/issues/1875" data-id="204840617" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1875</a>)</li>
- 	<li>Make presence.get_new_events a bit faster (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1876" data-url="https://github.com/matrix-org/synapse/issues/1876" data-id="204868725" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1876</a>)</li>
- 	<li>Make /keys/changes a bit more performant (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1877" data-url="https://github.com/matrix-org/synapse/issues/1877" data-id="204905372" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1877</a>)</li>
-</ul>
-<h2 id="changes-in-synapse-v0-19-0-rc2-2017-02-02">Changes in synapse v0.19.0-rc2 (2017-02-02)</h2>
-<ul>
- 	<li>Include newly joined users in /keys/changes API (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1872" data-url="https://github.com/matrix-org/synapse/issues/1872" data-id="204651600" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1872</a>)</li>
-</ul>
-<h2 id="changes-in-synapse-v0-19-0-rc1-2017-02-02">Changes in synapse v0.19.0-rc1 (2017-02-02)</h2>
-<p>Features:</p>
-<ul>
- 	<li>Add support for specifying multiple bind addresses (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1709" data-url="https://github.com/matrix-org/synapse/issues/1709" data-id="196299310" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1709</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1712" data-url="https://github.com/matrix-org/synapse/issues/1712" data-id="196557084" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1712</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1795" data-url="https://github.com/matrix-org/synapse/issues/1795" data-id="199882750" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1795</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1835" data-url="https://github.com/matrix-org/synapse/issues/1835" data-id="202121261" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1835</a>). Thanks to <a class="user-mention" href="https://github.com/kyrias">@kyrias</a>!</li>
- 	<li>Add /account/3pid/delete endpoint (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1714" data-url="https://github.com/matrix-org/synapse/issues/1714" data-id="196744832" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1714</a>)</li>
- 	<li>Add config option to configure the Riot URL used in notification emails (PR <a class="issue-link js-issue-link" title="Allow configuring the Riot URL used in notification emails" href="https://github.com/matrix-org/synapse/pull/1811" data-id="200657367" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1811</a>). Thanks to <a class="user-mention" href="https://github.com/aperezdc">@aperezdc</a>!</li>
- 	<li>Add username and password config options for turn server (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1832" data-url="https://github.com/matrix-org/synapse/issues/1832" data-id="201858252" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1832</a>). Thanks to <a class="user-mention" href="https://github.com/xsteadfastx">@xsteadfastx</a>!</li>
- 	<li>Implement device lists updates over federation (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1857" data-url="https://github.com/matrix-org/synapse/issues/1857" data-id="203413361" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1857</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1861" data-url="https://github.com/matrix-org/synapse/issues/1861" data-id="204067531" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1861</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1864" data-url="https://github.com/matrix-org/synapse/issues/1864" data-id="204251726" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1864</a>)</li>
- 	<li>Implement /keys/changes (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1869" data-url="https://github.com/matrix-org/synapse/issues/1869" data-id="204547521" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1869</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1872" data-url="https://github.com/matrix-org/synapse/issues/1872" data-id="204651600" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1872</a>)</li>
-</ul>
-Changes:
-<ul>
- 	<li>Improve IPv6 support (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1696" data-url="https://github.com/matrix-org/synapse/issues/1696" data-id="195001361" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1696</a>). Thanks to <a class="user-mention" href="https://github.com/kyrias">@kyrias</a> and <a class="user-mention" href="https://github.com/glyph">@glyph</a>!</li>
- 	<li>Log which files we saved attachments to in the media_repository (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1791" data-url="https://github.com/matrix-org/synapse/issues/1791" data-id="199834508" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1791</a>)</li>
- 	<li>Linearize updates to membership via PUT /state/ to better handle multiple joins (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1787" data-url="https://github.com/matrix-org/synapse/issues/1787" data-id="199625078" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1787</a>)</li>
- 	<li>Limit number of entries to prefill from cache on startup (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1792" data-url="https://github.com/matrix-org/synapse/issues/1792" data-id="199837759" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1792</a>)</li>
- 	<li>Remove full_twisted_stacktraces option (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1802" data-url="https://github.com/matrix-org/synapse/issues/1802" data-id="200333064" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1802</a>)</li>
- 	<li>Measure size of some caches by sum of the size of cached values (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1815" data-url="https://github.com/matrix-org/synapse/issues/1815" data-id="201019660" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1815</a>)</li>
- 	<li>Measure metrics of string_cache (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1821" data-url="https://github.com/matrix-org/synapse/issues/1821" data-id="201347397" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1821</a>)</li>
- 	<li>Reduce logging verbosity (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1822" data-url="https://github.com/matrix-org/synapse/issues/1822" data-id="201347914" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1822</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1823" data-url="https://github.com/matrix-org/synapse/issues/1823" data-id="201350918" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1823</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1824" data-url="https://github.com/matrix-org/synapse/issues/1824" data-id="201351456" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1824</a>)</li>
- 	<li>Don't clobber a displayname or avatar_url if provided by an m.room.member event (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1852" data-url="https://github.com/matrix-org/synapse/issues/1852" data-id="202898869" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1852</a>)</li>
- 	<li>Better handle 401/404 response for federation /send/ (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1866" data-url="https://github.com/matrix-org/synapse/issues/1866" data-id="204298485" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1866</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1871" data-url="https://github.com/matrix-org/synapse/issues/1871" data-id="204619103" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1871</a>)</li>
-</ul>
-Fixes:
-<ul>
- 	<li>Fix ability to change password to a non-ascii one (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1711" data-url="https://github.com/matrix-org/synapse/issues/1711" data-id="196303488" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1711</a>)</li>
- 	<li>Fix push getting stuck due to looking at the wrong view of state (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1820" data-url="https://github.com/matrix-org/synapse/issues/1820" data-id="201302378" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1820</a>)</li>
- 	<li>Fix email address comparison to be case insensitive (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1827" data-url="https://github.com/matrix-org/synapse/issues/1827" data-id="201573837" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1827</a>)</li>
- 	<li>Fix occasional inconsistencies of room membership (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1836" data-url="https://github.com/matrix-org/synapse/issues/1836" data-id="202122666" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1836</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1840" data-url="https://github.com/matrix-org/synapse/issues/1840" data-id="202175956" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1840</a>)</li>
-</ul>
-Performance:
-<ul>
- 	<li>Don't block messages sending on bumping presence (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1789" data-url="https://github.com/matrix-org/synapse/issues/1789" data-id="199812171" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1789</a>)</li>
- 	<li>Change device_inbox stream index to include user (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1793" data-url="https://github.com/matrix-org/synapse/issues/1793" data-id="199845292" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1793</a>)</li>
- 	<li>Optimise state resolution (PR <a class="issue-link js-issue-link" title=" Optimise state resolution" href="https://github.com/matrix-org/synapse/pull/1818" data-id="201285644" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1818</a>)</li>
- 	<li>Use DB cache of joined users for presence (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1862" data-url="https://github.com/matrix-org/synapse/issues/1862" data-id="204068613" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1862</a>)</li>
- 	<li>Add an index to make membership queries faster (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/1867" data-url="https://github.com/matrix-org/synapse/issues/1867" data-id="204327354" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1867</a>)</li>
-</ul>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2017&#x2F;01&#x2F;25&#x2F;matrix-org-homeserver-outage-25th-jan-2017&#x2F;" title="Matrix.org homeserver outage (25th Jan 2017)">Matrix.org homeserver outage (25th Jan 2017)</a></h2>
-                <span>
-                    25.01.2017 00:00
-                    —
-                    <a href="/category/tech">
-                        Tech
-                    </a>
-                    —
-                    <a
-                        href="/author/matthew-hodgson">
-                        Matthew Hodgson
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>Hi folks,</p>
-<p>As many will have noticed there was a major outage on the Matrix homeserver for matrix.org last night (UK-time).  This impacted anyone with an account on the matrix.org server, as well as anyone using matrix.org-hosted bots &amp; bridges.  As Matrix rooms are shared over all participants, rooms with participants on other servers were unaffected (for users on those servers). Here's a quick explanation of what went wrong (times are UTC):</p>
-<ul>
-<li>2017-01-24 16:00 - We notice that we're badly running out of diskspace on the matrix.org backup postgres replica.  (Turns out the backup box, whilst identical hardware to the master, had been built out as RAID-10 rather than RAID-5 and so has less disk space).
-</li><li>2017-01-24 17:00 - We decide to drop a large DB index: <code>event_push_actions(room_id, event_id, user_id, profile_tag)</code>, which was taking up a disproportionate amount of disk space, on the basis that it didn't appear to be being used according to the postgres stats.  All seems good.
-</li><li>2017-01-24 ~23:00 - The core matrix.org team go to bed.
-</li><li>2017-01-24 23:33 - Someone redacts an event in a very active room (probably #matrix:matrix.org) which necessitates redacting the associated push notification from the event_push_actions table.  This takes out a lock within persist_event, which is then blocked on deleting the push notification.  It turns out that this deletion requires the missing DB constraint, causing the query to run for hours whilst holding the transaction lock.  The symptoms are that anything reading events from the DB was blocked on the transaction, causing messages not to be relayed to other clients or servers despite appearing to send correctly.  Meanwhile, the fact that events are being received by the server fine (including over federation) makes the monitoring graphs look largely healthy.
-</li><li>2017-01-24 23:35 - End-to-end monitoring detects problems, and sends alerts into pagerduty and various Matrix rooms.  Unfortunately we'd failed to upgrade the pageduty trial into a paid account a few months ago, however, so the alerts are lost.
-</li><li>2017-01-25 08:00 - Matrix team starts to wake up and spot problems, but confusion over the right escalation process (especially with Matthew on holiday) means folks assume that other members of the team must already be investigating.
-</li><li>2017-01-25 09:00 - Server gets restarted, service starts to resume, although box suffers from load problems as traffic tries to catch up.
-</li><li>2017-01-25 09:45 - Normal service on the homeserver itself is largely resumed (other than bridges; see below)
-</li><li>2017-01-25 10:41 - Root cause established and the redaction path is patched on matrix.org to stop a recurrence.
-</li><li>2017-01-25 11:15 - Bridges are seen to be lagging and taking much longer to recover than expected.   Decision made to let them continue to catch up normally rather than risk further disruption (e.g. IRC join/part spam) by restarting them.
-</li><li>2017-01-25 13:00 - All hosted bridges returned to normal.</li>
-</ul>
-<p>Obviously this is rather embarrassing, and a huge pain for everyone using the matrix.org homeserver - many apologies indeed for the outage. On the plus side, all the other Matrix homeservers out there carried on without noticing any problems (which actually complicated spotting that things had broken, given many of the core team primarily use their personal homeservers).</p>
-<p>In some ways the root cause here is that the core team has been focusing all its energy recently on improving the overall Matrix codebase rather than operational issues on matrix.org itself, and as a result our ops practices have fallen behind (especially as the health of the Matrix ecosystem as a whole is arguably more important than the health of a single homeserver deployment).  However, we clearly need to improve things here given the number of people (&gt;750K at the last count) dependent on the Matrix.org homeserver and its bridges &amp; bots.</p>
-<p>Lessons learnt on our side are:</p>
-<ul>
-<li>Make sure that even though we had monitoring graphs & thresholds set up on all the right things... monitoring alerts actually have to be routed somewhere useful - i.e. phone calls to the team's phones.  Pagerduty is now set up and running properly to this end.</li>
-<li>Make sure that people know to wake up the right people anyway if the monitoring alerting system fails.</li>
-<li>To be even more paranoid about hotfixes to production at 5pm, especially if they can wait 'til the next day (as this one could have).</li>
-<li>To investigate ways to rapidly recover bridges without causing unnecessary disruption.</li>
-</ul>
-<p>Apologies again to everyone who was bitten by this - we're doing everything we can to ensure it doesn't happen again.</p>
-<p>Matthew &amp; the team.</p>
 
                 
             </div>

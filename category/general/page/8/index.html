@@ -114,7 +114,7 @@
     <div class="content">
         <header>
             <h1>General</h1>
-            133 posts tagged with "General" <a href="/category">(See all Category)</a>
+            136 posts tagged with "General" <a href="/category">(See all Category)</a>
             
             <h2>
                 <small><a href="/category/general/atom.xml">Atom Feed</a></small>
@@ -122,6 +122,260 @@
             
         </header>
 
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2017&#x2F;08&#x2F;23&#x2F;introducing-matrix-widgets&#x2F;" title="Introducing Matrix Widgets - including Jitsi video conferencing!">Introducing Matrix Widgets - including Jitsi video conferencing!</a></h2>
+                <span>
+                    23.08.2017 00:00
+                    —
+                    <a href="/category/general">
+                        General
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Hi all,</p>
+<p>We've been working hard over the last few months on the brand new concept of Matrix &quot;widgets” (sometimes called “apps”, but we'll call them “widgets” here to be marginally less ambiguous) - and we're super excited to see an initial implementation of them land today in Riot/Web 0.12 (alongside always-on Rich Text Editor - the culmination of huge amounts of work by Aviral Dasgupta in his GSoC 2016 project and Luke from the core Matrix team).  For user-focused details about Riot 0.12 you should probably head over to the <a href="https://medium.com/@RiotChat/riot-im-web-0-12-7c4ea84b180a">Riot blog</a>; meanwhile we'll focus here on widgets from the developer perspective.</p>
+<p>Widgets are a deceptively simple idea: the ability to pin small form-factor webapps (called widgets) into a given Matrix room, letting admins build up a dashboard of functionality which is then in common and automatically available to everyone who views that room.  You can think of it as being similar to installing an app onto a smartphone, but instead pulling it into a Matrix conversation.  This could be a <a href="https://jitsi.org">Jitsi</a> video conference, or a collaborative document editor, or a <a href="https://grafana.com">Grafana</a> dashboard, or anything you can imagine really (assuming its security headers support embedding).  Here's an example of a room with an ongoing Jitsi conference coupled with a Grafana graph, as you might use for a devops war room:</p>
+<img class="aligncenter size-full wp-image-2745" src="/blog/wp-content/uploads/2017/08/widgets.png" alt="" width="929" height="605" />
+<p>The URLs of the widgets are stored in the state of the room with some high-level layout hints, and the idea is that any Matrix client will be able to expose the widgets for the current room to a user.  For a simple command-line client this could just be listing the URLs of the widgets so the user can open them in a browser; for a web client like Riot/Web they're embedded via iframes; for a native client like Riot/iOS they could be shown via a WebView - or there's always the chance of the native client recognising the URL being requested and swapping it out for an optimised local native implementation instead.  For now, widgets don't really have a way of communicating with the host Matrix client (other than by speaking Matrix to the homeserver!), although we're looking at adding a PostMessage API to improve this.</p>
+<p>Now, in an ideal world we would have enough bandwidth to have formally added widgets to the Matrix spec, but unfortunately we are way behind on spec work currently, thanks in part to our current funding problems. (Remember, if you like Matrix, <a href="/blog/2017/07/07/a-call-to-arms-supporting-matrix/">please donate or get your company to donate</a> otherwise we are at real risk of hitting a very big funding wall).  Rather than formal spec, we've focused on rushing an initial implementation out the door in matrix-react-sdk (and thus riot-web) to see how they work first in reality.  Riot/iOS and Riot/Android are coming soon - although we've special-cased the Jitsi video conferencing widget in iOS to be implemented natively, which is actually available already on develop(!)</p>
+<p>Right now the widgets supported by Riot are prefixed behind the <code>im.vector.modular.widgets</code> state event, whose format is something like:</p>
+<pre data-lang="js" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-js "><code class="language-js" data-lang="js"><span>{
+</span><span>    type: </span><span style="color:#d69d85;">&quot;im.vector.modular.widgets&quot;</span><span>,
+</span><span>    state_key: </span><span style="color:#d69d85;">&quot;widget1&quot;</span><span>,
+</span><span>    content: {
+</span><span>        type: </span><span style="color:#d69d85;">&quot;grafana&quot;</span><span>,
+</span><span>        url: </span><span style="color:#d69d85;">&quot;https://matrix.org/grafana/whatever&quot;</span><span>,
+</span><span>        name: </span><span style="color:#d69d85;">&quot;matrix.org bridges dashboard&quot;
+</span><span>    }
+</span><span>    room_id: </span><span style="color:#d69d85;">&quot;!foo:bar.com&quot;</span><span>,
+</span><span>    sender: </span><span style="color:#d69d85;">&quot;@kegan:matrix.org&quot;
+</span><span>}
+</span></code></pre>
+<p>Currently the only layout hint is that the order of the event determines the order in which the widget should be displayed on the page.  Riot/Web's initial implementation is very naive and shows only up to two widgets per page, although we're hoping to make this much more generic and flexible in future.  To add widgets in Riot/Web you can now hit the new widget manager button in the top right - and to show/hide existing ones in the room you can hit the show/hide app drawer button in the bottom right.</p>
+<p>The UI for adding widgets to a room in Riot is currently via Modular - the new name for Riot's SaaS integration hosting platform, formally codenamed Scalar.  This is a separate webapp loaded in an iframe which guides you through choosing widgets to embed which are hosted by Modular, although in the near future we'll also add UI to let you specify widget URLs directly.  If you need this today, you'll need to manually inject a state event like the one above into the room to provision the widget.</p>
+<p>This is very much the minimum viable implementation of widgets: the stuff left to do includes:</p>
+<ul>
+ 	<li>Adding them to the spec, and getting clients other than Riot using them!</li>
+ 	<li>Supporting better layouts (especially to allow for more screen real-estate) and more than 2 widgets</li>
+ 	<li>Ability to add widgets directly, for situations where Modular isn't available</li>
+ 	<li>Speccing APIs for widgets to interact directly with the host client - with the appropriate permissions model</li>
+ 	<li>Adding lots more prepackaged widgets to the Modular store!</li>
+</ul>
+Modular comes with 6 widgets ready to go: Grafana, Jitsi, Etherpad, YouTube, Google Docs and Custom Widget (which lets you add any arbitrary URL into the room). The most exciting of these is probably Jitsi, which provides Hangouts-style video conferencing into any room.  This provides a welcome alternative to our 'native' conferencing functionality which sadly got stuck in a permanent early beta - and includes full screensharing as well!  The only catch is that it hasn't been released on iOS yet, and Android is still be to be implemented - but the experience is a still massive improvement over what we've had historically.  Here's a screenshot of some of the core team doing a 6-way conference with the native Jitsi functionality now included in Riot/iOS!
+<img class="aligncenter size-full wp-image-2746" src="/blog/wp-content/uploads/2017/08/jitsi-ios.png" alt="" width="1689" height="884" />
+<p>Finally, if you want to write your own widget, just create a webapp and play with it via the Custom Widget interface.  If it's something useful for other people then please ping us on #matrix-dev:matrix.org and we'll see about getting it added as a preset application in Modular.</p>
+<p>We think widgets are an awesome example of how Matrix can be used to coordinate collaboration between users in a room - for now it's just simply ensuring that users are looking at the same set of webapps when in a room, but in future you can see how it could extend to co-browsing, co-editing, payment functionality, or generally using Matrix to coordinate things other than textual/voip chat.  The sky's the limit, and we're hoping the Modular store (and other app stores) will start overflowing with apps in the near future!</p>
+<p>As always, feedback is very welcome on new experimental stuff like this - so please come tell us what you think in <a href="https://matrix.to/#/#matrix:matrix.org">#matrix:matrix.org</a>!  And finally: huge kudos to Rick, Kegan, Rob, and everyone else who have been working away bringing Widgets to life.  It's the beginning of a new era :D</p>
+<p>Matthew</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2017&#x2F;07&#x2F;19&#x2F;status-update&#x2F;" title="Matrix.org status update - July 2017">Matrix.org status update - July 2017</a></h2>
+                <span>
+                    19.07.2017 00:00
+                    —
+                    <a href="/category/general">
+                        General
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p style="text-align: left;">Hi folks,</p>
+Thought it was worth giving a quick status update on what's going on since our <a href="/blog/2017/07/07/a-call-to-arms-supporting-matrix/">last blog post</a>, which explained the funding situation Matrix has found itself in.  The TL;DR is that we're still here; things are moving faster than ever (not least as we refocus on getting everything needed to get Matrix funded and sustainable in the longer term), but we still need concrete support from the community (both company sponsorship and personal donations) to ensure things keep going at the current rate.
+<h3 id="funding-status">Funding Status</h3>
+<p>So, the good news is that we had a great initial response to last week's call to help - right now we have 199 people signed up on <a href="https://patreon.com/matrixdotorg">Patreon</a> (go on, be the 200th! you know you want to :D), ~30 on <a href="https://liberapay.com/matrixdotorg/">Liberapay</a>, and 14 bitcoin donations.  This sums up to just over $2000/month - which is getting close to our initial Patreon goal of $2500/month to helping support half the cost of the less senior devs working on Matrix. <strong>Endless thanks to everyone who has donated - especially the 19 folks (18 on Patreon, one on Liberapay) who have so generously pledged $50 or more a month!! </strong>Meanwhile, if you're reading this and you haven't pledged support yet - <em>please</em> consider heading over to <a href="https://patreon.com/matrixdotorg">Patreon</a> or <a href="https://liberapay.com/matrixdotorg">Liberapay</a> or Bitcoin 1LxowEgsquZ3UPZ68wHf8v2MDZw82dVmAE and helping keep the project running.  Literally every dollar counts.</p>
+<p>Meanwhile, while Patreon &amp; friends are headed in the right direction to support one developer, we still have another 10 people working on all the various core components of Matrix itself who need to be supported in the near future.  (We look to be safe for the next month or two, but beyond that we're counting on having solved this problem ;).  <strong>Right now we are hoping that companies who believe in Matrix and/or are building services on top will step up to sponsor development</strong> - as it's pretty obvious that accelerating Dendrite, final E2E, Groups etc will improve professional Matrix-based services immeasurably.  If this sounds like you, please <a href="mailto:matthew@matrix.org">get in touch</a> asap.</p>
+<p>We're also able to provide <strong>paid consulting and development (and prioritised development)</strong> services on Matrix (through Vector, the for-profit company responsible for Riot) for large pieces of work - for instance, if you're anxious to see enterprise-focused Matrix features land sooner than later, please <a href="mailto:matthew@matrix.org">reach out</a>.</p>
+<p>Exciting news is that we already have one concrete offer of paid consulting work from a very major company who happens to love Matrix, building out Integrations capabilities which should directly benefit the wider Matrix ecosystem - and we also are very proud to announce our very first official corporate sponsor (see the next section for details)!  However, we still have a long way to go, so don't be shy about getting in touch: <strong>we need your support</strong>!</p>
+<p>Heads up that we've also started our various reward schemes for supporters - folks donating more than $5 on Patreon will have already heard most of this update in the first episode of the video blog that Amandine &amp; I posted last Friday; and folks donating more than $10 will have heard some of the other details first hand through the broadcast of the global team weekly sync on Monday!  We're still figuring out how to get these rewards over to liberapay &amp; bitcoin supporters (not helped by both services being anonymous...).  We haven't yet opened up the #matrix-supporters:matrix.org room as maintaining the accesslist is effectively blocked on Groups landing.  We also want to use Groups to manage the various lists of supporters around the place, so apologies that we haven't got the lists published yet!</p>
+<p>Finally on the funding side of things: we're setting up the Matrix.org Foundation non-profit legal entity this week, letting us accept donations and sponsorship in a way which can directly fund the core developers (more details as we have them).  As soon as it's incorporated, we'll be able to sign up fully on Liberapay to accept donations there.</p>
+<h3 id="announcing-upcloud-our-very-first-official-matrix-org-corporate-sponsor">Announcing <strong>UpCloud</strong>: our very first official Matrix.org Corporate Sponsor!</h3>
+<p><a href="https://www.upcloud.com/matrix"><img style="padding: 1em" src="/blog/wp-content/uploads/2017/07/upcloud-logo-horizontal-300x60.png" alt="" width="300" height="60" class="aligncenter size-medium wp-image-2631" /></a></p>
+<p>As hinted above, we're incredibly excited and happy that UpCloud have signed up as our first official corporate sponsor.  UpCloud has already been hosting all of Matrix.org's infrastructure for the last 6 months (no mean feat, given the scale of the Matrix.org synapse &amp; postgres!) - and last week they committed to extend their sponsorship further to help the project out in our time of need.</p>
+<p>We've been very impressed with UpCloud's service since migrating over back in February - particularly their spectacularly fast block IO (<b>~350MB/s write, 92,000 IOPS, and over 5GB/s read!!</b>) which is incredibly useful for running a huge synapse deployment like Matrix.org's - and they have a great footprint of datacentres around the world.</p>
+<p>They also like Matrix so much that they've written this <a href="https://www.upcloud.com/support/install-matrix-synapse/">great tutorial for getting Synapse up and running on their hosts</a> - and best of all, they have a special $25 discount for anyone in the Matrix community who wishes to use them: check out <a href="https://www.upcloud.com/matrix/">https://www.upcloud.com/matrix/</a> for the details!</p>
+<p>We'd like to thank them profusely for being first in line to support us - and we look forward to seeing how far we can push their hardware over the coming months! :D</p>
+<h3 id="development-status">Development Status</h3>
+<p>Finally, loads and loads of stuff is happening on Matrix itself.  The main headlines are:</p>
+<ul>
+ 	<li><strong>Groups</strong>.  Work in Synapse and matrix-react-sdk is happening at breakneck speed to get Groups out the door as soon as possible, so we can use them both to support the funding drive and in general to implement one of the most asked-for features of Matrix: the ability to group rooms together into a well-defined community (similar to Slack Teams or Discord Servers etc).  The way Groups work is to let users define groupings of both users and rooms; you can also define a metadata for the group to let you build homepages similar to the one which Riot/Web sprouted a few months ago.  You can then refer to the group of users when inviting/banning/kicking etc - or when managing your own roomlist.  We think it's going to completely change how people use Matrix, and can't wait to see it land on riot.im/develop, although it's still a few weeks away.</li>
+ 	<li><strong>E2E Crypto</strong>.  We have three main things remaining here, after which E2E should be much much more usable for day-to-day purposes:
+<ol>
+ 	<li>Fixing the matrix-js-sdk to store crypto state in indexeddb rather than localstorage, to prevent multiple browser tabs racing and corrupting localstorage (which provides no locking mechanism).  This turns out to be much more of an epic than we thought, as indexeddb's APIs are all strictly async, resulting in a whole bunch of previously synchronous APIs in matrix-js-sdk needing to become async too, as well as requiring us to switch promises library at least from Q to Bluebird.  However, most of this is now done so hopefully the new storage layer will land shortly. <a href="https://github.com/vector-im/riot-web/issues/2325"> https://github.com/vector-im/riot-web/issues/2325</a> is the bug tracking this one...</li>
+ 	<li>Fixing the overall UX of managing devices in a room (including key shares). <a href="https://github.com/vector-im/riot-web/issues/4522"> https://github.com/vector-im/riot-web/issues/4522</a> is the bug for this one :)  Relatedly we also need to ensure invitees can decrypt messages in e2e rooms before they join (if history visibility allows it) - this is <a href="https://github.com/vector-im/riot-web/issues/3821">https://github.com/vector-im/riot-web/issues/3821</a></li>
+ 	<li>Fixing the UX of verifying devices (including cross-signing devices), to minimise the pain in verifying device ownership. <a href="https://github.com/vector-im/riot-web/issues/2142">https://github.com/vector-im/riot-web/issues/2142</a> is the master bug for this.</li>
+</ol>
+</li>
+ 	<li><strong>Integrations.  </strong>A large slice of the team is working on our next-generation integration hosting platform, which is starting to look unspeakably awesome.  We'll be yelling loudly about this once there's something to see and play with...
+<strong>
+</strong></li>
+ 	<li><strong>Rich Text Editor</strong>.  This was originally a GSoC project from last year, but is finally on by default now in matrix-react-sdk - letting users author their messages with full WYSIWYG behaviour and critically have a radically improved autocompletion UI/UX, including emoji, user names, room names, etc.  You can check it out at <a href="https://riot.im/develop">riot.im/develop</a> already :)</li>
+ 	<li><strong>Mentions</strong>.  We're finally semantically tagging references to users in messages so that they can be displayed nicely in the UI, and help with highlighting notifications!  This is due as soon as the Rich Text Editor work has finished.</li>
+ 	<li><strong>Mobile SDKs</strong>.  The iOS & Android teams are currently on a mission to get parity between the iOS & Android SDKs and matrix-react-sdk.  This is stuff like implementing the new User Search API; Membership Event List Summaries; Dark theme(!); Translations; etc.  Progress is looking good!</li>
+ 	<li><strong>Synapse performance</strong>.  Many many optimisations when calculating push rules when sending messages, which was taking up a substantial amount of the send path time.  Synapse develop looks to have reduced this significantly now - and as of Monday we're running the new optimisations on Matrix.org.</li>
+ 	<li><strong>Dendrite.  </strong>Lots of work going into implementing Invitations currently, including improvements to the overall append-only log architecture to support them nicely.</li>
+ 	<li><strong>Riot-Static</strong>.  This is one of our GSoC projects this year, written by Michael Telatynski (t3chguy) - providing a full static (no-JS) read-only view of Matrix, suitable for dumb web browsers and search engines.  It's looking really exciting (although needs CSS) - there's a copy currently deployed over at <a href="https://stormy-bastion-98790.herokuapp.com/">https://stormy-bastion-98790.herokuapp.com/</a>.</li>
+</ul>
+Meanwhile, there's a tonne of stuff happening in the community - an excellent summary may be found at this <a href="https://www.uhoreg.ca/blog/20170714-0834">Community Round Up blog post by uhoreg</a>!
+<p>So: this is where things stand right now - the team is sprinting away getting all the stuff above landed, and meanwhile I'm spending most of my life worrying about funding.  We'll try to keep blogging more regularly to give better visibility on progress on both the funding &amp; development situation, as well as to ensure there's a written public record as well as the regular supporter-only updates.  However, for the latest realtime updates and sneak previews and tidbits you'll probably want to sign up on <a href="https://patreon.com/matrixdotorg">Patreon</a> or <a href="https://liberapay.com/matrixdotorg">Liberapay</a> :D</p>
+<p>--Matthew</p>
+<p>[EDIT: I got the UpCloud stats completely wrong - they are even faster (by 10x!) than I quoted; the figures are now updated :)]</p>
+
+                
+            </div>
+        </article>
+        
+        <article class="post">
+            <header>
+                <h2><a href="&#x2F;blog&#x2F;2017&#x2F;07&#x2F;07&#x2F;a-call-to-arms-supporting-matrix&#x2F;" title="A Call to Arms: Supporting Matrix!">A Call to Arms: Supporting Matrix!</a></h2>
+                <span>
+                    07.07.2017 00:00
+                    —
+                    <a href="/category/general">
+                        General
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Hi folks,</p>
+<p><b>TL;DR: if you like Matrix (and especially if you're building stuff on it), please <i>support us via <a href="https://patreon.com/matrixdotorg">Patreon</a> or <a href="https://liberapay.com/matrixdotorg/">Liberapay</a></i> to keep the core team able to work on it full-time, otherwise the project is going to be seriously impacted.  And if you're a company who is invested in Matrix (e.g. itching for Dendrite), please get in touch ASAP if you'd like to sponsor core development work from the team.  And if you're a philanthropic billionaire who believes in our ideals of decentralisation, encryption, and open communication as a basic human right - we'd love to hear from you too O:-)</b></p>
+<img class="aligncenter size-large wp-image-2611" src="/blog/wp-content/uploads/2017/07/matrix-supporters-1024x248.png" alt="" width="1024" height="248" />
+<p>I was expecting this blog post to be the Matrix Summer Special, focusing entirely on the incredible progress and updates we've made in the last few months in Matrix.  However, instead I'm going to talk about something different and literally critical to Matrix's success.</p>
+<p>As many people know, Matrix.org development has historically been exclusively and very generously sponsored by a large multinational telecoms infrastructure company for whom most of the core team once built telco messaging apps.  However, despite the project progressing better than ever (more on that later), we have just had our funding dramatically cut by &gt;60%. <b>[Update: as of Aug 2017 it is effectively cut entirely, with enough $ left over to cover until end of October.]</b></p>
+<p>We seem to be suffering from a darkly amusing paradox, as the rationale from our corporate overlords is essentially: <i>“Wow! Matrix is doing great and growing well - and you seem to have all sorts of exciting people and companies using and building on it.  But we've been footing the whole development bill since the outset in May 2014, and this simply doesn't feel fair.  We're happy to keep funding though - but only if others do too!”</i>.  In other words, in some ways we are a victim of our own success...</p>
+<p>So we now find ourselves in the situation that despite the project looking better than ever and having a tonne of amazing stuff in the pipeline, we are suddenly missing the funding to keep the core team working on it.  And the team is quite sizeable - reflecting the ambition and size of Matrix: right now we have effectively 11 people working specifically on Matrix itself: 1 on Synapse, 1 on Dendrite, 1 on e2e crypto, 2 on matrix-react-sdk (which powers Riot/Web), 2 on matrix-ios-kit / matrix-ios-sdk, 2 on matrix-android-sdk, 1 on bridges, and me (Matthew) managing the overall project.  (This ignores folks who overlap the team who are working specifically on Riot stuff).</p>
+<p>Over the last few years we've had countless people ask if they can financially support Matrix. We haven't been able to accept it for various reasons, but now is the time for us to step towards a more independent setup, and avoid a repeat of the situation we're currently facing by opening up to external support.</p>
+<p><b>So we need help from the community to keep going!  </b><b>Please head over to <a href="https://patreon.com/matrixdotorg">Patreon</a></b><b> or <a href="https://liberapay.com/matrixdotorg/">Liberapay </a>and put some money in the meter </b>(or send some bitcoin to 1LxowEgsquZ3UPZ68wHf8v2MDZw82dVmAE or ether to 0xA5f9a4f9E024F6D727f7afdA9257e22329A97485)<b>.</b> In return, you'll get to keep Matrix evolving at a decent rate, be a member of the upcoming <code>+supporters:matrix.org</code> group (complete with flair badges!), and other benefits like access to #matrix-supporters:matrix.org - a new dedicated room for prioritised support, discounted goodies from Riot once paid services arrive, access to a weekly supporters-only status podcast(!), and of course receive our eternal thanks. :)</p>
+<p>Meanwhile, <b>if you're a company who depends on Matrix</b>: <a href="mailto:matthew@matrix.org">please get in touch</a>. We have the option for you to sponsor core Matrix development (e.g. Dendrite) or for us to provide you with more targeted support or feature development.  We're already talking to several organisations who want to accelerate Dendrite specifically - and the more support we have there the faster we can go.</p>
+<p>We'd also like to thank <a href="https://upcloud.com">UpCloud</a> for sponsoring hosting for the Matrix.org synapse instances - UpCloud has been coping impressively with the massive I/O and CPU/RAM requirements we have, and we recommend them unreservedly for <a href="https://upcloud.com/matrix">folks looking to run their own homeservers</a>.</p>
+<p>Finally, one of the longer term plans to help fund Matrix is to get sponsorship from Riot, once Riot starts offering paid services. So, <b>if you're an investor who's interested in the for-profit sides of Riot </b>(paid integrations and paid Matrix hosting) then please <a href="mailto:amandine@riot.im">get in touch with the Riot team</a> ASAP!</p>
+<p>Moving forward we are confident that we can secure funding, through sponsorship and Riot paid services, but in truth this decision caught us by surprise and so we need help both long term but also <b><i>right now!</i></b></p>
+<p>And whatever the funding situation, we're of course always looking for contributions for code, bug reports, or just spreading the word about the project too! :)</p>
+<h2 id="status-update">Status Update</h2>
+<p><strong><em>(or scroll to next section to see why this is bigger than &quot;just&quot; decentralised encrypted communication)</em></strong></p>
+<p>Despite the funding issue, the project really is going very well. Our vital stats (as seen through the lens of the matrix.org synapse) are looking like this:</p>
+<img class="aligncenter size-large wp-image-2587" src="/blog/wp-content/uploads/2017/07/Screen-Shot-2017-07-06-at-14.36.42-1024x780.png" alt="" width="1024" height="780" />
+<img class="aligncenter size-large wp-image-2585" src="/blog/wp-content/uploads/2017/07/Screen-Shot-2017-07-06-at-14.50.15-1024x918.png" alt="" width="1024" height="918" />
+<img class="aligncenter size-large wp-image-2588" src="/blog/wp-content/uploads/2017/07/Screen-Shot-2017-07-06-at-15.45.37-1024x694.png" alt="" width="1024" height="694" />
+<p>And meanwhile, looking back at the last big update (<a href="/blog/2016/12/26/the-matrix-holiday-special-2016-edition/">Holiday Special 2016</a>), we can compare our progress with our goals for 2017 thus far:</p>
+<ul>
+ 	<li><em>Getting E2E Encryption out of beta ASAP.</em></li>
+</ul>
+This has progressed massively - we haven't really yelled about it yet, but latest https://riot.im/develop/ now finally implements the ability to share message keys between clients to let them decrypt older history and fix “unable to decrypt” errors (Mobile coming soon).  Meanwhile various root causes of “unable to decrypt” errors have been gradually eliminated; I can't actually remember the last time I saw one! Once key-sharing and improved device verification UX is fully tested and tuned we should be able to declare E2E out of beta.
+<blockquote>
+<p dir="ltr" lang="en">Work on fixing the final causes of "unable to decrypt" (UISI) errors in E2E is progressing well: here's a sneak preview of things to come!! <a href="https://t.co/0oGJjm8ZHT">pic.twitter.com/0oGJjm8ZHT</a></p>
+<p>— Matrix (@matrixdotorg) <a href="https://twitter.com/matrixdotorg/status/867719250194071552">May 25, 2017</a></p>
+</blockquote>
+<ul>
+ 	<li><em>Ensuring we can scale beyond Synapse – i.e. implement Dendrite</em></li>
+</ul>
+Likewise, Dendrite is on track: we've implemented all the Hard Stuff which forms the skeleton of Dendrite (core federation, message signing, /sync, message sending, media repository etc) - which takes us to over <a href="https://docs.google.com/spreadsheets/d/1tkMNpIpPjvuDJWjPFbw_xzNzOHBA-Hp50Rkpcr43xTw/edit">50% of Phase 1</a>. After phase 1, we will have an initial usable release for all the core functionality.  Synapse's performance has also improved enormously this year.
+<blockquote>
+<p dir="ltr" lang="en">New milestone for Dendrite: sending messages over federation BOTH WAYS between dendrite & synapse! A bit more polish & we can cut an alpha!! <a href="https://t.co/DWs6rFqZcQ">pic.twitter.com/DWs6rFqZcQ</a></p>
+<p>— Matrix (@matrixdotorg) <a href="https://twitter.com/matrixdotorg/status/878279397106733056">June 23, 2017</a></p>
+</blockquote>
+<ul>
+ 	<li><em>Getting as many bots and bridges into Matrix as possible, and doing everything we can to support them, host them and help them be as high quality as possible – making the public federated Matrix network as useful and diverse as possible.</em></li>
+</ul>
+Bridges and bots continue - from the core team we have a ‘puppeting' Telegram bridge (<a href="https://github.com/matrix-org/matrix-appservice-tg">matrix-appservice-tg</a>), and from the wider community we have <a href="https://github.com/Half-Shot/matrix-appservice-discord">Discord</a>, <a href="https://github.com/matrix-hacks/matrix-puppet-skype">Skype</a>, <a href="https://github.com/matrix-hacks/matrix-puppet-signal">Signal</a>, new Rocket.Chat and more.  Getting them polished and live is certainly an area where we need more manpower though.
+<ul>
+ 	<li><em>Supporting Riot's leap to the mainstream, ensuring Matrix has at least one killer app.</em></li>
+</ul>
+Riot has been <a href="https://medium.com/@RiotChat/riot-web-and-desktop-version-0-10-0-is-here-e6147f5f576f">sprouting</a> <a href="https://medium.com/@RiotChat/riot-web-0-11-is-here-3edbf9dbb7ed">new releases</a> every few weeks, with a huge emphasis on proving UX:
+<ul>
+ 	<li style="padding-left: 30px;">an entirely new streamlined sign-up process</li>
+ 	<li style="padding-left: 30px;">the new concept of home pages</li>
+ 	<li style="padding-left: 30px;">a user directory search that actually works</li>
+ 	<li style="padding-left: 30px;">internationalised to 27 languages</li>
+ 	<li style="padding-left: 30px;">compact layout</li>
+ 	<li style="padding-left: 30px;">loads of desktop improvements</li>
+ 	<li style="padding-left: 30px;">piwik analytics support; etc.</li>
+</ul>
+<img class="aligncenter size-large wp-image-2598" src="/blog/wp-content/uploads/2017/07/Screen-Shot-2017-07-06-at-16.12.28-1024x566.png" alt="" width="1024" height="566" />
+<p>There is still a lot of UX work to be done, but it's converging fast on being a great entry point into the Matrix ecosystem, driving its growth across different groups and communities..</p>
+<p>Meanwhile, a <a href="https://medium.com/@RiotChat/riot-im-unveils-the-next-generation-of-its-mobile-client-6b38e2227ee2">massive update to the iOS &amp; Android apps</a> just landed yesterday, switching to an entirely new UI layout to separate People from Rooms, synchronized Read Markers, and more!</p>
+<ul>
+ 	<li><em>Adding the final major missing features:</em>
+<ul>
+ 	<li><em>Customisable User Profiles (this is almost done, actually)</em></li>
+</ul>
+</li>
+</ul>
+This is still hovering at ‘almost done', and will be needed for some of the implementation of Groups (see below)..
+<ul>
+ 	<li><em>Groups (i.e. ability to define groups of users, and perform invites, powerlevels, etc. per-group as well as per-user)</em></li>
+</ul>
+Groups are also in testing in Synapse too!  These will probably be the single biggest change to Matrix that we've seen since E2E encryption landed: it changes the dynamic of the whole network, given users can explicitly declare allegiance to different groups, which in turn have their own home pages and directories etc.  It lets users form communities, and declare their participation in those communities (if desired), and also lets rooms be grouped together.  One of our single biggest requests has been <a href="https://github.com/vector-im/riot-web/issues/2454">“subrooms”</a> and we're incredibly excited to see how well Groups solve this.
+<ul>
+ 	<li><em>Threading</em></li>
+</ul>
+Sadly no progress on Threading so far this year.
+<ul>
+ 	<li><em>Editable events (and Reactions)</em></li>
+</ul>
+We're hoping to get looking at this (at last!) once Groups are done.
+<ul>
+ 	<li><em>Maturing and polishing the spec (we are way overdue a new release)</em></li>
+</ul>
+You'll have noticed that in the “how many people work on Matrix?” stats above, we didn't mention anyone working on the Spec.  Because right now there isn't anyone explicitly maintaining it, unfortunately; updates are done best-effort when everyone's primary responsibilities allow it.  That said, there's quite a lot of good stuff currently <a href="/speculator/spec/HEAD/client_server/unstable.html">unreleased on HEAD.</a> This is something which is obviously critical to fix once we have sustainable funding sorted again.  We can only apologise to folks like the <a href="http://ruma.io">Ruma</a> developers who have suffered from the spec lag. :(
+<ul>
+ 	<li><em>Improving VoIP – especially conferencing.</em></li>
+</ul>
+VoIP is improving lots on iOS, thanks to Denis Morozov's GSoC project, and meanwhile we have all new conferencing powered by Jitsi on the horizon in the next few weeks too.
+<ul>
+ 	<li><em>Reputation/Moderation management (i.e. spam/abuse filtering).</em></li>
+</ul>
+Lots of thinking about this (see below), but no development yet.
+<ul>
+ 	<li><em>Much-needed SDK performance work on matrix-{'{'}react,ios,android{'}'}-sdk.</em></li>
+</ul>
+About 40% of the desired performance work has happened here (although not all has gone live yet).
+<ul>
+ 	<li><em>…and a few other things which would be premature to mention right now. :D</em></li>
+</ul>
+All will be revealed in the next week or two - but suffice it to say that Integrations are going to be getting a Lot More Useful™. :)
+<h2 id="reflections">Reflections</h2>
+<p>There are very very few people actually working professionally on trying to build general-purpose open communication networks and protocols.  There's us, some <a href="http://xmpp.org">XMPP</a>, <a href="http://ircv3.net/">IRCv3</a> and <a href="https://gnu.io/social/">GNU Social</a>/<a href="https://mastodon.social">Mastodon</a> folks, <a href="https://ring.cx/">GNU Ring</a>, <a href="http://tox.chat">Tox</a>, <a href="http://briarproject.org">Briar</a>, <a href="https://github.com/ssbc">Secure Scuttlebutt</a>, <a href="http://ipfs.io">IPFS</a>, <a href="http://status.im">Status.im</a>, <a href="http://ricochet.im">Ricochet</a>… and that's literally all the major projects I can think of (sorry if I missed you!).  There's probably only 50 developers in total working in this domain as their day job.</p>
+<p>Meanwhile, there are literally <strong><i>hundreds of thousands </i></strong>of folks trudging away building more and more near-indistinguishable proprietary closed communication systems - trapping users inside ever more silos and fragmenting the basic ability to communicate on the ‘net.  It's like a world where the open web was pushed into a tiny underground resistance, and everyone else was trapped in the walled gardens of AOL and Compuserve (or more contemporarily: Facebook, Twitter, WhatsApp etc).</p>
+<p>In other words: the whole world of decentralised communication desperately needs your support.  This is a clear case of user choice and freedom: to give users the ability to pick who they trust with their data and metadata, without being forced into unilaterally trusting the Silicon Valley megacorps.  And this, dear Reader, is your chance to fix the world for the greater good. Seriously, the Matrix team is one of a handful in the world in a position to continue to push things in the right direction and avoid us falling into a permanent dystopia where communication is even more closed and proprietary than the Public Telephone Network!</p>
+<p>Finally, there's an even bigger issue at stake here than open communication.  As an open network, people can literally publish whatever content they like into Matrix - same as the web or the internet itself.  As a result, there's scope for spam; abusive/malicious content; propaganda; and generally the whole spectrum of the best and worst of humanity.  Now, if we were a centralised system like Facebook, we might hire <a href="https://www.theguardian.com/news/2017/may/21/facebook-moderators-quick-guide-job-challenges">thousands of content moderators</a> to frantically impose a rulebook on ‘acceptable' content.  Or we might build invisible filter-bubbles for our users based on their social graph, cocooning them from scary unfamiliar content outside their social circles and reinforcing their preconceptions (whilst the resulting self-affirmation keeps them coming back, viewing more and more ads).</p>
+<p>But we're decentralised, and we have no absolute moral arbiter, and nor should we - on an open network it should be up to users and users alone to define and manage their own worldview and alignment.  Plus we are not fiscally obligated to keep users coming back to view more ads no matter what.  Instead, we are forced to confront the fundamental problem: building tools which empower users to curate and visualise their own content filters; letting them filter out the stuff they're not interested in or find repellant… while still helping them be aware of their own viewpoint and the shape of the world beyond it.  We haven't really started building this yet, but in the long term our feeling is that these tools will literally be vital for the survival of the human race (e.g. exposing anti-climate-change propaganda for what it is or helping users opt out of World War 3) - let alone the success of decentralisation.  A world where users blindly consume propaganda is doomed, and it's a fascinating situation that the same tools which will allow Matrix users to tune out the rooms, users and conversations they're not interested in could be directly applied to the bigger global problem.</p>
+<p>So: <b>Matrix needs you.</b> Please become a supporter on <a href="https://patreon.com/matrixdotorg">Patreon </a>or <a href="https://liberapay.com/matrixdotorg/">Liberapay</a>, and help us save the world :)</p>
+<ul>
+<li>Matthew, Amandine &amp; the whole Matrix.org team.</li>
+</ul>
+
+                
+            </div>
+        </article>
         
         <article class="post">
             <header>
@@ -434,336 +688,6 @@ The good news of course is that you can run your own synapse today to avoid gett
 <p>You can watch the video of the talks from the FOSDEM website <a href="https://fosdem.org/2017/schedule/event/encrypting_matrix/">here</a> and <a href="https://fosdem.org/2017/schedule/event/matrix_future/">here</a>.  Both talks necessarily include the similar exposition for folks unfamiliar with Matrix, so apologies for the duplication - also, the &quot;future of decentralised communication&quot; talk ended up a bit rushed; 20 minutes is not a lot of time to both explain Matrix and give an overview of the challenges we face in fixing spam, identity, moderation etc.  But if you like hearing overenthusiastic people talking too fast about how amazing Matrix is, you may wish to check out the videos :)  You can also get at the slides as PDF <a href="/blog/wp-content/uploads/2017/02/2017-02-03.1-FOSDEM-Encrypting-Matrix.pdf">here (E2E Encryption)</a> and <a href="/blog/wp-content/uploads/2017/02/2017-02-04-FOSDEM-Future.pdf">here (Future of Decentralisation)</a>.</p>
 <p>Huge thanks to evevryone who came to the talks or came and spoke to us at the stand or around the campus.  We had an amazing time, and are already looking forward to next year!</p>
 <p>Matthew &amp; the team</p>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2016&#x2F;12&#x2F;26&#x2F;the-matrix-holiday-special-2016-edition&#x2F;" title="The Matrix Holiday Special! (2016 edition)">The Matrix Holiday Special! (2016 edition)</a></h2>
-                <span>
-                    26.12.2016 00:00
-                    —
-                    <a href="/category/general">
-                        General
-                    </a>
-                    —
-                    <a
-                        href="/author/matthew-hodgson">
-                        Matthew Hodgson
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>We seem to have fallen into the pattern of giving seasonal 'state of the union' updates on the Matrix blog, despite best intentions to blog more frequently... although given the <a href="/blog/2016/11/12/the-matrix-autumn-special/">Autumn Update</a> ended up being posted in November this one is going to be a relatively incremental update.  Let's jump straight in:</p>
-<h3 id="e2e-encryption">E2E Encryption</h3>
-<p>Unless you've been in a coma for the last month you'll have hopefully noticed that we <a href="/blog/2016/11/21/matrixs-olm-end-to-end-encryption-security-assessment-released-and-implemented-cross-platform-on-riot-at-last/">launched the formal beta for E2E Encryption</a> across matrix-{'{'}js,ios,android{'}'}-sdk (and thus Riot/{'{'}Web, iOS, Android{'}'}) in November, complete with the successful <a href="http://nccgroup.trust/us/our-research/matrix-olm-cryptographic-review">independent public security assessment</a> of our Olm and Megolm cryptography library from NCC Group.  So far the beta has gone well in parts: the core Olm/Megolm crypto library has held up well with no bugfixes at all required since the audit (yay!).  However, we've hit a lot of different edge cases in the wild where devices can fail to share their outbound session ratchet state to other devices present in the room.  This results in the infamous &quot;Unknown Inbound Session ID&quot; (UISI) errors which many folks will have seen (now renamed to the more meaningful &quot;Unable to decrypt: The sender's device has not sent us the keys for this message&quot; error).</p>
-<p>Unfortunately there's a bunch of entirely different causes for this, both platform-specific and cross-platform, and we've been running around untangling all the error reports and getting to the bottom of it.  The good news is that we think we now know the vast majority of the causes, and fixes are starting to land.  We've also just finished a fairly time-consuming formal crypto code-review on the three application SDK implementations (JS, iOS &amp; Android) to shake out any other issues.  Meanwhile some new features have also landed - e.g. the ability for guests to use E2E!  The remaining stuff at this point before we can consider declaring E2E out of beta is:</p>
-<ul>
- 	<li>Finish fixing the UISI errors (in progress)</li>
- 	<li>Warn when unverified devices are added to a room</li>
- 	<li>Implement passphrased backup & restore for E2E state, so that folks can avoid losing their E2E history when they logout or switch to a new device</li>
- 	<li>Improve device verification.</li>
-</ul>
-Thanks to everyone who's been using E2E and reporting issues - given the number of different UISI error causes out there, it's been really useful to go through the different bug reports that folks have submitted.  Please continue to submit them when you see unexpected problems (especially over the coming months as stability improves!)
-<h3 id="new-projects">New Projects!</h3>
-<p>There have been a tonne of new projects popping up from all over the place since the last update.  Looking at the <a href="https://github.com/matrix-org/matrix-doc/commits/master/supporting-docs">git history</a> of the <a href="/docs/projects">projects page</a>, we've been adding one every few days!  Highlights include:</p>
-<h4 id="bridges">Bridges:</h4>
-<ul>
- 	<li><a href="https://github.com/kfatehi/matrix-appservice-imessage">https://github.com/kfatehi/matrix-appservice-imessage</a> - A solid foundation for an iMessage bridge from kfatehi, built on top of the official matrix-appservice-bridge stack.  iMessage and FaceTime's crypto is tied into Apple's Fairplay DRM (famous for securing the iTunes Music Store and App Store) and is locked all the way down to the <a href="https://www.apple.com/business/docs/iOS_Security_Guide.pdf">keypair baked into your Apple device's CPU</a> at fabrication time, so for now the bridge has to be run on a macOS device in order to bridge.  It's very promising indeed, and exciting to see bridges to relatively inhospitable environments like iMessage popping up!</li>
- 	<li><a href="https://github.com/Half-Shot/matrix-fb-chat/">https://github.com/Half-Shot/matrix-fb-chat/</a> - A proof-of-concept bridge for Facebook Messenger written by Half-Shot in TypeScript on top of the matrix-js-sdk.  Currently you have to manually configure which conversations to bridge between FB and Matrix, but it works!</li>
- 	<li><a href="http://github.com/exul/matrix-rocketchat">https://github.com/exul/matrix-rocketchat</a>  - A new Rocket.Chat bridge from exul, written in Rust.</li>
- 	<li><a href="https://github.com/pztrn/matrix-xmpp-bridge">https://github.com/pztrn/matrix-xmpp-bridge</a> - A major fork from pztrn of jfred's matrix-xmpp-bridge, now using flask, regius, alembic, sleekxmpp and all sorts.  Currently in very active dev!</li>
- 	<li><a href="https://github.com/CyrusTheHedgehog/Hangouts-Bridge">https://github.com/CyrusTheHedgehog/Hangouts-Bridge</a> - A basic PoC of a Hangouts bridge, written in python3 asyncio</li>
-</ul>
-<h4 id="clients">Clients</h4>
-<ul>
- 	<li><a href="https://github.com/lukebarnard1/j">https://github.com/lukebarnard1/j</a> - A blogging and journalism platform built on Matrix from Luke (moonlighting from the core team!)</li>
- 	<li><a href="https://live.hello-matrix.net/">https://live.hello-matrix.net/</a> - a live-blogging system powered by Matrix from @ar</li>
- 	<li><a href="https://github.com/pik/interlocutor">https://github.com/pik/interlocutor</a> - An experimental decentralized comment system powered by Matrix, written as a Polymer Webcomponent</li>
- 	<li><a href="https://github.com/tjgillies/freebird">https://github.com/tjgillies/freebird</a> - a basic twitter clone built on Matrix by tjgillies</li>
-</ul>
-<h4 id="other-projects">Other projects</h4>
-<ul>
- 	<li><a href="https://github.com/slp/matrix-pushgw">https://github.com/slp/matrix-pushgw</a> - A Matrix push gateway written in Golang which exposes a custom TCP push protocol to apps, letting them get push notifications directly from your own gateway rather than via GCM or APNS.  The intention is to use it for Sailfish and Fdroid.  The initial implementation looks very promising - just needs the clientside support, and then folks who don't trust Google with their notifications can run completely indie at last!</li>
- 	<li><a href="https://github.com/kultsinuppeli/riotchat">https://github.com/kultsinuppeli/riotchat</a> - Ansible playbook for Riot/Web and Synapse</li>
- 	<li><a href="https://github.com/bismark/matrex">https://github.com/bismark/matrex</a> - Experimental beginnings of a Matrix homeserver written in Elixir!</li>
- 	<li><a href="https://github.com/mlopezr/node-red-contrib-matrixbot">https://github.com/mlopezr/node-red-contrib-matrixbot</a> - Matrix bot plugin for the <a href="https://nodered.org/">Node-RED</a> IOT platform</li>
-</ul>
-<h3 id="bots-and-bridges">Bots and Bridges</h3>
-<p>There's been a bunch of work from the core team on bots &amp; bridges infrastructure over the last month:</p>
-<p>Rearchitecting the slack and gitter bridges to optionally support 'puppeting users'.  This is in some ways the ultimate flavour of bridging - where you authenticate with the remote service using your &quot;real&quot; gitter/slack/... credentials, and then the bridge has access to synchronise your full spectrum of data with Matrix.  This is in contrast to the current implementations where the bridge creates virtual users (e.g. Slack webhook bots or IRC virtual user bots) or uses a predefined bot (e.g. matrixbridge on gitter) to link the rooms.</p>
-<p>This has some huge advantages: e.g. ability to bridge Slack and Gitter DMs through properly to Matrix; bridging presence and typing notifications correctly, not requiring any custom bots or integrations to be configured; not proxying via a crappy bridge bot as per gitter today; letting Matrixed users be completely indistinguishable from their native selves on the remote platform - so supporting tab complete in Slack, profiles, presence, etc.  The main disadvantage is that you have to have an account on the platform already (although you could argue this is a feature, especially from the remote network's perspective!) and that you are delegating access to that account through to the bridge, so you'd better trust it.  However, you can always run your own bridge if trust is an issue.</p>
-<p>The work on this is mid-progress currently, but we're really looking forward to seeing the official Slack, Gitter and other bridges support this mode of operation in the new year!</p>
-<p>We've also been spending some time working with bridges written by the wider community (e.g. Half-Shot's <a href="https://github.com/Half-Shot/matrix-appservice-twitter">twitter bridge</a>) to get them deployed on the matrix.org homeserver itself, to help folks who can't run their own.</p>
-<p>Meanwhile there's been a lot of work going into supporting the IRC bridge. Main highlights there are:</p>
-<ul>
- 	<li>The release of <a href="/blog/2016/12/19/matrix-appservice-irc-0-7-0-is-out/">matrix-appservice-irc 0.7</a>, with all sorts of major new features</li>
- 	<li>Turning on bi-directional membership list syncing at last for all networks other than Freenode!  In theory, at least, you should finally see the same list of room members in both IRC and Matrix!!</li>
- 	<li>Handling IRC PM botspam from Freenode and OFTC, which bridge through as invite spam into Matrix.  Sorry if you've been bitten by this.  We've worked around it for now by setting appropriate umodes on the IRC bots, and by implementing a 'bulk reject' button on Riot (under in Settings).  This caused a few nasty outages on Freenode and OFTC. On the plus side, at least it shows that Riot scales up to receiving 2000+ invites without exhibiting ill effects...</li>
- 	<li>Considering how to improve history visibility on IRC to avoid scenarios where channel history is shared between users in the same room (even if their IRC bot has temporarily disconnected).  This was a major problem during the Freenode/OFTC outages mentioned earlier.</li>
-</ul>
-Last but not least, we've just released <a href="https://github.com/matrix-org/gomatrix">gomatrix - a new official Matrix client SDK for golang</a>!  <a href="https://github.com/matrix-org/go-neb">Go-neb</a> (the reference golang Matrix bot framework) has been entirely refactored to use gomatrix, which should keep it honest as a 1st class Matrix client SDK for those in the Golang community.  We highly recommend all Golang nuts to go <a href="https://godoc.org/github.com/matrix-org/gomatrix">read the documentation</a> and give it a spin!
-<h3 id="riot-desktop">Riot Desktop</h3>
-<p>Riot development has been largely preoccupied with E2E debugging in the respective Matrix Client SDKs, but <a href="https://medium.com/@RiotChat/introducing-riot-0-9-and-desktop-riot-3585d1027243">0.9.3 was released last week adding in Electron-based desktop app support</a>.  (Remember, if you hate Electron-style desktop apps which provide a desktop app by embedded a webbrowser, you can always use another Matrix client!).  If you've been missing having Riot as a proper desktop app, go get involved!</p>
-<img class="aligncenter size-large wp-image-1874" src="/blog/wp-content/uploads/2016/12/Screen-Shot-2016-12-26-at-01.00.12-1024x687.png" alt="screen-shot-2016-12-26-at-01-00-12" width="1024" height="687" />
-<h3 id="next-generation-homeservers">Next Generation Homeservers</h3>
-<h4 id="ruma">Ruma</h4>
-<p><a href="https://ruma.io">Ruma</a> is a project led by Jimmy Cuadra to build a Matrix homeserver in Rust - the project has been ploughing steadily onwards through 2016 with a bit of an acceleration during December.  You can follow progress at the excellent <a href="https://www.ruma.io/news/">This Week in Ruma</a> blog, <a href="https://github.com/ruma/ruma/pulse/monthly">watching the project on Github</a>, and tracking the <a href="https://github.com/ruma/ruma/blob/master/STATUS.md">API status dashboard</a>.  Some of the latest PRs are looking very promising in terms of getting the core remaining CS APIs working, e.g:</p>
-<ul class="simple-conversation-list varied-states">
- 	<li><span class="num">Merged #113</span>
- <a class="title" href="https://github.com/ruma/ruma/pull/113">Add implementation for the filter endpoint.</a> 4 days ago</li>
- 	<li><span class="state state-merged">Merged</span>
-<span class="num">#125</span>
- <a class="title" href="https://github.com/ruma/ruma/pull/125">Adding a Server header to API responses</a> 5 days ago</li>
- 	<li><span class="state state-merged">Merged</span>
-<span class="num">#105</span>
- <a class="title" href="https://github.com/ruma/ruma/pull/105">Add basic implementation for the tags endpoint.</a> 5 days ago</li>
- 	<li><span class="num">Open #106</span>
- <a class="title" href="https://github.com/ruma/ruma/pull/106">Add basic implementation for the sync endpoint.</a> 2 days ago</li>
- 	<li><span class="state state-open">Open</span>
-<span class="num">#58</span>
- <a class="title" href="https://github.com/ruma/ruma/issues/58">API: GET /events</a> 20 days ago</li>
-</ul>
-Needless to say, we've been keeping an eye on Ruma with extreme interest, not least as some of the Matrix core team are rabid Rustaceans too :)  We can't wait to see it exposing a usable CS API in the hopefully not-too-distant future!!
-<h4 id="dendrite">Dendrite</h4>
-<p>Meanwhile, in the core team, we've been doing some fairly serious experimentation on next-generation homeservers.  Synapse is in a relatively stable state currently, and we've implemented most of the horizontal scalability tricks available to us there (e.g. splitting out <a href="https://github.com/matrix-org/synapse/blob/master/docs/workers.rst">worker processes</a>).  Instead we're starting to hit some fundamental limitations of the architecture: the fact that the whole codebase effectively assumes that it's talking to a single consistent database instance; python's single-threadedness and memory inefficiency; twisted's lack of profiling; being limited to sqlite's featureset; the fact that the schema has grown organically and is difficulty to refactor aggressively; the fact the app papers over SQL problems by caching everything in RAM (resulting in synapse's high RAM requirements); the constant bugs caused by lack of type safety; etc.</p>
-<p>We started an experiment in Golang to fix some of this a year ago in the form of <a href="https://github.com/matrix-org/dendron">Dendron</a> - a &quot;<a href="http://www.martinfowler.com/bliki/StranglerApplication.html">strangler pattern</a>&quot; homeserver skeleton intended to sit in front of a synapse and slowly port endpoints over to Go.  In practice, Dendron ended up just being a rather dubious Matrix-aware loadbalancer, and meanwhile no endpoints got moved into it (other than /login, which then got moved out again due to the extreme confusion of having to maintain implementations in both Dendron &amp; Synapse).  The main reasons for Dendron's failure are a) we had enough on our hands supporting Synapse; b) there were easier scalability improvements (e.g. workers) to be had on Synapse; c) the gradual migration approach looked like it would end up sharing the same storage backend as Synapse anyway, and potentially end up inheriting a bunch of Synapse's woes.</p>
-<p>So instead, a month or so ago we started a new project codenamed Dendrite (aka Dendron done right ;D) - this time an entirely fresh standalone Golang codebase for rapid development and iteration on the platonic ideal of a next-generation homeserver (and an excuse to audit and better document &amp; spec some of the <a href="https://docs.google.com/document/d/14KVTNIZIig1iyRBzK91L6B7tnsfmon7CIWh-DCFRd6k/edit">murkier</a> bits of Matrix).  The project is still very early and there's no doc or code to be seen yet, but it's looking cautiously optimistic (especially relative to Dendron!).  The project goals are broadly:</p>
-<ol>
- 	<li>To build a new HS capable of supporting the exponentially increasing load on matrix.org ASAP (which is currently at 600K accounts, 50K rooms, 5 messages/s and growing fast).</li>
- 	<li>To architecturally support full horizontal scalability through clustering and sharding from the outset - i.e. no single DBs or DB writer processes.</li>
- 	<li>To optimise for Postgres rather than be constrained by SQLite, whilst still aiming for a simple but optimal schema and storage layer.  Optimising for smaller resource footprints (e.g. environments where a Postgres is overkill) will happen later - but the good news is that the architecture will support it (unlike Synapse, which doesn't scale down nicely even with SQLite).</li>
-</ol>
-It's too early to share more at this stage, but thought we should give some visibility on where things are headed!  Needless to say, Synapse is here for the foreseeable - we think of it as being the Matrix equivalent of the role Apache httpd played for the Web.  It's not enormously efficient, but it's popular and relatively mature, and isn't going away.  Meanwhile, new generations of servers like Ruma and Dendrite will come along for those seeking a sleeker but more experimental beast, much as nginx and lighttpd etc have come along as alternatives to Apache.  Time will tell how the server ecosystem will evolve in the longer term, but it's obviously critical to the success of Matrix to have multiple active independent server implementations, and we look forward to seeing how Synapse, Ruma & Dendrite progress!
-<h3 id="2017">2017</h3>
-<p>Looking back at where we were at <a href="/blog/2015/12/25/the-matrix-holiday-special/">this time last year</a>, 2016 has been a critical year for Matrix as the ecosystem has matured - rolling out E2E encryption; building out proper bot &amp; bridge infrastructure; stabilising and tuning Synapse to keep up with the exponential traffic growth; seeing the explosion of contributors and new projects; seeing Riot edging closer to becoming a viable mainstream communication app.</p>
-<p>2017 is going to be all about scaling Matrix - both the network, the ecosystem, and the project.  Whilst we've hopefully transitioned from being a niche decentralisation initiative to a relatively mainstream FOSS project, our ambition is unashamedly to become a mainstream communication (meta)network usable for the widest possible audience (whilst obviously still supporting our current community of FOSS &amp; privacy advocates!).  With this in mind, stuff on the menu for 2017 includes:</p>
-<ul>
- 	<li>Getting E2E Encryption out of beta asap.</li>
- 	<li>Ensuring we can scale beyond Synapse - see Dendrite, above.</li>
- 	<li>Getting as many bots and bridges into Matrix as possible, and doing everything we can to support them, host them and help them be as high quality as possible - making the public federated Matrix network as useful and diverse as possible.</li>
- 	<li>Supporting Riot's leap to the mainstream, ensuring Matrix has at least one killer app.</li>
- 	<li>Adding the final major missing features:
-<ul>
- 	<li>Customisable User Profiles (this is almost done, actually)</li>
- 	<li>Groups (i.e. ability to define groups of users, and perform invites, powerlevels etc per-group as well as per-user)</li>
- 	<li>Threading</li>
- 	<li>Editable events (and Reactions)</li>
-</ul>
-</li>
- 	<li>Maturing and polishing the spec (we are way overdue a new release)</li>
- 	<li>Improving VoIP - especially conferencing.</li>
- 	<li>Reputation/Moderation management (i.e. spam/abuse filtering).</li>
- 	<li>Much-needed SDK performance work on matrix-{'{'}react,ios,android{'}'}-sdk.</li>
- 	<li>...and a few other things which would be premature to mention right now :D</li>
-</ul>
-This is going to be an incredibly exciting ride (right now, it feels a bit like being on a toboggan which has made its way onto a fairly steep ski slope...) and we can only thank you: the community, for getting the project to this point - whether you're hacking on Matrix, contributing pull requests, filing issues, testing apps, spreading the word, or just simply using it.
-<p>See you in 2017, and thanks again for flying Matrix.</p>
-<ul>
-<li>Matthew, Amandine &amp; the Matrix Team.</li>
-</ul>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2016&#x2F;11&#x2F;23&#x2F;when-ericsson-discovered-matrix&#x2F;" title="When Ericsson discovered Matrix...">When Ericsson discovered Matrix...</a></h2>
-                <span>
-                    23.11.2016 00:00
-                    —
-                    <a href="/category/general">
-                        General
-                    </a>
-                    —
-                    <a
-                        href="/author/matthew-hodgson">
-                        Matthew Hodgson
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p><i>As something completely different, we've invited Stefan Ålund and his team at Ericsson to write a guest blog
-post about the really cool stuff Ericsson is doing with Matrix.  This is a fascinating glimpse into how major folks
-are already launching commercial products on top of Matrix - whilst also making significant contributions back to
-the projects and the community.  We'd like to thank Stefan and Ericsson for all their support and perseverance,
-and we wish them the very best with the Ericsson Contextual Communication Cloud!
-</i></p>
-<p><i>-- Matthew
-</i></p>
-<p>At the end of 2014, my colleague Adam Bergkvist and I attended the WebRTC Expo in Paris, partly to promote our
-Open Source project <a href="https://www.openwebrtc.org">OpenWebRTC</a>, but also to meet the rest of the European
-WebRTC community and see what others were working on. </p>
-<p>At Ericsson Research we had been working on WebRTC for quite some time. Not only on the client-side framework and
-how those could enable some truly <a href="https://www.youtube.com/watch?v=0nl0fuWzoGk">experimental stuff</a>, but
-more importantly how this emerging technology could be used to build new kinds of communication services where
-communication is not <em>the</em> service (A calling B), but is integrated as part of some other service or context. A simple
-example would be a health care solution, where the starting point could be the patient records and communication
-technologies are integrated to enable remote discussions between patients and their doctors.</p>
-<p>Our research in this area, that we started calling “contextual communication”, pointed in a different direction from
-Ericsson's traditional communication business, therefore making it hard for us to transfer our ideas and technologies
-out from Ericsson Research. We increasingly had the feeling that we needed to build something new and start from a
-clean slate, so to speak.</p>
-<p>Some of our guiding principles:</p>
-<ul>
- 	<li style="font-weight: 400;">Flexibility - the communication should be able to integrate anywhere
-</li>
- 	<li style="font-weight: 400;">Fast iterations - browsers and WebRTC are moving targets
-</li>
- 	<li style="font-weight: 400;">Open - interoperability is important for communication systems
-</li>
- 	<li style="font-weight: 400;">Low cost - operations for the core communication should approach 0
-</li>
- 	<li style="font-weight: 400;">Trust - build on the Ericsson brand and technology leadership 
-</li>
-</ul>
-We had a pretty good idea about what we wanted to build, but even though Ericsson is a big company, the team working in this area was relatively small and also had a number of other commitments that we couldn't abandon.
-<p>I think that is enough of a background, let's circle back to the WebRTC Expo and the reason why I am writing this post on the Matrix blog.</p>
-<p>Adam and I were pretty busy in <a href="https://twitter.com/OpenWebRTC/status/544781293838684161">our booth</a> talking
-to people and giving demos, so we actually missed when Matrix won
-the <a href="/blog/2014/12/24/matrix-wins-best-innovation-award-at-webrtc-paris/"> Best Innovation Award</a>.
-Nonetheless we finally got some time to walk around and I started chatting with Matthew and Amandine who were manning
-the Matrix booth. Needless to say, I was really impressed with their vision and what they wanted to build. The
-comparison to email and how they wanted to make it possible to build an interoperable bridge between communication
-“islands”, all in an open (source) manner, really appealed to me.</p>
-<p>To be honest, the altruistic aspects of decentralising communication was not the most important part for us,
-even if we were sympathetic to the cause, working for a company that was founded from
-&quot;<a href="http://www.ericsson.hr/lars-magnus-ericsson-entrepreneur">the belief that communication is a basic human need</a>&quot;.
-We ultimately wanted to build a new kind of communication offering from Ericsson, and it looked like Matrix might be able
-to play a part in that.</p>
-<p>I had recently hired a couple of <a href="http://teknikspranget.se">interns</a> and as soon as I came back from Paris, we
-set them to work evaluating Matrix. They were quickly able to port an existing WebRTC service (developed and used in-house)
-to use Matrix signalling and user management. We initially had some concerns about the maturity of the reference
-Home Server <a href="https://github.com/matrix-org/synapse">implementation</a> (remember, this was almost 2 years ago) and
-we didn't want to start developing our own since we were still a small team. However, Matthew and the rest of the Matrix
-team worked closely with us, helping to answer all our (dumb) questions and we finally got to a point where we had the
-confidence to say “screw it, let's try this and see if it flies”. ?</p>
-<p>Ericsson had recently launched the <a href="https://www.ericsson.com/innovation/ericsson-garage">Ericsson Garage</a> where
-employees could pitch ideas for how to build new business. So we decided to give the process a try and presented an idea
-on how Ericsson could start selling contextual communication as-a-Service, directly to enterprises that wanted help
-integrating communication into their business processes, but didn't necessarily have the competence or business interest
-to run their own communication services. We got accepted and moved (physically) out of Research to sit in the Garage for
-the next 4 months, developing a <a href="https://en.wikipedia.org/wiki/Minimum_viable_product">MVP</a>.</p>
-<p>Since the primary interface to our offering would be through SDKs on various platforms, we decided early on to develop our
-own. The SDKs were implementing the standard Matrix specification, but we put a lot of time in increasing the robustness
-and flexibility in the WebRTC call handling and eventually with added peer-2-peer data and collaboration features, on top
-of the secure WebRTC <a href="https://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-13">DataChannel</a>. On the
-server side, our initialconcerns about Synapse were eventually removed completely as the Matrix team relentlessly kept
-working on fixing performance issues, patching security holes and provided a story on how to scale. Over the years we
-have contributed with several patches to Synapse (SAML auth and auth improvements; application service improvements) and
-provided input to the Matrix specification. We have always found the Matrix team be very inclusive and easy to work with.</p>
-<p>The project graduated successfully from the Ericsson Garage and moved in to Ericsson's Business Unit IT &amp; Cloud
-Products, where we started to increase the size of the team and just last month signed a contract with our first
-customer. We call the solution Ericsson Contextual Communication Cloud, or ECCC for short, and it can be summarised on a
-high level by the following picture:</p>
-<img class="aligncenter size-full wp-image-1852" src="/blog/wp-content/uploads/2016/11/Picture1.png" alt="ECCC in a nutshell" width="975" height="546" />
-<p>If you are interested in ECCC, feel free to reach out at <a href="https://discuss.c3.ericsson.net">https://discuss.c3.ericsson.net</a></p>
-<p>As with any project developed in the open, it is essential to have a healthy community around it. We have received
-excellent support from the Matrix project and they have always been open for discussion, engaged our developers and
-listened to our needs. We depend on Matrix now and we see great potential for the future. We hope that others will adopt the 
-technology and help make the community grow even stronger.</p>
-<ul>
-<li>Stefan Ålund and the Ericsson ECCC Team</li>
-</ul>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="&#x2F;blog&#x2F;2016&#x2F;11&#x2F;21&#x2F;matrix-s-olm-end-to-end-encryption-security-assessment-released-and-implemented-cross-platform-on-riot-at-last&#x2F;" title="Matrix’s ‘Olm’ End-to-end Encryption security assessment released - and implemented cross-platform on Riot at last!">Matrix’s ‘Olm’ End-to-end Encryption security assessment released - and implemented cross-platform on Riot at last!</a></h2>
-                <span>
-                    21.11.2016 00:00
-                    —
-                    <a href="/category/general">
-                        General
-                    </a>
-                    —
-                    <a
-                        href="/author/matthew-hodgson">
-                        Matthew Hodgson
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p>TL;DR: We're officially starting the cross-platform beta of end-to-end encryption in Matrix today, with matrix-js-sdk, matrix-android-sdk and matrix-ios-sdk all supporting e2e via the <a href="/docs/spec/olm.html">Olm</a> and <a href="/docs/spec/megolm.html">Megolm</a> cryptographic ratchets.  Meanwhile, <a href="https://www.nccgroup.trust/us/our-research/matrix-olm-cryptographic-review">NCC Group have publicly released their security assessment</a> of the underlying libolm library, kindly funded by the <a href="https://www.opentech.fund/">Open Technology Fund</a>, giving a full and independent transparent report on where the core implementation is at. The assessment was incredibly useful, finding some interesting issues, which have all been solved either in libolm itself or at the Matrix client SDK level.</p>
-<p>If you want to get experimenting with E2E, the flagship Matrix client <a href="https://riot.im">Riot</a> has been updated to use the new SDK on Web, Android and iOS… although the iOS App is currently stuck in “export compliance” review at Apple. However, iOS users can mail <a href="mailto:support@riot.im">support@riot.im</a> to request being added to the TestFlight beta to help us test!  <strong>Update: iOS is now live and approved by Apple (as of Thursday Nov 24.  You can still mail us if you want to get beta builds though!)</strong></p>
-<p>We are ridiculously excited about adding an open decentralised e2e-encrypted pubsub data fabric to the internet, and we hope you are too! :D</p>
-<hr />
-<p>Ever since the beginning of the Matrix we've been promising end-to-end (E2E) encryption, which is rather vital given conversations in Matrix are replicated over every server participating in a room.  This is no different to SMTP and IMAP, where emails are typically stored unencrypted in the IMAP spools of all the participating mail servers, but we can and should do much better with Matrix: there is no reason to have to trust all the participating servers not to snoop on your conversations.  Meanwhile, the internet is screaming out for an open decentralised e2e-encrypted pubsub data store - which we're now finally able to provide :)</p>
-<p>Today marks the start of a formal public beta for our <a href="/docs/spec/megolm.html">Megolm</a> and <a href="/docs/spec/olm.html">Olm</a>-based end-to-end encryption across Web, Android and iOS. New builds of the <a href="https://riot.im">Riot</a> matrix client have just been released on top of the newly 
-Megolm
--capable <a href="https://github.com/matrix-org/matrix-js-sdk">matrix-js-sdk</a>, <a href="https://github.com/matrix-org/matrix-ios-sdk">matrix-ios-sdk</a> and <a href="https://github.com/matrix-org/matrix-android-sdk">matrix-android-sdk</a> libraries
-.  The stuff that ships today is:</p>
-<ul>
- 	<li style="font-weight: 400;"><b>E2E encryption, based on the <a href="/git/olm/about">Olm</a> <a href="https://en.wikipedia.org/wiki/Double_Ratchet_Algorithm">Double Ratchet</a> and Megolm ratchet, working in beta on all three platforms</b>.  We're still chasing a few nasty bugs which can cause ‘unknown inbound session IDs', but in general it should be stable: please report these via Github if you see them.
-</li>
- 	<li style="font-weight: 400;"><b>Encrypted attachments are here!</b> (limited to ~2MB on web, but as soon as <a href="https://github.com/matrix-org/matrix-react-sdk/pull/562">https://github.com/matrix-org/matrix-react-sdk/pull/562</a> lands this limit will go away)
-</li>
- 	<li style="font-weight: 400;"><b>Encrypted VoIP signalling</b> (and indeed any arbitrary Matrix events) are here!
-</li>
- 	<li style="font-weight: 400;">Tracking whether the messages you receive are from <strong>‘verified' devices</strong> or not.
-</li>
- 	<li style="font-weight: 400;">Letting you <strong>block specific target devices</strong> from being able to decrypt your messages or not.
-</li>
- 	<li style="font-weight: 400;"><strong>The <a href=" http://matrix.org/docs/guides/e2e_implementation.html">Official Implementor's Guide</a></strong>.  If you're a developer wanting to add Olm into your Matrix client/bot/bridge etc, this is the place to start.
-</li>
-</ul>
-Stuff which remains includes:
-<ul>
- 	<li style="font-weight: 400;">Speeding up sending the first message after adds/removes a device from a room (this can be <a href="https://github.com/vector-im/vector-web/issues/2157"><em>very</em> slow</a> currently - e.g. 10s, but we can absolutely do better).
-</li>
- 	<li style="font-weight: 400;">Proper device verification.  Currently we compare out-of-band device fingerprints, which is a terrible UX.  Lots of work to be done here.
-</li>
- 	<li style="font-weight: 400;">Turning on encryption for private rooms by default.  We're deliberately keeping E2E opt-in for now during beta given there is a small risk of undecryptable messages, and we don't want to lull folks into a false sense of security.  As soon as we're out of beta, we'll obviously be turning on E2E for any room with private history by default.  This also gives the rest of the Matrix ecosystem a chance to catch up, as we obviously don't want to lock out all the clients which aren't built on matrix-{'{'}js,ios,android{'}'}-sdk.
-</li>
- 	<li style="font-weight: 400;">We're also considering building a simple Matrix proxy to aid migration that you can run on localhost that E2Es your traffic as required (so desktop clients like WeeChat, NaChat, Quaternion etc would just connect to the proxy on localhost via pre-E2E Matrix, which would then manage all your keys & sessions & ratchets and talk E2E through to your actual homeserver.
-</li>
- 	<li style="font-weight: 400;">Matrix clients which can't speak E2E won't show encrypted messages at all.
-</li>
- 	<li style="font-weight: 400;">...<a href="https://github.com/vector-im/vector-web/issues?q=is%3Aissue%20is%3Aopen%20label%3Atype%3Ae2e">lots and lots of bugs</a> :D
-.  We'll be out of beta once these are all closed up.
-</li>
-</ul>
-In practice the system is working very usably, especially for 1:1 chats.  Big group chats with lots of joining/parting devices are a bit more prone to weirdness, as are edge cases like running multiple Riot/Webs in adjacent tabs on the same account.  Obviously we don't recommend using the E2E for anything mission critical requiring 100% guaranteed privacy whilst we're still in beta, but we do thoroughly recommend everyone to give it a try and <a href="https://github.com/vector-im/vector-web/issues">file bugs</a>!
-<p>In Riot you can turn it on a per-room basis if you're an administrator that room by flipping the little padlock button in Room Settings.  Warning: once enabled, you cannot turn it off again for that room (to avoid the race condition of people suddenly decrypting a room before someone says something sensitive):</p>
-<img class="aligncenter wp-image-1849" src="/blog/wp-content/uploads/2016/11/Screen-Shot-2016-11-21-at-15.21.15-1024x646.png" alt="screen-shot-2016-11-21-at-15-21-15" width="552" height="348" />
-<p>The journey to end-to-end encryption has been a bit convoluted, with work beginning in Feb 2015 by the Matrix team on <a href="/git/olm"><b>Olm</b></a>: an independent Apache-licensed implementation in C/C++11 of the Double Ratchet algorithm designed by Trevor Perrin and Moxie Marlinspike (
-<a href="https://github.com/trevp/double_ratchet/wiki">https://github.com/trevp/double_ratchet/wiki</a> - then called ‘axolotl').  We picked the Double Ratchet in its capacity as the most ubiquitous, respected and widely studied e2e algorithm out there - mainly thanks to Open Whisper Systems implementing it in Signal, and subsequently licensing it to Facebook for WhatsApp and Messenger, Google for Allo, etc.  And we reasoned that if we are ever to link huge networks like WhatsApp into Matrix whilst preserving end-to-end encrypted semantics, we'd better be using at least roughly the same technology :D</p>
-<p>One of the first things we did was to write a <a href="/docs/spec/olm.html">terse but formal spec</a> for the Olm implementation of the Double Ratchet, fleshing out the original sketch from Trevor &amp; Moxie, especially as at the time there wasn't a formal spec from Open Whisper Systems (until yesterday! Congratulations to Trevor &amp; co for publishing their <a href="https://whispersystems.org/docs/specifications/doubleratchet/">super-comprehensive spec</a> :).  We wrote a first cut of the ratchet over the course of a few weeks, which looked pretty promising but then the team got pulled into improving Synapse performance and features as our traffic started to accelerate faster than we could have possibly hoped.  We then got back to it again in June-Aug 2015 and basically finished it off and added a basic implementation to matrix-react-sdk (and picked up by Vector, now Riot)… before getting side-tracked again.  After all, there wasn't any point in adding e2e to clients if the rest of the stack is on fire!</p>
-<p>Work resumed again in May 2016 and has continued ever since - starting with the addition of a new ratchet to the mix.  The Double Ratchet (Olm) is great at encrypting conversations between pairs of devices, but it starts to get a bit unwieldy when you use it for a group conversation - especially the huge ones we have in Matrix.  Either each sender needs to encrypt each message N times for every device in the room (which doesn't scale), or you need some other mechanism.</p>
-<p>For Matrix we also require the ability to explicitly decide how much conversation history may be shared with new devices.  In classic Double Ratchet implementations this is anathema: the very act of synchronising history to a new device is a huge potential privacy breach - as it's deliberately breaking perfect forward secrecy.  Who's to say that the device you're syncing your history onto is not an attacker?  However, in practice, this is a very common use case.  If a Matrix user switches to a new app or device, it's often very desirable that they can decrypt old conversation history on the new device.  So, we make it configurable per room.  (In today's implementation the ability to share history to new devices is still disabled, but it's coming shortly).</p>
-<p>The end result is an entirely new ratchet that we've called <a href="/docs/spec/megolm.html"><b>Megolm</b></a> - which is included in the same <a href="/git/olm">libolm library</a> as Olm.  The way Megolm works is to give every sender in the room its own encrypted ratchet (‘outbound session'), so every device encrypts each message once based on the current key given by their ratchet (and then advances the ratchet to generate a new key).  Meanwhile, the device shares the state of their ‘outbound session' to every other device in the room via the normal Olm ratchet in a 1:1 exchange between the devices.  The other devices maintain an ‘inbound session' for each of the devices they know about, and so can decrypt their messages.  Meanwhile, when new devices join a room, senders can share their sessions according to taste to the new device - either giving access to old history or not depending on the configuration of the room.  You can read more in the <a href="/docs/spec/megolm.html">formal spec for Megolm</a>.</p>
-<p>We finished the combination of Olm and Megolm back in September 2016, and shipped the very first implementation in the matrix-js-sdk and matrix-react-sdk as used in <a href="https://riot.im">Riot</a> with some major limitations (no encrypted attachments; no encrypted VoIP signalling; no history sharing to new devices).</p>
-<p>Meanwhile, we were incredibly lucky to receive a public security assessment of the Olm &amp; Megolm implementation in libolm from <a href="https://www.nccgroup.trust/us/our-services/security-consulting/cryptography-services/">NCC Group Cryptography Services</a> - famous for assessing the likes of Signal, Tor, OpenSSL, etc and other Double Ratchet implementations. The assessment was very generously funded by the <a href="https://opentech.fund">Open Technology Fund</a> (who specialise in paying for security audits for open source projects like Matrix).  Unlike other Double Ratchet audits (e.g. Signal), we also insisted that the end report was publicly released for complete transparency and to show the whole world the status of the implementation.</p>
-<p><a href="https://www.nccgroup.trust/us/our-research/matrix-olm-cryptographic-review/">NCC Group have released the public report today</a> - it's pretty hardcore, but if you're into the details please go check it out.  The version of libolm assessed was v1.3.0, and the report found 1 high risk issue, 1 medium risk, 6 low risk and 1 informational issues - of which 3 were in Olm and 6 in Megolm.  Two of these (‘Lack of Backward Secrecy in Group Chats' and ‘Weak Forward Secrecy in Group Chats') are actually features of the library which power the ‘configurable privacy per-room' behaviour mentioned a few paragraphs above - and it's up to the application (e.g. matrix-js-sdk) to correctly configure privacy-sensitive rooms with the appropriate level of backward or forward secrecy; the library doesn't enforce it however.  The most interesting findings were probably the fairly exotic Unknown Key Share attacks in both Megolm and Olm - check out NCC-Olm2016-009 and NCC-Olm2016-010 in the report for gory details!</p>
-<p>Needless to say all of these issues have been solved with the release of libolm 2.0.0 on October 25th and included in today's releases of the client SDKs and Riot.  Most of the issues have been solved at the application layer (i.e. matrix-js-sdk, ios-sdk and android-sdk) rather than in libolm itself.  Given the assessment was specifically for libolm, this means that technically the risks still exist at libolm, but given the correct engineering choice was to fix them in the application layer we went and did it there. (This is explains why the report says that some of the issues are ‘not fixed' in libolm itself).</p>
-<p>Huge thanks to Alex Balducci and Jake Meredith at NCC Group for all their work on the assessment - it was loads of fun to be working with them (over Matrix, of course) and we're really happy that they caught some nasty edge cases which otherwise we'd have missed.  And thanks again to Dan Meredith and Chad Hurley at OTF for funding it and making it possible!</p>
-<p>Implementing decentralised E2E has been by far the hardest thing we've done yet in Matrix, ending up involving most of the core team.  Huge kudos go to: Mark Haines for writing the original Olm and matrix-js-sdk implementation and devising Megolm, designing attachment encryption and implementing it in matrix-{'{'}js,react{'}'}-sdk, Richard van der Hoff for taking over this year with implementing and speccing Megolm, finalising libolm, adding all the remaining server APIs (device management and to_device management for 1:1 device Olm sessions), writing the <a href=" http://matrix.org/docs/guides/e2e_implementation.html">Implementor's Guide</a>, handling the NCC assessment, and pulling together all the strands to land the final implementation in matrix-js-sdk and matrix-react-sdk.  Meanwhile on Mobile, iOS &amp; Android wouldn't have happened without Emmanuel Rohée, who led the development of E2E in matrix-ios-sdk and <a href="http://matrix.org/git/olm/log/?h=olmkit">OLMKit</a> (the iOS wrappers for libolm based on the <a href="https://github.com/chrisballinger/OLMKit">original work by Chris Ballinger</a> at <a href="https://chatsecure.org/">ChatSecure</a> - many thanks to Chris for starting the ball rolling there!), Pedro Contreiras and Yannick Le Collen for doing all the Android work, Guillaume Foret for all the application layer iOS work and helping coordinate all the mobile work, and Dave Baker who got pulled in at the last minute to rush through encrypted attachments on iOS (thanks Dave!).  Finally, eternal thanks to everyone in the wider community who's patiently helped us test the E2E whilst it's been in development in <a href="https://matrix.to/#/#megolm:matrix.org">#megolm:matrix.org</a>; and to Moxie, Trevor and <a href="https://whispersystems.org">Open Whisper Systems</a> for inventing the Double Ratchet and for allowing us to write our own implementation in Olm.</p>
-<p>It's literally the beginning for end-to-end encryption in Matrix, and we're unspeakably excited to see where it goes.  More now than ever before the world needs an open communication platform that combines the freedom of decentralisation with strong privacy guarantees, and we hope this is a major step in the right direction.</p>
-<p>-- Matthew, Amandine &amp; the whole Matrix team.</p>
-<p>Further reading:</p>
-<ul>
- 	<li>Libolm website: <a href="/git/olm/about">https://matrix.org/git/olm/about</a></li>
- 	<li>Libolm implementor's guide: <a href="http://matrix.org/docs/guides/e2e_implementation.html">http://matrix.org/docs/guides/e2e_implementation.html</a></li>
- 	<li>Formal specification for Olm: <a href="/docs/spec/olm.html">https://matrix.org/docs/spec/olm.html</a></li>
- 	<li>Formal specification for Megolm: <a href="/docs/spec/megolm.html">https://matrix.org/docs/spec/megolm.html</a></li>
- 	<li>Formal specification for E2E in Matrix (WIP, yet to be merged): <a href="http://matrix.org/speculator/spec/drafts%2Fe2e/client_server/unstable.html#end-to-end-encryption">http://matrix.org/speculator/spec/drafts%2Fe2e/client_server/unstable.html#end-to-end-encryption</a></li>
- 	<li>The full security assessment: <a href="https://www.nccgroup.trust/us/our-research/matrix-olm-cryptographic-review/">https://www.nccgroup.trust/us/our-research/matrix-olm-cryptographic-review/</a></li>
- 	<li>NCC Group: <a href="https://www.nccgroup.trust/us/">https://www.nccgroup.trust/us/</a></li>
- 	<li>Open Technology Fund: <a href="https://www.opentech.fund/">https://www.opentech.fund/</a></li>
- 	<li>If you're from the press and you've read this far... congratulations, but you probably wanted <a href="https://pr.blonde20.com/matrix-e2e/">this instead</a> :D</li>
-</ul>
 
                 
             </div>
