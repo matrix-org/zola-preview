@@ -118,6 +118,80 @@ Matrix, a digest of the past week activity.
     
     <article class="post">
         <header>
+            <h1><a href="&#x2F;blog&#x2F;2023&#x2F;01&#x2F;31&#x2F;synapse-1-76-released&#x2F;" title="Synapse 1.76 released">Synapse 1.76 released</a></h1>
+            <span>
+                31.01.2023 00:00
+                —
+                <a href="/category/releases">
+                    Releases
+                </a>
+                —
+                <a href="/author/h-shay">
+                    H. Shay
+                </a>
+            </span>
+            
+        </header>
+        <div>
+            <p>Greetings Matrix fans! We've published Synapse <a href="https://github.com/matrix-org/synapse/releases/tag/v1.76.0">version 1.76</a>
+as the new stable release this week. Synapse admins are encouraged to upgrade
+to it at their convenience. Please take a look at the <a href="https://matrix-org.github.io/synapse/v1.76/upgrade.html#upgrading-to-v1760">upgrade notes</a>
+for any important information about upgrading.</p>
+<h2 id="announcements">Announcements</h2>
+<p>The big news is that faster joins for all has arrived! When joining a room for the first time,
+Synapse 1.76.0 will request a partial join from the other server by default. Previously, server admins
+had to opt-in to this using an experimental config flag.</p>
+<p>Server admins can opt out of this feature for the time being by setting</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>experimental:
+</span><span>    faster_joins: false
+</span></code></pre>
+<p>in their server config.</p>
+<p>For everyone else, after a faster join Synapse considers that room &quot;partially joined&quot;. In this state, you should be able to</p>
+<ul>
+<li>read incoming messages (on clients which support lazy-loaded members in /sync);</li>
+<li>see incoming state changes, e.g. room topic changes; and</li>
+<li>send messages, if the room is unencrypted.</li>
+</ul>
+<p>Synapse has to spend more effort to complete the join in the background. Once this finishes, you will be able to</p>
+<ul>
+<li>send messages, if the room is encrypted;</li>
+<li>retrieve room history from before your join, if permitted by the room settings; and</li>
+<li>access the full list of room members.</li>
+</ul>
+<p>Practically, this means that the experience of joining a large room over federation should be greatly improved. In past
+versions of Synapse, joining a large room such as Matrix HQ over federation could take up to 30 mins. This time has been
+cut to ~20-30 seconds to partially join in the new release. Those of you who have been watching this know this has been
+a huge undertaking, big shout out to the team for getting it over the line! We're excited the community to try it, as
+always if you encounter any problems you are encouraged to file an <a href="https://github.com/matrix-org/synapse/issues/new?assignees=&amp;labels=&amp;template=BUG_REPORT.yml">issue</a>.</p>
+<h3 id="changes-to-the-account-data-replication-streams">Changes to the account data replication streams</h3>
+<p>Please note that Synapse has changed the format of the account data and devices replication streams (between workers).
+This is a forwards- and backwards-incompatible change: v1.75 workers cannot process account data replicated by v1.76
+workers, and vice versa.</p>
+<p>Once all workers are upgraded to v1.76 (or downgraded to v1.75), account data and device replication will resume as normal.</p>
+<h2 id="the-new-stuff">The new stuff</h2>
+<h3 id="the-default-room-version-has-now-been-updated-to-v10">The default room version has now been updated to <a href="https://spec.matrix.org/v1.5/rooms/v10/">v10</a></h3>
+<p>Room version 10 is now the default room version in Synapse 1.76.0. This room version builds on v9 to introduce a new
+<code>knock_restricted</code> join rule, allowing prospective members to more easily join such a room. The <code>knock_restricted</code> join
+rule allows for prospective members of a room to join either through knocking or through <code>join_restrictions</code>, which allows
+prospective members to join a restricted room based on whether they are a joined member of another room. You can read more
+about restricted rooms <a href="https://spec.matrix.org/v1.5/client-server-api/#restricted-rooms">here</a>.</p>
+<h3 id="synapse-now-implements-experimental-support-for-msc3930-push-rules-for-polls">Synapse now implements experimental support for <a href="https://github.com/matrix-org/matrix-spec-proposals/pull/3930">MSC3930</a> Push rules for Polls</h3>
+<p>Synapse has added some new, default push rules for <a href="https://github.com/matrix-org/matrix-spec-proposals/pull/3381">MSC3881</a>-esque event types.</p>
+<p>This allows for notifications from polls, ie when a poll starts or ends.</p>
+<h2 id="everything-else">Everything else</h2>
+<p>See the full <a href="https://github.com/matrix-org/synapse/releases/tag/v1.76.0">changelog</a>, for a
+complete list of changes in the release.</p>
+<p>Synapse is a Free and Open Source Software project, and we'd like to extend our
+thanks to everyone who contributed to these releases, including: katlol, thezaidbintariq,
+dklimpel, FSG-Cat, tjay27, emgrav, villepeh.</p>
+<p>We are also grateful to anyone helping us make Synapse better by sharing their
+feedback and reporting issues, or helping with community support questions.</p>
+
+        </div>
+    </article>
+    
+    <article class="post">
+        <header>
             <h1><a href="&#x2F;blog&#x2F;2023&#x2F;01&#x2F;27&#x2F;this-week-in-matrix-2023-01-27&#x2F;" title="This Week in Matrix 2023-01-27">This Week in Matrix 2023-01-27</a></h1>
             <span>
                 27.01.2023 21:12
@@ -2470,47 +2544,6 @@ https://gitlab.com/jaller94/dash-matrix-spec#use-with-zeal</p>
 <p>There are a number of caveats, which I'll come to, but first: this is an important step in a project which we've been working on for 9 months. Most people who use Matrix will be familiar with the pain of joining a large room over federation: typically you are just faced with a spinner, which is eventually replaced by a cryptic error. If you're lucky, the room eventually pops up in your room list of its own accord. The whole experience is <a href="https://github.com/matrix-org/synapse/issues/1211">one of the longest-standing open issues in Synapse</a>.</p>
 
             <p><a href="/blog/2022/10/18/testing-faster-remote-room-joins/#continue-reading">Continue reading…</a></p>
-            
-        </div>
-    </article>
-    
-    <article class="post">
-        <header>
-            <h1><a href="&#x2F;blog&#x2F;2022&#x2F;10&#x2F;17&#x2F;synapse-1-69-released&#x2F;" title="Synapse 1.69 released">Synapse 1.69 released</a></h1>
-            <span>
-                17.10.2022 18:52
-                —
-                <a href="/category/releases">
-                    Releases
-                </a>
-                —
-                <a href="/author/brendan-abolivier">
-                    Brendan Abolivier
-                </a>
-            </span>
-            <br>
-            <small>Last update: 17.10.2022 18:07</small>
-        </header>
-        <div>
-            <p>Hey everyone, it's time for a new Synapse release! <a href="https://github.com/matrix-org/synapse/releases/tag/v1.69.0">Synapse
-1.69</a> is out, fresh
-out of the oven. But before we take a look at it, here's a quick announcement:</p>
-<blockquote>
-<p>We have recently disclosed a moderate severity security vulnerability, which
-was fixed in <a href="https://matrix.org/blog/2022/07/06/synapse-1-62-released/">Synapse
-1.62</a> (released on
-July 5th 2022). This issue affects all homeservers running a version of
-Synapse older than 1.62 with open federation. If this is the case for your
-deployment, please update to a more recent version of Synapse at your earliest
-convenience.</p>
-<p>See advisory
-<a href="https://github.com/matrix-org/synapse/security/advisories/GHSA-jhjh-776m-4765">GHSA-jhjh-776m-4765</a>
-and <a href="https://www.cve.org/CVERecord?id=CVE-2022-31152">CVE-2022-31152</a> for more
-information.</p>
-</blockquote>
-<p>Now let's see what's new in Synapse 1.69!</p>
-
-            <p><a href="/blog/2022/10/17/synapse-1-69-released/#continue-reading">Continue reading…</a></p>
             
         </div>
     </article>

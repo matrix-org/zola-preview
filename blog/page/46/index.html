@@ -118,6 +118,165 @@ Matrix, a digest of the past week activity.
     
     <article class="post">
         <header>
+            <h1><a href="&#x2F;blog&#x2F;2018&#x2F;10&#x2F;16&#x2F;usage-of-the-matrix-js-sdk&#x2F;" title="Usage of the matrix-js-sdk">Usage of the matrix-js-sdk</a></h1>
+            <span>
+                16.10.2018 00:00
+                —
+                <a href="/category/tutorials">
+                    Tutorials
+                </a>
+                —
+                <a href="/author/ben-parsons">
+                    Ben Parsons
+                </a>
+            </span>
+            
+        </header>
+        <div>
+            <p>We have a brand new, exciting guide page offering an introduction to <a href="https://github.com/matrix-org/matrix-js-sdk">matrix-js-sdk</a>. This guide will live with the documentation at <a href="/docs/guides/usage-of-the-matrix-js-sdk">https://matrix.org/docs/guides/usage-of-the-matrix-js-sdk</a>,  but you can find the text below.</p>
+<hr />
+<p>Matrix allows open real-time communications over the Internet using HTTP and JSON. This makes developing clients to connect to Matrix servers really easy! Because it's open, and uses simple syntax for messages, you can connect Matrix to anything that communicates over a standard HTTP interface - later projects in this series will explore ideas such as building bots, performing machine learning on message content, and connecting IoT devices such as Philips Hue lights.</p>
+<h2 id="making-a-matrix-client">Making a Matrix Client</h2>
+<p>Let's explore how we would make a very simple Matrix client, with only the ability to perform an initial sync, and to get member lists and the timeline for rooms of our choice.</p>
+<p>This article will explore the <a href="/docs/spec/client_server/latest.html">Matrix Client-Server API</a>, making use of the <a href="https://github.com/matrix-org/matrix-js-sdk/">matrix-js-sdk</a>. Later articles may discuss making the underlying calls. Specifically we will cover:</p>
+<ul>
+ 	<li>login</li>
+ 	<li>simple syncing</li>
+ 	<li>listening for timeline events</li>
+ 	<li>access the `MatrixInMemoryStore`</li>
+ 	<li>sending messages to rooms</li>
+ 	<li>how to respond to specific messages, as a bot would</li>
+</ul>
+We'll use Node.js as our environment, though the <a href="https://github.com/matrix-org/matrix-js-sdk/">matrix-js-sdk</a> can also be used directly in the browser.
+<p>Before we start, make sure you have Node.js and NPM installed: follow instructions at <a href="https://nodejs.org/">nodejs.org</a> for your platform. Then create a new directory to work in:</p>
+<pre data-lang="sh" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-sh "><code class="language-sh" data-lang="sh"><span>mkdir my-first-matrix-client
+</span><span>cd my-first-matrix-client
+</span></code></pre>
+<h2 id="let-s-write-javascript">Let's write JavaScript</h2>
+<p>Once you're ready, the first thing to do is install the <a href="https://github.com/matrix-org/matrix-js-sdk/">matrix-js-sdk</a> from NPM:</p>
+<pre data-lang="sh" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-sh "><code class="language-sh" data-lang="sh"><span>npm install matrix-js-sdk
+</span></code></pre>
+<p>We include the SDK in our source exactly as expected:</p>
+<pre data-lang="js" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-js "><code class="language-js" data-lang="js"><span style="color:#9b9b9b;">import </span><span>sdk </span><span style="color:#569cd6;">from </span><span style="color:#d69d85;">&#39;matrix-js-sdk&#39;</span><span>;
+</span></code></pre>
+<h2 id="login-with-an-access-token">Login with an access token</h2>
+<p>Instantiate a new client object and use an <code>access token</code> to login:</p>
+<pre data-lang="js" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-js "><code class="language-js" data-lang="js"><span style="color:#569cd6;">const </span><span>client = sdk.createClient({
+</span><span>    baseUrl: </span><span style="color:#d69d85;">&quot;https://matrix.org&quot;</span><span>,
+</span><span>    accessToken: </span><span style="color:#d69d85;">&quot;....MDAxM2lkZW50aWZpZXIga2V5CjAwMTBjaWQgZ2Vu....&quot;</span><span>,
+</span><span>    userId: </span><span style="color:#d69d85;">&quot;@USERID:matrix.org&quot;
+</span><span>});
+</span><span style="color:#608b4e;">// note that we use the full MXID for the userId value
+</span></code></pre>
+<p><small>(<a href="http://matrix-org.github.io/matrix-js-sdk/0.11.1/global.html#createClient">jsdoc for <code>createClient</code></a>)</small></p>
+<p>If you are logged into Riot, you can find an <code>access token</code> for the logged-in user on the Settings page.</p>
+<p>If the homeserver you're logging in to supports logging in with a password, you can also retrieve an <code>access token</code> programmatically using the API. To do this, create a new <code>client</code> with no authentication parameters, then call <code>client.login()</code> with <code>&quot;m.login.password&quot;</code>:</p>
+<pre data-lang="js" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-js "><code class="language-js" data-lang="js"><span style="color:#569cd6;">const </span><span>client = sdk.createClient(</span><span style="color:#d69d85;">&quot;https://matrix.org&quot;</span><span>);
+</span><span>client.login(</span><span style="color:#d69d85;">&quot;m.login.password&quot;</span><span>, {</span><span style="color:#d69d85;">&quot;user&quot;</span><span>: </span><span style="color:#d69d85;">&quot;USERID&quot;</span><span>, </span><span style="color:#d69d85;">&quot;password&quot;</span><span>: </span><span style="color:#d69d85;">&quot;hunter2&quot;</span><span>}).then((response) </span><span style="color:#569cd6;">=&gt; </span><span>{
+</span><span>    console.log(response.access_token);
+</span><span>});
+</span></code></pre>
+<p>In any case, once logged in either with a password or an access token, the client can get the current access token via:</p>
+<pre data-lang="js" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-js "><code class="language-js" data-lang="js"><span>console.log(client.getAccessToken());
+</span></code></pre>
+<p><strong>Note:</strong> it is essential to keep this access token safe, as it allows complete access to your Matrix account!</p>
+<h2 id="sync-and-listen">Sync and Listen</h2>
+<p>Next we start the client, this sets up the connection to the server and allows us to begin syncing:</p>
+<pre data-lang="js" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-js "><code class="language-js" data-lang="js"><span>client.startClient();
+</span></code></pre>
+<p>Perform a first sync, and listen for the response, to get the latest state from the homeserver:</p>
+<pre data-lang="js" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-js "><code class="language-js" data-lang="js"><span>client.once(</span><span style="color:#d69d85;">&#39;sync&#39;</span><span>, </span><span style="color:#569cd6;">function</span><span>(state, prevState, res) {
+</span><span>    console.log(state); </span><span style="color:#608b4e;">// state will be &#39;PREPARED&#39; when the client is ready to use
+</span><span>});
+</span></code></pre>
+<p>Once the sync is complete, we can add listeners for events. We could listen to ALL incoming events, but that would be a lot of traffic, and too much for our simple example. If you want to listen to all events, you can add a listen as follows:</p>
+<pre data-lang="js" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-js "><code class="language-js" data-lang="js"><span>client.on(</span><span style="color:#d69d85;">&quot;event&quot;</span><span>, </span><span style="color:#569cd6;">function</span><span>(event){
+</span><span>    console.log(event.getType());
+</span><span>    console.log(event);
+</span><span>})
+</span></code></pre>
+<p>Instead, let's just listen to events happening on the timeline of rooms for which our user is a member:</p>
+<pre data-lang="js" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-js "><code class="language-js" data-lang="js"><span>client.on(</span><span style="color:#d69d85;">&quot;Room.timeline&quot;</span><span>, </span><span style="color:#569cd6;">function</span><span>(event, room, toStartOfTimeline) {
+</span><span>    console.log(event.event);
+</span><span>});
+</span></code></pre>
+<h2 id="access-the-store">Access the Store</h2>
+<p>When we created a new client with <code>sdk.createClient()</code>, an instance of the default store, <code>MatrixInMemoryStore</code> was created and enabled. When we sync, or instruct otherwise our client to fetch data, the data is automatically added to the store.</p>
+<p>To access the store, we use accessor methods. For example, to get a list of rooms in which our user is joined:</p>
+<pre data-lang="js" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-js "><code class="language-js" data-lang="js"><span style="color:#608b4e;">// client.client.getRooms() returns an array of room objects
+</span><span style="color:#569cd6;">var </span><span>rooms = client.getRooms();
+</span><span>rooms.forEach(room </span><span style="color:#569cd6;">=&gt; </span><span>{
+</span><span>    console.log(room.roomId);
+</span><span>});
+</span></code></pre>
+<p><small>(<a href="http://matrix-org.github.io/matrix-js-sdk/0.11.1/module-client-MatrixClient.html#getRooms">jsdoc for <code>client.getRooms</code></a>)</small></p>
+<p>More usefully, we could get a list of members for each of these rooms:</p>
+<pre data-lang="js" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-js "><code class="language-js" data-lang="js"><span style="color:#569cd6;">var </span><span>rooms = client.getRooms();
+</span><span>rooms.forEach(room </span><span style="color:#569cd6;">=&gt; </span><span>{
+</span><span>    </span><span style="color:#569cd6;">var </span><span>members = room.getJoinedMembers();
+</span><span>    members.forEach(member </span><span style="color:#569cd6;">=&gt; </span><span>{
+</span><span>        console.log(member.name);
+</span><span>    });
+</span><span>});
+</span></code></pre>
+<p>For each room, we can inspect the timeline in the store:</p>
+<pre data-lang="js" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-js "><code class="language-js" data-lang="js"><span style="color:#569cd6;">var </span><span>rooms = client.getRooms();
+</span><span>rooms.forEach(room </span><span style="color:#569cd6;">=&gt; </span><span>{
+</span><span>    room.timeline.forEach(t </span><span style="color:#569cd6;">=&gt; </span><span>{
+</span><span>        console.log(</span><span style="color:#b5cea8;">JSON</span><span>.stringify(t.event.content));
+</span><span>    });
+</span><span>});
+</span></code></pre>
+<h2 id="send-messages-to-rooms">Send messages to rooms</h2>
+<p>To send a message, we create a content object, and specify a room to send to. In this case, I've taken the room ID of <code>#test:matrix.org</code>, and used it as an example:</p>
+<pre data-lang="js" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-js "><code class="language-js" data-lang="js"><span style="color:#569cd6;">var </span><span>testRoomId = </span><span style="color:#d69d85;">&quot;!jhpZBTbckszblMYjMK:matrix.org&quot;</span><span>;
+</span><span>
+</span><span style="color:#569cd6;">var </span><span>content = {
+</span><span>    </span><span style="color:#d69d85;">&quot;body&quot;</span><span>: </span><span style="color:#d69d85;">&quot;Hello World&quot;</span><span>,
+</span><span>    </span><span style="color:#d69d85;">&quot;msgtype&quot;</span><span>: </span><span style="color:#d69d85;">&quot;m.text&quot;
+</span><span>};
+</span><span>
+</span><span>client.sendEvent(testRoomId, </span><span style="color:#d69d85;">&quot;m.room.message&quot;</span><span>, content, </span><span style="color:#d69d85;">&quot;&quot;</span><span>).then((res) </span><span style="color:#569cd6;">=&gt; </span><span>{
+</span><span>   </span><span style="color:#608b4e;">// message sent successfully
+</span><span>}).catch((err) </span><span style="color:#569cd6;">=&gt; </span><span>{
+</span><span>    console.log(err);
+</span><span>}
+</span></code></pre>
+<p><small>(<a href="http://matrix-org.github.io/matrix-js-sdk/0.11.1/module-client-MatrixClient.html#sendEvent">jsdoc for <code>client.sendEvent</code></a>)</small></p>
+<p>Knowing this, we can put together message listening and message sending, to build a bot which just echos back any message starting with a &quot;!&quot;:</p>
+<pre data-lang="js" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-js "><code class="language-js" data-lang="js"><span style="color:#569cd6;">var </span><span>testRoomId = </span><span style="color:#d69d85;">&quot;!jhpZBTbckszblMYjMK:matrix.org&quot;</span><span>;
+</span><span>
+</span><span>client.on(</span><span style="color:#d69d85;">&quot;Room.timeline&quot;</span><span>, </span><span style="color:#569cd6;">function</span><span>(event, room, toStartOfTimeline) {
+</span><span>    </span><span style="color:#608b4e;">// we know we only want to respond to messages
+</span><span>    </span><span style="color:#569cd6;">if </span><span>(event.getType() !== </span><span style="color:#d69d85;">&quot;m.room.message&quot;</span><span>) {
+</span><span>        </span><span style="color:#569cd6;">return</span><span>;
+</span><span>    }
+</span><span> 
+</span><span>    </span><span style="color:#608b4e;">// we are only interested in messages from the test room, which start with &quot;!&quot;
+</span><span>    </span><span style="color:#569cd6;">if </span><span>(event.getRoomId() === testRoomId </span><span style="color:#569cd6;">&amp;&amp; </span><span>event.getContent().body[</span><span style="color:#b5cea8;">0</span><span>] === </span><span style="color:#d69d85;">&#39;!&#39;</span><span>) {
+</span><span>        sendNotice(event.event.content.body);
+</span><span>    }
+</span><span>});
+</span><span>
+</span><span style="color:#569cd6;">function </span><span>sendNotice(body) {
+</span><span>    </span><span style="color:#569cd6;">var </span><span>content = {
+</span><span>        </span><span style="color:#d69d85;">&quot;body&quot;</span><span>: body.substring(</span><span style="color:#b5cea8;">1</span><span>),
+</span><span>        </span><span style="color:#d69d85;">&quot;msgtype&quot;</span><span>: </span><span style="color:#d69d85;">&quot;m.notice&quot;
+</span><span>    };
+</span><span>    client.sendEvent(testRoomId, </span><span style="color:#d69d85;">&quot;m.room.message&quot;</span><span>, content, </span><span style="color:#d69d85;">&quot;&quot;</span><span>, (err, res) </span><span style="color:#569cd6;">=&gt; </span><span>{
+</span><span>        console.log(err);
+</span><span>    });
+</span><span>}
+</span></code></pre>
+<p>Take a look at the <code>msgtype</code> in the object above. In the previous example, we used &quot;m.text&quot; for this field, but now we're using &quot;m.notice&quot;. Bots will often use &quot;m.notice&quot; to differentiate their messages. This allows the client to render notices differently, for example Riot, the most popular client, renders notices with a more pale text colour.</p>
+<h2 id="further">Further</h2>
+<p>There is much, much more to Matrix, the Client-Server API and the <a href="https://github.com/matrix-org/matrix-js-sdk/">matrix-js-sdk</a>, but this guide should give some understanding of simple usage. In subsequent guides we'll cover more detail and also explore projects you can build on top, such as IoT controls and chatbot interfaces. For now you can take a look at <a href="https://github.com/matrix-org/matrix-js-sdk/tree/master/examples">other examples in the matrix-js-sdk itself</a>, and also the <a href="/docs/spec/client_server/latest.html">Matrix Client-Server API</a> which it implements.</p>
+
+        </div>
+    </article>
+    
+    <article class="post">
+        <header>
             <h1><a href="&#x2F;blog&#x2F;2018&#x2F;10&#x2F;12&#x2F;this-week-in-matrix-2018-10-12&#x2F;" title="This Week in Matrix 2018-10-12">This Week in Matrix 2018-10-12</a></h1>
             <span>
                 12.10.2018 00:00
@@ -1003,102 +1162,6 @@ In practice, finalising the S2S API is now blocked on proving the implementation
  	<li>Make sure that we close db connections opened during init (<a href="https://github.com/matrix-org/synapse/issues/3764">#3764</a>)</li>
  	<li>Unignore synctl in .dockerignore to fix docker builds (<a href="https://github.com/matrix-org/synapse/issues/3802">#3802</a>)</li>
 </ul>
-
-        </div>
-    </article>
-    
-    <article class="post">
-        <header>
-            <h1><a href="&#x2F;blog&#x2F;2018&#x2F;09&#x2F;08&#x2F;this-week-in-matrix-2018-09-07&#x2F;" title="This Week In Matrix 2018-09-07">This Week In Matrix 2018-09-07</a></h1>
-            <span>
-                08.09.2018 00:00
-                —
-                <a href="/category/this-week-in-matrix">
-                    This Week in Matrix
-                </a>
-                —
-                <a href="/author/matthew-hodgson">
-                    Matthew Hodgson
-                </a>
-            </span>
-            
-        </header>
-        <div>
-            <hr />
-<p>Hi all,</p>
-<p>Ben's away today, so this TWIM is brought to you mainly in association with Cadair's TWIMbot!</p>
-<h2 id="spec-activity">Spec Activity</h2>
-<p>Since <a href="/blog/2018/09/03/matrix-spec-update-august-2018/">last week's sprint to get the new spec releases</a> out, focus on the core team has shifted exclusively to the remaining stuff needed to cut the first stable release for the Server-Server API.  In practice this means fleshing out the MSCs in flight and implementing them - work has progressed on both improving auth rules, switching event IDs to be hashes and others.  Whilst implementing this in Synapse we're also doing a complete audit and overhaul of the current federation code, hence the <a href="/blog/2018/09/06/critical-security-update-synapse-0-33-3-1/">0.33.3.1</a> security release this week.</p>
-<p>Meanwhile, in the community, ma1uta reports:</p>
-<blockquote>
-<p>I am working on the <a href="https://github.com/ma1uta/jeon">jeon</a> (java matrix api) to update it to the latest stable release. Also I changed versions of api to form <code>rX.Y.Z-N</code> where <code>rX.Y.Z</code> is a API version and <code>N</code> is a library version within API. So, I have prepared Push API (r0.1.0-1), Identity API (r0.1.0-1) and Appservice API (r0.1.0-1) for the first release and current updating the C2S API to the r0.4.0 version.</p>
-</blockquote>
-<h2 id="xmpp-bridging">XMPP Bridging</h2>
-<p>Are you in the market for a Matrix-XMPP bridge? When I say &quot;market&quot;, I mean it because this week we have <em>two </em>announcements for bridging to XMPP! You can choose whether you'd prefer your bridge to be implemented as a puppet, or a bot.</p>
-<p>Ma1uta has a new version of <a href="https://github.com/ma1uta/matrix-jabber-java-bridge">his Matrix-Xmpp bridge</a>:</p>
-<blockquote>
-<p>It is a double-puppet bridge which can connects the Matrix and XMPP ecosystems. Just invite the <code>@_xmpp_master:ru-matrix.org</code> and tell him: <code>@_xmpp_master: connect test@conference.jabber.org</code> to connect current room with the specified conference.<br />You can ask about this bridge in the <a href="https://matrix.to/#/#matrix-jabber-java-bridge:ru-matrix.org">#matrix-jabber-java-bridge:ru-matrix.org</a> room.<br />Currently supports only conferences and only <code>m.text</code> messages. 1:1 conversations and other message types will be later.</p>
-</blockquote>
-<p>maze appeared this week and announced <a href="https://github.com/djmaze/mxbridge">MxBridge</a>, a new Matrix-XMPP bridge:</p>
-<blockquote>
-<p>It works as a bot, so it is non-puppeting. Rooms can be mapped dynamically by the bot administrator(s). There is no support for 1-1 chats (yet). MxBridge is written as a multi-process application in Elixir and it should scale quite well (but don't tie me down on it ;)). <a href="https://github.com/djmaze/mxbridge">https://github.com/djmaze/mxbridge</a></p>
-</blockquote>
-<h2 id="seaglass">Seaglass</h2>
-<p>Neil powers onwards with <a href="https://github.com/neilalexander/seaglass">Seaglass</a>, with updates this week including:</p>
-<ul>
- 	<li>Displaying stickers</li>
- 	<li>Lazy-loading room history on startup to help with performance</li>
- 	<li>Scrollback support (both forwards and backwards)</li>
- 	<li>Support for Matthew's Account (aka retries on initial sync for those of us with massive initial syncs, and general perf improvements to nicely support &gt;2000 rooms)</li>
- 	<li>Better avatar support & cosmetics on macOS Mojave</li>
- 	<li>Encryption verification support, device blacklisting and message information</li>
- 	<li>Ability to turn encryption on in rooms</li>
- 	<li>Responding to encryption being turned on in rooms</li>
- 	<li>Paranoid mode for encryption (only send to verified devices)</li>
- 	<li>Invitation support (both in UI and /invite)</li>
-</ul>
-<a href="/blog/wp-content/uploads/2018/09/seaglass.jpg"><img class="aligncenter wp-image-3547" src="/blog/wp-content/uploads/2018/09/seaglass-1024x681.jpg" alt="" width="826" height="550" /></a>
-<h2 id="matrique">Matrique</h2>
-<p>Blackhat announces that <a href="https://gitlab.com/b0/matrique">Matrique's</a> new design is almost done, along with GNU/Linux, MacOS and Windows nightly build!</p>
-<h2 id=""><a href="/blog/wp-content/uploads/2018/09/matrique.png"><img class="aligncenter size-full wp-image-3546" src="/blog/wp-content/uploads/2018/09/matrique.png" alt="" width="960" height="674" /></a></h2>
-<h2 id="fractal">Fractal</h2>
-<p>Alexandre Franke says:</p>
-<blockquote>
-<p>Fractal 3.30 got release alongside the rest of GNOME. It includes a bunch of new and updated translations, and redacted messages are now hidden.</p>
-</blockquote>
-<p>Meanwhile, hidden in this screenshot, uhoreg noted that E2E plans are progressing...</p>
-<p><a href="/blog/wp-content/uploads/2018/09/fractal.png"><img class="aligncenter size-full wp-image-3548" src="/blog/wp-content/uploads/2018/09/fractal.png" alt="" width="831" height="210" /></a></p>
-<h2 id="riot">Riot</h2>
-<p>Bruno has been hacking away on Riot/Web squashing the remaining Lazy Loading Members defects and various related optimisations and fixes. We also released Riot/Web 0.16.3 as a fairly minor point release (which unfortunately has a regression with DM avatars, which is fixed in 0.16.4, for which a first RC was cut a few hours ago and should be released on Monday).  Meanwhile the first cut of Lazy Loading also got implemented on Android as well. Both are hidden behind labs flags, but we're almost at a point where we can turn it on now!  Otherwise, the Riot team has got sucked into working on commercial Matrix stuff, for better or worse (all shall be revealed shortly though!)</p>
-<h2 id="construct">Construct</h2>
-<p>Jason has been working heavily on Construct, and has new test users.  Construct is able to federate with Synapse and the rest of the Matrix ecosystem.  mujx has created a docker for Construct which streamlines its deployment.</p>
-<blockquote>
-<p>Construct development is still occurring here <a href="https://github.com/jevolk/charybdis">https://github.com/jevolk/charybdis</a> but we are now significantly closer to pushing the first release to <a href="https://github.com/matrix-construct">https://github.com/matrix-construct</a>. Also feel free to stop by in <a href="https://matrix.to/#/#test:zemos.net" rel="nofollow">#test:zemos.net</a> / <a href="https://matrix.to/#/#zemos-test:matrix.org" rel="nofollow">#zemos-test:matrix.org</a> as well -- a room hosted by Construct, of course.</p>
-<p>tulir has now deployed using the standalone install instructions on a very small LXC VM using ZFS. Unfortunately ZFS does not support O_DIRECT (direct disk IO) which is how Construct achieves maximum performance using concurrent reads. This is not a problem though when using an SSD or for personal deployments. I'll be posting more about how Construct hacked RocksDB to use direct IO, which can get the most out of your hardware with multiple requests in-flight (even with an SSD).</p>
-</blockquote>
-<h2 id="synapse">Synapse</h2>
-<p>Work was split this week into spec/security work, with the critical update for <a href="/blog/2018/09/06/critical-security-update-synapse-0-33-3-1/">0.33.3.1</a> - if you haven't upgraded, please do so immediately.</p>
-<p>Otherwise, Hawkowl has been on a mission to finish the Python 3 port, which is now almost merged.  Testers should probably wait until it fully merges to the develop branch and we'll yell about it then, but impatient adrenaline enthusiasts may want to check out the hawkowl/py3-3 branch (although it may explode in your face, mangle your DB and format your cat, and probably misses lots of recent important PRs like the 0.33.3.1 stuff).  However, i've been running a variant on some servers for the last few days without problems - and it seems (placebo effect notwithstanding) incredibly snappy...</p>
-<p>Meanwhile, the Lazy Loaded Member implementation got sped up by 2-3x, which makes /sync roughly 2-3x faster than it would be without Lazy Loading.  This hasn't merged yet, but was the main final blocker behind Lazy Loading going live!</p>
-<h2 id="matrix-docker-ansible-deploy">matrix-docker-ansible-deploy</h2>
-<p>Slavi reports:</p>
-<blockquote>
-<p><a href="https://github.com/spantaleev/matrix-docker-ansible-deploy" target="_blank" rel="noopener">matrix-docker-ansible-deploy</a> now supports bridging to <a href="https://telegram.org/" target="_blank" rel="noopener">Telegram</a> by installing <a class="mx_UserPill" title="@tulir:maunium.net" data-reactroot="">tulir</a>'s <a href="https://github.com/tulir/mautrix-telegram" target="_blank" rel="noopener">mautrix-telegram</a> bridge. This feature is contributed by <a href="https://github.com/izissise" target="_blank" rel="noopener">@izissise.</a></p>
-<p>In addition, Matrix Synapse is now more configurable from the playbook, with support for enabling stats-reporting, event cache size configurability, password peppering.</p>
-</blockquote>
-<h2 id="matrix-python-sdk-needs-a-maintainer">Matrix Python SDK needs a maintainer</h2>
-<p>We should say a huge <strong>Thank You</strong> to &amp;Adam for his work leading the Python SDK over the previous months! Unfortunately due to a busy home life (best of luck for the second child!) he has decided to step down as lead maintainer. Anyone interested in this project should head to <a href="https://github.com/matrix-org/matrix-python-sdk/issues/279">https://github.com/matrix-org/matrix-python-sdk/issues/279</a>, and also come and chat in <a href="https://matrix.to/#/#matrix-python-sdk:matrix.org">#matrix-python-sdk:matrix.org.</a></p>
-<h2 id="matrixtoybots">MatrixToyBots!</h2>
-<p><a href="https://matrix.to/#/@Coffee:matrix.org">Coffee</a> <a href="https://matrix.to/#/!FPUfgzXYWTKgIrwKxW:matrix.org/$1536260231366792ZSvnG:matrix.org">reports that</a>:</p>
-<blockquote>
-<p>A new bot appears! Are you a pedantic academic who likes to correct others' misuse of Latin-derived plurals? This task can now be automated for you by means of <a href="https://gitlab.com/Matrixcoffee/MatrixToyBots">SingularBot</a>! Also for people who just like to have some fun. Free PongBot and SmileBot included.</p>
-</blockquote>
-<h2 id="kitsune-on-hokkaido-island">kitsune on Hokkaido island</h2>
-<blockquote>
-<p>I ended up being on Hokkaido island right when a major earthquake struck it; so no activity on Matrix from me in the nearest couple of days. Also, donations to <a href="https://globalgiving.org/projects/hokkaido-earthquake-response/" rel="nofollow">GlobalGiving for the disaster relief are welcome</a> because people are really struggling here (abusing the communication channel, sorry).</p>
-</blockquote>
-<h2 id="matrix-live">Matrix Live</h2>
-<p>...has got delayed again; sorry - we're rather overloaded atm. We'll catch up as soon as we can.</p>
 
         </div>
     </article>

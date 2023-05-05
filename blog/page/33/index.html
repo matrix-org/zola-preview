@@ -118,6 +118,60 @@ Matrix, a digest of the past week activity.
     
     <article class="post">
         <header>
+            <h1><a href="&#x2F;blog&#x2F;2020&#x2F;01&#x2F;02&#x2F;on-privacy-versus-freedom&#x2F;" title="On Privacy versus Freedom">On Privacy versus Freedom</a></h1>
+            <span>
+                02.01.2020 00:00
+                —
+                <a href="/category/thoughts">
+                    Thoughts
+                </a>
+                —
+                <a href="/author/matthew-hodgson">
+                    Matthew Hodgson
+                </a>
+            </span>
+            
+        </header>
+        <div>
+            <p>A few years ago, back when Matrix was originally implementing end-to-end encryption, we asked Moxie (the project lead for Signal) whether he’d ever consider connecting Signal (then TextSecure) to Matrix.  After all, one of Matrix’s goals is to be an interoperability layer between other communication silos, and one of the reasons for us using Signal’s Double Ratchet Algorithm for Matrix’s encryption was to increase our chances of one day connecting with other apps using the same algorithm (Signal, WhatsApp, Google Allo, Skype, etc).  Moxie politely declined, and then a few months later wrote “<a href="https://signal.org/blog/the-ecosystem-is-moving/">The ecosystem is moving</a>” to elaborate his thoughts on why he feels he “no longer believes that it is possible to build a competitive federated messenger at all.”</p>
+<p>At the time we didn’t respond via a blog post; instead we ended up talking it through a few times in person to see how misaligned we really were. The conclusion was that we agreed to disagree and Moxie said he’d be happy to be proved wrong, and wished us good luck.  However, the subject has come up again thanks to <a href="https://fahrplan.events.ccc.de/congress/2019/Fahrplan/events/11086.html">Moxie’s talk on the same subject</a> at 36C3 last week, and we <a href="https://news.ycombinator.com/item?id=21933891">keep</a> <a href="https://news.ycombinator.com/item?id=21935219">getting</a> <a href="https://matrix.to/#/!OGEhHVWSdvArJzumhm:matrix.org/$SzdpeR_Hji5AMOkydnYzv5UN_UaGdN710ThF-lfAt9A?via=matrix.org&amp;via=t2bot.io&amp;via=privacytools.io">asked</a> to write a formal response on the Matrix side.  So, here’s an attempt to do so.  (Moxie didn’t want the 36C3 talk recorded, and I haven’t watched it, so this is responding to the original blog post).</p>
+<p>From my perspective, the main points proposed in ‘The ecosystem is moving’ boil down to:</p>
+<ul>
+<li>
+<p>Decentralised systems are harder to design and build than centralised ones, as coordination is harder if you don’t have a single authority to trust.</p>
+</li>
+<li>
+<p>Decentralised systems are harder and slower to evolve than centralised ones, as you can’t force participants to rapidly roll out (or even agree on) new features.</p>
+</li>
+<li>
+<p>Users in federated systems tend to coalesce around the best/biggest server that the bulk of people use - which means that server typically gets to see a disproportionate amount of communication metadata (who’s talking to who, and when), and has disproportionate power over the network, which could bully others away from running their own deployments.</p>
+</li>
+<li>
+<p>If users don’t trust their app provider, they can always go switch apps, which gives them freedom.</p>
+</li>
+<li>
+<p>Open systems are less secure because you have no control over the quality of the implementations - if anyone can bring their own client or server to the table, all it takes is one bad implementation to compromise everyone in the vicinity.</p>
+</li>
+</ul>
+<p>Now, all of these points are valid to some extent.</p>
+<p>It’s absolutely true that decentralised systems are harder than centralised ones.  Prior to Matrix we built centralised comms systems - we literally can do a side-by-side comparison for the same team to see how easily and fast we built our centralised comms system relative to Matrix.  Empirically It took us around 6 times longer to get to the same feature-set with Matrix.</p>
+<p>It’s also true that decentralised systems are harder to evolve than centralised ones - you can’t just push out a given feature with a single app update, but you have to agree and publish a public spec, support incremental migration, and build governance processes and community dynamics which encourage everyone to implement and upgrade.  This is hard, but not impossible: we’ve spent loads of time and money on Matrix’s <a href="https://matrix.org/foundation/">governance model</a> and <a href="https://matrix.org/docs/spec/proposals">spec process</a> to get it right.  It’s still not perfect, but we haven’t seen much fragmentation so far, and when we’re pushing out a feature empirically we can and do go just as fast as the centralised alternatives. (E2E by default is a bit of a special case because we’ve had to go and reimplement many features users take for granted today in an E2E-capable manner, but we’re sprinting to get it done in the coming weeks).  A bigger problem is that there are hundreds of spec change proposals which folks would like to see in the protocol, and finding a way to manage expectations and parallelise spec progress is hard - something we’re looking to improve in 2020 (although still figuring out how!)</p>
+<p>It’s also fair that in a multi-server federated model, users naturally tend to sign up on the most prominent server(s) (e.g. the matrix.org homeserver in the case of Matrix).  In practice, the matrix.org homeserver currently makes up about 35% of the visible Matrix network by active users.  It’s also true that Matrix servers currently store metadata about who’s talking to who, and when, as a side-effect of storing and relaying messages on behalf of their users.  And without an adequate protocol governance system in place, a large server could start pushing around smaller ones in terms of protocol behaviour.  In practice, we’re looking into solving metadata protection in Matrix by experimenting with hybrid P2P / Client Server models - letting users store their metadata purely clientside if they so desire, and potentially obfuscating who’s talking to who via mixnets of blinded store &amp; forward servers (more about this coming up at <a href="https://fosdem.org/2020/schedule/event/dip_p2p_matrix/">FOSDEM</a>). Combined with <a href="https://github.com/matrix-org/matrix-doc/blob/rav/proposal/remove_mxids_from_events/proposals/1228-removing-mxids-from-events.md">nomadic accounts</a>, this would let us eventually turn off the matrix.org server entirely and eliminate the pseudo-centralisation effect - the default ‘server’ would be the one running on your client.</p>
+<p>It’s true that if a user doesn’t trust (say) Telegram, they are free to go switch to Signal or WhatsApp or whatever instead… at the massive expense of having to persuade all their friends to install yet another app, and fragmenting their conversation history across multiple apps.</p>
+<p>Finally, it’s also true that because anyone can develop a Matrix client or server and connect to the global network, there’s a risk of bad quality implementations in the wild.  There are many forks of Riot on the app stores - we simply can’t vouch for whether they are secure.  Similarly there are Matrix clients whose E2E encryption is partial, missing, or unreviewed.  And there are a wide range of different Matrix servers run by different people with different agendas in different locations, which may be more or less trustworthy.</p>
+<p><strong>HOWEVER: all of this completely ignores one critical thing - the value of freedom</strong>.  Freedom to select which server to use.  Freedom to run your own server (perhaps invisibly in your app, in a P2P world). Freedom to pick which country your server runs in. Freedom to select how much metadata and history to keep. Freedom to choose which apps to use - while still having the freedom to talk to anyone you like (without them necessarily installing yet another app).  Freedom to connect your own functionality - bots, bridges, integrations etc.  Freedom to select which identifiers (if any) to use to register your account.  Freedom to extend the protocol.  Freedom to write your own client, or build whole new as-yet-unimagined systems on top.</p>
+<p>It’s true that if you’re writing a messaging app optimised for privacy at any cost, Moxie’s approach is one way to do it. However, this ends up being a perversely closed world - a closed network, where unofficial clients are banned, with no platform to build on, no open standards, and you end up thoroughly putting all your eggs in one basket, trusting past, present &amp; future Signal to retain its values, stay up and somehow dodge compromise &amp; censorship… despite probably being the single highest value attack target on the ‘net.</p>
+<p>Quite simply, that isn’t a world I want to live in.</p>
+<p>We owe the entire success of the Internet (let alone the Web) to openness, interoperability and decentralisation.  To declare that openness, interoperability and decentralisation is ‘too hard’ and not worth the effort when building a messaging solution is to throw away <em>all</em> the potential of the vibrancy, creativity and innovation that comes from an open network.  Sure, you may end up with a super-private messaging app - but one that starts to smell alarmingly like a walled garden like Facebook’s Internet.org initiative, or an AOL keyword, or Google’s AMP.</p>
+<p>So, we continue to gladly take up Moxie’s challenge to prove him wrong - to show that it’s both possible and imperative to create an open decentralised messaging platform which (if you use reputable apps and servers) can be as secure and metadata-protecting as Signal… and indeed more so, given you can run your server off the grid, and don’t need to register with a phone number, and in future may not even need a server at all.</p>
+<p>--Matthew</p>
+<p>(Comments over at <a href="https://news.ycombinator.com/item?id=21936929">HN</a>)</p>
+
+        </div>
+    </article>
+    
+    <article class="post">
+        <header>
             <h1><a href="&#x2F;blog&#x2F;2019&#x2F;12&#x2F;31&#x2F;synapse-1-7-3-released&#x2F;" title="Synapse 1.7.3 released">Synapse 1.7.3 released</a></h1>
             <span>
                 31.12.2019 00:00
@@ -1015,194 +1069,6 @@ Have a look at the repo: <a href="https://git.sr.ht/~davidlang/mlrbd">https://gi
 <tr><td style="text-align: center">9</td><td style="text-align: center">thinker.eu.org</td><td style="text-align: center">727</td></tr>
 <tr><td style="text-align: center">10</td><td style="text-align: center">bubu1.eu</td><td style="text-align: center">749.5</td></tr>
 </tbody></table>
-<h2 id="that-s-all-i-know-checkered-flag">That's all I know 🏁</h2>
-<p>See you next week, and be sure to stop by <a href="https://matrix.to/#/#TWIM:matrix.org">#twim:matrix.org</a> with your updates!</p>
-
-        </div>
-    </article>
-    
-    <article class="post">
-        <header>
-            <h1><a href="&#x2F;blog&#x2F;2019&#x2F;12&#x2F;06&#x2F;this-week-in-matrix-2019-12-06&#x2F;" title="This Week in Matrix 2019-12-06">This Week in Matrix 2019-12-06</a></h1>
-            <span>
-                06.12.2019 19:32
-                —
-                <a href="/category/this-week-in-matrix">
-                    This Week in Matrix
-                </a>
-                —
-                <a href="/author/ben-parsons">
-                    Ben Parsons
-                </a>
-            </span>
-            <br>
-            <small>Last update: 06.12.2019 19:10</small>
-        </header>
-        <div>
-            <h2 id="matrix-live">Matrix Live 🎙</h2>
-<iframe src="https://www.youtube.com/embed/KYsyQuAXKis" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-<p>I chatted to Kilian from the new <a href="https://github.com/kiliankoe/nio">Nio</a> project about his progress on a new iOS client.</p>
-<h2 id="dept-of-status-of-matrix-face-with-th">Dept of <em>Status of Matrix</em> 🌡</h2>
-<p>Yesterday we <a href="https://matrix.org/blog/2019/12/05/zipped-hoodies-now-available/">announced the availability of zipped hoodies</a>! The resulting avalanche of orders was a shock for our <a href="https://www.yelp.co.uk/biz/chiswick-post-office-london?hrid=YkDZclAEeg_kcz0uXtptHw">local Post Office</a>, who watched with surprise as I burst in, laden with packages like a mule.</p>
-<h2 id="dept-of-spec-scroll">Dept of Spec 📜</h2>
-<p><a href="https://matrix.to/#/@andrewm:amorgan.xyz">anoa</a> offered:</p>
-<blockquote>
-<p>Here's your news for what happened in spec-land last week!</p>
-<p><strong>Merged MSCs</strong></p>
-<ul>
-<li><a href="https://github.com/matrix-org/matrix-doc/pull/2367">MSC2367: Add reason field to all membership events</a></li>
-<li><a href="https://github.com/matrix-org/matrix-doc/pull/2324">MSC2324: Facilitating early releases of software dependent on spec</a></li>
-</ul>
-<p><strong>MSCs in Final Comment Period</strong></p>
-<p><em>No MSCs are in FCP...</em></p>
-<p><strong>New MSCs</strong></p>
-<ul>
-<li><a href="https://github.com/matrix-org/matrix-doc/pull/2380">MSC2380: Matrix Media Information API</a>
-<ul>
-<li>This is a markdownification of <a href="https://github.com/matrix-org/matrix-doc/issues/1310">MSC1310</a></li>
-</ul>
-</li>
-<li><a href="https://github.com/matrix-org/matrix-doc/pull/2370">MSC2370: Resolve URL API</a></li>
-<li><a href="https://github.com/matrix-org/matrix-doc/pull/2375">MSC2375: Appservice Invite States</a></li>
-<li><a href="https://github.com/matrix-org/matrix-doc/pull/2376">MSC2376: Disable URL Previews</a></li>
-</ul>
-</blockquote>
-<p>TravisR confirmed:</p>
-<blockquote>
-<p>The spec core team is focused on implementing a bunch of MSCs so that we can make progress with the spec.</p>
-</blockquote>
-<h2 id="dept-of-servers-europea">Dept of Servers 🏢</h2>
-<h3 id="synapse">Synapse</h3>
-<p><a href="https://matrix.to/#/@neilj:matrix.org">Neil</a> told us:</p>
-<blockquote>
-<p>This week we've mainly been tying up loose ends on the matrix.org data centre migration. Outside of that one interesting feature to land on develop is that of configurable message retention. It means that as an admin you can set a default period after which messages will be removed from the server (a year say), what’s more the default is configurable on a per room basis via state events. Note, this feature applies to messages only, not media (on its way!). Configurable message retention will be make it into the next versioned release.</p>
-</blockquote>
-<h3 id="matrix-synapse-ldap3">matrix-synapse-ldap3</h3>
-<p><a href="https://matrix.to/#/@andrewm:amorgan.xyz">anoa</a> said:</p>
-<blockquote>
-<p>After 2 long years, <a href="https://github.com/matrix-org/matrix-synapse-ldap3">matrix-synapse-ldap3</a> has finally gained another release: v0.1.4. If you want to allow users to sign in to Synapse using their LDAP accounts, then this is the module for you.</p>
-<p>Get the release notes here: <a href="https://github.com/matrix-org/matrix-synapse-ldap3/releases/tag/v0.1.4">https://github.com/matrix-org/matrix-synapse-ldap3/releases/tag/v0.1.4</a></p>
-</blockquote>
-<h2 id="dept-of-clients-iphone">Dept of Clients 📱</h2>
-<h3 id="fractal">Fractal</h3>
-<p><a href="https://matrix.to/#/@afranke:matrix.org">Alexandre Franke</a> offered:</p>
-<blockquote>
-<p>4.2.2 got released! Get it now <a href="https://flathub.org/apps/details/org.gnome.Fractal">off Flathub</a>.</p>
-</blockquote>
-<p>New features:</p>
-<ul>
-<li>Translation strings have been updated</li>
-</ul>
-<p>Bugfixes:</p>
-<ul>
-<li>Newlines now work when markdown is enabled</li>
-<li>Account settings can be accessed again</li>
-<li>Redaction is working again</li>
-<li>Compatibility with HTTP-only (non HTTPS) servers has been restored</li>
-<li>Some crashes fixed</li>
-</ul>
-<p>Under the hood:</p>
-<ul>
-<li>Code refactor is still going</li>
-</ul>
-<p>As if all that wasn't enough, how about this image of Fractal running on a Librem5, from <a href="https://matrix.to/#/@Kekun:matrix.org">Adrien Plazas</a>:</p>
-<p><img src="/blog/img/2019-12-06-fractal-librem5.jpg" alt="Fractal on Librem5" /></p>
-<h3 id="nheko">nheko</h3>
-<p><a href="https://matrix.to/#/@deepbluev7:neko.dev">Nico</a> offered:</p>
-<blockquote>
-<p>Nheko just merged support for encrypted files in e2ee chats. This allows you to send and receive encrypted files and even play videos and other media in the new timeline. Those changes are still on the development branch, but will be included in the next release, which should be 0.7.0. If you want to try it out, you can get development builds <a href="https://nheko-reborn-artifacts.s3.us-east-2.amazonaws.com/list.html?sort=lastmod&amp;sortdir=desc">here</a>.</p>
-</blockquote>
-<h3 id="koma">koma</h3>
-<p><a href="https://matrix.to/#/@uforia:matrix.org">yuforia</a> announced:</p>
-<blockquote>
-<p><a href="https://github.com/koma-im/koma-library">koma</a>, the Kotlin library behind the desktop client <a href="https://github.com/koma-im/continuum-desktop">Continuum</a>:</p>
-<ul>
-<li>Rewrite all Moshi json adapters with <code>kotlinx</code> serializers, replace API interface declared using Retrofit with HTTP requests constructed using ktor. The majority of the changes needed to enable multiplatform support is now made.</li>
-</ul>
-</blockquote>
-<h3 id="riotx-0-9-1">RiotX 0.9.1</h3>
-<p><a href="https://matrix.to/#/@benoit.marty:matrix.org">benoit</a> reported:</p>
-<blockquote>
-<p>Released v0.9.1 on Thursday! This version includes a new login flow and account creation flow. Read marker has been reworked, to simplify user experience on mobile. Also you can type and send user pills.</p>
-<p>We are now working on room and user profiles, and matrix.to link handling. Verification in DM development is progressing well. Also we implemented a first version of breadcrumbs, to switch between recent rooms very quickly.</p>
-</blockquote>
-<h3 id="riot-ios">Riot-iOS</h3>
-<p><a href="https://matrix.to/#/@Manu:matrix.org">Manu</a> announced:</p>
-<blockquote>
-<p>Riot-iOS 0.10.3 is on its way to Apple review. The release note is:
-This release includes bug fixes and improvements, like:</p>
-<ul>
-<li>Ask permission before opening a widget and the integration manager.</li>
-<li>Display room name, user name and user avatar in the Jitsi conference screen.</li>
-<li>Support Welsh and Italian languages.</li>
-</ul>
-</blockquote>
-<h3 id="messagerie">Messagerie</h3>
-<p><a href="https://matrix.to/#/@Manu:matrix.org">Manu</a> reported:</p>
-<blockquote>
-<p>let me share Messagerie: <a href="https://github.com/manuroe/messagerie">https://github.com/manuroe/messagerie</a>, an iOS app and, maybe, in the future, a MacOS app.</p>
-<p>Messagerie is a chat app written to test SwiftUI and Combine to make a real and, hopefully, useful app.
-Messagerie misses a lot of things but it has:</p>
-<ul>
-<li>Support of Matrix using SwiftMatrixSDK</li>
-<li>E2EE</li>
-<li>Multi-account (swipe the navigation bar to switch accounts)</li>
-<li>Dark mode and auto-sizing fonts (well, they come for free)</li>
-<li>4 screens at the moment: a Matrix login screen, a room list, a room screen and a very early beginning of a SwiftUI text composer to post text message</li>
-</ul>
-<p>This is a personal and a side project, but RiotX-iOS will probably take benefit from it.</p>
-</blockquote>
-<h3 id="riot-web-means-cross-signing">Riot Web means Cross Signing!</h3>
-<p><a href="https://matrix.to/#/@jryans:matrix.org">Ryan</a> announced:</p>
-<blockquote>
-<p>Riot Web is largely focused on nudging cross-signing forward over the last week. Key verification and cross-signing setup continues to make progress. We've also fixed a few bugs and merged some accessibility improvements.</p>
-</blockquote>
-<h2 id="dept-of-ops">Dept of Ops 🛠</h2>
-<h3 id="matrix-docker-ansible-deploy">matrix-docker-ansible-deploy</h3>
-<p><a href="https://matrix.to/#/@slavi:devture.com">Slavi</a> reported:</p>
-<blockquote>
-<p><a href="https://github.com/spantaleev/matrix-docker-ansible-deploy">matrix-docker-ansible-deploy</a> has been made more flexible in terms of how its services can be exposed to the web. Reverse-proxying using another local (in-machine or on-the-network) webserver should be easier. SSL-termination using <a href="https://traefik.io/">Traefik</a> is now also a possibility, although we're yet to confirm it as a success and document exactly how to do it. Read more in the <a href="https://github.com/spantaleev/matrix-docker-ansible-deploy/blob/ca3b158d94a72b27e7d370faf5282da504a4f062/CHANGELOG.md#added-support-for-an-alternative-method-for-using-another-webserver">CHANGELOG</a>.</p>
-</blockquote>
-<h3 id="riot-desktop-builder-docker-image">riot-desktop-builder docker image</h3>
-<p><a href="https://matrix.to/#/@mathijs:matrix.vgorcum.com">Mathijs</a> announced:</p>
-<blockquote>
-<p>I created a <a href="https://github.com/mvgorcum/Riot-web-electron-builder">dockerfile</a> and corresponding <a href="https://hub.docker.com/r/mvgorcum/riotbuilder">docker image</a> that can build the develop branch of riot-desktop for both windows and linux.</p>
-</blockquote>
-<h2 id="dept-of-bots-robot-face">Dept of Bots 🤖</h2>
-<h3 id="msc-chatbot">msc-chatbot</h3>
-<p><a href="https://matrix.to/#/@andrewm:amorgan.xyz">anoa</a> announced:</p>
-<blockquote>
-<p>msc_resolver2 is back and now isn't annoying with all new features like:</p>
-<ul>
-<li>actually showing you the MSC title when it links it</li>
-<li>not posting the same links multiple times</li>
-<li>not posting a link when you've already linked the msc in the original message</li>
-<li>ignoring edits</li>
-<li>ignoring content of replies</li>
-</ul>
-<p>rejoice! Code is <a href="https://github.com/anoadragon453/msc-chatbot">https://github.com/anoadragon453/msc-chatbot</a></p>
-</blockquote>
-<h3 id="malobot-send-or-receive-location-messages">malobot - send or receive location messages</h3>
-<p><a href="https://matrix.to/#/@cos:hacklab.fi">Cos</a> said:</p>
-<blockquote>
-<p>It would be cool to be able to share location in Matrix rooms. This bot by cos solves the egg part in chicken and egg problem of having no clients able to send or receive location messages. Next we need a mobile client that can send location updates. Which one will be the first? <a href="https://github.com/vranki/malobot/">https://github.com/vranki/malobot/</a></p>
-</blockquote>
-<h2 id="dept-of-ping-table-tennis-paddle-and-ball">Dept of Ping 🏓</h2>
-<table><thead><tr><th style="text-align: center">Rank</th><th style="text-align: center">Hostname</th><th style="text-align: center">Median MS</th></tr></thead><tbody>
-<tr><td style="text-align: center">1</td><td style="text-align: center">schwukas.de</td><td style="text-align: center">420</td></tr>
-<tr><td style="text-align: center">2</td><td style="text-align: center">aime.lesmatric.es</td><td style="text-align: center">465</td></tr>
-<tr><td style="text-align: center">3</td><td style="text-align: center">dodsorf.as</td><td style="text-align: center">540.5</td></tr>
-<tr><td style="text-align: center">4</td><td style="text-align: center">2.junta.pl</td><td style="text-align: center">603</td></tr>
-<tr><td style="text-align: center">5</td><td style="text-align: center">room409.xyz</td><td style="text-align: center">682.5</td></tr>
-<tr><td style="text-align: center">6</td><td style="text-align: center">aryasenna.net</td><td style="text-align: center">713</td></tr>
-<tr><td style="text-align: center">7</td><td style="text-align: center">matrix.okeso.net</td><td style="text-align: center">814</td></tr>
-<tr><td style="text-align: center">8</td><td style="text-align: center">matrix.vgorcum.com</td><td style="text-align: center">827</td></tr>
-<tr><td style="text-align: center">9</td><td style="text-align: center">uraziel.de</td><td style="text-align: center">840.5</td></tr>
-<tr><td style="text-align: center">10</td><td style="text-align: center">matrix.org</td><td style="text-align: center">1258</td></tr>
-</tbody></table>
-<h2 id="final-thoughts-thought-balloon">Final Thoughts 💭</h2>
-<p><a href="https://matrix.to/#/@swedneck:permaweb.io">swedneck</a> made a room for discussing how matrix could be used to implement forums: <a href="https://matrix.to/#/#matrix-forums:permaweb.io">#matrix-forums:permaweb.io</a></p>
-<p><a href="https://matrix.to/#/@mathijs:matrix.vgorcum.com">Mathijs</a> pointed out that <a href="https://github.com/matrix-org/matrix-doc/pull/2010">there is a Matrix feature which enables spoilers</a>.</p>
 <h2 id="that-s-all-i-know-checkered-flag">That's all I know 🏁</h2>
 <p>See you next week, and be sure to stop by <a href="https://matrix.to/#/#TWIM:matrix.org">#twim:matrix.org</a> with your updates!</p>
 
