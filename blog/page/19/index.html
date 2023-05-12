@@ -118,6 +118,71 @@ Matrix, a digest of the past week activity.
     
     <article class="post">
         <header>
+            <h1><a href="&#x2F;blog&#x2F;2021&#x2F;05&#x2F;17&#x2F;synapse-1-34-0-released&#x2F;" title="Synapse 1.34.0 released">Synapse 1.34.0 released</a></h1>
+            <span>
+                17.05.2021 16:45
+                —
+                <a href="/category/releases">
+                    Releases
+                </a>
+                —
+                
+                <a href="/author/dan-callahan">
+                    Dan Callahan
+                </a>
+                
+            </span>
+            <br>
+            <small>Last update: 17.05.2021 15:13</small>
+        </header>
+        <div>
+            <p>Synapse 1.34.0 is now available, and it's loaded with new features and performance improvements.</p>
+<blockquote>
+<p><strong>Note:</strong> This release deprecates and replaces the <code>room_invite_state_types</code> configuration option. If you've customized that for your homeserver, please review the <a href="https://github.com/matrix-org/synapse/blob/v1.34.0/UPGRADE.rst#upgrading-to-v1340">Upgrade Notes</a>.</p>
+<p>We've also marked the v1 room deletion Admin API as deprecated. Instead of sending a <code>POST</code> to a path ending in <code>/delete</code>, administrators are encourage to instead send an HTTP <code>DELETE</code> to <code>/_synapse/admin/v1/rooms/&lt;room_id&gt;</code>. Thanks to ThibF for implementing this (<a href="https://github.com/matrix-org/synapse/pull/9889">#9889</a>).</p>
+</blockquote>
+<h2 id="spaces">Spaces</h2>
+<p>The highlight of this release is support for Spaces, now that <a href="https://github.com/matrix-org/matrix-doc/pull/1772">MSC1772: Matrix Spaces</a> has merged into the Matrix spec!</p>
+<p>Synapse also has support for <a href="https://github.com/matrix-org/matrix-doc/pull/2946">MSC2946: Spaces Summary</a> and <a href="https://github.com/matrix-org/matrix-doc/pull/3083">MSC3083: Restricting room membership based on space membership</a>, but these are off by default as they're still under development. To enable these experimental MSCs, set <code>experimental_features: { spaces_enabled: true }</code> in your homeserver configuration. These <em>are</em> enabled on the matrix.org homeserver, and we encourage you to experiment with Spaces there and let us know in the <a href="https://matrix.to/#/#spaces-feedback:matrix.org">Spaces Feedback Room</a> if you encounter any issues.</p>
+<h2 id="memory-and-caching">Memory and Caching</h2>
+<p>Memory consumption and caching have been a major focus of the Synapse team this quarter, and we've made significant strides:</p>
+<ul>
+<li>Synapse has a new <code>gc_min_interval</code> <a href="https://github.com/matrix-org/synapse/blob/v1.34.0/docs/sample_config.yaml#L155-L163">configuration option</a> with reasonable defaults to prevent Python's garbage collector from running too frequently and thrashing when a large homeserver has its collection thresholds set too low.</li>
+<li>Synapse will report <a href="https://github.com/matrix-org/synapse/pull/9882">memory allocation stats</a> to Prometheus when using jemalloc.</li>
+<li>Synapse will also <a href="https://github.com/matrix-org/synapse/pull/9904">measure Redis cache response times</a> and report those to Prometheus.</li>
+<li>For debugging, Synapse can <a href="https://github.com/matrix-org/synapse/pull/9881">optionally track</a> the memory use of each LruCache.</li>
+</ul>
+<p>We have a few more tricks up our sleeves; to learn more about how we're planning to improve the memory cost of joining large rooms, check out last week's <a href="https://www.youtube.com/watch?v=694VuhmVmfo">Matrix Live</a>.</p>
+<h2 id="other-fixes-and-improvements">Other Fixes and Improvements</h2>
+<p>We've also landed significant improvements to:</p>
+<ul>
+<li>Sending events when Redis is available (<a href="https://github.com/matrix-org/synapse/issues/9905">#9905</a>, <a href="https://github.com/matrix-org/synapse/issues/9950">#9950</a>, <a href="https://github.com/matrix-org/synapse/issues/9951">#9951</a>)</li>
+<li>Joining large rooms when presence is enabled (<a href="https://github.com/matrix-org/synapse/issues/9910">#9910</a>, <a href="https://github.com/matrix-org/synapse/issues/9916">#9916</a>)</li>
+<li>Backfilling history in large rooms (<a href="https://github.com/matrix-org/synapse/issues/9935">#9935</a>)</li>
+</ul>
+<p>...and fixed bugs that:</p>
+<ul>
+<li>Prevented cross-account <code>m.room_key_request</code> messages from being delivered (<a href="https://github.com/matrix-org/synapse/issues/9961">#9961</a>, <a href="https://github.com/matrix-org/synapse/issues/9965">#9965</a>)</li>
+<li>Incorrectly applied room creation / invitation rate limits to users and app services which <em>should</em> have been exempt (<a href="https://github.com/matrix-org/synapse/issues/9968">#9968</a>)</li>
+</ul>
+<p>The health check on our Docker images now responds more quickly upon successful startup thanks to improvements by maquis196 (<a href="https://github.com/matrix-org/synapse/pull/9913">#9913</a>), and for especially privacy-conscious homeservers, device names can now be shielded over federation thanks to a contribution by aaronraimist (<a href="https://github.com/matrix-org/synapse/pull/9945">#9945</a>).</p>
+<h2 id="new-access-token-format">New Access Token Format</h2>
+<p>Inspired by <a href="https://github.blog/2021-04-05-behind-githubs-new-authentication-token-formats/">GitHub's new token format</a>, we've <a href="https://github.com/matrix-org/synapse/pull/5588">restructured Synapse's access token format</a> to follow the pattern:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>syt_&lt;UnpaddedBase64MXIDLocalPart&gt;_&lt;20RandomLetters&gt;_&lt;CRC32&gt;
+</span></code></pre>
+<p>So a token for <code>@example:matrix.org</code> might look like:</p>
+<pre style="background-color:#1e1e1e;color:#dcdcdc;"><code><span>syt_ZXhhbXBsZQ_KfJetOcLWEKCvYdKnQLV_0i3W80
+</span></code></pre>
+<p>Existing tokens remain valid; this is just for new tokens. We hope the new format reduces network overhead while also making it easier identify misplaced tokens in logs and repositories.</p>
+<h2 id="everything-else">Everything Else</h2>
+<p>See the <a href="https://github.com/matrix-org/synapse/blob/v1.34.0/UPGRADE.rst#upgrading-to-v1340">Upgrading Instructions</a> and <a href="https://github.com/matrix-org/synapse/blob/v1.34.0/CHANGES.md">Release Notes</a> for further information on this release.</p>
+<p>Synapse is a Free and Open Source Software project, and we'd like to extend our thanks to everyone who contributed to this release, including <a href="https://github.com/aaronraimist">aaronraimist</a>, <a href="https://github.com/maquis196">maquis196</a>, and <a href="https://github.com/ThibF">ThibF</a>.</p>
+
+        </div>
+    </article>
+    
+    <article class="post">
+        <header>
             <h1><a href="&#x2F;blog&#x2F;2021&#x2F;05&#x2F;14&#x2F;this-week-in-matrix-2021-05-14&#x2F;" title="This Week in Matrix 2021-05-14">This Week in Matrix 2021-05-14</a></h1>
             <span>
                 14.05.2021 00:00
@@ -2057,42 +2122,6 @@ lookups and that sort of thing. Could be useful to help weed out spam.</p>
 </tbody></table>
 <h2 id="that-s-all-i-know-checkered-flag">That's all I know 🏁</h2>
 <p>See you next week, and be sure to stop by <a href="https://matrix.to/#/#TWIM:matrix.org">#twim:matrix.org</a> with your updates!</p>
-
-        </div>
-    </article>
-    
-    <article class="post">
-        <header>
-            <h1><a href="&#x2F;blog&#x2F;2021&#x2F;04&#x2F;15&#x2F;old-gitter-bridge-end-of-life-2021-04-21-to-be-replaced-with-native-bridge&#x2F;" title="Old Gitter bridge end of life (2021-04-21) - to be replaced with native bridge">Old Gitter bridge end of life (2021-04-21) - to be replaced with native bridge</a></h1>
-            <span>
-                15.04.2021 00:00
-                —
-                <a href="/category/bridges">
-                    Bridges
-                </a>
-                —
-                
-                <a href="/author/bridge-team">
-                    Bridge Team
-                </a>
-                
-            </span>
-            
-        </header>
-        <div>
-            <p>Next week on Wednesday (2021-04-21), the old Gitter bridge (identified as <code>@gitterbot:matrix.org</code>) will be shut down and any plumbed rooms (bridged connections) remaining will no longer bridge. To replace this, we've already migrated all of the portal rooms and many of the plumbed rooms in preparation so most users will not need to take any further actions. The remaining rooms with the old Gitter bridge are unfortunately not possible to migrate and for those communities a clean break will be needed. The new native Gitter bridge is here to replace this!</p>
-<p><a href="https://matrix.org/blog/2020/12/07/gitter-now-speaks-matrix">Gitter is bridged natively to Matrix</a> on the <code>gitter.im</code> homeserver and all of the public rooms are available there. The new native Gitter bridge has many advantages over the old bridge and is being actively developed to ensure parity and delivers:</p>
-<ul>
-<li>Ability to join public Gitter rooms from Matrix via <code>#&lt;community&gt;_&lt;room&gt;:gitter.im</code></li>
-<li>Native feeling virtual users on both sides of the bridge so messages appear from the author itself</li>
-<li>Bridging edits, replies (mapped to threads on Gitter), deletes, file transfers</li>
-<li>Full support for markdown, emoji and mentions</li>
-<li>Soon to be <a href="https://gitlab.com/gitterHQ/webapp/-/issues/2671">direct message (DM) support</a>!</li>
-</ul>
-<p>If you still need your <strong>existing</strong> Matrix room for a public community plumbed to Gitter, we’re happy to help community admins with the setup of a manual plumb. Send an email to <a href="mailto:support@gitter.im">support@gitter.im</a> with the details! Self-service plumbing will be coming in future (meanwhile, please keep it to public community rooms only, if you must!)</p>
-<p>We hope that this notice helps make the transition a little smoother and avoid any disruptions 🙇</p>
-<p>If you have any questions about the migration path or the new bridge, you can always chat with us in <a href="https://matrix.to/#/#gitter:matrix.org">#gitter:matrix.org</a>.</p>
-<p>Happy chatting everyone!</p>
 
         </div>
     </article>

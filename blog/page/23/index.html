@@ -118,6 +118,144 @@ Matrix, a digest of the past week activity.
     
     <article class="post">
         <header>
+            <h1><a href="&#x2F;blog&#x2F;2020&#x2F;12&#x2F;15&#x2F;dendrite-2020-progress-update&#x2F;" title="Dendrite 2020 Progress Update">Dendrite 2020 Progress Update</a></h1>
+            <span>
+                15.12.2020 00:00
+                —
+                <a href="/category/general">
+                    General
+                </a>
+                —
+                
+                <a href="/author/neil-alexander">
+                    Neil Alexander
+                </a>
+                
+            </span>
+            
+        </header>
+        <div>
+            <p>It's been a year since Dendrite development picked up again and it's certainly
+been a busy one at that! We started off 2020 by sprinting to complete the FOSDEM P2P
+demo and, since then, we have continued to develop Dendrite into a more featureful
+and stable homeserver.</p>
+<p>In October, we <a href="https://matrix.org/blog/2020/10/08/dendrite-is-entering-beta">moved Dendrite into beta</a>,
+and have since released a number of releases. We've also seen quite a lot of interest
+from the community, so I'm here today to write about some of the fun things that have
+been going on in Dendrite-land.</p>
+<h2 id="announcing-dendrite-matrix-org">Announcing dendrite.matrix.org</h2>
+<p>I'm happy to announce that we've finally deployed our own public Dendrite instance at
+<strong>dendrite.matrix.org</strong>! It's running the latest Dendrite code and is open for
+registration, so if you have been looking for an opportunity to play with Dendrite
+without hosting your own deployment, here's your chance!</p>
+<p>There are still bugs and missing features, but overall the server is quite usable, so
+please feel free to register and try it and <a href="https://matrix.to/#/#dendrite:matrix.org">let us know how you get on</a>.</p>
+<p>This is the first deployment that we've built for any kind of scale, so we are cautious
+of the fact that there may be performance bottlenecks still. That said, over the last
+few weeks, a number of performance-improving changes have been merged, including:</p>
+<ul>
+<li>Around 20x performance improvement on the State Resolution v2 algorithm, which is used
+in room versions 2 and above</li>
+<li>Significantly reducing the amount of time spent recalculating event reference hashes
+and event IDs in the roomserver and sync API, reducing CPU usage</li>
+<li>Optimised memory usage and reduced database hits in the federation sender, which helps
+particularly in large rooms with lots of resident servers</li>
+</ul>
+<p>We're optimistic that running this deployment will help us to identify scaling pain
+points and to make Dendrite leaner in the long run. Feel free to sign up and give it
+a spin! :-)</p>
+<h2 id="features">Features</h2>
+<p>Since the beginning of the year, we've added a number of new features, including but
+not limited to:</p>
+<ul>
+<li>Room versions support for all currently specced versions (v1-v6), including support
+for State Resolution v2</li>
+<li>SQLite storage support in addition to PostgreSQL, largely useful for the P2P demos</li>
+<li>Support for database schema upgrades, making updating Dendrite significantly easier</li>
+<li>Early end-to-end encryption support, including device list syncing and send-to-device
+messages, although with key backup and cross-signing still to come</li>
+<li>A number of federation features, including invites, retries and backing off unreachable
+homeservers</li>
+<li>User-interactive authentication (UIA), which is used in password changes and deleting
+devices from your device list</li>
+<li>Support for local pagination, backfilling over federation and fetching missing events</li>
+<li>Redaction of events both locally and over federation</li>
+<li>Entirely new microservices for managing server signing keys, E2E keys, user and device
+management</li>
+<li>Lots of great contributions from the community - including all of Read Receipts (thanks to <a href="https://github.com/S7evinK">S7evinK</a>) and Read Markers (thanks to <a href="https://github.com/Lesterpig">Lesterpig</a>)!</li>
+</ul>
+<p>...and of course <a href="https://matrix.org/blog/2020/10/08/dendrite-is-entering-beta">entered Beta</a> in October!</p>
+<h2 id="spec-compliance">Spec compliance</h2>
+<p>Of course, Dendrite also needs to be able to fulfill the promise of being a usable
+next-generation Matrix homeserver at the same time as being a sci-fi development
+platform. We have spent much of the last year working specifically on this. Today,
+Dendrite's <a href="https://github.com/matrix-org/sytest">Sytest</a> compliance sits at:</p>
+<ul>
+<li><strong>59%</strong> compliance for Client-Server APIs, up from 33% in May 2020</li>
+<li><strong>83%</strong> compliance for Server-Server APIs, up from 26% in May 2020</li>
+</ul>
+<p>As you can see, these are significant leaps in the numbers of tests passing against
+Dendrite. </p>
+<h2 id="experimental-mscs">Experimental MSCs</h2>
+<p>We have been increasingly trying to use Dendrite for the development and testing of
+some new Matrix feature proposals. Recently we've seen early support added for
+<a href="https://github.com/matrix-org/matrix-doc/pull/2753">Peeking (MSC2753)</a> and there
+is work in progress on <a href="https://github.com/matrix-org/matrix-doc/pull/2444">Peeking over Federation (MSC2444)</a>.</p>
+<p>Peeking enables temporarily subscribing to a room for real-time events without joining
+the room. This will only be possible with rooms that are world-readable, but it reduces
+the overhead of looking into a room significantly as there is no need to update the room
+state for each peeking user/device.</p>
+<p>In addition to that, we've also been working on <a href="https://github.com/matrix-org/matrix-doc/pull/2836">Threading (MSC2836)</a>
+support, which is the gateway to building some pretty new and interesting Matrix
+experiences. Twitter-like or Reddit-like social prototypes like this have traditionally
+been difficult to build on top of Matrix as the <code>m.reference</code> relation type from <a href="https://github.com/matrix-org/matrix-doc/pull/1849">MSC1849</a>
+had never really been fleshed out.</p>
+<p>Threading adds <code>m.relationship</code> fields for embedding these relationships, and also
+specifies an additional <code>/event_relationships</code> API endpoint for finding other events
+related to a given event in either direction. This makes it possible to build threads.</p>
+<h2 id="p2p-matrix">P2P Matrix</h2>
+<p>Dendrite has also been our primary development platform for P2P Matrix. This year we
+have released multiple P2P Matrix demos, including:</p>
+<ul>
+<li><a href="https://p2p.riot.im">p2p.riot.im</a>, which uses libp2p rendezvous and embeds a full
+Dendrite homeserver into an in-browser Service Worker</li>
+<li><a href="http://testflight.apple.com/join/Tgh2MEk6">Element iOS P2P</a>, available on TestFlight,
+which embeds a full Dendrite homeserver into the Element iOS app, initially using
+QUIC over <a href="https://yggdrasil-network.github.io">Yggdrasil</a> as a transport for federation
+traffic, but with more recent versions using QUIC over the experimental Pinecone protocol</li>
+<li><a href="https://github.com/matrix-org/dendrite/tree/master/cmd/dendrite-demo-libp2p">dendrite-demo-libp2p</a>,
+a standalone binary which formed the basis of the FOSDEM 2020 P2P demo, using libp2p and
+local multicast discovery as a transport for federation traffic</li>
+<li><a href="https://github.com/matrix-org/dendrite/tree/master/cmd/dendrite-demo-yggdrasil">dendrite-demo-yggdrasil</a>,
+another standalone binary like above, but using QUIC over Yggdrasil connectivity instead
+of libp2p as the transport for federation traffic</li>
+</ul>
+<p>Each experiment teaches us more about potential issues that need to be resolved in order
+to bring P2P Matrix closer to being reality, and we are continuing to use Dendrite for
+this work. We'll be announcing more information in the New Year about our latest efforts
+and the Pinecone routing scheme that we are developing.</p>
+<p>It's also worth highlighting that all of the other experimental work taking place right
+now, including Threading and Peeking, also work over P2P!</p>
+<h2 id="what-s-next">What's next</h2>
+<p>We'll be taking a short break for Christmas, but will then be continuing work on
+Dendrite in 2021, with the main aims being to add new features, improve spec compliance
+further, fix bugs and eventually exit beta. We'll also be continuing further experimental work in the
+P2P and Threading areas, as well as supporting the development of new MSCs such as
+<a href="https://github.com/matrix-org/matrix-doc/pull/2787">Portable Identities (MSC2787)</a>.</p>
+<p>We'd like to say thank you for the community support and interest, and also to send
+out a special thanks to our community contributors who have contributed a number of
+fixes and features in recent months! We always welcome code contributions via
+<a href="https://github.com/matrix-org/dendrite">GitHub</a> if you are an interested developer.</p>
+<p>As always, stay tuned for more Dendrite updates either by joining us in
+<a href="https://matrix.to/#/#dendrite:matrix.org">#dendrite:matrix.org</a> or by getting your
+regular dose of <a href="https://matrix.org/blog/category/this-week-in-matrix">This Week in Matrix</a>!</p>
+<p>— Neil Alexander and Kegan</p>
+
+        </div>
+    </article>
+    
+    <article class="post">
+        <header>
             <h1><a href="&#x2F;blog&#x2F;2020&#x2F;12&#x2F;11&#x2F;this-week-in-matrix-2020-12-11&#x2F;" title="This Week in Matrix 2020-12-11">This Week in Matrix 2020-12-11</a></h1>
             <span>
                 11.12.2020 00:00
@@ -1759,267 +1897,6 @@ already running one, now is an excellent time to upgrade!</p>
 <li>Notification levels are now parsed correctly in power level events (<a href="https://github.com/matrix-org/gomatrixserverlib/pull/228">gomatrixserverlib#228</a>, contributed by <a href="https://github.com/Pestdoktor">Pestdoktor</a>)</li>
 <li>Invalid UTF-8 is now correctly rejected when making federation requests (<a href="https://github.com/matrix-org/gomatrixserverlib/pull/229">gomatrixserverlib#229</a>, contributed by <a href="https://github.com/Pestdoktor">Pestdoktor</a>)</li>
 </ul>
-
-        </div>
-    </article>
-    
-    <article class="post">
-        <header>
-            <h1><a href="&#x2F;blog&#x2F;2020&#x2F;11&#x2F;13&#x2F;this-week-in-matrix-2020-11-13&#x2F;" title="This Week in Matrix 2020-11-13">This Week in Matrix 2020-11-13</a></h1>
-            <span>
-                13.11.2020 00:00
-                —
-                <a href="/category/this-week-in-matrix">
-                    This Week in Matrix
-                </a>
-                —
-                
-                <a href="/author/ben-parsons">
-                    Ben Parsons
-                </a>
-                
-            </span>
-            
-        </header>
-        <div>
-            <h2 id="matrix-live">Matrix Live 🎙</h2>
-<iframe src="https://www.youtube.com/embed/boQGjG9bkt8" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-<p>This marks the start of Season 6 of Matrix Live (S06E01), a decision M+A apparently made on the fly just now. Incrementing a mostly-arbitrary counter... Imagine wielding that kind of raw power!</p>
-<h2 id="dept-of-status-of-matrix-face-with-th">Dept of <em>Status of Matrix</em> 🌡️</h2>
-<h3 id="ietf-three-way-bridge">IETF three-way bridge</h3>
-<p><a href="https://matrix.to/#/@matthew:matrix.org">Matthew</a> reported:</p>
-<blockquote>
-<p>The IETF have been continuing to experiment with new chat systems, and <a href="https://matrix.to/#/#xmpp_bridgingmeta_jabber.ietf.org:matrix.org">#xmpp_bridgingmeta_jabber.ietf.org:matrix.org</a> exists as a three-way bridge to discuss the initiative spanning Matrix, XMPP &amp; Zulip.  Really fun to see open chat converging like this :)</p>
-</blockquote>
-<h2 id="dept-of-science">Dept of Science 🧪</h2>
-<h3 id="analysis-of-the-matrix-event-graph-replicated-data-type">Analysis of the Matrix Event Graph Replicated Data Type</h3>
-<p><a href="https://matrix.to/#/@florian:dsn.tm.kit.edu">Florian</a> announced:</p>
-<blockquote>
-<p>Fresh off the arXiv presses comes our</p>
-<p><a href="https://arxiv.org/abs/2011.06488">“Analysis of the Matrix Event Graph Replicated Data Type”</a> preprint!
-This time, it is a deep dive into the data structure properties of the event graph:</p>
-<p>What type of consistency guarantees does it provide,
-how many of the other homeservers you share a room with can be faulty or malicious without violating those guarantees (short answer: all of them!),</p>
-<p>and how is it possible that a frayed-out event graph ever laces back to just a few current events,
-while there is a probability larger than zero for growth to arbitrarily high limits?</p>
-<p>To shed light on those questions, we had a great cooperation between my <a href="https://dsn.tm.kit.edu/">Decentralized Systems and Network Services
-Research Group</a> and <a href="https://www.math.kit.edu/stoch/~henze/">Prof. Dr. Norbert Henze from the Institute of Stochastics</a>.</p>
-<p>While we are still in search of the right venue for peer-reviewed publication,
-we went for a preprint this time to share our results with the scientific and the Matrix community in a timely manner.</p>
-</blockquote>
-<p><img src="/blog/img/2020-11-13-WTJwJ-next-step-expectations.png" alt="2020-11-13-WTJwJ-next-step-expectations.png" /></p>
-<p>In this figure, k is the number of participating servers, U_n is the current width of the event graph.</p>
-<blockquote>
-<p>For example, with a current width of U_n = 1000 events and k = 200 servers,
-we can expect that the width goes below E(U_{n+1}) &lt; 600 events in just one step.*</p>
-</blockquote>
-<h2 id="dept-of-spec-scroll">Dept of Spec 📜</h2>
-<h3 id="spec">Spec</h3>
-<p><a href="https://matrix.to/#/@andrewm:amorgan.xyz">anoa</a> reported:</p>
-<blockquote>
-<p>Here's your weekly spec update! The heart of Matrix is the specification - and this is modified by Matrix Spec Change (MSC) proposals. Learn more about how the process works at <a href="https://matrix.org/docs/spec/proposals">https://matrix.org/docs/spec/proposals</a>.</p>
-<h4 id="msc-status">MSC Status</h4>
-<p><strong>Merged MSCs:</strong></p>
-<ul>
-<li><a href="https://github.com/matrix-org/matrix-doc/pull/2774">MSC2774: Expose the widget ID to the widget</a></li>
-<li><a href="https://github.com/matrix-org/matrix-doc/pull/2765">MSC2765: Widget avatars</a></li>
-</ul>
-<p><strong>MSCs in Final Comment Period:</strong></p>
-<ul>
-<li><em>No MSCs are in FCP.</em></li>
-</ul>
-<p><strong>New MSCs:</strong></p>
-<ul>
-<li><a href="https://github.com/matrix-org/matrix-doc/pull/2858">MSC2858: Multiple SSO Identity Providers</a></li>
-<li><a href="https://github.com/matrix-org/matrix-doc/pull/2855">MSC2855: Server-Initiated Client Clear-Cache &amp; Reload</a></li>
-</ul>
-<h4 id="spec-core-team">Spec Core Team</h4>
-<p>In terms of Spec Core Team MSC focus for this week, <a href="https://github.com/matrix-org/matrix-doc/issues/2744">MSC2744</a> has entered FCP. As such we're switching it out for <a href="https://github.com/matrix-org/matrix-doc/issues/2844">MSC2844</a>, which aims to define a global versioning system for all spec documents. Note that MSC2844 does not currently have FCP proposed. Its purpose for being in the focus this time around is for asking the team whether ideas proposed are plausible.</p>
-<p>Thus this week's focus is <a href="https://github.com/matrix-org/matrix-doc/issues/1544">MSC1544</a> (QR Code verification), <a href="https://github.com/matrix-org/matrix-doc/issues/2790">MSC2790</a> (modal widgets) and <a href="https://github.com/matrix-org/matrix-doc/issues/2844">MSC2844</a> (global versioning).</p>
-<p>We've also started making use of a Github board to track the state of an MSC through the currently somewhat ambiguous process of putting up an MSC that is ready for review to starting FCP. You can find the board here: <a href="https://github.com/orgs/matrix-org/projects/31">SCT Backlog</a>.</p>
-<p>Some explanation of the columns:</p>
-<ul>
-<li>
-<p>Awaiting SCT Input - These are MSCs that are deemed reviewable by the MSC author, and require review by a subsection of the Spec Core Team (usually one or two people) that are most familiar with the scope of Matrix that the MSC is relevant to.</p>
-</li>
-<li>
-<p>Ready for FCP ticks - At least one individual from the Spec Core Team has signed off on the MSC. It is not time for others to give a cursory review - mainly sanity checking from the perspective of the part of Matrix that they work on. Note that fundamental flaws may still be found in this stage, requiring the MSC to be reworked.</p>
-</li>
-<li>
-<p>In FCP - The MSC is in Final Comment Period, where everyone has a last chance to get their ideas in. This happens after most of the Spec Core Team have given their ticks from the previous column.</p>
-</li>
-<li>
-<p>Done - These MSCs no longer need immediate attention by some portion of the Spec Core Team.</p>
-</li>
-</ul>
-<p>These definitions are all flexible as we continue to see what works for the limited resources we have available for review.</p>
-<p>Do not be alarmed if a particular MSC is not on this board, we're placing things on here as deemed necessary, and more will certainly be added in time.</p>
-</blockquote>
-<p><img src="/blog/img/2020-11-13-IBXkM-stacked_area_chart.png" alt="2020-11-13-IBXkM-stacked_area_chart.png" /></p>
-<h3 id="new-spec-platform">New spec platform</h3>
-<p><a href="https://matrix.to/#/@wbamberg:matrix.org">wbamberg</a> reported:</p>
-<blockquote>
-<p>Working on the <a href="https://adoring-einstein-5ea514.netlify.app/spec/">new spec platform</a>: this week we've been simplifying the toolchain that builds and renders the spec, to make spec authoring easier and faster.</p>
-</blockquote>
-<h2 id="dept-of-servers-europea">Dept of Servers 🏢</h2>
-<h3 id="synapse">Synapse</h3>
-<p><a href="https://matrix.to/#/@callahad:matrix.org">callahad</a> offered:</p>
-<blockquote>
-<p><strong>Note:</strong> We are aware of a trivially exploitable denial of service vulnerability in versions of Synapse prior to 1.20.0. Complete details will be disclosed on Monday, November 23rd. If you have not upgraded recently, please do so.</p>
-<p>Happy RC day! The first release candidate of Synapse 1.23 is <a href="https://github.com/matrix-org/synapse/releases/tag/v1.23.0rc1">now available</a>. For Synapse admins, we've added numerous new APIs thanks to contributions by <a href="https://github.com/dklimpel">@dklimpel</a>, and we now support generating <a href="https://github.com/matrix-org/synapse/blob/v1.23.0rc1/docs/structured_logging.md">structured logs</a> in a standard manner. The <code>structured</code> and <code>drains</code> logging options are now deprecated in Synapse's configuration.</p>
-<p><a href="https://github.com/matrix-org/synapse/releases/tag/v1.23.0rc1">Synapse 1.23.0rc1</a> also includes several significant bugfixes, especially around regressions in the SQLite-to-PostgreSQL database porting script, as well a fix to an issue that would prevent Synapse from recovering after losing its connection to the database. Synapse will also now reject modifications to access control lists which would otherwise result in a server blocking itself from a room. This is a particularly interesting case of unintended consequences in protocol design, and we hope to write more about it soon.</p>
-<p>Next week should see the full release of 1.23, followed by a first implementation of <a href="https://github.com/matrix-org/matrix-doc/pull/2403"><em>MSC2403: Add &quot;knock&quot; feature</em></a> landing in the development branch for 1.24. Look for more information in next week's edition of TWiM!</p>
-</blockquote>
-<h3 id="dendrite">Dendrite</h3>
-<p>Dendrite is a next-generation homeserver written in Go</p>
-<p><a href="https://matrix.to/#/@kegan:matrix.org">kegan</a> said:</p>
-<blockquote>
-<p>Neil is still working on P2P routing schemes and I am still working on <a href="https://github.com/matrix-org/cerulean">Cerulean</a>, but that doesn't mean nothing has happened this week! We've been busy reviewing PRs and have landed a big one this week:</p>
-<ul>
-<li>
-<p>Read receipts are now implemented (thanks <a href="https://github.com/S7evinK">@S7evinK</a>!).</p>
-</li>
-<li>
-<p>Usernames with <code>=</code> can now be created, in accordance with the spec.</p>
-</li>
-</ul>
-<p>Spec compliance has improved as a result:</p>
-<ul>
-<li>
-<p>Client-server APIs: 58%, up from 57% last week.</p>
-</li>
-<li>
-<p>Server-server APIs: 83%, up from 81% last week.</p>
-</li>
-</ul>
-</blockquote>
-<h2 id="synapse-deployment-inbox-tray">Synapse Deployment 📥️</h2>
-<h3 id="yunohost">YunoHost</h3>
-<p><a href="https://matrix.to/#/@pierre:mamieserv.fr">Pierre</a> offered:</p>
-<blockquote>
-<p><a href="https://yunohost.org">YunoHost</a> is an operating system aiming for the simplest administration of a server, and therefore democratize self-hosting.</p>
-<p><a href="https://github.com/YunoHost-Apps/synapse_ynh/tree/master">Synapse</a> integration had been updated to 1.21.2 (1.22.1 available in branch <code>testing</code>)</p>
-<p><a href="https://github.com/YunoHost-Apps/element_ynh/tree/master">Element Web</a> integration had been updated to 1.7.12 (1.7.13 available in branch <code>testing</code>)</p>
-</blockquote>
-<h2 id="dept-of-clients-iphone">Dept of Clients 📱</h2>
-<h3 id="hydrogen">Hydrogen</h3>
-<p><a href="https://matrix.to/#/@bwindels:matrix.org">Bruno</a> said:</p>
-<blockquote>
-<p>Hello all. Hydrogen gained emotes (/me) this week, together with file uploads and downloads! Also, encryption keys are setup while typing instead of after sending, so you should see less momentary &quot;the sender hasn't sent the keys yet&quot;. Also a good number of bugs were solved. Next up: image uploads!</p>
-</blockquote>
-<p>As expected, <code>/me</code> commands brought a chorus of:</p>
-<blockquote>
-<p>now that you support commands, you must add the single most important command in any decent Matrix client</p>
-</blockquote>
-<p>- tulir</p>
-<p>Bruno got the idea pretty quickly:</p>
-<p><font color="#ff00be">/</font><font color="#ff006e">r</font><font color="#ff4608">a</font><font color="#ff8600">i</font><font color="#f1ad00">n</font><font color="#a6c700">b</font><font color="#28d600">o</font><font color="#00df22">w</font> <font color="#00e7e1">p</font><font color="#00e7ff">e</font><font color="#00e3ff">r</font><font color="#00d9ff">h</font><font color="#00c3ff">a</font><font color="#69a0ff">p</font><font color="#ff68ff">s</font><font color="#ff00ff">?</font></p>
-<h3 id="element">Element</h3>
-<p><a href="https://matrix.to/#/@nadonomy:matrix.org">Nad</a> announced:</p>
-<blockquote>
-<p>Hello TWIM! From this week on we're changing how we're reporting updates on the Element clients. Each week, we'll include a section for cross-platform feature work the Element team is working on, and some sections for platform specific work too.</p>
-<p><strong>Spaces (previously known as Communities)</strong></p>
-<p>Communities are back! They've been renamed to Spaces, and on the Element team we've been busy exploring user experience and critical thinking for <a href="https://github.com/matrix-org/matrix-doc/pull/1772">MSC1772</a>, to allow users to organise rooms into useful groups.</p>
-<p><strong>Social Login</strong></p>
-<p>In an effort to reduce friction in authentication, we've been R&amp;Ding how to allow homeservers &amp; Matrix clients to support multiple SSO providers.. Most of the work so far is captured in <a href="https://github.com/matrix-org/matrix-doc/pull/2858">MSC2858</a> and we're starting initial implementations in Element web next week.</p>
-<p><strong>VoIP: Voice &amp; Video Calls</strong></p>
-<p>We've started foundational research, design and engineering to improve both the usability and stability of native matrix VoIP in Element. We've also started to look at how we can improve the continuity of the user experience between native Matrix calls and our current implementation of Jitsi.</p>
-<p><strong>Usability</strong></p>
-<p>We've been focusing on improving post-registration actions all round to make Element provide better prompts for first actions, and empty states for views on all platforms, with a multitude of fixes having landed on Element Web, iOS &amp; Android in the last week. We've also started paid user testing to better understand specific pain points in the first time user experience, which we're looking to improve significantly in the coming weeks. </p>
-<p><strong>Web platform</strong></p>
-<p>v1.7.13 is now live! Which includes a bunch of fixes &amp; improvements on VoIP.</p>
-<p><strong>Android platform</strong></p>
-<p>v1.0.10 is now available on the Play Store. We're also doing ongoing work to catch up with feature parity to Element Web, and <a href="https://github.com/Dominaezzz">Dominaezzz</a> is migrating SDK APIs to suspend functions: no more MatrixCallback!</p>
-<p><strong>iOS platform</strong></p>
-<p>v1.1.0 is soon to be live on TestFlight for beta testers, and we'll soon be turning our attention to fixing end-to-end encryption regressions.</p>
-</blockquote>
-<h3 id="nheko">Nheko</h3>
-<p><a href="https://github.com/Nheko-Reborn/nheko">Nheko</a> is a desktop client using Qt, Boost.Asio and C++17. It supports E2EE (with the notable exception being device verification for now) and intends to be full featured and nice to look at</p>
-<p><a href="https://matrix.to/#/@deepbluev7:neko.dev">Nico (@deepbluev7:neko.dev)</a> reported:</p>
-<blockquote>
-<ul>
-<li>
-<p>You can now see yourself too during a video call.</p>
-</li>
-<li>
-<p>You can change the ringtone, as the default can be a bit annoying.</p>
-</li>
-<li>
-<p>Avatars should now not look as pixelated in some weird edge cases.</p>
-</li>
-<li>
-<p>You can now add text after a /shrug command.</p>
-</li>
-</ul>
-<p>That's all, thank you trilene and MayeulC for the contributions!</p>
-</blockquote>
-<h2 id="dept-of-sdks-and-frameworks">Dept of SDKs and Frameworks 🧰</h2>
-<h3 id="matrix-app-service-ex-elixir-sdk">matrix_app_service.ex (Elixir SDK)</h3>
-<p><a href="https://matrix.to/#/@pierre:matrix.asso-fare.fr">pierre</a> told us:</p>
-<blockquote>
-<p>We've (finally) released a first version of matrix_app_service.ex, an Elixir library for the application service API (<a href="https://hex.pm/packages/matrix_app_service/0.1.0">hex</a>, <a href="https://gitlab.com/kazarma/matrix_app_service.ex/">GitLab</a>)</p>
-</blockquote>
-<p>uhoreg (known Elixir fan, asked):</p>
-<blockquote>
-<p>that's cool.  Do you have any projects that are using it?</p>
-</blockquote>
-<p>Pierre:</p>
-<blockquote>
-<p>I don't want to &quot;sell&quot; it before there's some kind of poc, but with a few friends we're trying to build a bridge for ActivityPub. we're using the library of the same name by the people behind CommonsPub, of which a lot of code comes from Pleroma, so the application service appears as an ActivityPub server. it's still the beginning, and I'm just starting to think about which information a bridge needs to keep (I guess sometime I'll ask Half-Shot a big list of questions 😁)</p>
-</blockquote>
-<p>Today might be our highest-ever Pierre-ratio in TWIM!</p>
-<h3 id="matrix-spring-boot-sdk">matrix-spring-boot-sdk</h3>
-<p><a href="https://matrix.to/#/@benedict:imbitbu.de">Benedict</a> announced:</p>
-<blockquote>
-<p>A new release integrates an embedded h2 database into <a href="https://github.com/benkuly/matrix-spring-boot-sdk">matrix-spring-boot-bot</a>, which makes it a lot easier to write bots with persistency. You only need a few lines of code to write simple bots (<a href="https://github.com/benkuly/matrix-spring-boot-sdk/blob/master/matrix-spring-boot-bot-examples/ping-bot/src/main/kotlin/net/folivo/matrix/bot/examples/pingappservice/PingHandler.kt">e. g. a ping bot</a>). I also changed a lot under the hood (e. g. using type-safe Matrix-Id-classes instead of Strings).</p>
-<h4 id="matrix-sms-bridge">matrix-sms-bridge</h4>
-<p>The <a href="https://github.com/benkuly/matrix-sms-bridge">matrix-sms-bridge</a> now uses the h2 database from <a href="https://github.com/benkuly/matrix-spring-boot-sdk">matrix-spring-boot-bot</a> instead of neo4j, which makes it a lot more stable and fixes some bugs. We are using it in production with hundreds of target telephone numbers without problems. I also added an optional feature to use room aliases (e. g. #sms_4901234567:homeserver) to prevent multiple rooms with one target telephone number (which is still possible).</p>
-<p>In a few weeks you can use this bridge with an old Android-Smartphone, which acts as an sms gateway with rest api.</p>
-</blockquote>
-<h2 id="dept-of-ops">Dept of Ops 🛠</h2>
-<h3 id="matrix-docker-ansible-deploy">matrix-docker-ansible-deploy</h3>
-<p>This <a href="https://github.com/spantaleev/matrix-docker-ansible-deploy">Ansible playbook</a> is meant to easily let you run your own Matrix homeserver.</p>
-<p><a href="https://matrix.to/#/@slavi:devture.com">Slavi</a> announced:</p>
-<blockquote>
-<p>Thanks to <a href="https://github.com/scottcrossen">Scott Crossen</a>'s work, <a href="https://github.com/spantaleev/matrix-docker-ansible-deploy">matrix-docker-ansible-deploy</a> can now manage Dynamic DNS using <a href="https://ddclient.net/">ddclient</a>.</p>
-<p>To learn more, follow our <a href="https://github.com/spantaleev/matrix-docker-ansible-deploy/blob/master/docs/configuring-playbook-dynamic-dns.md">Dynamic DNS docs page</a>.</p>
-</blockquote>
-<h2 id="dept-of-bots-robot-face">Dept of Bots 🤖</h2>
-<h3 id="new-matrix-chat-bot-mozilla-focus-first">New Matrix chat bot, Mozilla-focus first</h3>
-<p><a href="https://matrix.to/#/@bnjbvr:delire.party">bnjbvr</a> announced:</p>
-<blockquote>
-<p>I've written a small <a href="https://blog.benj.me/2020/11/12/botzilla/">blog post</a> about a Matrix chat bot I've developed with <a href="https://github.com/turt2live/matrix-js-bot-sdk">matrix-js-bot-sdk</a>, it was started to address Mozilla specific features first, but then I've added a few other generally useful features too! Hope you'll like it and find it useful!</p>
-</blockquote>
-<p><a href="https://matrix.to/#/#botzilla:delire.party">#botzilla:delire.party</a> is the room for discussion (thanks Davo)</p>
-<h2 id="dept-of-built-on-matrix">Dept of <em>Built on Matrix</em> 🏗️</h2>
-<h3 id="gurlic-com-new-social-network-getting-matrix-integration">gurlic.com, new social network getting Matrix integration</h3>
-<p><a href="https://matrix.to/#/@ahq:matrix.org">ahq</a> said:</p>
-<blockquote>
-<p>Hello Matrix friends. I've been asked to share this here. I'm currently building a platform for building communities. I'm focused on deeper matrix integration with communities, private messaging built on top of matrix, and custom domain support. Feel free to check out <a href="https://gurlic.com">https://gurlic.com</a>. The matrix community is at <a href="https://gurlic.com/matrix">https://gurlic.com/matrix</a>, but I haven't had the time to post much. </p>
-<p>We have communities (https://gurlic.com/space -&gt; <a href="https://gurlic.space">https://gurlic.space</a>)</p>
-<p>We have galleries (https://gurlic.com/art -&gt; <a href="https://gurlic.art">https://gurlic.art</a>)
-We have publications (https://gurlic.com/classics -&gt; <a href="https://classics.wtf">https://classics.wtf</a>)</p>
-<p>We have user pages (https://gurlic.com/bob -&gt; https://bob.monster)</p>
-<p>The UI is a little confusing now because we have longform articles (https://gurlic.com/homer/the-iliad-book-ii) and short social media posts (https://gurlic.com/privacy/post/324848317844422661).</p>
-<p>I pretty much want all resources to have custom domain support, and matrix rooms for all communities, and nested communities. In the near future, I hope to have matrix servers for custom domains too. And of course, the source will also be open if folks want to host.</p>
-<p>Right now, users on gurlic get a matrix account, and communities/galleries/publications get a room too, but i'm hoping to take some time to look at much deeper integration. Dendrite and hydrogen are great to build on top off...</p>
-</blockquote>
-<h2 id="dept-of-ping-table-tennis-paddle-and-ball">Dept of Ping 🏓</h2>
-<p>Here we reveal, rank, and applaud the homeservers with the lowest ping, as measured by <a href="https://github.com/maubot/echo">pingbot</a>, a <a href="https://github.com/maubot/maubot">maubot</a> that you can host on your own server. Join <a href="https://matrix.to/#/#ping:maunium.net">#ping:maunium.net</a> to experience the fun live, and to find out how to add YOUR server to the game.</p>
-<table><thead><tr><th style="text-align: center">Rank</th><th style="text-align: center">Hostname</th><th style="text-align: center">Median MS</th></tr></thead><tbody>
-<tr><td style="text-align: center">1</td><td style="text-align: center">maunium.net</td><td style="text-align: center">318</td></tr>
-<tr><td style="text-align: center">2</td><td style="text-align: center">neko.dev</td><td style="text-align: center">363</td></tr>
-<tr><td style="text-align: center">3</td><td style="text-align: center">finallycoffee.eu</td><td style="text-align: center">364</td></tr>
-<tr><td style="text-align: center">4</td><td style="text-align: center">chatcloud.net</td><td style="text-align: center">384</td></tr>
-<tr><td style="text-align: center">5</td><td style="text-align: center">envs.net</td><td style="text-align: center">586.5</td></tr>
-<tr><td style="text-align: center">6</td><td style="text-align: center">acmelabs.space</td><td style="text-align: center">640</td></tr>
-<tr><td style="text-align: center">7</td><td style="text-align: center">matrix.sp-codes.de</td><td style="text-align: center">696.5</td></tr>
-<tr><td style="text-align: center">8</td><td style="text-align: center">kernelpanic.cafe</td><td style="text-align: center">750</td></tr>
-<tr><td style="text-align: center">9</td><td style="text-align: center">casavant.org</td><td style="text-align: center">834</td></tr>
-<tr><td style="text-align: center">10</td><td style="text-align: center">matrix.thedisco.zone</td><td style="text-align: center">904</td></tr>
-</tbody></table>
-<h2 id="that-s-all-i-know-checkered-flag">That's all I know 🏁</h2>
-<p>See you next week, and be sure to stop by <a href="https://matrix.to/#/#TWIM:matrix.org">#twim:matrix.org</a> with your updates!</p>
 
         </div>
     </article>
