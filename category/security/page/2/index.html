@@ -114,7 +114,7 @@
     <div class="content">
         <header>
             <h1>Security</h1>
-            35 posts tagged with "Security" <a href="/category">(See all Category)</a>
+            36 posts tagged with "Security" <a href="/category">(See all Category)</a>
             
             <h2>
                 <small><a href="https://matrix.turbo.fish/category/security/atom.xml">Atom Feed</a></small>
@@ -122,6 +122,50 @@
             
         </header>
 
+        
+        <article class="post">
+            <header>
+                <h2><a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;2021&#x2F;12&#x2F;13&#x2F;disclosure-buffer-overflow-in-libolm-and-matrix-js-sdk&#x2F;" title="Disclosure: buffer overflow in libolm and matrix-js-sdk">Disclosure: buffer overflow in libolm and matrix-js-sdk</a></h2>
+                <span>
+                    13.12.2021 18:35
+                    —
+                    <a href="/category/security">
+                        Security
+                    </a>
+                    —
+                    <a
+                        href="/author/matrix-security">
+                        Matrix Security
+                    </a>
+                </span>
+                <br>
+                <small>Last update: 13.12.2021 16:11</small>
+            </header>
+            <div>
+                
+                <p>Today we are releasing security updates to libolm, matrix-js-sdk, and several clients including Element Web / Desktop. Users are encouraged to upgrade as soon as possible. This resolves the <a href="https://matrix.org/blog/2021/12/03/pre-disclosure-upcoming-security-release-of-libolm-and-matrix-js-sdk">pre-disclosure</a> issued on December 3rd.</p>
+<p>Fixed library versions are:</p>
+<ul>
+<li>libolm: <a href="https://gitlab.matrix.org/matrix-org/olm/-/tree/3.2.8">3.2.8</a></li>
+<li>matrix-js-sdk: <a href="https://github.com/matrix-org/matrix-js-sdk/releases/tag/v15.2.1">15.2.1</a></li>
+</ul>
+<p>Client versions incorporating the fixes are:</p>
+<ul>
+<li>Element Web / Desktop: <a href="https://github.com/vector-im/element-web/releases/tag/v1.9.7">1.9.7</a></li>
+<li>SchildiChat Web / Desktop: <a href="https://github.com/SchildiChat/schildichat-desktop/releases/tag/v1.9.7-sc.1">1.9.7-sc.1</a></li>
+<li>Cinny: <a href="https://github.com/ajbura/cinny/releases/tag/v1.6.0">1.6.0</a></li>
+</ul>
+<p>These releases mitigate a buffer overflow in <code>olm_session_describe</code>, a libolm debugging function used by matrix-js-sdk in its end-to-end encryption (E2EE) implementation. If you rely on matrix-js-sdk for E2EE, you are affected. This vulnerability has been assigned <a href="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-44538">CVE-2021-44538</a>.</p>
+<p>Clients which do <em>not</em> use matrix-js-sdk for E2EE, like FluffyChat or Element Android / iOS, are <em>not</em> affected.</p>
+<p>This issue has been present since the introduction of the <code>olm_session_describe</code> function in October 2019 (commits: <a href="https://gitlab.matrix.org/matrix-org/olm/-/commit/39a1ee0b18f0fced6d7bc293cc9a46ea70ec9e96">libolm</a>, <a href="https://github.com/matrix-org/matrix-js-sdk/commit/e6699c5424a856a639baa6d6f78d44594baaf404">matrix-js-sdk</a>).</p>
+<p>We do not believe it is practical to successfully exploit this issue. However, upgrading remains important as the overflow <em>can</em> be triggered remotely.</p>
+<p>Separately from the above vulnerability, we noticed during an internal audit that the libolm bindings in matrix-js-sdk were not zeroing out certain arrays containing entropy for cryptographic operations. This causes the entropy to remain resident in memory longer than necessary. As a defense-in-depth measure, this release of libolm now proactively overwrites those arrays when it is safe to do so.</p>
+<p>Lastly, we are also taking this opportunity to update the version of Electron bundled with Element Desktop, pulling in the latest backported security fixes there.</p>
+<p>The buffer overflow was found and reported by GitHub user <a href="https://github.com/brevilo">@brevilo</a> in the course of developing <a href="https://github.com/brevilo/jolm/">jOlm</a>, a library of Java bindings to libolm; thank you. If you believe you've discovered a security vulnerability in Matrix or its implementations, please see our <a href="https://matrix.org/security-disclosure-policy/">Security Disclosure Policy</a> for how to get in touch.</p>
+
+                
+            </div>
+        </article>
         
         <article class="post">
             <header>
@@ -874,34 +918,6 @@ Matrix.org and we'd welcome other researchers to come join our Hall of Fame!
                 <p><a href="https://github.com/matrix-org/synapse/releases/tag/v1.33.2">Synapse 1.33.2</a> is now available.</p>
 <p>This release fixes a denial of service issue (<a href="https://github.com/matrix-org/synapse/security/advisories/GHSA-x345-32rc-8h85">CVE-2021-29471</a>) where evaluating specially crafted push rules could lead to excessive CPU load. Server administrators are encouraged to upgrade.</p>
 <p>To learn more about Synapse 1.33, see last week's <a href="/blog/2021/05/05/synapse-1-33-0-released">release announcement</a>.</p>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;2021&#x2F;03&#x2F;26&#x2F;synapse-1-30-1-released&#x2F;" title="Synapse 1.30.1 released">Synapse 1.30.1 released</a></h2>
-                <span>
-                    26.03.2021 16:12
-                    —
-                    <a href="/category/releases">
-                        Releases
-                    </a>
-                    —
-                    <a
-                        href="/author/dan-callahan">
-                        Dan Callahan
-                    </a>
-                </span>
-                
-            </header>
-            <div>
-                
-                <p><a href="https://github.com/matrix-org/synapse/releases/tag/v1.30.1">Synapse 1.30.1</a> is now available. This release is identical to Synapse 1.30.0, with the exception of explicitly setting a minimum version of the Python Cryptography library to ensure that users of Synapse are protected from yesterday's <a href="https://mta.openssl.org/pipermail/openssl-announce/2021-March/000198.html">OpenSSL security advisories</a>, especially CVE-2021-3449.</p>
-<p>Note that Cryptography defaults to bundling its own statically linked copy of OpenSSL, which means that you may not be protected by your operating system's security updates.</p>
-<p>It's also worth noting that Cryptography no longer supports Python 3.5, so admins deploying to older environments like Debian 9 (Stretch) or Ubuntu 16.04 (Xenial) may not be protected against this or future vulnerabilities.</p>
-<p>The next release of Synapse will be the last to support Python 3.5.</p>
 
                 
             </div>

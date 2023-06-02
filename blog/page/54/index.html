@@ -118,6 +118,377 @@ Matrix, a digest of the past week activity.
     
     <article class="post">
         <header>
+            <h1><a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;2017&#x2F;08&#x2F;23&#x2F;introducing-matrix-widgets&#x2F;" title="Introducing Matrix Widgets - including Jitsi video conferencing!">Introducing Matrix Widgets - including Jitsi video conferencing!</a></h1>
+            <span>
+                23.08.2017 00:00
+                —
+                <a href="/category/general">
+                    General
+                </a>
+                —
+                
+                <a href="/author/matthew-hodgson">
+                    Matthew Hodgson
+                </a>
+                
+            </span>
+            
+        </header>
+        <div>
+            <p>Hi all,</p>
+<p>We've been working hard over the last few months on the brand new concept of Matrix &quot;widgets” (sometimes called “apps”, but we'll call them “widgets” here to be marginally less ambiguous) - and we're super excited to see an initial implementation of them land today in Riot/Web 0.12 (alongside always-on Rich Text Editor - the culmination of huge amounts of work by Aviral Dasgupta in his GSoC 2016 project and Luke from the core Matrix team).  For user-focused details about Riot 0.12 you should probably head over to the <a href="https://medium.com/@RiotChat/riot-im-web-0-12-7c4ea84b180a">Riot blog</a>; meanwhile we'll focus here on widgets from the developer perspective.</p>
+<p>Widgets are a deceptively simple idea: the ability to pin small form-factor webapps (called widgets) into a given Matrix room, letting admins build up a dashboard of functionality which is then in common and automatically available to everyone who views that room.  You can think of it as being similar to installing an app onto a smartphone, but instead pulling it into a Matrix conversation.  This could be a <a href="https://jitsi.org">Jitsi</a> video conference, or a collaborative document editor, or a <a href="https://grafana.com">Grafana</a> dashboard, or anything you can imagine really (assuming its security headers support embedding).  Here's an example of a room with an ongoing Jitsi conference coupled with a Grafana graph, as you might use for a devops war room:</p>
+<img class="aligncenter size-full wp-image-2745" src="/blog/wp-content/uploads/2017/08/widgets.png" alt="" width="929" height="605" />
+<p>The URLs of the widgets are stored in the state of the room with some high-level layout hints, and the idea is that any Matrix client will be able to expose the widgets for the current room to a user.  For a simple command-line client this could just be listing the URLs of the widgets so the user can open them in a browser; for a web client like Riot/Web they're embedded via iframes; for a native client like Riot/iOS they could be shown via a WebView - or there's always the chance of the native client recognising the URL being requested and swapping it out for an optimised local native implementation instead.  For now, widgets don't really have a way of communicating with the host Matrix client (other than by speaking Matrix to the homeserver!), although we're looking at adding a PostMessage API to improve this.</p>
+<p>Now, in an ideal world we would have enough bandwidth to have formally added widgets to the Matrix spec, but unfortunately we are way behind on spec work currently, thanks in part to our current funding problems. (Remember, if you like Matrix, <a href="/blog/2017/07/07/a-call-to-arms-supporting-matrix/">please donate or get your company to donate</a> otherwise we are at real risk of hitting a very big funding wall).  Rather than formal spec, we've focused on rushing an initial implementation out the door in matrix-react-sdk (and thus riot-web) to see how they work first in reality.  Riot/iOS and Riot/Android are coming soon - although we've special-cased the Jitsi video conferencing widget in iOS to be implemented natively, which is actually available already on develop(!)</p>
+<p>Right now the widgets supported by Riot are prefixed behind the <code>im.vector.modular.widgets</code> state event, whose format is something like:</p>
+<pre data-lang="js" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-js "><code class="language-js" data-lang="js"><span>{
+</span><span>    type: </span><span style="color:#d69d85;">&quot;im.vector.modular.widgets&quot;</span><span>,
+</span><span>    state_key: </span><span style="color:#d69d85;">&quot;widget1&quot;</span><span>,
+</span><span>    content: {
+</span><span>        type: </span><span style="color:#d69d85;">&quot;grafana&quot;</span><span>,
+</span><span>        url: </span><span style="color:#d69d85;">&quot;https://matrix.org/grafana/whatever&quot;</span><span>,
+</span><span>        name: </span><span style="color:#d69d85;">&quot;matrix.org bridges dashboard&quot;
+</span><span>    }
+</span><span>    room_id: </span><span style="color:#d69d85;">&quot;!foo:bar.com&quot;</span><span>,
+</span><span>    sender: </span><span style="color:#d69d85;">&quot;@kegan:matrix.org&quot;
+</span><span>}
+</span></code></pre>
+<p>Currently the only layout hint is that the order of the event determines the order in which the widget should be displayed on the page.  Riot/Web's initial implementation is very naive and shows only up to two widgets per page, although we're hoping to make this much more generic and flexible in future.  To add widgets in Riot/Web you can now hit the new widget manager button in the top right - and to show/hide existing ones in the room you can hit the show/hide app drawer button in the bottom right.</p>
+<p>The UI for adding widgets to a room in Riot is currently via Modular - the new name for Riot's SaaS integration hosting platform, formally codenamed Scalar.  This is a separate webapp loaded in an iframe which guides you through choosing widgets to embed which are hosted by Modular, although in the near future we'll also add UI to let you specify widget URLs directly.  If you need this today, you'll need to manually inject a state event like the one above into the room to provision the widget.</p>
+<p>This is very much the minimum viable implementation of widgets: the stuff left to do includes:</p>
+<ul>
+ 	<li>Adding them to the spec, and getting clients other than Riot using them!</li>
+ 	<li>Supporting better layouts (especially to allow for more screen real-estate) and more than 2 widgets</li>
+ 	<li>Ability to add widgets directly, for situations where Modular isn't available</li>
+ 	<li>Speccing APIs for widgets to interact directly with the host client - with the appropriate permissions model</li>
+ 	<li>Adding lots more prepackaged widgets to the Modular store!</li>
+</ul>
+Modular comes with 6 widgets ready to go: Grafana, Jitsi, Etherpad, YouTube, Google Docs and Custom Widget (which lets you add any arbitrary URL into the room). The most exciting of these is probably Jitsi, which provides Hangouts-style video conferencing into any room.  This provides a welcome alternative to our 'native' conferencing functionality which sadly got stuck in a permanent early beta - and includes full screensharing as well!  The only catch is that it hasn't been released on iOS yet, and Android is still be to be implemented - but the experience is a still massive improvement over what we've had historically.  Here's a screenshot of some of the core team doing a 6-way conference with the native Jitsi functionality now included in Riot/iOS!
+<img class="aligncenter size-full wp-image-2746" src="/blog/wp-content/uploads/2017/08/jitsi-ios.png" alt="" width="1689" height="884" />
+<p>Finally, if you want to write your own widget, just create a webapp and play with it via the Custom Widget interface.  If it's something useful for other people then please ping us on #matrix-dev:matrix.org and we'll see about getting it added as a preset application in Modular.</p>
+<p>We think widgets are an awesome example of how Matrix can be used to coordinate collaboration between users in a room - for now it's just simply ensuring that users are looking at the same set of webapps when in a room, but in future you can see how it could extend to co-browsing, co-editing, payment functionality, or generally using Matrix to coordinate things other than textual/voip chat.  The sky's the limit, and we're hoping the Modular store (and other app stores) will start overflowing with apps in the near future!</p>
+<p>As always, feedback is very welcome on new experimental stuff like this - so please come tell us what you think in <a href="https://matrix.to/#/#matrix:matrix.org">#matrix:matrix.org</a>!  And finally: huge kudos to Rick, Kegan, Rob, and everyone else who have been working away bringing Widgets to life.  It's the beginning of a new era :D</p>
+<p>Matthew</p>
+
+        </div>
+    </article>
+    
+    <article class="post">
+        <header>
+            <h1><a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;2017&#x2F;08&#x2F;22&#x2F;thoughts-on-cryptocurrencies&#x2F;" title="Thoughts on cryptocurrencies">Thoughts on cryptocurrencies</a></h1>
+            <span>
+                22.08.2017 00:00
+                —
+                <a href="/category/thoughts">
+                    Thoughts
+                </a>
+                —
+                
+                <a href="/author/matthew-hodgson">
+                    Matthew Hodgson
+                </a>
+                
+            </span>
+            
+        </header>
+        <div>
+            <p>Hi folks,</p>
+<p>Something that has kept coming up since we ran into funding problems in July is the idea that Matrix could launch a cryptocurrency - a token for use when exchanging items of value within Matrix. This isn't such a far-fetched idea: folks are already starting to look at how to sell content/services within Matrix, and the idea of using a Matrix-specific currency rather than credit card, PayPal, or an existing cryptocurrency could have some major advantages. Specifically:</p>
+<ul>
+ 	<li>It would let the value of the currency (in terms of its exchange rate relative to other currencies) grow in value directly linked to the growth and success of the Matrix ecosystem as a whole.</li>
+ 	<li>In future it could help us reward folks who run Matrix infrastructure (homeservers, identity servers, etc) by "mining" or "farming" style allocations of currency</li>
+ 	<li>It could also be a very useful tool for helping fight spam in future.  One way of proving that a user should be allowed to contact strangers (other than a vouching system) could be to spend some money.</li>
+ 	<li>An "token generation event" or "initial coin offering" where we sell initial allocations of the currency to the Matrix & cryptocurrency community could be a rather useful way to raise enough money to fully support the core Matrix team going forwards.</li>
+</ul>
+Meanwhile, Matrix itself is obviously already a fairly successful decentralised application ecosystem, and we believe that the above points give us a much better reason than average to actually launch a currency.  It's important to note that we don't have plans at this point to evolve the Matrix protocol itself into being able to support cryptocurrencies - we'd instead piggyback on top of an existing established distributed currency ledger.  (Later on, rewarding folks who run Matrix infrastructure by mining would require more interesting integration with Matrix, of course).
+<p><strong>However (and this is the important bit), whilst we've been thinking about this a lot over the last few months, we have not yet announced anything concrete.  Over the last few days it's come to our attention that there are some people advertising a &quot;Matrix.org ICO Presale&quot;.  This is not legitimate - we are not yet running an ICO or presale, and if/when we do the only place you will hear about it is here on the Matrix.org website. 
+ It looks possible that this is a scam to try to steal Ethereum.  We have not yet authorised anyone to sell hypothetical Matrix currency.  If you see this rumour around please let us know so we can try to understand where it's coming from and set the record straight.</strong></p>
+<p>Anyway, we thought it was worth giving an update on our thoughts about cryptocurrencies - and to publicly clarify that anyone claiming that they are running a Matrix.org ICO is lying.</p>
+<p>We'd genuinely be very interested to hear feedback from the community on whether an ICO for Matrix would be a good idea or not - <a href="https://matrix.to/#/#matrix:matrix.org">#matrix:matrix.org</a> is probably the best place to discuss it.  It's important to understand that our core focus will always be on Matrix itself, where we still have a lot of work to get through - and if we do an ICO it'll be in partnership with specialist cryptocurrency experts, and hopefully minimise the impact to the core Matrix project itself.  But right now, we would be foolish not to be seriously considering the option.</p>
+<p>thanks,</p>
+<p>Matthew, Amandine &amp; the team.</p>
+
+        </div>
+    </article>
+    
+    <article class="post">
+        <header>
+            <h1><a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;2017&#x2F;07&#x2F;19&#x2F;status-update&#x2F;" title="Matrix.org status update - July 2017">Matrix.org status update - July 2017</a></h1>
+            <span>
+                19.07.2017 00:00
+                —
+                <a href="/category/general">
+                    General
+                </a>
+                —
+                
+                <a href="/author/matthew-hodgson">
+                    Matthew Hodgson
+                </a>
+                
+            </span>
+            
+        </header>
+        <div>
+            <p style="text-align: left;">Hi folks,</p>
+Thought it was worth giving a quick status update on what's going on since our <a href="/blog/2017/07/07/a-call-to-arms-supporting-matrix/">last blog post</a>, which explained the funding situation Matrix has found itself in.  The TL;DR is that we're still here; things are moving faster than ever (not least as we refocus on getting everything needed to get Matrix funded and sustainable in the longer term), but we still need concrete support from the community (both company sponsorship and personal donations) to ensure things keep going at the current rate.
+<h3 id="funding-status">Funding Status</h3>
+<p>So, the good news is that we had a great initial response to last week's call to help - right now we have 199 people signed up on <a href="https://patreon.com/matrixdotorg">Patreon</a> (go on, be the 200th! you know you want to :D), ~30 on <a href="https://liberapay.com/matrixdotorg/">Liberapay</a>, and 14 bitcoin donations.  This sums up to just over $2000/month - which is getting close to our initial Patreon goal of $2500/month to helping support half the cost of the less senior devs working on Matrix. <strong>Endless thanks to everyone who has donated - especially the 19 folks (18 on Patreon, one on Liberapay) who have so generously pledged $50 or more a month!! </strong>Meanwhile, if you're reading this and you haven't pledged support yet - <em>please</em> consider heading over to <a href="https://patreon.com/matrixdotorg">Patreon</a> or <a href="https://liberapay.com/matrixdotorg">Liberapay</a> or Bitcoin 1LxowEgsquZ3UPZ68wHf8v2MDZw82dVmAE and helping keep the project running.  Literally every dollar counts.</p>
+<p>Meanwhile, while Patreon &amp; friends are headed in the right direction to support one developer, we still have another 10 people working on all the various core components of Matrix itself who need to be supported in the near future.  (We look to be safe for the next month or two, but beyond that we're counting on having solved this problem ;).  <strong>Right now we are hoping that companies who believe in Matrix and/or are building services on top will step up to sponsor development</strong> - as it's pretty obvious that accelerating Dendrite, final E2E, Groups etc will improve professional Matrix-based services immeasurably.  If this sounds like you, please <a href="mailto:matthew@matrix.org">get in touch</a> asap.</p>
+<p>We're also able to provide <strong>paid consulting and development (and prioritised development)</strong> services on Matrix (through Vector, the for-profit company responsible for Riot) for large pieces of work - for instance, if you're anxious to see enterprise-focused Matrix features land sooner than later, please <a href="mailto:matthew@matrix.org">reach out</a>.</p>
+<p>Exciting news is that we already have one concrete offer of paid consulting work from a very major company who happens to love Matrix, building out Integrations capabilities which should directly benefit the wider Matrix ecosystem - and we also are very proud to announce our very first official corporate sponsor (see the next section for details)!  However, we still have a long way to go, so don't be shy about getting in touch: <strong>we need your support</strong>!</p>
+<p>Heads up that we've also started our various reward schemes for supporters - folks donating more than $5 on Patreon will have already heard most of this update in the first episode of the video blog that Amandine &amp; I posted last Friday; and folks donating more than $10 will have heard some of the other details first hand through the broadcast of the global team weekly sync on Monday!  We're still figuring out how to get these rewards over to liberapay &amp; bitcoin supporters (not helped by both services being anonymous...).  We haven't yet opened up the #matrix-supporters:matrix.org room as maintaining the accesslist is effectively blocked on Groups landing.  We also want to use Groups to manage the various lists of supporters around the place, so apologies that we haven't got the lists published yet!</p>
+<p>Finally on the funding side of things: we're setting up the Matrix.org Foundation non-profit legal entity this week, letting us accept donations and sponsorship in a way which can directly fund the core developers (more details as we have them).  As soon as it's incorporated, we'll be able to sign up fully on Liberapay to accept donations there.</p>
+<h3 id="announcing-upcloud-our-very-first-official-matrix-org-corporate-sponsor">Announcing <strong>UpCloud</strong>: our very first official Matrix.org Corporate Sponsor!</h3>
+<p><a href="https://www.upcloud.com/matrix"><img style="padding: 1em" src="/blog/wp-content/uploads/2017/07/upcloud-logo-horizontal-300x60.png" alt="" width="300" height="60" class="aligncenter size-medium wp-image-2631" /></a></p>
+<p>As hinted above, we're incredibly excited and happy that UpCloud have signed up as our first official corporate sponsor.  UpCloud has already been hosting all of Matrix.org's infrastructure for the last 6 months (no mean feat, given the scale of the Matrix.org synapse &amp; postgres!) - and last week they committed to extend their sponsorship further to help the project out in our time of need.</p>
+<p>We've been very impressed with UpCloud's service since migrating over back in February - particularly their spectacularly fast block IO (<b>~350MB/s write, 92,000 IOPS, and over 5GB/s read!!</b>) which is incredibly useful for running a huge synapse deployment like Matrix.org's - and they have a great footprint of datacentres around the world.</p>
+<p>They also like Matrix so much that they've written this <a href="https://www.upcloud.com/support/install-matrix-synapse/">great tutorial for getting Synapse up and running on their hosts</a> - and best of all, they have a special $25 discount for anyone in the Matrix community who wishes to use them: check out <a href="https://www.upcloud.com/matrix/">https://www.upcloud.com/matrix/</a> for the details!</p>
+<p>We'd like to thank them profusely for being first in line to support us - and we look forward to seeing how far we can push their hardware over the coming months! :D</p>
+<h3 id="development-status">Development Status</h3>
+<p>Finally, loads and loads of stuff is happening on Matrix itself.  The main headlines are:</p>
+<ul>
+ 	<li><strong>Groups</strong>.  Work in Synapse and matrix-react-sdk is happening at breakneck speed to get Groups out the door as soon as possible, so we can use them both to support the funding drive and in general to implement one of the most asked-for features of Matrix: the ability to group rooms together into a well-defined community (similar to Slack Teams or Discord Servers etc).  The way Groups work is to let users define groupings of both users and rooms; you can also define a metadata for the group to let you build homepages similar to the one which Riot/Web sprouted a few months ago.  You can then refer to the group of users when inviting/banning/kicking etc - or when managing your own roomlist.  We think it's going to completely change how people use Matrix, and can't wait to see it land on riot.im/develop, although it's still a few weeks away.</li>
+ 	<li><strong>E2E Crypto</strong>.  We have three main things remaining here, after which E2E should be much much more usable for day-to-day purposes:
+<ol>
+ 	<li>Fixing the matrix-js-sdk to store crypto state in indexeddb rather than localstorage, to prevent multiple browser tabs racing and corrupting localstorage (which provides no locking mechanism).  This turns out to be much more of an epic than we thought, as indexeddb's APIs are all strictly async, resulting in a whole bunch of previously synchronous APIs in matrix-js-sdk needing to become async too, as well as requiring us to switch promises library at least from Q to Bluebird.  However, most of this is now done so hopefully the new storage layer will land shortly. <a href="https://github.com/vector-im/riot-web/issues/2325"> https://github.com/vector-im/riot-web/issues/2325</a> is the bug tracking this one...</li>
+ 	<li>Fixing the overall UX of managing devices in a room (including key shares). <a href="https://github.com/vector-im/riot-web/issues/4522"> https://github.com/vector-im/riot-web/issues/4522</a> is the bug for this one :)  Relatedly we also need to ensure invitees can decrypt messages in e2e rooms before they join (if history visibility allows it) - this is <a href="https://github.com/vector-im/riot-web/issues/3821">https://github.com/vector-im/riot-web/issues/3821</a></li>
+ 	<li>Fixing the UX of verifying devices (including cross-signing devices), to minimise the pain in verifying device ownership. <a href="https://github.com/vector-im/riot-web/issues/2142">https://github.com/vector-im/riot-web/issues/2142</a> is the master bug for this.</li>
+</ol>
+</li>
+ 	<li><strong>Integrations.  </strong>A large slice of the team is working on our next-generation integration hosting platform, which is starting to look unspeakably awesome.  We'll be yelling loudly about this once there's something to see and play with...
+<strong>
+</strong></li>
+ 	<li><strong>Rich Text Editor</strong>.  This was originally a GSoC project from last year, but is finally on by default now in matrix-react-sdk - letting users author their messages with full WYSIWYG behaviour and critically have a radically improved autocompletion UI/UX, including emoji, user names, room names, etc.  You can check it out at <a href="https://riot.im/develop">riot.im/develop</a> already :)</li>
+ 	<li><strong>Mentions</strong>.  We're finally semantically tagging references to users in messages so that they can be displayed nicely in the UI, and help with highlighting notifications!  This is due as soon as the Rich Text Editor work has finished.</li>
+ 	<li><strong>Mobile SDKs</strong>.  The iOS & Android teams are currently on a mission to get parity between the iOS & Android SDKs and matrix-react-sdk.  This is stuff like implementing the new User Search API; Membership Event List Summaries; Dark theme(!); Translations; etc.  Progress is looking good!</li>
+ 	<li><strong>Synapse performance</strong>.  Many many optimisations when calculating push rules when sending messages, which was taking up a substantial amount of the send path time.  Synapse develop looks to have reduced this significantly now - and as of Monday we're running the new optimisations on Matrix.org.</li>
+ 	<li><strong>Dendrite.  </strong>Lots of work going into implementing Invitations currently, including improvements to the overall append-only log architecture to support them nicely.</li>
+ 	<li><strong>Riot-Static</strong>.  This is one of our GSoC projects this year, written by Michael Telatynski (t3chguy) - providing a full static (no-JS) read-only view of Matrix, suitable for dumb web browsers and search engines.  It's looking really exciting (although needs CSS) - there's a copy currently deployed over at <a href="https://stormy-bastion-98790.herokuapp.com/">https://stormy-bastion-98790.herokuapp.com/</a>.</li>
+</ul>
+Meanwhile, there's a tonne of stuff happening in the community - an excellent summary may be found at this <a href="https://www.uhoreg.ca/blog/20170714-0834">Community Round Up blog post by uhoreg</a>!
+<p>So: this is where things stand right now - the team is sprinting away getting all the stuff above landed, and meanwhile I'm spending most of my life worrying about funding.  We'll try to keep blogging more regularly to give better visibility on progress on both the funding &amp; development situation, as well as to ensure there's a written public record as well as the regular supporter-only updates.  However, for the latest realtime updates and sneak previews and tidbits you'll probably want to sign up on <a href="https://patreon.com/matrixdotorg">Patreon</a> or <a href="https://liberapay.com/matrixdotorg">Liberapay</a> :D</p>
+<p>--Matthew</p>
+<p>[EDIT: I got the UpCloud stats completely wrong - they are even faster (by 10x!) than I quoted; the figures are now updated :)]</p>
+
+        </div>
+    </article>
+    
+    <article class="post">
+        <header>
+            <h1><a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;2017&#x2F;07&#x2F;07&#x2F;a-call-to-arms-supporting-matrix&#x2F;" title="A Call to Arms: Supporting Matrix!">A Call to Arms: Supporting Matrix!</a></h1>
+            <span>
+                07.07.2017 00:00
+                —
+                <a href="/category/general">
+                    General
+                </a>
+                —
+                
+                <a href="/author/matthew-hodgson">
+                    Matthew Hodgson
+                </a>
+                
+            </span>
+            
+        </header>
+        <div>
+            <p>Hi folks,</p>
+<p><b>TL;DR: if you like Matrix (and especially if you're building stuff on it), please <i>support us via <a href="https://patreon.com/matrixdotorg">Patreon</a> or <a href="https://liberapay.com/matrixdotorg/">Liberapay</a></i> to keep the core team able to work on it full-time, otherwise the project is going to be seriously impacted.  And if you're a company who is invested in Matrix (e.g. itching for Dendrite), please get in touch ASAP if you'd like to sponsor core development work from the team.  And if you're a philanthropic billionaire who believes in our ideals of decentralisation, encryption, and open communication as a basic human right - we'd love to hear from you too O:-)</b></p>
+<img class="aligncenter size-large wp-image-2611" src="/blog/wp-content/uploads/2017/07/matrix-supporters-1024x248.png" alt="" width="1024" height="248" />
+<p>I was expecting this blog post to be the Matrix Summer Special, focusing entirely on the incredible progress and updates we've made in the last few months in Matrix.  However, instead I'm going to talk about something different and literally critical to Matrix's success.</p>
+<p>As many people know, Matrix.org development has historically been exclusively and very generously sponsored by a large multinational telecoms infrastructure company for whom most of the core team once built telco messaging apps.  However, despite the project progressing better than ever (more on that later), we have just had our funding dramatically cut by &gt;60%. <b>[Update: as of Aug 2017 it is effectively cut entirely, with enough $ left over to cover until end of October.]</b></p>
+<p>We seem to be suffering from a darkly amusing paradox, as the rationale from our corporate overlords is essentially: <i>“Wow! Matrix is doing great and growing well - and you seem to have all sorts of exciting people and companies using and building on it.  But we've been footing the whole development bill since the outset in May 2014, and this simply doesn't feel fair.  We're happy to keep funding though - but only if others do too!”</i>.  In other words, in some ways we are a victim of our own success...</p>
+<p>So we now find ourselves in the situation that despite the project looking better than ever and having a tonne of amazing stuff in the pipeline, we are suddenly missing the funding to keep the core team working on it.  And the team is quite sizeable - reflecting the ambition and size of Matrix: right now we have effectively 11 people working specifically on Matrix itself: 1 on Synapse, 1 on Dendrite, 1 on e2e crypto, 2 on matrix-react-sdk (which powers Riot/Web), 2 on matrix-ios-kit / matrix-ios-sdk, 2 on matrix-android-sdk, 1 on bridges, and me (Matthew) managing the overall project.  (This ignores folks who overlap the team who are working specifically on Riot stuff).</p>
+<p>Over the last few years we've had countless people ask if they can financially support Matrix. We haven't been able to accept it for various reasons, but now is the time for us to step towards a more independent setup, and avoid a repeat of the situation we're currently facing by opening up to external support.</p>
+<p><b>So we need help from the community to keep going!  </b><b>Please head over to <a href="https://patreon.com/matrixdotorg">Patreon</a></b><b> or <a href="https://liberapay.com/matrixdotorg/">Liberapay </a>and put some money in the meter </b>(or send some bitcoin to 1LxowEgsquZ3UPZ68wHf8v2MDZw82dVmAE or ether to 0xA5f9a4f9E024F6D727f7afdA9257e22329A97485)<b>.</b> In return, you'll get to keep Matrix evolving at a decent rate, be a member of the upcoming <code>+supporters:matrix.org</code> group (complete with flair badges!), and other benefits like access to #matrix-supporters:matrix.org - a new dedicated room for prioritised support, discounted goodies from Riot once paid services arrive, access to a weekly supporters-only status podcast(!), and of course receive our eternal thanks. :)</p>
+<p>Meanwhile, <b>if you're a company who depends on Matrix</b>: <a href="mailto:matthew@matrix.org">please get in touch</a>. We have the option for you to sponsor core Matrix development (e.g. Dendrite) or for us to provide you with more targeted support or feature development.  We're already talking to several organisations who want to accelerate Dendrite specifically - and the more support we have there the faster we can go.</p>
+<p>We'd also like to thank <a href="https://upcloud.com">UpCloud</a> for sponsoring hosting for the Matrix.org synapse instances - UpCloud has been coping impressively with the massive I/O and CPU/RAM requirements we have, and we recommend them unreservedly for <a href="https://upcloud.com/matrix">folks looking to run their own homeservers</a>.</p>
+<p>Finally, one of the longer term plans to help fund Matrix is to get sponsorship from Riot, once Riot starts offering paid services. So, <b>if you're an investor who's interested in the for-profit sides of Riot </b>(paid integrations and paid Matrix hosting) then please <a href="mailto:amandine@riot.im">get in touch with the Riot team</a> ASAP!</p>
+<p>Moving forward we are confident that we can secure funding, through sponsorship and Riot paid services, but in truth this decision caught us by surprise and so we need help both long term but also <b><i>right now!</i></b></p>
+<p>And whatever the funding situation, we're of course always looking for contributions for code, bug reports, or just spreading the word about the project too! :)</p>
+<h2 id="status-update">Status Update</h2>
+<p><strong><em>(or scroll to next section to see why this is bigger than &quot;just&quot; decentralised encrypted communication)</em></strong></p>
+<p>Despite the funding issue, the project really is going very well. Our vital stats (as seen through the lens of the matrix.org synapse) are looking like this:</p>
+<img class="aligncenter size-large wp-image-2587" src="/blog/wp-content/uploads/2017/07/Screen-Shot-2017-07-06-at-14.36.42-1024x780.png" alt="" width="1024" height="780" />
+<img class="aligncenter size-large wp-image-2585" src="/blog/wp-content/uploads/2017/07/Screen-Shot-2017-07-06-at-14.50.15-1024x918.png" alt="" width="1024" height="918" />
+<img class="aligncenter size-large wp-image-2588" src="/blog/wp-content/uploads/2017/07/Screen-Shot-2017-07-06-at-15.45.37-1024x694.png" alt="" width="1024" height="694" />
+<p>And meanwhile, looking back at the last big update (<a href="/blog/2016/12/26/the-matrix-holiday-special-2016-edition/">Holiday Special 2016</a>), we can compare our progress with our goals for 2017 thus far:</p>
+<ul>
+ 	<li><em>Getting E2E Encryption out of beta ASAP.</em></li>
+</ul>
+This has progressed massively - we haven't really yelled about it yet, but latest https://riot.im/develop/ now finally implements the ability to share message keys between clients to let them decrypt older history and fix “unable to decrypt” errors (Mobile coming soon).  Meanwhile various root causes of “unable to decrypt” errors have been gradually eliminated; I can't actually remember the last time I saw one! Once key-sharing and improved device verification UX is fully tested and tuned we should be able to declare E2E out of beta.
+<blockquote>
+<p dir="ltr" lang="en">Work on fixing the final causes of "unable to decrypt" (UISI) errors in E2E is progressing well: here's a sneak preview of things to come!! <a href="https://t.co/0oGJjm8ZHT">pic.twitter.com/0oGJjm8ZHT</a></p>
+<p>— Matrix (@matrixdotorg) <a href="https://twitter.com/matrixdotorg/status/867719250194071552">May 25, 2017</a></p>
+</blockquote>
+<ul>
+ 	<li><em>Ensuring we can scale beyond Synapse – i.e. implement Dendrite</em></li>
+</ul>
+Likewise, Dendrite is on track: we've implemented all the Hard Stuff which forms the skeleton of Dendrite (core federation, message signing, /sync, message sending, media repository etc) - which takes us to over <a href="https://docs.google.com/spreadsheets/d/1tkMNpIpPjvuDJWjPFbw_xzNzOHBA-Hp50Rkpcr43xTw/edit">50% of Phase 1</a>. After phase 1, we will have an initial usable release for all the core functionality.  Synapse's performance has also improved enormously this year.
+<blockquote>
+<p dir="ltr" lang="en">New milestone for Dendrite: sending messages over federation BOTH WAYS between dendrite & synapse! A bit more polish & we can cut an alpha!! <a href="https://t.co/DWs6rFqZcQ">pic.twitter.com/DWs6rFqZcQ</a></p>
+<p>— Matrix (@matrixdotorg) <a href="https://twitter.com/matrixdotorg/status/878279397106733056">June 23, 2017</a></p>
+</blockquote>
+<ul>
+ 	<li><em>Getting as many bots and bridges into Matrix as possible, and doing everything we can to support them, host them and help them be as high quality as possible – making the public federated Matrix network as useful and diverse as possible.</em></li>
+</ul>
+Bridges and bots continue - from the core team we have a ‘puppeting' Telegram bridge (<a href="https://github.com/matrix-org/matrix-appservice-tg">matrix-appservice-tg</a>), and from the wider community we have <a href="https://github.com/Half-Shot/matrix-appservice-discord">Discord</a>, <a href="https://github.com/matrix-hacks/matrix-puppet-skype">Skype</a>, <a href="https://github.com/matrix-hacks/matrix-puppet-signal">Signal</a>, new Rocket.Chat and more.  Getting them polished and live is certainly an area where we need more manpower though.
+<ul>
+ 	<li><em>Supporting Riot's leap to the mainstream, ensuring Matrix has at least one killer app.</em></li>
+</ul>
+Riot has been <a href="https://medium.com/@RiotChat/riot-web-and-desktop-version-0-10-0-is-here-e6147f5f576f">sprouting</a> <a href="https://medium.com/@RiotChat/riot-web-0-11-is-here-3edbf9dbb7ed">new releases</a> every few weeks, with a huge emphasis on proving UX:
+<ul>
+ 	<li style="padding-left: 30px;">an entirely new streamlined sign-up process</li>
+ 	<li style="padding-left: 30px;">the new concept of home pages</li>
+ 	<li style="padding-left: 30px;">a user directory search that actually works</li>
+ 	<li style="padding-left: 30px;">internationalised to 27 languages</li>
+ 	<li style="padding-left: 30px;">compact layout</li>
+ 	<li style="padding-left: 30px;">loads of desktop improvements</li>
+ 	<li style="padding-left: 30px;">piwik analytics support; etc.</li>
+</ul>
+<img class="aligncenter size-large wp-image-2598" src="/blog/wp-content/uploads/2017/07/Screen-Shot-2017-07-06-at-16.12.28-1024x566.png" alt="" width="1024" height="566" />
+<p>There is still a lot of UX work to be done, but it's converging fast on being a great entry point into the Matrix ecosystem, driving its growth across different groups and communities..</p>
+<p>Meanwhile, a <a href="https://medium.com/@RiotChat/riot-im-unveils-the-next-generation-of-its-mobile-client-6b38e2227ee2">massive update to the iOS &amp; Android apps</a> just landed yesterday, switching to an entirely new UI layout to separate People from Rooms, synchronized Read Markers, and more!</p>
+<ul>
+ 	<li><em>Adding the final major missing features:</em>
+<ul>
+ 	<li><em>Customisable User Profiles (this is almost done, actually)</em></li>
+</ul>
+</li>
+</ul>
+This is still hovering at ‘almost done', and will be needed for some of the implementation of Groups (see below)..
+<ul>
+ 	<li><em>Groups (i.e. ability to define groups of users, and perform invites, powerlevels, etc. per-group as well as per-user)</em></li>
+</ul>
+Groups are also in testing in Synapse too!  These will probably be the single biggest change to Matrix that we've seen since E2E encryption landed: it changes the dynamic of the whole network, given users can explicitly declare allegiance to different groups, which in turn have their own home pages and directories etc.  It lets users form communities, and declare their participation in those communities (if desired), and also lets rooms be grouped together.  One of our single biggest requests has been <a href="https://github.com/vector-im/riot-web/issues/2454">“subrooms”</a> and we're incredibly excited to see how well Groups solve this.
+<ul>
+ 	<li><em>Threading</em></li>
+</ul>
+Sadly no progress on Threading so far this year.
+<ul>
+ 	<li><em>Editable events (and Reactions)</em></li>
+</ul>
+We're hoping to get looking at this (at last!) once Groups are done.
+<ul>
+ 	<li><em>Maturing and polishing the spec (we are way overdue a new release)</em></li>
+</ul>
+You'll have noticed that in the “how many people work on Matrix?” stats above, we didn't mention anyone working on the Spec.  Because right now there isn't anyone explicitly maintaining it, unfortunately; updates are done best-effort when everyone's primary responsibilities allow it.  That said, there's quite a lot of good stuff currently <a href="/speculator/spec/HEAD/client_server/unstable.html">unreleased on HEAD.</a> This is something which is obviously critical to fix once we have sustainable funding sorted again.  We can only apologise to folks like the <a href="http://ruma.io">Ruma</a> developers who have suffered from the spec lag. :(
+<ul>
+ 	<li><em>Improving VoIP – especially conferencing.</em></li>
+</ul>
+VoIP is improving lots on iOS, thanks to Denis Morozov's GSoC project, and meanwhile we have all new conferencing powered by Jitsi on the horizon in the next few weeks too.
+<ul>
+ 	<li><em>Reputation/Moderation management (i.e. spam/abuse filtering).</em></li>
+</ul>
+Lots of thinking about this (see below), but no development yet.
+<ul>
+ 	<li><em>Much-needed SDK performance work on matrix-{'{'}react,ios,android{'}'}-sdk.</em></li>
+</ul>
+About 40% of the desired performance work has happened here (although not all has gone live yet).
+<ul>
+ 	<li><em>…and a few other things which would be premature to mention right now. :D</em></li>
+</ul>
+All will be revealed in the next week or two - but suffice it to say that Integrations are going to be getting a Lot More Useful™. :)
+<h2 id="reflections">Reflections</h2>
+<p>There are very very few people actually working professionally on trying to build general-purpose open communication networks and protocols.  There's us, some <a href="http://xmpp.org">XMPP</a>, <a href="http://ircv3.net/">IRCv3</a> and <a href="https://gnu.io/social/">GNU Social</a>/<a href="https://mastodon.social">Mastodon</a> folks, <a href="https://ring.cx/">GNU Ring</a>, <a href="http://tox.chat">Tox</a>, <a href="http://briarproject.org">Briar</a>, <a href="https://github.com/ssbc">Secure Scuttlebutt</a>, <a href="http://ipfs.io">IPFS</a>, <a href="http://status.im">Status.im</a>, <a href="http://ricochet.im">Ricochet</a>… and that's literally all the major projects I can think of (sorry if I missed you!).  There's probably only 50 developers in total working in this domain as their day job.</p>
+<p>Meanwhile, there are literally <strong><i>hundreds of thousands </i></strong>of folks trudging away building more and more near-indistinguishable proprietary closed communication systems - trapping users inside ever more silos and fragmenting the basic ability to communicate on the ‘net.  It's like a world where the open web was pushed into a tiny underground resistance, and everyone else was trapped in the walled gardens of AOL and Compuserve (or more contemporarily: Facebook, Twitter, WhatsApp etc).</p>
+<p>In other words: the whole world of decentralised communication desperately needs your support.  This is a clear case of user choice and freedom: to give users the ability to pick who they trust with their data and metadata, without being forced into unilaterally trusting the Silicon Valley megacorps.  And this, dear Reader, is your chance to fix the world for the greater good. Seriously, the Matrix team is one of a handful in the world in a position to continue to push things in the right direction and avoid us falling into a permanent dystopia where communication is even more closed and proprietary than the Public Telephone Network!</p>
+<p>Finally, there's an even bigger issue at stake here than open communication.  As an open network, people can literally publish whatever content they like into Matrix - same as the web or the internet itself.  As a result, there's scope for spam; abusive/malicious content; propaganda; and generally the whole spectrum of the best and worst of humanity.  Now, if we were a centralised system like Facebook, we might hire <a href="https://www.theguardian.com/news/2017/may/21/facebook-moderators-quick-guide-job-challenges">thousands of content moderators</a> to frantically impose a rulebook on ‘acceptable' content.  Or we might build invisible filter-bubbles for our users based on their social graph, cocooning them from scary unfamiliar content outside their social circles and reinforcing their preconceptions (whilst the resulting self-affirmation keeps them coming back, viewing more and more ads).</p>
+<p>But we're decentralised, and we have no absolute moral arbiter, and nor should we - on an open network it should be up to users and users alone to define and manage their own worldview and alignment.  Plus we are not fiscally obligated to keep users coming back to view more ads no matter what.  Instead, we are forced to confront the fundamental problem: building tools which empower users to curate and visualise their own content filters; letting them filter out the stuff they're not interested in or find repellant… while still helping them be aware of their own viewpoint and the shape of the world beyond it.  We haven't really started building this yet, but in the long term our feeling is that these tools will literally be vital for the survival of the human race (e.g. exposing anti-climate-change propaganda for what it is or helping users opt out of World War 3) - let alone the success of decentralisation.  A world where users blindly consume propaganda is doomed, and it's a fascinating situation that the same tools which will allow Matrix users to tune out the rooms, users and conversations they're not interested in could be directly applied to the bigger global problem.</p>
+<p>So: <b>Matrix needs you.</b> Please become a supporter on <a href="https://patreon.com/matrixdotorg">Patreon </a>or <a href="https://liberapay.com/matrixdotorg/">Liberapay</a>, and help us save the world :)</p>
+<ul>
+<li>Matthew, Amandine &amp; the whole Matrix.org team.</li>
+</ul>
+
+        </div>
+    </article>
+    
+    <article class="post">
+        <header>
+            <h1><a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;2017&#x2F;07&#x2F;06&#x2F;synapse-0-22-0-released&#x2F;" title="Synapse 0.22.0 released!">Synapse 0.22.0 released!</a></h1>
+            <span>
+                06.07.2017 00:00
+                —
+                <a href="/category/tech">
+                    Tech
+                </a>
+                —
+                
+                <a href="/author/tom-lant">
+                    Tom Lant
+                </a>
+                
+            </span>
+            
+        </header>
+        <div>
+            <p>Hi Synapsefans,</p>
+<p>Synapse 0.22.0 has just been released! This release lands a few interesting features:</p>
+<ul>
+ 	<li>The new User directory API which supports Matrix clients' providing a much more intuitive and effective user search capability by exposing a list of:
+<ul>
+ 	<li>Everybody your user shares a room with, and</li>
+ 	<li>Everybody in a public room your homeserver knows about</li>
+</ul>
+</li>
+ 	<li>New support for server admins, including a Shutdown Room API (to remove a room from a local server) and a Media Quarrantine API (to render a media item inaccessible without its actually being deleted)</li>
+</ul>
+As always there are lots of bug fixes and performance improvements, including increasing the default cache factor size from 0.1 to 0.5 (should improve performance for those running their own homeservers).
+<p>You can get Synapse 0.22.0 from <a href="https://github.com/matrix-org/synapse">https://github.com/matrix-org/synapse</a> or <a href="https://github.com/matrix-org/synapse/releases/tag/v0.22.0">https://github.com/matrix-org/synapse/releases/tag/v0.22.0</a> as normal.</p>
+<h2 id="changes-in-synapse-v0-22-0-2017-07-06">Changes in synapse v0.22.0 (2017-07-06)</h2>
+<p>No changes since v0.22.0-rc2</p>
+<h2 id="changes-in-synapse-v0-22-0-rc2-2017-07-04">Changes in synapse v0.22.0-rc2 (2017-07-04)</h2>
+<p>Changes:</p>
+<ul>
+ 	<li>Improve performance of storing user IPs (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2307" data-url="https://github.com/matrix-org/synapse/issues/2307" data-id="238837177" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2307</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2308" data-url="https://github.com/matrix-org/synapse/issues/2308" data-id="238864014" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2308</a>)</li>
+ 	<li>Slightly improve performance of verifying access tokens (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2320" data-url="https://github.com/matrix-org/synapse/issues/2320" data-id="239486219" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2320</a>)</li>
+ 	<li>Slightly improve performance of event persistence (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2321" data-url="https://github.com/matrix-org/synapse/issues/2321" data-id="239502265" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2321</a>)</li>
+ 	<li>Increase default cache factor size from 0.1 to 0.5 (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2330" data-url="https://github.com/matrix-org/synapse/issues/2330" data-id="240356521" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2330</a>)</li>
+</ul>
+Bug fixes:
+<ul>
+ 	<li>Fix bug with storing registration sessions that caused frequent CPU churn
+(PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2319" data-url="https://github.com/matrix-org/synapse/issues/2319" data-id="239472982" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2319</a>)</li>
+</ul>
+<h2 id="changes-in-synapse-v0-22-0-rc1-2017-06-26">Changes in synapse v0.22.0-rc1 (2017-06-26)</h2>
+<p>Features:</p>
+<ul>
+ 	<li>Add a user directory API (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2252" data-url="https://github.com/matrix-org/synapse/issues/2252" data-id="232602331" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2252</a>, and many more)</li>
+ 	<li>Add shutdown room API to remove room from local server (PR <a class="issue-link js-issue-link" title="Add shutdown room API" href="https://github.com/matrix-org/synapse/pull/2291" data-id="236863021" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2291</a>)</li>
+ 	<li>Add API to quarantine media (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2292" data-url="https://github.com/matrix-org/synapse/issues/2292" data-id="236951215" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2292</a>)</li>
+ 	<li>Add new config option to not send event contents to push servers (PR <a class="issue-link js-issue-link" title="Add configuration parameter to allow redaction of content from push m…" href="https://github.com/matrix-org/synapse/pull/2301" data-id="238111730" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2301</a>)
+Thanks to <a class="user-mention" href="https://github.com/cjdelisle">@cjdelisle</a>!</li>
+</ul>
+Changes:
+<ul>
+ 	<li>Various performance fixes (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2177" data-url="https://github.com/matrix-org/synapse/issues/2177" data-id="225644418" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2177</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2233" data-url="https://github.com/matrix-org/synapse/issues/2233" data-id="229717425" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2233</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2230" data-url="https://github.com/matrix-org/synapse/issues/2230" data-id="229354438" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2230</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2238" data-url="https://github.com/matrix-org/synapse/issues/2238" data-id="230015890" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2238</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2248" data-url="https://github.com/matrix-org/synapse/issues/2248" data-id="231384660" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2248</a>, <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2256" data-url="https://github.com/matrix-org/synapse/issues/2256" data-id="234157222" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2256</a>,
+<a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2274" data-url="https://github.com/matrix-org/synapse/issues/2274" data-id="235482780" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2274</a>)</li>
+ 	<li>Deduplicate sync filters (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2219" data-url="https://github.com/matrix-org/synapse/issues/2219" data-id="228004726" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2219</a>) Thanks to <a class="user-mention" href="https://github.com/krombel">@krombel</a>!</li>
+ 	<li>Correct a typo in UPGRADE.rst (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2231" data-url="https://github.com/matrix-org/synapse/issues/2231" data-id="229539435" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2231</a>) Thanks to <a class="user-mention" href="https://github.com/aaronraimist">@aaronraimist</a>!</li>
+ 	<li>Add count of one time keys to sync stream (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2237" data-url="https://github.com/matrix-org/synapse/issues/2237" data-id="229999204" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2237</a>)</li>
+ 	<li>Only store event_auth for state events (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2247" data-url="https://github.com/matrix-org/synapse/issues/2247" data-id="231038843" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2247</a>)</li>
+ 	<li>Store URL cache preview downloads separately (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2299" data-url="https://github.com/matrix-org/synapse/issues/2299" data-id="238100783" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2299</a>)</li>
+</ul>
+Bug fixes:
+<ul>
+ 	<li>Fix users not getting notifications when AS listened to that user_id (PR
+<a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2216" data-url="https://github.com/matrix-org/synapse/issues/2216" data-id="227919645" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2216</a>) Thanks to <a class="user-mention" href="https://github.com/slipeer">@slipeer</a>!</li>
+ 	<li>Fix users without push set up not getting notifications after joining rooms
+(PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2236" data-url="https://github.com/matrix-org/synapse/issues/2236" data-id="229977772" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2236</a>)</li>
+ 	<li>Fix preview url API to trim long descriptions (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2243" data-url="https://github.com/matrix-org/synapse/issues/2243" data-id="230506502" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2243</a>)</li>
+ 	<li>Fix bug where we used cached but unpersisted state group as prev group,
+resulting in broken state of restart (PR <a class="issue-link js-issue-link" href="https://github.com/matrix-org/synapse/pull/2263" data-url="https://github.com/matrix-org/synapse/issues/2263" data-id="234489302" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2263</a>)</li>
+ 	<li>Fix removing of pushers when using workers (PR <a class="issue-link js-issue-link" title="Fix removing of pushers when using workers" href="https://github.com/matrix-org/synapse/pull/2267" data-id="234785628" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2267</a>)</li>
+ 	<li>Fix CORS headers to allow Authorization header (PR <a class="issue-link js-issue-link" title="allow Authorization header" href="https://github.com/matrix-org/synapse/pull/2285" data-id="236427727" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#2285</a>) Thanks to <a class="user-mention" href="https://github.com/krombel">@krombel</a>!</li>
+</ul>
+
+        </div>
+    </article>
+    
+    <article class="post">
+        <header>
             <h1><a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;2017&#x2F;06&#x2F;22&#x2F;synapse-0-21-1-released&#x2F;" title="Synapse 0.21.1 released!">Synapse 0.21.1 released!</a></h1>
             <span>
                 22.06.2017 00:00
@@ -393,303 +764,13 @@ Thanks <a class="user-mention" href="https://github.com/Half-Shot"><span class="
         </div>
     </article>
     
-    <article class="post">
-        <header>
-            <h1><a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;2017&#x2F;04&#x2F;04&#x2F;opening-up-cyberspace-with-matrix-and-webvr&#x2F;" title="Opening up cyberspace with Matrix and WebVR!">Opening up cyberspace with Matrix and WebVR!</a></h1>
-            <span>
-                04.04.2017 00:00
-                —
-                <a href="/category/tech">
-                    Tech
-                </a>
-                —
-                
-                <a href="/author/matthew-hodgson">
-                    Matthew Hodgson
-                </a>
-                
-            </span>
-            
-        </header>
-        <div>
-            <p>TL;DR: <a href="/vrdemo">here's the demo</a>!</p>
-<p>Hi everyone,</p>
-<p>Today is a special day, the sort of day where you take a big step towards an ultimate dream. Starting Matrix and seeing it gaining momentum is already huge for us, a once in a lifetime opportunity. But one of the crazier things which drove us to create Matrix is the dream of creating cyberspace; the legendary promised land of the internet.</p>
-<p>Whether it's the Matrix of <a href="https://en.wikipedia.org/wiki/Neuromancer">Neuromancer</a>, the <a href="https://en.wikipedia.org/wiki/Metaverse">Metaverse</a> of <a href="https://en.wikipedia.org/wiki/Snow_Crash">Snow Crash</a> or the Other Plane of <a href="https://en.wikipedia.org/wiki/True_Names">True Names</a>, an immersive 3D environment where people can meet from around the world to communicate, create and share is the ultimate expression of the Internet's potential as a way to connect: the idea of an open, neutral, decentralised virtual reality within the 'net<b>.</b></p>
-<p>This is essentially the software developer equivalent of lying on your back at night, looking up at the stars, and wondering if you'll ever fly among them... and Matrix is not alone in dreaming of this!  There have been many walled-garden virtual worlds over the years - <a href="http://secondlife.com/">Second Life</a>, <a href="http://habbo.com">Habbo Hotel</a>, all of the <a href="http://www.mmorpg.com/games-list">MMORPGs</a>, <a href="https://www.sansar.com/">Project Sansar</a> etc.  And there have been decentralised worlds which lack the graphics but share the vision - whether it's <a href="https://en.wikipedia.org/wiki/FidoNet">FidoNet</a>, <a href="https://en.wikipedia.org/wiki/Usenet">Usenet</a>, <a href="https://en.wikipedia.org/wiki/Internet_Relay_Chat">IRC</a> servers, <a href="http://xmpp.org/">XMPP</a>, the <a href="https://en.wikipedia.org/wiki/Blogosphere">blogosphere</a> or Matrix as it's used today.  And there are a few ambitious projects like <a href="https://en.wikipedia.org/wiki/Croquet_Project">Croquet</a>/<a href="http://www.opencobalt.net/">OpenCobalt</a>, <a href="http://opensimulator.org/">Open Simulator</a>, <a href="http://www.janusvr.com">JanusVR</a> or <a href="http://highfidelity.com">High Fidelity</a> which aim for a decentralised cyberspace, albeit without defining an open standard.</p>
-<p>But despite all this activity, where is the open cyberspace? Where is the universal fabric which could weave these worlds together?  Where is the VR equivalent of The Web itself?  Where is the neutral communication layer that could connect the galaxies of different apps and users into a coherent reality?  How do you bridge between today's traditional web apps and their VR equivalents?</p>
-<p>Aside from cultural ones, we believe there are three missing ingredients which have been technically holding back the development of an open cyberspace so far:</p>
-<ol>
- 	<li> The hardware</li>
- 	<li> Client software support (i.e. apps)</li>
- 	<li> A universal real-time data layer to store the space</li>
-</ol>
-Nowadays the hardware problem is effectively solved: the <a href="https://www.vive.com">HTC Vive</a>, <a href="https://www.oculus.com/">Oculus Rift</a> and even <a href="https://vr.google.com/cardboard/">Google Cardboard</a> have brought VR displays to the general public.  Meanwhile, accelerometers and head-tracking turn normal screens into displays for immersive content without even needing goggles, giving <i>everyone</i> a window into a virtual world.
-<p>Client software is a more interesting story:  If there are many custom and proprietary VR apps that already exist out there, almost none of them can connect to other servers than the ones ran by their own vendors, or even other services and apps.   An open neutral cyberspace is just like the web: it needs the equivalent of web browsers, i.e. ubiquitous client apps which can connect to any servers and services written by any vendors and hosted by any providers, communicating together via an open common language.   And while web browsers of course exist, until very recently there was no way to link them into VR hardware.</p>
-<p>This has changed with the creation of <a href="https://en.wikipedia.org/wiki/WebVR">WebVR</a> by Mozilla - defining an API to let browsers render VR content, gracefully degrading across hardware and platforms such that you get the best possible experience all the way from a top-end gaming PC + Vive, down to tapping on a link on a simple smartphone.  WebVR is a genuine revolution: suddenly every webapp on the planet can create a virtual world! And frameworks like <a href="https://aframe.io/">A-Frame</a>, <a href="https://github.com/ngokevin/aframe-react">aframe-react</a> and <a href="https://facebookincubator.github.io/react-vr/">React VR</a> make it incredibly easy and fun to do.</p>
-<p>So looking back at our list, the final missing piece is nothing less than a backbone: some kind of data layer to link these apps together.  Right now, <b>all</b> the WebVR apps out there are little islands - each its own isolated walled garden and there is no standard way to provide shared experiences.  There is no standard way for users to communicate between these worlds (or between the VR and non-VR web) - be that by messaging, VoIP, Video or even VR interactions.  There is no standard way to define an avatar, its location and movement within a world, or how it might travel between worlds.  And finally, there is no standard way to describe the world's state in general: each webapp is free to manage its scene and its content any way it likes; there is nowhere to expose the realtime scene-graph of the world such that other avatars, bots, apps, services etc. can interact with it. The same way there is no standard way to exchange messages or reuse a user profile between messaging apps today: if the cyberspace is taking shape as we speak, it is definitely not taking the path of openness. At least not yet.</p>
-<p>Predictably enough, it's this last point of the 'missing data layer for cyberspace' which we've been thinking about with Matrix: an open, neutral, decentralised meta-network powering or connecting these worlds.  To start with, we've made Matrix available as a generic communications layer for VR, taking WebVR (via A-Frame) and combining it with <a href="https://github.com/matrix-org/matrix-js-sdk">matrix-js-sdk, </a>as an open, secure and decentralised way to place voip calls, video calls and instant messaging both within and between WebVR apps and the rest of the existing Matrix ecosystem (e.g. apps like Riot).</p>
-<p>In fact, the best way is to test it live: we've put together a quick demo at <a href="/vrdemo">https://matrix.org/vrdemo</a> to show it off, so please <a href="/vrdemo">give it a go!</a></p>
-<p><a href="/vrdemo"><img class="aligncenter size-large wp-image-2424" src="/blog/wp-content/uploads/2017/04/table-1024x333.jpg" alt="" width="1024" height="333" /></a></p>
-<p><a href="/vrdemo">In the demo</a> you get:</p>
-<ol>
- 	<li> a virtual lobby, providing a 1:1 WebRTC video call via Matrix through to a ‘guide' user of your choice anywhere else in Matrix (VR or not).  From the lobby you can jump into two other apps:</li>
- 	<li> a video conference, calling between all the participants of a given Matrix room in VR (no interop yet with other Matrix apps)</li>
- 	<li> a 'virtual tourism' example, featuring a 1:1 WebRTC video call with a guide, superimposed over the top of the user going skiing through 360 degree video footage.</li>
-</ol>
-Video calling requires a WebRTC-capable browser (Chrome or Firefox). Unfortunately no iOS browsers support it yet. If you have dedicated VR hardware (Vive or Rift), you'll have to configure your browser appropriately to use the demo - see <a href="https://webvr.rocks">https://webvr.rocks</a> for the latest details.
-<p>Needless to say, the demo's open sourced under the Apache License like all things Matrix - you can check out the code from <a href="https://github.com/matrix-org/matrix-vr-demo">https://github.com/matrix-org/matrix-vr-demo</a>.  Huge kudos to Richard Lewis, Rob Swain and Ben Lewis for building this out - and to Aidan Taub and Tom Elliott for providing the 360 degree video footage!</p>
-<p>The demo is quite high-bandwidth and hardware intensive, so here's a video of it in action, just in case:</p>
-<iframe src="https://www.youtube.com/embed/nk0nMlVXkbk" frameBorder="0" allowFullScreen="allowfullscreen"></iframe>
-<p>Now, it's important to understand that here we're using Matrix as a standard communications API for VR, but we're not using Matrix to store any VR world data (yet).  The demo uses plain A-Frame via aframe-react to render its world: we are not providing an API which exposes the world itself onto the network for folks to interact with and extend.  This is because Matrix is currently optimised for storing and synchronising two types of data structure: decentralised timelines of conversation data, and arbitrary decentralised key-value data (e.g. room names, membership, topics).</p>
-<p>However, the job of storing arbitrary world data requires storing and flexibly querying it as an object graph of some kind - e.g. as a scene graph hierarchy.  Doing this efficiently whilst supporting Matrix's decentralised eventual consistency model is tantamount to evolving Matrix into being a generic decentralised object-graph database (whilst upholding the constraints of that virtual world).  This is tractable, but it's a bunch more work than just supporting the eventually-consistent timeline &amp; key-value store we have today.  It's something we're thinking about though. :)</p>
-<p>Also, Matrix is currently not super low-latency - on a typical busy Synapse deployment event transmission between clients has a latency of 50-200ms (ignoring network).  This is fine for instant messaging and setting up VoIP calls etc, but useless for publishing the realtime state of a virtual world: having to wait 200ms to be told that something happened in an interactive virtual world would be a terrible experience.  However, there are various fixes we can do here: Matrix itself is getting faster; Dendrite is expected to be one or two orders of magnitude faster than Synapse.  We could also use Matrix simply as a signalling layer in order to negotiate a lower latency realtime protocol to describe world data updates (much as we use Matrix as a signalling layer for setting up RTP streams for VoIP calls or MIDI sessions).</p>
-<p>Finally, you need somewhere to store the world assets themselves (textures, sounds, Collada or GLTF assets, etc).  This is no different to using attachments in Matrix today - this could be as plain HTTP, or via the Matrix decentralised content store (mxc:// URLs), or via something like IPFS.</p>
-<p>This said, it's only a matter of time before someone starts storing world data itself in Matrix.  We have more work to do before it's a tight fit, but this has always been one of the long-term goals of the project and we're going to do everything we can to support it well.</p>
-<p>So: this is the future we're thinking of.  Obviously work on today's Matrix servers, clients, spec &amp; bridges is our focus and priority right now and we lots of work left there - but the longer term plan is critical too.  Communication in VR is pretty much a blank canvas right now, and Matrix can be <em>the</em> connecting fabric for it - which is unbelievably exciting.  Right now our demo is just a PoC - we'd encourage all devs reading this to have a think about how to extend it, and how we all can build together the new frontier of cyberspace!</p>
-<p>Finally, if you're interested in chatting more about VR on Matrix, come hang out over at <a href="https://matrix.to/#/#vr:matrix.org">#vr:matrix.org</a>!</p>
-<ul>
-<li>Matthew, Amandine &amp; the Matrix team</li>
-</ul>
-<blockquote>
-<p lang="en" dir="ltr">Amandine grins at the future in the newest skunkworks zone of the London <a href="https://t.co/y2YCHNIbgU">https://t.co/y2YCHNIbgU</a> HQ... :&gt; :D 😈 <a href="https://t.co/K5xBz7U9o2">pic.twitter.com/K5xBz7U9o2</a></p>&mdash; Matrix (@matrixdotorg) <a href="https://twitter.com/matrixdotorg/status/843181984448991232?ref_src=twsrc%5Etfw">March 18, 2017</a>
-</blockquote>
-
-        </div>
-    </article>
-    
-    <article class="post">
-        <header>
-            <h1><a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;2017&#x2F;03&#x2F;21&#x2F;synapse-0-19-3-released&#x2F;" title="Synapse 0.19.3 released">Synapse 0.19.3 released</a></h1>
-            <span>
-                21.03.2017 00:00
-                —
-                <a href="/category/general">
-                    General
-                </a>
-                —
-                
-                <a href="/author/matthew-hodgson">
-                    Matthew Hodgson
-                </a>
-                
-            </span>
-            
-        </header>
-        <div>
-            <p>Hi all,</p>
-<p>We've released Synapse 0.19.3-rc2 as 0.19.3 with no changes. This is a slightly unusual release, as 0.19.3-rc2 dates from March 13th and <a href="https://github.com/matrix-org/synapse/compare/672dcf5...d101488">a lot of stuff</a> has landed on the develop branch since then - however, we'll be releasing that as 0.20.0 once it's ready. Instead, 0.19.3 has a set of intermediary performance and bug fixes; the only new feature is a set of admin APIs kindly contributed by <a href="https://github.com/morteza-araby">@morteza-araby</a>.</p>
-<p>The changelog follows - please upgrade from https://github.com/matrix-org/synapse or your OS packages as normal :)</p>
-<h3 id="changes-in-synapse-v0-19-3-2017-03-20">Changes in synapse v0.19.3 (2017-03-20)</h3>
-<p>No changes since v0.19.3-rc2</p>
-<h3 id="changes-in-synapse-v0-19-3-rc2-2017-03-13">Changes in synapse v0.19.3-rc2 (2017-03-13)</h3>
-<p>Bug fixes:</p>
-<ul>
- 	<li>Fix bug in handling of incoming device list updates over federation.</li>
-</ul>
-<h3 id="changes-in-synapse-v0-19-3-rc1-2017-03-08">Changes in synapse v0.19.3-rc1 (2017-03-08)</h3>
-<p>Features:</p>
-<ul>
- 	<li>Add some administration functionalities. Thanks to <a class="user-mention" href="https://github.com/morteza-araby"><span class="ghh-user-x tooltipstered" title="">@morteza-araby</span></a>! (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1784" data-url="https://github.com/matrix-org/synapse/issues/1784" data-id="199561652" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1784</a>)</li>
-</ul>
-Changes:
-<ul>
- 	<li>Reduce database table sizes (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1873" data-url="https://github.com/matrix-org/synapse/issues/1873" data-id="204670414" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1873</a>, <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1916" data-url="https://github.com/matrix-org/synapse/issues/1916" data-id="207518205" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1916</a>, <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1923" data-url="https://github.com/matrix-org/synapse/issues/1923" data-id="208136725" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1923</a>, <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1963" data-url="https://github.com/matrix-org/synapse/issues/1963" data-id="211038447" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1963</a>)</li>
- 	<li>Update contrib/ to not use syutil. Thanks to <a class="user-mention" href="https://github.com/andrewshadura"><span class="ghh-user-x tooltipstered" title="">@andrewshadura</span></a>! (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1907" data-url="https://github.com/matrix-org/synapse/issues/1907" data-id="207038123" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1907</a>)</li>
- 	<li>Don't fetch current state when sending an event in common case (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1955" data-url="https://github.com/matrix-org/synapse/issues/1955" data-id="210568365" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1955</a>)</li>
-</ul>
-Bug fixes:
-<ul>
- 	<li>Fix synapse_port_db failure. Thanks to <a class="user-mention" href="https://github.com/Pneumaticat"><span class="ghh-user-x tooltipstered" title="">@Pneumaticat</span></a>! (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1904" data-url="https://github.com/matrix-org/synapse/issues/1904" data-id="207022149" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1904</a>)</li>
- 	<li>Fix caching to not cache error responses (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1913" data-url="https://github.com/matrix-org/synapse/issues/1913" data-id="207216238" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1913</a>)</li>
- 	<li>Fix APIs to make kick & ban reasons work (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1917" data-url="https://github.com/matrix-org/synapse/issues/1917" data-id="207542829" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1917</a>)</li>
- 	<li>Fix bugs in the /keys/changes api (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1921" data-url="https://github.com/matrix-org/synapse/issues/1921" data-id="207764068" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1921</a>)</li>
- 	<li>Fix bug where users couldn't forget rooms they were banned from (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1922" data-url="https://github.com/matrix-org/synapse/issues/1922" data-id="207904548" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1922</a>)</li>
- 	<li>Fix issue with long language values in pushers API (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1925" data-url="https://github.com/matrix-org/synapse/issues/1925" data-id="208403542" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1925</a>)</li>
- 	<li>Fix a race in transaction queue (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1930" data-url="https://github.com/matrix-org/synapse/issues/1930" data-id="208932693" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1930</a>)</li>
- 	<li>Fix dynamic thumbnailing to preserve aspect ratio. Thanks to <a class="user-mention" href="https://github.com/jkolo"><span class="ghh-user-x tooltipstered" title="">@jkolo</span></a>! (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1945" data-url="https://github.com/matrix-org/synapse/issues/1945" data-id="210167714" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1945</a>)</li>
- 	<li>Fix device list update to not constantly resync (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1964" data-url="https://github.com/matrix-org/synapse/issues/1964" data-id="211092538" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1964</a>)</li>
- 	<li>Fix potential for huge memory usage when getting device that have changed (PR <a class="issue-link js-issue-link ghh-issue-x tooltipstered" title="" href="https://github.com/matrix-org/synapse/pull/1969" data-url="https://github.com/matrix-org/synapse/issues/1969" data-id="212091226" data-error-text="Failed to load issue title" data-permission-text="Issue title is private">#1969</a>)</li>
-</ul>
-
-        </div>
-    </article>
-    
-    <article class="post">
-        <header>
-            <h1><a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;2017&#x2F;03&#x2F;15&#x2F;dendrite-receives-its-first-messages&#x2F;" title="Dendrite receives its first messages!!!">Dendrite receives its first messages!!!</a></h1>
-            <span>
-                15.03.2017 00:00
-                —
-                <a href="/category/tech">
-                    Tech
-                </a>
-                —
-                
-                <a href="/author/matthew-hodgson">
-                    Matthew Hodgson
-                </a>
-                
-            </span>
-            
-        </header>
-        <div>
-            <p>Hi all,</p>
-<p>We hit a major milestone today on <a href="https://github.com/matrix-org/dendrite">Dendrite</a>, our next-generation golang homeserver: <b>Dendrite received its first messages!!</b></p>
-<p>Before you get too excited, please understand that Dendrite is still a pre-alpha work in progress - whilst we successfully created some rooms on an instance and sent a bunch of messages into them via the Client-Server API, most other functionality (e.g. receiving messages via /sync, logging in, registering, federation etc) is yet to exist. <b>It cannot yet be used as a homeserver</b>.  However, this is still a huge step in the right direction, as it demonstrates the core DAG functionality of Matrix is intact, and the beginnings of a usable Client-Server API are hooked up.</p>
-<p>The architecture of Dendrite is genuinely interesting - please check out the <a href="https://github.com/matrix-org/dendrite/blob/master/WIRING.md">wiring diagram</a> if you haven't already.  The idea is that the server is broken down into a series of components which process streams of data stored in Kafka-style append-only logs.  Each component scales horizontally (you can have as many as required to handle load), which is an enormous win over Synapse's monolithic design.  Each component is also decoupled from each other by the logs, letting them run on entirely different machines as required.  Please note that whilst the initial implementation is using Kafka for convenience, the actual append-only log mechanism is abstracted away - in future we expect to see configurations of Dendrite which operate entirely from within a single go executable (using go channels as the log mechanism), as well as alternatives to Kafka for distributed solutions.</p>
-<p>The components which have taken form so far are the central <a href="https://github.com/matrix-org/dendrite/tree/master/src/github.com/matrix-org/dendrite/roomserver">roomserver</a> service, which is responsible (as the name suggests) for maintaining the state and integrity of one or more rooms - authorizing events into the room DAG; storing them in postgres, tracking the auth chain of events where needed; etc.  Much of the core matrix DAG logic of the roomserver is provided by <a href="https://github.com/matrix-org/gomatrixserverlib">gomatrixserverlib</a>.  The roomserver receives events sent by users via the 'client room send' component (and 'federation backfill' component, when that exists).  The 'client room send' component (and in future also 'client sync') is provided by the <a href="https://github.com/matrix-org/dendrite/tree/master/src/github.com/matrix-org/dendrite/clientapi">clientapi</a> service - which is what as of today is successfully creating rooms and events and relaying them to the roomserver!</p>
-<p>The actual events we've been testing with are the history of the Matrix Core room: around 10k events.  Right now the roomserver (and the postgres DB that backs it) are the main bottleneck in the pipeline rather than clientapi, so it's been interesting to see how rapidly the roomserver can consume its log of events.  As of today's benchmark, on a generic dev workstation and an entirely unoptimised roomserver (i.e. no caching whatsoever) running on a single core, we're seeing it ingest the room history at over <b>350 events per second</b>.  The vast majority of this work is going into encoding/decoding JSON or waiting for postgres: with a simple event cache to avoid repeatedly hitting the DB for every auth and state event, we expect this to increase significantly.  And then as we increase the number of cores, kafka partitions and roomserver instances it should scale fairly arbitrarily(!)</p>
-<p>For context, the main synapse process for Matrix.org currently maxes out persisting events at around 15 and 20 per second (although it is also spending a bunch of time relaying events to the various worker processes, and other miscellanies).  As such, an initial benchmark for Dendrite of 350 msgs/s really does look incredibly promising.</p>
-<p>You may be wondering where this leaves Synapse?  Well, a major driver for implementing Dendrite has been to support the growth of the main matrix.org server, which currently persists around 10 events/s (whilst emitting around 1500 events/s).  We have exhausted most of the low-hanging fruit for optimising Synapse, and have got to point where the architectural fixes required are of similar shape and size to the work going into Dendrite.  So, whilst Synapse is going to be around for a while yet, we're putting the majority of our long-term plans into Dendrite, with a distinct degree of urgency as we race against the ever-increasing traffic levels on the Matrix.org server!</p>
-<p>Finally, you may be wondering what happened to <a href="https://github.com/matrix-org/dendron">Dendron</a>, our original experiment in Golang servers.  Well: Dendron was an attempt at a <a href="https://www.martinfowler.com/bliki/StranglerApplication.html">strangler pattern</a> rewrite of Synapse, acting as an shim in front of Synapse which could gradually swap out endpoints with their golang implementations.  In practice, the operational complexity it introduced, as well as the amount of room for improvement (at the time) we had in Synapse, and the relatively tight coupling to Synapse's existing architecture, storage &amp; schema, meant that it was far from a clear win - and effectively served as an excuse to learn Go.  As such, we've finally formally killed it off as of last week - Matrix.org is now running behind a normal haproxy, and Dendron is dead.  Meanwhile, Dendrite (aka Dendron done Right ;) is very much alive, progressing fast, free from the shackles of Synapse.</p>
-<p>We'll try to keep the blog updated with progress on Dendrite as it continues to grow!</p>
-
-        </div>
-    </article>
-    
-    <article class="post">
-        <header>
-            <h1><a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;2017&#x2F;03&#x2F;14&#x2F;an-adventure-in-irc-land&#x2F;" title="An Adventure in IRC-Land">An Adventure in IRC-Land</a></h1>
-            <span>
-                14.03.2017 00:00
-                —
-                <a href="/category/general">
-                    General
-                </a>
-                —
-                
-                <a href="/author/kegan-dougal">
-                    Kegan Dougal
-                </a>
-                
-            </span>
-            
-        </header>
-        <div>
-            <p>Hi everyone. I'm Kegan, one of the core developers at matrix.org. This is the first in a series on the matrix.org IRC bridge. The aim of this series is to try to give a behind the scenes look at how the IRC bridge works, what kinds of problems we encountered, and how we plan to scale in the future. This post looks at how the IRC bridge actually works.</p>
-<p>Firstly, what is &quot;bridging&quot;? The simple answer is that it is a program which maps between different messaging protocols so that users on different protocols can communicate with each other. Some protocols may have features which are not supported in the other (typing notifications in Matrix, DCC - <em>direct</em> file transfers - in IRC). This means that bridging will always be &quot;inferior&quot; to just using the respective protocol. That being said, where there is common ground a bridge can work well; all messaging protocols support sending and receiving text messages for example. As we'll see however, the devil is in the detail...</p>
-<p>A lot of existing IRC bridges for different protocols share one thing in common: they use a single global bot to bridge traffic. This bot listens to all messages from IRC, and sends them to the other network. The bot also listens for messages from users on the other network, and sends messages on their behalf to IRC. This is a lot easier than having to maintain dedicated TCP connections for each user. However, it isn't a great experience for IRC users as they:</p>
-<ul>
- 	<li>Don't know who is reading messages on a channel as there is just 1 bot in the membership list.</li>
- 	<li>Cannot PM users on the other network.</li>
- 	<li>Cannot kick/ban users on the other network without affecting everyone else.</li>
- 	<li>Cannot bing/mention users on the other network easily (tab completion).</li>
-</ul>
-We made the decision very early on that we would keep dedicated TCP connections for each Matrix user. This means every Matrix user has their own tiny IRC client. This has its own problems:
-<ul>
- 	<li>It involves multiple connections to the IRCd so you need special permission to set up an i:line.</li>
- 	<li>You need to be able to support identification of individual users (via ident or unique IPv6 addresses).</li>
- 	<li>With all these connections to the same IRC channels, you need to have some way to identify which incoming messages have already been handled and which have not.</li>
-</ul>
-<h3 id="mapping-rooms">Mapping Rooms</h3>
-<p>So now that we have a way to send and receive messages, how do we map the rooms/channels between protocols? This isn't as easy as you may think. We can have a single static one-to-one mapping:</p>
-<ul>
- 	<li>All messages to <code>#channel</code> go to <code>!abcdef:matrix.org</code>.</li>
- 	<li>All messages from <code>!abcdef:matrix.org</code> go to <code>#channel</code>.</li>
- 	<li>All PMs between <code>@alice:matrix.org</code> and Bob go to <code>!wxyz:matrix.org</code> and the respective PM on IRC.</li>
-</ul>
-In order to make PMs secure, we need to limit who can access the room. This is done by making the Matrix PM room "invite-only". This can cause problems though if the Matrix user ever leaves that room: they won't be able to ever re-join! The IRC bridges get around this by allowing Matrix users to <em>replace</em> their dedicated PM room with a new room, and by checking to make sure that the Matrix user is inside the room before sending messages.
-<p>Then you have problem of &quot;ownership&quot; of rooms. Who should be able to kick users in a bridged room? There are two main scenarios to consider:</p>
-<ul>
- 	<li>The IRC channel has existed for a while and there are existing IRC channel operators.</li>
- 	<li>The IRC channel does not exist, but there are existing Matrix moderators.</li>
-</ul>
-In the first case, we want to defer ownership to the channel operators. This is what happens by default for all bridged IRC channels on matrix.org. The Matrix users have no power in the room, and are at the mercy of the IRC channel operators. The channel operators are represented by virtual Matrix users in the room. However, they do not have any power level: they are at the same level as real Matrix users. Why? The bridge does this because, unlike IRC, it's not possible in Matrix to bring a user to the same level as yourself (e.g <code>+o</code>), and then downgrade them back to a regular user (e.g. <code>-o</code>). Instead, the bridge bot itself acts as a custodian for the room, and performs privileged IRC operations (topic changing, kickbans, etc) on the IRC channel operator's behalf.
-<p>In the second case, we want to defer ownership to the Matrix moderators. This is what happens when you &quot;provision a room&quot; in Matrix. The bridge will PM a currently online channel operator and ask for their permission to bridge to Matrix. If they accept, the bridge is made and the power levels in the pre-existing Matrix room are left untouched, giving moderators in Matrix control over the room. However, this power doesn't extend completely to IRC. If a Matrix moderator grants moderator powers to another Matrix user, this will not be mapped to IRC. Why? It's not possible for the bridge to give chanops to any random user on any random IRC channel, so it cannot always honour the request. This relies on the humans on either side of the bridge to communicate and map power accordingly. This is done on purpose as there is no 100% perfect mapping between IRC powers and Matrix powers: it's always going to need to compromise which only a human can make.</p>
-<p>Finally, there is the problem of one-to-many mappings. It is possible to have two Matrix rooms bridged to the same IRC channel. The problem occurs when a Matrix user in one room speaks. The bridge can easily map that to IRC, but unless it <em>also</em> maps it back to Matrix, the message will never make it to the 2nd Matrix room. The bridge cannot control/puppet the Matrix user who spoke, so instead it creates a virtual Matrix user to represent that <em>real</em> Matrix user and then sends the message into the 2nd Matrix room. Needless to say, this can be quite confusing and we strongly discourage one-to-many mappings for this reason.</p>
-<h3 id="mapping-messages">Mapping Messages</h3>
-<p>Mapping Matrix messages to IRC is rather easy for the most part. Messages are passed from the Homeserver to the bridge via the AS API, and the bridge sends a textual representation of the message to IRC using the IRC connection for that Matrix user. The <a href="https://github.com/matrix-org/matrix-appservice-irc/issues/258">exact form</a> of the text for images, videos and long text can be quite subjective, and there is inevitably some data loss along the way. For example, you can send big text headings, tables and lists in Matrix, but there is no equivalent on IRC. Thankfully, most Matrix users are sending the corresponding markdown and so the formatting can be reasonably preserved by just sending the plaintext (markdown) body.</p>
-<p>Mapping IRC messages to Matrix is more difficult: not because it's hard to represent the message in Matrix, but because of the architecture of the bridge. The bridge maintains separate connections for each Matrix user. This means the bridge might have, for example, 5 users (and hence connections) on the <em>same channel</em>. When an IRC user sends a message, the bridge gets 5 copies of the message. How does the bridge know:</p>
-<ul>
- 	<li>If the message has already been sent?</li>
- 	<li>If the message is an intentional duplicate?</li>
-</ul>
-The IRC protocol does not have message IDs, so the bridge cannot de-duplicate messages as they arrive. Instead, it "nominates" a single user's connection to be responsible for delivering messages from that channel. This introduces another problem though. Long-lived TCP connections are fickle things, and can fail without any kind of visible warning until you try to send bytes down it. If a user's connection drops, another user needs to take over responsibility for delivering messages. This is what the "IRC Event Broker" class does. It allows users to "steal" messages if the bridge has any indication that the connection in charge has dropped. This technique has worked well for us, and gives us the ability to have more robust connections to the channel than with one TCP connection alone.
-<h3 id="admin-rooms">Admin Rooms</h3>
-<p>Admin rooms are private Matrix rooms between a real Matrix user and the bridge bot. It allows the Matrix user to control their connection to IRC. It allows:</p>
-<ul>
- 	<li>The IRC nick to be changed.</li>
- 	<li>The ability to issue /whois commands.</li>
- 	<li>The ability to bypass the bridge and send raw IRC commands directly down the TCP connection (e.g. MODE commands).</li>
- 	<li>The ability to save a NickServ password for use when the bridge reconnects you.</li>
- 	<li>The ability to disconnect from the network entirely.</li>
-</ul>
-To perform these actions, Matrix users send a text message which starts with a command name, e.g <code>!whois $ARG</code>. Like all commands, you expect to get a reply once you've issued it. However, IRC makes this extremely difficult to do. There is no request/response pair like there is with HTTP requests. Instead, the IRC server may:
-<ul>
- 	<li>Ignore the request entirely.</li>
- 	<li>Send an error you're aware of (in the RFC/most servers)</li>
- 	<li>Send some information which can be assumed to indicate success.</li>
- 	<li>Send an error you're unaware of.</li>
- 	<li>Send some information which <em>sometimes</em> indicates success.</li>
-</ul>
-This makes it very difficult to know if a request succeeded or failed, and I'll go into more detail in the next post which focuses on problems we've encountered when developing the IRC bridge. This room is also used to inform the Matrix user about general information about their IRC connection, such as when their connection has been lost, or if there are any errors (e.g. "requires chanops to do this action"). The bridge makes no effort to parse these errors, because it doesn't always know what caused the error to happen.
-<h3 id="wrapup">Wrapup</h3>
-<p>Developing a comprehensive IRC bridge is a very difficult task. This post has outlined a few of the ways in which we've designed our bridge, and some of the general problems in this field. The bridge is constantly improving as we discover new edge cases with the plethora of IRCd implementations out there. The next post will look at some of these edge cases and look back at some previous outages and examine why they occurred.</p>
-
-        </div>
-    </article>
-    
-    <article class="post">
-        <header>
-            <h1><a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;2017&#x2F;03&#x2F;11&#x2F;how-do-i-bridge-thee-let-me-count-the-ways&#x2F;" title="How do I bridge thee?  Let me count the ways...">How do I bridge thee?  Let me count the ways...</a></h1>
-            <span>
-                11.03.2017 00:00
-                —
-                <a href="/category/tech">
-                    Tech
-                </a>
-                —
-                
-                <a href="/author/matthew-hodgson">
-                    Matthew Hodgson
-                </a>
-                
-            </span>
-            
-        </header>
-        <div>
-            <p><a href="https://xkcd.com/1810"><img class="aligncenter wp-image-2297" src="/blog/wp-content/uploads/2017/03/xkcd1810-matrixified-v2-1024x842.png" width="753" height="619" /></a></p>
-<p id="types-of-bridging">Bridges come in many flavours, and we need consistent terminology within the Matrix community to ensure everyone (users, developers, core team) is on the same page. This post is primarily intended for bridge developers to refer to when building bridges.</p>
-<em>The most recent version of this document is <a href="/docs/guides/types-of-bridging.html">here</a> (<a href="https://github.com/matrix-org/matrix-doc/blob/master/supporting-docs/guides/2017-03-11-types-of-bridging.md">source</a>) but we're also posting it as a blog post for visibility.</em>
-<h3 id="types-of-rooms">Types of rooms</h3>
-<h4 id="portal-rooms">Portal rooms</h4>
-<p>Bridges can register themselves as controlling chunks of room aliases namespace, letting Matrix users join remote rooms transparently if they <code>/join #freenode_#wherever:matrix.org</code> or similar. The resulting Matrix room is typically automatically bridged to the single target remote room. Access control for Matrix users is typically managed by the remote network's side of the room. This is called a portal room, and is useful for jumping into remote rooms without any configuration needed whatsoever - using Matrix as a ‘bouncer' for the remote network.</p>
-<h4 id="plumbed-rooms">Plumbed rooms</h4>
-<p>Alternatively, an existing Matrix room can be can plumbed into one or more specific remote rooms by configuring a bridge (which can be run by anyone). For instance, #matrix:matrix.org is plumbed into #matrix on Freenode, matrixdotorg/#matrix on Slack, etc. Access control for Matrix users is necessarily managed by the Matrix side of the room. This is useful for using Matrix to link together different communities.</p>
-<p>Migrating rooms between a portal &amp; plumbed room is currently a bit of a mess, as there's not yet a way for users to remove portal rooms once they're created, so you can end up with a mix of portal &amp; plumbed users bridged into a room, which looks weird from both the Matrix and non-Matrix viewpoints. https://github.com/matrix-org/matrix-appservice-irc/issues/387 tracks this.</p>
-<h3 id="types-of-bridges-simplest-first">Types of bridges (simplest first):</h3>
-<h4 id="bridgebot-based-bridges">Bridgebot-based bridges</h4>
-<p>The simplest way to exchange messages with a remote network is to have the bridge log into the network using one or more predefined users called bridge bots - typically called MatrixBridge or MatrixBridge[123] etc. These relay traffic on behalf of the users on the other side, but it's a terrible experience as all the metadata about the messages and senders is lost. This is how the <a href="https://github.com/SijmenSchoon/telematrix">telematrix</a> matrix&lt;-&gt;telegram bridge currently works.</p>
-<h4 id="bot-api-aka-virtual-user-based-bridges">Bot-API (aka Virtual user) based bridges</h4>
-<p>Some remote systems support the idea of injecting messages from ‘fake' or ‘virtual' users, which can be used to represent the Matrix-side users as unique entities in the remote network. For instance, Slack's inbound webhooks lets remote bots be created on demand, letting Matrix users be shown cosmetically correctly in the timeline as virtual users. However, the resulting virtual users aren't real users on the remote system, so don't have presence/profile and can't be tab-completed or direct-messaged etc. They also have no way to receive typing notifs or other richer info which may not be available via bot APIs. This is how the current <a href="https://github.com/matrix-org/matrix-appservice-slack">matrix-appservice-slack</a> bridge works.</p>
-<h4 id="simple-puppeted-bridge">Simple puppeted bridge</h4>
-<p>This is a richer form of bridging, where the bridge logs into the remote service as if it were a real 3rd party client for that service. As a result, the Matrix user has to already have a valid account on the remote system. In exchange, the Matrix user ‘puppets' their remote user, such that other users on the remote system aren't even aware they are speaking to a user via Matrix. The full semantics of the remote system are available to the bridge to expose into Matrix. However, the bridge has to handle the authentication process to log the user into the remote bridge.</p>
-<p>This is essentially how the current <a href="https://github.com/matrix-org/matrix-appservice-irc">matrix-appservice-irc</a> bridge works (if you configure it to log into the remote IRC network as your ‘real' IRC nickname). <a href="https://github.com/matrix-org/matrix-appservice-gitter">matrix-appservice-gitter</a> is being extended to support both puppeted and bridgebot-based operation. It's how the experimental <a href="https://github.com/matrix-org/matrix-appservice-tg">matrix-appservice-tg</a> bridge works.</p>
-<p>Going forwards we're aiming for all bridges to be at least simple puppeted, if not double-puppeted.</p>
-<h4 id="double-puppeted-bridge">Double-puppeted bridge</h4>
-<p>A simple ‘puppeted bridge' allows the Matrix user to control their account on their remote network. However, ideally this puppeting should work in both directions, so if the user logs into (say) their native telegram client and starts conversations, sends messages etc, these should be reflected back into Matrix as if the user had done them there. This requires the bridge to be able to puppet the Matrix side of the bridge on behalf of the user.</p>
-<p>This is the holy-grail of bridging; <a href="https://github.com/matrix-hacks/matrix-puppet-bridge">matrix-puppet-bridge</a> is a community project that tries to facilitate development of double puppeted bridges, having done so for <a href="https://github.com/matrix-hacks/matrix-puppet-bridge#examples">several networks</a>. The main obstacle is working out an elegant way of having the bridge auth with Matrix as the matrix user (which requires some kind of scoped access_token delegation).</p>
-<h4 id="server-to-server-bridging">Server-to-server bridging</h4>
-<p>Some remote protocols (IRC, XMPP, SIP, SMTP, NNTP, GnuSocial etc) support federation - either open or closed. The most elegant way of bridging to these protocols would be to have the bridge participate in the federation as a server, directly bridging the entire namespace into Matrix.</p>
-<p>We're not aware of anyone who's done this yet.</p>
-<h4 id="sidecar-bridge">Sidecar bridge</h4>
-<p>Finally: the types of bridging described above assume that you are synchronising the conversation history of the remote system into Matrix, so it may be decentralised and exposed to multiple users within the wider Matrix network.</p>
-<p>This can cause problems where the remote system may have arbitrarily complicated permissions (ACLs) controlling access to the history, which will then need to be correctly synchronised with Matrix's ACL model, without introducing security issues such as races. We already see some problems with this on the IRC bridge, where history visibility for +i and +k channels have to be carefully synchronised with the Matrix rooms.</p>
-<p>You can also hit problems with other network-specific features not yet having equivalent representation in the Matrix protocol (e.g. ephemeral messages, or op-only messages - although arguably that's a type of ACL).</p>
-<p>One solution could be to support an entirely different architecture of bridging, where the Matrix client-server API is mapped directly to the remote service, meaning that ACL decisions are delegated to the remote service, and conversations are not exposed into the wider Matrix. This is effectively using the bridge purely as a 3rd party client for the network (similar to Bitlbee). The bridge is only available to a single user, and conversations cannot be shared with other Matrix users as they aren't actually Matrix rooms. (Another solution could be to use Active Policy Servers at last as a way of centralising and delegating ACLs for a room)</p>
-<p>This is essentially an entirely different product to the rest of Matrix, and whilst it could be a solution for some particularly painful ACL problems, we're focusing on non-sidecar bridges for now.</p>
-
-        </div>
-    </article>
-    
     <nav class="pagination">
     <div class="prev">
         
         <a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;page&#x2F;53&#x2F;">‹ Previous</a>
         
     </div>
-    <span class="page-number">54 / 67</span>
+    <span class="page-number">54 / 68</span>
     <div class="prev">
         
         <a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;page&#x2F;55&#x2F;">Next ›</a>

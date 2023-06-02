@@ -118,6 +118,248 @@ Matrix, a digest of the past week activity.
     
     <article class="post">
         <header>
+            <h1><a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;2014&#x2F;12&#x2F;03&#x2F;synapse-0-5-4-released&#x2F;" title="Synapse 0.5.4 released">Synapse 0.5.4 released</a></h1>
+            <span>
+                03.12.2014 00:00
+                —
+                <a href="/category/tech">
+                    Tech
+                </a>
+                —
+                
+                <a href="/author/matthew-hodgson">
+                    Matthew Hodgson
+                </a>
+                
+            </span>
+            
+        </header>
+        <div>
+            <p>We just pushed a bugfix update to Synapse 0.5, mainly to fix a memory leak where federated events could get leaked whilst retrying to send them to a remote server which is unavailable.  Please upgrade, especially if you've noticed synapse hogging RAM!</p>
+<code>
+Changes in synapse 0.5.4 (2014-12-03)
+=====================================
+<ul>
+<li>Fix presence bug where some rooms did not display presence updates for
+remote users.</li>
+<li>Do not log SQL timing log lines when started with &quot;-v&quot;</li>
+<li>Fix potential memory leak.</li>
+</ul>
+</code>
+
+        </div>
+    </article>
+    
+    <article class="post">
+        <header>
+            <h1><a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;2014&#x2F;11&#x2F;30&#x2F;bridging-matrix-sip-via-verto&#x2F;" title="Bridging Matrix &amp; SIP via Verto">Bridging Matrix &amp; SIP via Verto</a></h1>
+            <span>
+                30.11.2014 00:00
+                —
+                <a href="/category/tutorials">
+                    Tutorials
+                </a>
+                —
+                
+                <a href="/author/matthew-hodgson">
+                    Matthew Hodgson
+                </a>
+                
+            </span>
+            
+        </header>
+        <div>
+            <p>One of the final remaining missing bits of Matrix today is specifying and implementing the Application Service (AS) APIs which allow you to easily extend Matrix with custom server-side functionality. The AS APIs should let you perform any arbitrary manipulation on chatroom contents, modulo end-to-end encryption constraints - e.g. machine translation; archiving/searching contents; interactive automated services; conferencing; firing push notifications and other hooks; etc. If you really want to look behind the curtain, the bug tracking the development (somewhat out-of-date) is at <a href="/jira/browse/SPEC-34">SPEC-34</a>.</p>
+<p>However, the most obvious use case for this is gatewaying Matrix rooms through to existing communication platforms (XMPP, SIP, non-standardised systems) - which is obviously key to Matrix's overall goal of defragmenting communication.  And the good news is that even though the AS APIs don't yet exist, we can still make good progress here through the existing client-server API.  Anyone who's hung around chat systems like IRC should be familiar with the idea of bots - non-human users who participate in chatrooms and but perform arbitrary automated functionality - and you can go quite a long way in using the 'bot' idiom to add automatic functionality to Matrix.</p>
+<p>[In fact the first AS API we'll be adding will probably be simply extending the client-server API with some additional privileges to allow homeserver admins to hook up services to their server which are essentially privileged bots (e.g. ability to autojoin rooms created on that server with high power-level; ability to flag themselves as an invisible 'service bot'; ability to monitor events from rooms without joining them: useful for read-only services such as sending push notifications, adding search/archive functionality; etc).  This should also be familiar to IRC users, as it's similar to the model that IRC Services uses.]</p>
+<p>So, we already have a few bots hanging around prototyping out bridging to other systems, which hopefully should evolve into full Application Services (where it makes sense; sometimes a bot is good enough).  For instance, we have the <a href="https://github.com/tm604/Matrix-IRCBridge">Matrix/IRC Bridge</a> thanks to tm604 and LeoNerd.  The way this works is simply a bot which joins IRC channels and their Matrix room equivalents; watching the messages on both sides of the bridge and relaying them to the other side, creating virtual users as required.  In future we can be smarter about having the bridge talk on behalf of actual users, or letting actual users control their virtual users, but it's good enough as a first cut.</p>
+<p>So for Friday's <a href="http://www.voipusersconference.org/2014/vuc517-matrix-org/">VUC 517</a>, we decided at the last minute (on Tuesday) to make as much of VUC accessible via Matrix as possible.  One side of this was hooking up the <a href="https://jitsi.org/Projects/JitsiMeet">Jitsi Video Bridge</a> to be accessible by talking to the underlying XMPP server - the other side was hooking up via SIP to the <a href="https://www.zipdx.info">ZipDX audio bridge</a> that is used for audio-only participants in the conference.  Both of these would be done as Matrix bots - a virtual user that you could voice/video call 1:1 over Matrix which would then route your call into VUC appropriately.</p>
+<p>By Thursday, the Jitsi bot got to the point of being able to place calls and see a single video stream (picked at random), but the video uplink wasn't getting through and actually selecting the right stream to watch (or viewing multiple streams) wasn't in place either.  I'm sure there'll be a similar blogpost once it's finished, so I'm not going to talk about it further here.  Meanwhile, on Thursday night we hacked together a separate bot to jack into the ZipDX bridge via SIP.  Tim Panton's suggestion was to use <a href="http://www.freeswitch.org">FreeSWITCH</a>'s <a href="https://freeswitch.org/confluence/display/FREESWITCH/mod_verto">mod_verto</a> for this, and after Anthony Minesalle and Mike Jerris from FreeSWITCH had popped up on <a href="http://matrix.org/beta">#matrix:matrix.org</a> on Tuesday to find out what we're up to, this seemed like serendipity.</p>
+<p>We hadn't played with mod_verto before, although had been pointed at it by someone on IRC shortly after we released Matrix - it's a cool project from the FreeSWITCH dev team that exposes a simple JSON-RPC interface for call signalling over websockets, providing a much more suitable way for WebRTC developers to get calls in and out of FreeSWITCH than shoehorning a SIP stack into their browser.  In this respect it's quite similar to Matrix, but there are some huge differences:</p>
+<ul>
+	<li>Verto doesn't (yet) do federation - either for message-passing (like XMPP) or history-replication (like Matrix or XMPP FMUCs).  In fact, Matrix fundamentally competes more with JSON-RPC at OSI layer 5 by defining a standardised RESTful API for federated state synchronisation - which so happens to define some datatypes for VoIP signalling; whereas Verto currently seems to be focused solely on the application-layer problem of VoIP signalling.</li>
+	<li>Verto is a generic RPC API with method names like verto.invite, verto.answer, verto.media, verto.bye etc. for handling call signalling.  It's obviously readily extensible to any other functionality expressed as an RPC invocation.  The Matrix client-server API however passes around event objects within the context of a room - it's message passing rather than RPC.</li>
+	<li>Matrix's VoIP events support trickle-ICE; announcing ICE candidates from WebRTC as and when they become available.  This good is for speedy call-setup (you don't have to wait for all ICE to complete before setting up the call) and to support call continuity when roaming between different IP networks (in theory).  However, Verto currently requires ICE candidates to be presented monolithically - it hasn't made sense to implement trickle-ICE as FreeSWITCH's core engine doesn't support it yet.</li>
+        <li>Verto looks to be wired to speak JSON-RPC over Websockets, whereas Matrix deliberately uses plain old HTTP as its baseline for maximum simplicity and compatibility in PUTting and GETting JSON events around</li>
+	<li>Verto could be an interoperable standard but the API hasn't been documented yet (unless I've totally missed it) - to build the bot we looked at the websockets tab in Chrome's network inspector and drew some inferences from the <a href="https://github.com/matrix-org/synapse/blob/e43139ac5e1f337d9a82ee16d9a4f15195120ec3/contrib/vertobot/verto-example.json">JSON seen in a call</a> placed using the <a href="https://webrtc.freeswitch.org/verto">FreeSWITCH Verto demo site</a>, which was very intuitive and almost self-documenting.  Meanwhile, the (minimal) doc for Matrix's events is up at <a href="http://matrix.org/docs/spec/#voice-over-ip">http://matrix.org/docs/spec/#voice-over-ip</a>.</li>
+</ul>
+Verto has a huge advantage however, in that FreeSWITCH has a mod_verto today, and doesn't have a mod_matrix - so one can use mod_verto right now as an easy way to get VoIP calls in and out of FreeSWITCH from the web and bridge them to SIP!  So, when writing a Matrix&lt;-&gt;SIP bridging bot for VUC, Verto turned out to be a really nice way to quickly get something up and running.  The end result is at <a href="https://github.com/matrix-org/synapse/blob/e43139ac5e1f337d9a82ee16d9a4f15195120ec3/contrib/vertobot/bot.pl">https://github.com/matrix-org/synapse/blob/develop/contrib/vertobot/bot.pl</a> - a (precisely!) 300 line perl script built on LeoNerd's <a href="https://metacpan.org/release/Net-Async-Matrix">Net-Async-Matrix</a> and <a href="https://metacpan.org/release/Net::Async::Protocol::WebSocket">Net::Async::Protocol::WebSocket</a> which logs into Matrix and routes any 1:1 audio calls it receives through to the defined mod_verto service.  Currently it gleefully hardcodes in the destination extension it calls and the caller-ID, but this could trivially be extended.  It also chokes on SSL WebSockets, so your mod_verto needs to be listening unencrypted on port 8081.
+<p>The task of mapping between Matrix m.call.* VoIP events and Verto verto.* RPC methods was almost entirely trivial (although I hasten to add that Matrix's and Verto's were developed completely independently - it's just that there are only so many ways to express VoIP signalling in JSON!)</p>
+<ul>
+	<li>Matrix's m.call.invite is equivalent to the combination of verto.invite + verto.media (but may lack ICE candidates)</li>
+	<li>Matrix's m.call.candidates has no direct equivalent, so has to be coalesced and merged into verto.media</li>
+	<li>Matrix's m.call.answer is equivalent to verto.answer (but may lack ICE candidates)</li>
+	<li>Matrix's m.room.displayname is equivalent to verto.display (assuming I understand verto.display)</li>
+	<li>Matrix's m.call.hangup is equivalent to verto.bye</li>
+	<li>…and these are the only verto RPCs we mapped.</li>
+</ul>
+For the demo itself, we obviously needed a FreeSWITCH with mod_verto all up and running to hook into the ZipDX bridge: our friends at <a href="http://truphone.com">Truphone</a> were good enough to provide one at zero notice (Thanks James, Andy, Giacomo!), and we were up and running.
+<p>Unfortunately we did hit some problems: Net::Async::Matrix has a few quirks which LeoNerd is working out currently; the bot doesn't coalesce the trickle-ICE properly currently causing a race-condition that means ICE setup may fail; Matthew's use of IO::Async was a bit buggy; and moreover we didn't have time to implement DTMF… which was a bit of a shame as you can only unmute yourself on the ZipDX bridge via DTMF *5!</p>
+<p>But in general, the mini-hackathon was a success and it was great fun to be able to listen into VUC via the bridge and demonstrate the first ever Matrix&lt;-&gt;SIP call!  The bot ran as @vucbot:matrix.org, although is turned off now as there's no VUC to listen to, and the FreeSWITCH &amp; bot were only deployed temporarily.  Once the kinks mentioned above are sorted out we'll hopefully set it running again permanently!  And hopefully this little bot is an exciting precursor to more robust Matrix bridges and application services in the months to come...</p>
+<p>If you're crazy enough to want to try to run the bot yourself, then it should actually be quite simple to get up and running:</p>
+<p><code> # grab synapse if you don't have it already
+git clone https://github.com/matrix-org/synapse.git synapse-develop
+cd synapse-develop</p>
+<h1 id="you-ll-need-the-develop-branch-as-we-haven-t-released-a-build-with-vertobot-in-it-yet">you'll need the develop branch, as we haven't released a build with vertobot in it yet</h1>
+<p>git checkout develop
+cd contrib/vertobot</p>
+<h1 id="you-ll-need-cpanm-to-install-the-perl-dependencies">you'll need cpanm to install the perl dependencies</h1>
+<p>cpan -i App::cpanminus
+cpanm --installdeps .</p>
+<h1 id="manually-install-a-develop-version-of-net-async-matrix-as-cpanm-can-t-figure-it-out-seemingly">manually install a develop version of Net::Async::Matrix as cpanm can't figure it out, seemingly</h1>
+<p>cpanm --force PEVANS/Net-Async-Matrix-0.11_002</p>
+<h1 id="you-may-need-to-also-replace-the-croak-for-the-already-have-a-room-with-id-error-with-warn-in-net-async-matrix-if-the-bot-crashes-with-this-error">(you may need to also replace the 'croak' for the &quot;Already have a room with ID&quot; error with 'warn' in Net::Async::Matrix if the bot crashes with this error)</h1>
+<h1 id="create-a-username-account-for-your-bot-on-a-matrix-homeserver-somewhere-at-this-point">create a username account for your bot on a Matrix homeserver somewhere at this point</h1>
+<h1 id="set-up-a-config-file">set up a config file</h1>
+<p>cp config.yaml mybot.yaml</p>
+<h1 id="edit-mybot-yaml-to-taste-at-the-least-you-must-specify-the-login-password-homeserver-for-your-bot">edit mybot.yaml to taste - at the least you must specify the login &amp; password &amp; homeserver for your bot!</h1>
+<h1 id="run-it">run it!</h1>
+<p>./bot.pl -c mybot.yaml
+</code></p>
+<p>Finally, huge thanks to everyone to helped make the VUC bridging escapade work out - Emil Ivov at Jitsi, James Body, Andy Smith and Giacomo Vacca at Truphone, Anthony Minesalle &amp; Mike Jerris &amp; Brian West at FreeSWITCH for writing freeswitch and mod_verto, Tim Panton for the VUC intro and suggestion of mod_verto, Randy Resnick &amp; Michael Graves at VUC itself, and of course the Matrix team for glueing our side of it together!</p>
+<p>Looking forward to lots more ambitious cross-protocol gatewaying and federation in future!</p>
+
+        </div>
+    </article>
+    
+    <article class="post">
+        <header>
+            <h1><a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;2014&#x2F;11&#x2F;29&#x2F;matrix-on-the-road-2-a-winning-tour&#x2F;" title="Matrix on the Road #2 - A winning tour!">Matrix on the Road #2 - A winning tour!</a></h1>
+            <span>
+                29.11.2014 00:00
+                —
+                <a href="/category/general">
+                    General
+                </a>
+                —
+                
+                <a href="/author/amandine-le-pape">
+                    Amandine Le Pape
+                </a>
+                
+            </span>
+            
+        </header>
+        <div>
+            <p>Some updates on the conferences Matrix attended over the last 3 weeks: WebRTC Summit in Santa Clara, TAD Summit in Istanbul, WebRTC World West in San José and fOSSa in Rennes. Great shows, ending in lots of interesting discussions and new excitement in Matrix!</p>
+<h2 id="webrtc-summit-santa-clara-november-4-6">WebRTC Summit (Santa Clara, November 4-6)</h2>
+<p>Matrix was a <a href="http://cloudcomputing.sys-con.com/node/3242708">sponsor</a> at the Santa Clara <a href="http://webrtcsummit.net/">WebRTC Summit</a> at CloudExpo, and opened the WebRTC track alongside our friends at <a href="http://www.openpeer.org">Open Peer / Hookflash</a>. Matthew presented Matrix as the missing signalling layer for WebRTC and as a good federated complement to MQTT and COAP for IoT use cases: you can find his presentation <a href="http://matrix.org/blog/wp-content/uploads/2014/11/2014-11-03-Matrix_Missing-Link_IOT.pdf">here</a>.</p>
+<p>Great techie discussions and debates down there, the stand was flooded with interested people and John had a hardtime answering everyone by himself on day 2!</p>
+<p>But he still found a few minutes to do a TV interview for SYSCon TV on Tuesday evening! :)</p>
+<p>[embed]http://youtu.be/JVq6S9V1Jcg[/embed]</p>
+<h2 id="tad-summit-istanbul-november-12-13">TAD Summit (Istanbul, November 12-13)</h2>
+<p>Matrix was a partner at <a href="http://tadsummit.com/2014/">TAD Summit</a> in Istanbul this year, a great opportunity to meet a very good mix of developers, industry players and mobile networks! TAD mixes conferences and technical workshops where everyone gets involved to create a vibrant ecosystem for Telecom Application Developers. Again really productive discussions and meetings as we continue our search for partners to help support the uptake of Matrix.</p>
+<p>Matthew's talk was fully recorded so just watch the video to get the real pitch!</p>
+<p>[embed]http://youtu.be/ER3g4-4bFYk?list=PLO-gJ4-4x_IIYVTuLmVr8iUedvVdduYY4[/embed]</p>
+<p>[embed]https://www.youtube.com/watch?v=As-5vVdXhu0[/embed]</p>
+<h2 id="webrtc-world-san-jose-november-18-20">WebRTC World (San Jose, November 18-20)</h2>
+<p>Matrix's attendance at <a href="http://www.webrtcworld.com/conference/west/default.aspx">WebRTC World</a> in San Jose was more rewarding than expected! The team was ready to be part of the expo and give a talk on FOSS WebRTC options... but didn't hesitate to jump at the opportunity when a demo slot opened up! And that was a worthwhile decision as Matrix ended up winning not one but<strong> TWO awards from the demo:</strong> The <span style="color: #0000ff;"><strong>Audience Choice Award</strong></span>
+as the audience's favourite demo of the 10 shown on Tuesday, and also the overall <span style="color: #0000ff;"><strong>Best Social Integration Award</strong> </span>
+from the Jury! So a big congrats to the dev team who were rushing to get the fine details ready in time and to Matthew for getting the audience's attention! And of course a even bigger thank you to everyone who voted for us, including in the Jury!</p>
+<p><a href="http://matrix.org/blog/wp-content/uploads/2014/11/sj.jpg"><img class="aligncenter size-medium wp-image-239" src="http://matrix.org/blog/wp-content/uploads/2014/11/sj-300x168.jpg" alt="Matthew at WebRTC World 2014" width="300" height="168" /></a></p>
+<p>Of course this drew lots of interest, and WebRTC Expo ended up the busiest show ever for the team who pitched solidly at the booth for 2 days in a row!</p>
+<div style="text-align: center;"><a href="http://matrix.org/blog/wp-content/uploads/2014/11/Audience_Choice_14.png"><img class="size-full wp-image-240" style="box-shadow: none ! important;" src="http://matrix.org/blog/wp-content/uploads/2014/11/Audience_Choice_14.png" alt="Audience_Choice_14" width="300" height="229" /></a> <a href="http://matrix.org/blog/wp-content/uploads/2014/11/Best_Social_Integration_14.png"><img class="size-medium wp-image-241" style="box-shadow: none ! important;" src="http://matrix.org/blog/wp-content/uploads/2014/11/Best_Social_Integration_14.png" alt="Best_Social_Integration_14" width="300" height="229" /></a></div>
+<h2 id="fossa-rennes-november-20">fOSSa (Rennes, November 20)</h2>
+<p>And eventually, while Matthew and John were celebrating in San José (or flying home, more accurately), Amandine was also evangelising at home in Rennes (France), where <a href="https://fossa.inria.fr/">fOSSa </a>was gathering experts from the opensource world for 3 days. Matrix was presented within the Serendipity section on the conférence, &quot;Le Carrefour des Possibles&quot;: 6 minutes to pitch an open project that making dreams possible.</p>
+<p>So if you speak French or are not afraid to only read from <a href="http://matrix.org/blog/wp-content/uploads/2014/11/2014-11-17.2-Matrix.pdf">the slides</a>, check out the video the team made of the pitch. The official one should be available soon!</p>
+<p>[embed]http://youtu.be/DyL9Ue0KlBU[/embed]</p>
+
+        </div>
+    </article>
+    
+    <article class="post">
+        <header>
+            <h1><a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;2014&#x2F;11&#x2F;29&#x2F;synapse-0-5-3a-released&#x2F;" title="Synapse 0.5.3a released!">Synapse 0.5.3a released!</a></h1>
+            <span>
+                29.11.2014 00:00
+                —
+                <a href="/category/tech">
+                    Tech
+                </a>
+                —
+                
+                <a href="/author/matthew-hodgson">
+                    Matthew Hodgson
+                </a>
+                
+            </span>
+            
+        </header>
+        <div>
+            <p>Since we exited alpha and released Synapse 0.5.0 last week there's been a flurry of bug fix releases as we ran around firefighting some of the more exciting problems which popped up thanks to merging the federation-auth and event-signing branches.</p>
+<p>We released 0.5.3a on Nov 27, which seems to now be pretty stable - if you were holding off on upgrading your homeserver and trying to federate with the new 0.5 release branch, now would be a great time to press the button!</p>
+<p>Most excitingly, we believe we have <strong>finally fixed the PyNaCL dependency problems</strong> which have plagued pretty much anyone setting up a homeserver.  This was a problem in PyNaCL itself - huge thanks to Mark for hunting it down and sending the PyNaCL team <a href="http://git.io/1Rr5OA">pull</a> <a href="http://git.io/SUHmBA">requests</a> to get it fixed.  As a result, installing synapse as of 0.5.3a really should be a one-liner at last (please let us know if it isn't!):</p>
+<p><code>pip install --user --process-dependency-links https://github.com/matrix-org/synapse/tarball/master</code></p>
+<p>The full changelog of what's been going on since 0.5.0 is as follows:</p>
+<pre>
+Changes in synapse 0.5.3a (2014-11-27)
+=====================================
+
+ * Depend on a fixed version of PyNaCL
+ * Fix bug that caused joining a remote room to fail if a single event was not
+   signed correctly.
+ * Fix bug which caused servers to continuously try and fetch events from other
+   servers.
+
+Changes in synapse 0.5.2 (2014-11-26)
+=====================================
+
+ * Fix major bug that caused rooms to disappear from people's initial sync.
+
+Changes in synapse 0.5.1 (2014-11-26)
+=====================================
+See UPGRADES.rst for specific instructions on how to upgrade.
+
+ * Fix bug where we served up an Event that did not match its signatures.
+ * Fix regression where we no longer correctly handled the case where a
+   homeserver receives an event for a room it doesn't recognise (but is in.)
+</pre>
+
+        </div>
+    </article>
+    
+    <article class="post">
+        <header>
+            <h1><a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;2014&#x2F;11&#x2F;28&#x2F;don-t-miss-matrix-in-tonight-s-vuc-session&#x2F;" title="Don&#x27;t miss Matrix in tonight&#x27;s #vuc session!">Don&#x27;t miss Matrix in tonight&#x27;s #vuc session!</a></h1>
+            <span>
+                28.11.2014 00:00
+                —
+                <a href="/category/general">
+                    General
+                </a>
+                —
+                
+                <a href="/author/amandine-le-pape">
+                    Amandine Le Pape
+                </a>
+                
+            </span>
+            
+        </header>
+        <div>
+            <p>Crazy session tonight at 5pm UK time (12 Noon Eastern Time; 9AM Pacific) on <a href="http://www.voipusersconference.org/">VUC</a> as <a href="http://matrix.org">Matrix</a>, <a href="truphone.com">Truphone</a> and <a href="https://jitsi.org/">Jitsi</a> were crazy enough to hack a federated demo in 48h!</p>
+<p>Join us live for the demo from the inside by using Matrix to attend the conference (see steps below)! No browser supporting WebRTC at hand but still willing to play with Matrix? You can also follow the chatroom (bridged to IRC) by entering <a href="http://matrix.org/beta/#/room/!AonkiegHRhJtwwFMdk:matrix.org">#vuc:matrix.org</a>.</p>
+<p>For other connection means:</p>
+<ul>
+	<li>Live video <a href="http://live.vuc.me/">http://live.vuc.me</a> or <a href="http://vuc.me">http://vuc.me</a></li>
+	<li>Live audio: <a href="http://vuc.audio/">http://vuc.audio</a></li>
+	<li>sip:200901@login.zipdx.com</li>
+	<li><a href="skype:vuc.me?Call">Skype:vuc.me</a></li>
+	<li>Or from a regular telephone or cell call ZipDX (+1 (646) 475-2098) or see the <a title="List of International numbers from Voxbone" href="http://vuc.li/VoxboneVUC">Voxbone International Dial-in List</a>.</li>
+</ul>
+<em><strong>Steps to join the call from Matrix:</strong></em>
+<ol>
+	<li>Register on <a href="http://matrix.org/beta">Matrix</a> from Chrome if not already done :)</li>
+	<li>Start a chat with @vucbot:matrix.org by entering the ID in the appropriate textfield at the bottom of the public rooms list on <a href="http://matrix.org/beta">http://matrix.org/beta</a> and click on "Message User"</li>
+	<li>In the chat room start a voice call by clicking on the mic icon in the top right corner. Don't forget to allow your browser to access your mic and speakerphones!</li>
+</ol>
+<a href="http://matrix.org/blog/wp-content/uploads/2014/11/vuc.png"><img class="alignnone size-full wp-image-231" src="http://matrix.org/blog/wp-content/uploads/2014/11/vuc.png" alt="vuc" width="144" height="172" /></a>
+
+        </div>
+    </article>
+    
+    <article class="post">
+        <header>
             <h1><a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;2014&#x2F;11&#x2F;20&#x2F;synapse-enters-beta-with-the-release-of-v0-5-0&#x2F;" title="Synapse enters beta with the release of v0.5.0!">Synapse enters beta with the release of v0.5.0!</a></h1>
             <span>
                 20.11.2014 00:00
@@ -356,300 +598,13 @@ http://github.com/matrix-org/matrix-doc</p>
         </div>
     </article>
     
-    <article class="post">
-        <header>
-            <h1><a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;2014&#x2F;10&#x2F;16&#x2F;who-is-matrix-org&#x2F;" title="Who is Matrix.org?">Who is Matrix.org?</a></h1>
-            <span>
-                16.10.2014 00:00
-                —
-                <a href="/category/general">
-                    General
-                </a>
-                —
-                
-                <a href="/author/admin">
-                    admin
-                </a>
-                
-            </span>
-            
-        </header>
-        <div>
-            <p>Matrix.org is a team of around 10 developers working together on the Matrix project, defining the Matrix open standard and developing the opensource reference client and server implementations.  Most of the team has day jobs at <a href="http://amdocs.com">Amdocs</a> or <a href="http://www.openmarket.com">OpenMarket</a> (who kindly sponsor us to work on Matrix), and we gladly welcome contributors from the wider open source community.</p>
-<p>Matrix was started by Matthew Hodgson and Amandine Le Pape whilst building Amdocs Unified Communications, on realising that traditional VoIP and IM standards were insufficient to power featureful apps which can openly federate with one another.  Matrix is designed to support open federation for the current and future state-of-the-art in communication apps using a simple web-friendly HTTP API standard.  Our dream is to break down the walls between today's communication silos, and make VoIP and IM as ubiquitous and open as email.</p>
-<h2 id="matthew">Matthew</h2>
-<p><a href="http://matrix.org/blog/wp-content/uploads/2014/10/me.jpg"><img class="alignnone size-medium wp-image-162" style="float: right; margin-left: 1em; margin-bottom: 1em;" src="http://matrix.org/blog/wp-content/uploads/2014/10/me-257x300.jpg" alt="Matthew Hodgson" width="128" height="150" /></a></p>
-<p>Matthew Hodgson is technical co-founder of matrix.org, responsible for defining Matrix's vision with Amandine and moving obstacles out of the way of the team in order to build it.  Matthew has spent the last 15 years mainly designing and building various communication solutions on top of an alarming array of different technologies (IRC, IM, NNTP, IMAP, IAX, SIP/RTP, RTMP, XMPP... and now Matrix).</p>
-<p>Matthew's day job is running the Unified Communications team at Amdocs, creating communication apps for large mobile network operators (e.g. <a href="http://blah.com">Blah</a> for TIM Brasil).  Previously he ran &quot;The Next Generation&quot; telephony/media team at MX Telecom (acquired by Amdocs in 2010), building a highly distributed SIP softswitch and mobile-optimised WebRTC-compatible graph-based media framework and VoIP stack to power MX's voice and video services.  Matthew has also been known to dabble in sysadmin (running MX Telecom's sysadmin team), dubious graphic design and CGI, and wishes he had more time to play piano.  He has a degree in Computer Science and Physics from the University of Cambridge, and has previously worked at Accenture, the Rutherford Appleton Laboratory, <a href="http://www.theonering.net">TheOneRing.net</a> as well as misguidedly co-founding a digital marketing startup in Bahrain. [<a href="https://www.linkedin.com/profile/view?id=6841469">LinkedIn</a>]</p>
-<h2 id="amandine">Amandine</h2>
-<p><a href="http://matrix.org/blog/wp-content/uploads/2014/10/am.jpg"><img class="alignnone size-full wp-image-163" style="float: right; margin-left: 1em; margin-bottom: 1em;" src="http://matrix.org/blog/wp-content/uploads/2014/10/am.jpg" alt="Amandine Le Pape" width="128" height="150" /></a></p>
-<p>Amandine Le Pape is business co-founder of matrix.org, responsible for defining the Matrix vision with Matthew and then organising the non-technical activities required to support and promote it and make it successful.</p>
-<p>Amandine has spent the last 2 years setting up and leading the Unified Communications line of business within Amdocs as a Product Manager, and has more than 10 years of experience in mobile services and telecommunications.  She has a degree in telecommunications engineering from Ecole Supérieure de Chimie, Physique et Electronique de Lyon and an EMBA from ESC Rennes. [<a href="https://www.linkedin.com/in/amandineroux">LinkedIn</a>]</p>
-
-        </div>
-    </article>
-    
-    <article class="post">
-        <header>
-            <h1><a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;2014&#x2F;09&#x2F;25&#x2F;synapse-0-3-4-released&#x2F;" title="Synapse 0.3.4 released!">Synapse 0.3.4 released!</a></h1>
-            <span>
-                25.09.2014 00:00
-                —
-                <a href="/category/tech">
-                    Tech
-                </a>
-                —
-                
-                <a href="/author/matthew-hodgson">
-                    Matthew Hodgson
-                </a>
-                
-            </span>
-            
-        </header>
-        <div>
-            <p>Hi all,</p>
-<p>Synapse 0.3.4 is out! The main changes here are a huge fleet of bugfixes to the webclient, and the addition of TURN support for VoIP relaying. This makes VoIP/Video call setup much more reliable (although the UI still needs some love).</p>
-<p>Meanwhile, we set an IRC bridge (<a href="https://github.com/tm604/Matrix-IRCBridge">https://github.com/tm604/Matrix-IRCBridge</a>) running linking #matrix:matrix.org and #matrix-dev:matrix.org to their Freenode counterparts (#matrix &amp; #matrix-dev respectively) - much fun to see innocent IRC users assimilated up into Matrix, and for us to now be using Matrix for /all/ our development chat and interaction (whether it's through a Matrix client or an IRC client).</p>
-<p>To upgrade to the latest homeserver, just <code>git pull &amp;&amp; ./synctl restart</code>.  If you want to start playing with VoIP in earnest on your own homeserver, you'll need to install a TURN server - see <a href="https://github.com/matrix-org/synapse/blob/master/docs/turn-howto.rst">docs/turn-howto.rst</a> for details on how to set one up.</p>
-<p><a href="http://matrix.org/alpha">http://matrix.org/alpha</a> has already been upgraded to 0.3.4, so feel free to play with all the new stuff there.</p>
-<p>thanks,</p>
-<p>Matthew</p>
-<h1 id="changes-in-synapse-0-3-4-2014-09-25">Changes in synapse 0.3.4 (2014-09-25)</h1>
-<p>This version adds support for using a TURN server. See docs/turn-howto.rst on
-how to set one up.</p>
-<p>Homeserver:</p>
-<ul>
-<li>Add support for redaction of messages.</li>
-<li>Fix bug where inviting a user on a remote home server could take up to
-20-30s.</li>
-<li>Implement a get current room state API.</li>
-<li>Add support specifying and retrieving turn server configuration.</li>
-</ul>
-<p>Webclient:</p>
-<ul>
-<li>Add button to send messages to users from the home page.</li>
-<li>Add support for using TURN for VoIP calls.</li>
-<li>Show display name change messages.</li>
-<li>Fix bug where the client didn't get the state of a newly joined room
-until after it has been refreshed.</li>
-<li>Fix bugs with tab complete.</li>
-<li>Fix bug where holding down the down arrow caused chrome to chew 100% CPU.</li>
-<li>Fix bug where desktop notifications occasionally used &quot;Undefined&quot; as the
-display name.</li>
-<li>Fix more places where we sometimes saw rooms as IDs rather than aliases.</li>
-<li>Fix bug which caused lag when entering text in the text box.</li>
-</ul>
-
-        </div>
-    </article>
-    
-    <article class="post">
-        <header>
-            <h1><a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;2014&#x2F;09&#x2F;22&#x2F;synapse-0-3-3-released&#x2F;" title="Synapse 0.3.3 released">Synapse 0.3.3 released</a></h1>
-            <span>
-                22.09.2014 00:00
-                —
-                <a href="/category/tech">
-                    Tech
-                </a>
-                —
-                
-                <a href="/author/matthew-hodgson">
-                    Matthew Hodgson
-                </a>
-                
-            </span>
-            
-        </header>
-        <div>
-            <p>Hello world,</p>
-<p>Synapse 0.3.3 was released today, concentrating on both feature &amp; stability improvements on the webclient.  The big news is that 1:1 video calling via WebRTC is implemented (although we're still working on some stability issues, and Synapse doesn't support TURN yet.  This will be coming in the next few days however!).</p>
-<p>Play with the demo server at http://matrix.org/alpha, or update your own homeserver with a <code>git pull &amp;&amp; ./synctl restart</code> or by cloning a new checkout with <code>git clone https://github.com/matrix-org/synapse.git</code></p>
-<p>--Matthew</p>
-<h1 id="changes-in-synapse-0-3-3-2014-09-22">Changes in synapse 0.3.3 (2014-09-22)</h1>
-<p>Homeserver:</p>
-<ul>
-<li>Fix bug where you continued to get events for rooms you had left.</li>
-</ul>
-<p>Webclient:</p>
-<ul>
-<li>Add support for video calls with basic UI.</li>
-<li>Fix bug where one to one chats were named after your display name rather
-than the other person's.</li>
-<li>Fix bug which caused lag when typing in the textarea.</li>
-<li>Refuse to run on browsers we know won't work.</li>
-<li>Trigger pagination when joining new rooms.</li>
-<li>Fix bug where we sometimes didn't display invitations in recents.</li>
-<li>Automatically join room when accepting a VoIP call.</li>
-<li>Disable outgoing and reject incoming calls on browsers we don't support
-VoIP in.</li>
-<li>Don't display desktop notifications for messages in the room you are
-non-idle and speaking in.</li>
-</ul>
-
-        </div>
-    </article>
-    
-    <article class="post">
-        <header>
-            <h1><a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;2014&#x2F;09&#x2F;18&#x2F;synapse-0-3-2-released&#x2F;" title="Synapse 0.3.2 released">Synapse 0.3.2 released</a></h1>
-            <span>
-                18.09.2014 00:00
-                —
-                <a href="/category/tech">
-                    Tech
-                </a>
-                —
-                
-                <a href="/author/matthew-hodgson">
-                    Matthew Hodgson
-                </a>
-                
-            </span>
-            
-        </header>
-        <div>
-            <p>We just pushed out a major new release (0.3.0) of Synapse: the current reference Matrix homeserver, swiftly followed by some hotfixes (0.3.1, 0.3.2).</p>
-<p>The big changes are:</p>
-<ul>
-<li>Change the VoIP setup API to be more efficient (bundling together media stream candidates into a single setup object). <strong>API breaking change!</strong></li>
-<li>Change the Registration API to be more consistent. <strong>API breaking change!</strong></li>
-<li>Lots of nice usability refinements to webclient - e.g. per-message notifications; cursor-key history navigation; faster room loading</li>
-<li>More bugfixes and stability fixes on the homeserver</li>
-</ul>
-<p>Please reload the page if you're lurking on http://matrix.org/alpha to pull in the new webclient.</p>
-<p>If you're running a homeserver - please upgrade with a quick <code>git pull &amp;&amp; ./synctl restart</code>.</p>
-<p>If you're not running a homeserver... why not? ;D</p>
-<p>--Matthew</p>
-<h1 id="changes-in-synapse-0-3-2-2014-09-18">Changes in synapse 0.3.2 (2014-09-18)</h1>
-<p>Webclient:</p>
-<ul>
-<li>Fix regression where an empty &quot;bing words&quot; list in old accounts didn't send
-notifications when it should have done.</li>
-</ul>
-<h1 id="changes-in-synapse-0-3-1-2014-09-18">Changes in synapse 0.3.1 (2014-09-18)</h1>
-<p>This is a release to hotfix v0.3.0 to fix two regressions.</p>
-<p>Webclient:</p>
-<ul>
-<li>Fix a regression where we sometimes displayed duplicate events.</li>
-<li>Fix a regression where we didn't immediately remove rooms you were
-banned in from the recents list.</li>
-</ul>
-<h1 id="changes-in-synapse-0-3-0-2014-09-18">Changes in synapse 0.3.0 (2014-09-18)</h1>
-<p>See UPGRADE for information about changes to the client server API, including
-breaking backwards compatibility with VoIP calls and registration API.</p>
-<p>Homeserver:</p>
-<ul>
-<li>When a user changes their displayname or avatar the server will now update
-all their join states to reflect this.</li>
-<li>The server now adds &quot;age&quot; key to events to indicate how old they are. This
-is clock independent, so at no point does any server or webclient have to
-assume their clock is in sync with everyone else.</li>
-<li>Fix bug where we didn't correctly pull in missing PDUs.</li>
-<li>Fix bug where prev_content key wasn't always returned.</li>
-<li>Add support for password resets.</li>
-</ul>
-<p>Webclient:</p>
-<ul>
-<li>Improve page content loading.</li>
-<li>Join/parts now trigger desktop notifications.</li>
-<li>Always show room aliases in the UI if one is present.</li>
-<li>No longer show user-count in the recents side panel.</li>
-<li>Add up &amp; down arrow support to the text box for message sending to step
-through your sent history.</li>
-<li>Don't display notifications for our own messages.</li>
-<li>Emotes are now formatted correctly in desktop notifications.</li>
-<li>The recents list now differentiates between public &amp; private rooms.</li>
-<li>Fix bug where when switching between rooms the pagination flickered before
-the view jumped to the bottom of the screen.</li>
-<li>Add support for password resets.</li>
-<li>Add bing word support.</li>
-<li>Update VoIP implementation to use new API</li>
-</ul>
-<p>Registration API:</p>
-<ul>
-<li>The registration API has been overhauled to function like the login API. In
-practice, this means registration requests must now include the following:
-'type':'m.login.password'. See UPGRADE for more information on this.</li>
-<li>The 'user_id' key has been renamed to 'user' to better match the login API.</li>
-<li>There is an additional login type: 'm.login.email.identity'.</li>
-<li>The command client and web client have been updated to reflect these changes.</li>
-</ul>
-
-        </div>
-    </article>
-    
-    <article class="post">
-        <header>
-            <h1><a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;2014&#x2F;09&#x2F;13&#x2F;synapse-v0-2-3-released&#x2F;" title="Synapse v0.2.3 released">Synapse v0.2.3 released</a></h1>
-            <span>
-                13.09.2014 00:00
-                —
-                <a href="/category/tech">
-                    Tech
-                </a>
-                —
-                
-                <a href="/author/matthew-hodgson">
-                    Matthew Hodgson
-                </a>
-                
-            </span>
-            
-        </header>
-        <div>
-            <p>We're back home from TechCrunch where we had a great time arguing the pros and cons of Matrix versus XMPP with anyone and everyone - thanks to all who came to talk to us!</p>
-<p>Meanwhile, Synapse v0.2.3 was released yesterday: the emphasis this week has been on improving stability issues on the server, and lots of cosmetic and functionality fixes on the webclient.</p>
-<p>If you're running a homeserver, please upgrade asap - upgrading has never been easier - assuming you've checked out the master branch, simply:</p>
-<pre>
-git pull
-./synctl restart
-</pre>
-<p>...and you will be up and running on 0.2.3.  We keep the master branch tracking the latest release.  <a class="moz-txt-link-freetext" href="http://matrix.org/alpha">http://matrix.org/alpha</a> is already on the latest release should you wish to experiment first!</p>
-<p>Alternatively, if you're installing from scratch, try:</p>
-<pre>
-git clone https://github.com/matrix-org/synapse.git
-python setup.py develop --user
-./synctl start # to generate a default config
-./synctl start # to actually set it running
-</pre>
-<p>and then head over to http://localhost:8008 to play with your very own Matrix homeserver!</p>
-<h1 id="changes-in-synapse-0-2-3-2014-09-12">Changes in synapse 0.2.3 (2014-09-12)</h1>
-<p>Homeserver:</p>
-<ul>
-<li>Fix bug where we stopped sending events to remote home servers if a
-user from that home server left, even if there were some still in the
-room.</li>
-<li>Fix bugs in the state conflict resolution where it was incorrectly
-rejecting events.</li>
-<li>Many stability fixes</li>
-</ul>
-<p>Webclient:</p>
-<ul>
-<li>Display room names and topics.</li>
-<li>Allow setting/editing of room names and topics.</li>
-<li>Display information about rooms on the main page.</li>
-<li>Handle ban and kick events in real time.</li>
-<li>VoIP UI and reliability improvements.</li>
-<li>Add glare support for VoIP.</li>
-<li>Improvements to initial startup speed.</li>
-<li>Don't display duplicate join events.</li>
-<li>Show message sent/sending state via opacity</li>
-<li>Multiline message sending support</li>
-<li>Many other bug &amp; stability fixes</li>
-</ul>
-
-        </div>
-    </article>
-    
     <nav class="pagination">
     <div class="prev">
         
         <a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;page&#x2F;65&#x2F;">‹ Previous</a>
         
     </div>
-    <span class="page-number">66 / 67</span>
+    <span class="page-number">66 / 68</span>
     <div class="prev">
         
         <a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;page&#x2F;67&#x2F;">Next ›</a>
