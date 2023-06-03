@@ -853,87 +853,59 @@ going about improving things.&lt;&#x2F;p&gt;
 		<id>https://matrix.turbo.fish/blog/2018/05/08/gdpr-compliance-in-matrix/</id>
 		<content type="html">&lt;p&gt;Hi all,&lt;&#x2F;p&gt;
 &lt;p&gt;As the May 25th deadline looms, we&#x27;ve had lots and lots of questions about how GDPR (the EU&#x27;s new General Data Protection Regulation legislation) applies to Matrix and to folks running Matrix servers - and so we&#x27;ve written this blog post to try to spell out what we&#x27;re doing as part of maintaining the Matrix.org server (and bridges and hosted integrations etc), in case it helps folks running their own servers.&lt;&#x2F;p&gt;
-&lt;p&gt;The main controversial point is how to handle Article 17 of the GDPR: ‘
-&lt;a href=&quot;https:&#x2F;&#x2F;gdpr-info.eu&#x2F;art-17-gdpr&#x2F;&quot;&gt;Right to Erasure&lt;&#x2F;a&gt;&#x27; (aka Right to be Forgotten).  The question is particularly interesting for Matrix, because as a relatively new protocol with somewhat distinctive semantics it&#x27;s not always clear how the rules apply - and there&#x27;s no case law to seek inspiration from.&lt;&#x2F;p&gt;
+&lt;p&gt;The main controversial point is how to handle Article 17 of the GDPR: &#x27;&lt;a href=&quot;https:&#x2F;&#x2F;gdpr-info.eu&#x2F;art-17-gdpr&#x2F;&quot;&gt;Right to Erasure&lt;&#x2F;a&gt;&#x27; (aka Right to be Forgotten). The question is particularly interesting for Matrix, because as a relatively new protocol with somewhat distinctive semantics it&#x27;s not always clear how the rules apply - and there&#x27;s no case law to seek inspiration from.&lt;&#x2F;p&gt;
 &lt;p&gt;The key question boils down to whether Matrix should be considered more like email (where people would be horrified if senders could erase their messages from your mail spool), or should it be considered more like Facebook (where people would be horrified if their posts were visible &lt;em&gt;anywhere&lt;&#x2F;em&gt; after they avail themselves of their right to erasure).&lt;&#x2F;p&gt;
 &lt;p&gt;Solving this requires making a judgement call, which we&#x27;ve approached from two directions: firstly, considering what the spirit of the GDPR is actually trying to achieve (in terms of empowering users to control their data and have the right to be forgotten if they regret saying something in a public setting) - and secondly, considering the concrete legal obligations which exist.  &lt;&#x2F;p&gt;
-&lt;p&gt;The conclusion we&#x27;ve ended up with is to (obviously) prioritise that Matrix can support all the core concrete legal obligations that GDPR imposes on it - whilst also having a detailed plan for the full ‘spirit of the GDPR&#x27; where the legal obligations are ambiguous.  The idea is to get as much of the longer term plan into place as soon as possible, but ensure that the core stuff is in place for May 25th.&lt;&#x2F;p&gt;
+&lt;p&gt;The conclusion we&#x27;ve ended up with is to (obviously) prioritise that Matrix can support all the core concrete legal obligations that GDPR imposes on it - whilst also having a detailed plan for the full &#x27;spirit of the GDPR&#x27; where the legal obligations are ambiguous.  The idea is to get as much of the longer term plan into place as soon as possible, but ensure that the core stuff is in place for May 25th.&lt;&#x2F;p&gt;
 &lt;p&gt;Please note that we are still talking to GDPR lawyers, and we&#x27;d also very much appreciate feedback from the wider Matrix community - i.e. this plan is very much subject to change.  We&#x27;re sharing it now to ensure everyone sees where our understanding stands today.&lt;&#x2F;p&gt;
 &lt;p&gt;The current todo list breaks down into the following categories. Most of these issues have matching github IDs, which we&#x27;ll track in a progress dashboard.&lt;&#x2F;p&gt;
 &lt;h3 id=&quot;right-to-erasure&quot;&gt;Right to Erasure&lt;&#x2F;h3&gt;
-&lt;p&gt;We&#x27;re opting to follow the email model, where the act of sending an event (i.e. message) into a room shares a copy of that message to everyone who is &lt;strong&gt;&lt;em&gt;currently&lt;&#x2F;em&gt;&lt;&#x2F;strong&gt; in that room.  This means that in the privacy policy (see Consent below) users will have to consent to agreeing that a copy of their messages will be transferred to whoever they are addressing.  This is also the model followed by IM systems such as WhatsApp, Twitter DMs or (
-&lt;a href=&quot;https:&#x2F;&#x2F;www.theinquirer.net&#x2F;inquirer&#x2F;news&#x2F;3029749&#x2F;facebook-zuckerberg-can-delete-old-messenger-conversations-you-cant&quot;&gt;almost&lt;&#x2F;a&gt;) Facebook Messenger.&lt;&#x2F;p&gt;
-&lt;p&gt;This means that if a user invokes their right to erasure, we will need to ensure that their events will only ever be visible to users who already have a copy - and must 
-&lt;b&gt;never&lt;&#x2F;b&gt; be served to new users or the general public.  Meanwhile, data which is no longer accessible by any user must of course be deleted entirely.&lt;&#x2F;p&gt;
+&lt;p&gt;We&#x27;re opting to follow the email model, where the act of sending an event (i.e. message) into a room shares a copy of that message to everyone who is &lt;em&gt;&lt;strong&gt;currently&lt;&#x2F;strong&gt;&lt;&#x2F;em&gt; in that room.  This means that in the privacy policy (see Consent below) users will have to consent to agreeing that a copy of their messages will be transferred to whoever they are addressing.  This is also the model followed by IM systems such as WhatsApp, Twitter DMs or (&lt;a href=&quot;https:&#x2F;&#x2F;www.theinquirer.net&#x2F;inquirer&#x2F;news&#x2F;3029749&#x2F;facebook-zuckerberg-can-delete-old-messenger-conversations-you-cant&quot;&gt;almost&lt;&#x2F;a&gt;) Facebook Messenger.&lt;&#x2F;p&gt;
+&lt;p&gt;This means that if a user invokes their right to erasure, we will need to ensure that their events will only ever be visible to users who already have a copy - and must &lt;strong&gt;never&lt;&#x2F;strong&gt; be served to new users or the general public. Meanwhile, data which is no longer accessible by any user must of course be deleted entirely.&lt;&#x2F;p&gt;
 &lt;p&gt;In the email analogy: this is like saying that you cannot erase emails that you have sent other people; you cannot try to rewrite history as witnessed by others... but you can erase your emails from a public mail archive or search engine and stop them from being visible to anyone else. &lt;&#x2F;p&gt;
-&lt;p&gt;It is important to note that GDPR Erasure is &lt;em&gt;completely separate&lt;&#x2F;em&gt; from the existing Matrix functionality of “redactions” which let users remove events from the room. A “redaction” today represents a request for the human-facing details of an event (message, join&#x2F;leave, avatar change etc) to be removed.  Technically, there is no way to enforce a redaction over federation, but there is a “gentlemen&#x27;s agreement” that this request will be honoured.
-&lt;span style=&quot;font-weight: 400;&quot;&gt;
-&lt;&#x2F;span&gt;
-&lt;span style=&quot;font-weight: 400;&quot;&gt;
-&lt;&#x2F;span&gt;
-The alternative to the ‘email-analogue&#x27; approach would have been to facilitate users&#x27; automatically applying the existing redact function to 
-&lt;i&gt;all
-&lt;&#x2F;i&gt; of the events they have ever submitted to a public room. The problem here is that defining a ‘public room&#x27; is subtle, especially to uninformed users: for instance, if a message was sent in a private room (and so didn&#x27;t get erased), what happens if that room is later made public? Conversely, if right-to-erasure removed messages from 
-&lt;i&gt;all
-&lt;&#x2F;i&gt; rooms, it will end up destroying the history integrity of 1:1 conversations, which pretty much everyone agrees is abhorrent.  Hence our conclusion to protect erased users from being visible to the general public (or anyone who comes snooping around after the fact) - but preserving their history from the perspective of the people they were talking to at the time.&lt;&#x2F;p&gt;
+&lt;p&gt;It is important to note that GDPR Erasure is &lt;em&gt;completely separate&lt;&#x2F;em&gt; from the existing Matrix functionality of &amp;quot;redactions&amp;quot; which let users remove events from the room. A &amp;quot;redaction&amp;quot; today represents a request for the human-facing details of an event (message, join&#x2F;leave, avatar change etc) to be removed.  Technically, there is no way to enforce a redaction over federation, but there is a &amp;quot;gentlemen&#x27;s agreement&amp;quot; that this request will be honoured.&lt;&#x2F;p&gt;
+&lt;p&gt;The alternative to the &#x27;email-analogue&#x27; approach would have been to facilitate users&#x27; automatically applying the existing redact function to &lt;em&gt;all&lt;&#x2F;em&gt; of the events they have ever submitted to a public room. The problem here is that defining a &#x27;public room&#x27; is subtle, especially to uninformed users: for instance, if a message was sent in a private room (and so didn&#x27;t get erased), what happens if that room is later made public? Conversely, if right-to-erasure removed messages from &lt;em&gt;all&lt;&#x2F;em&gt; rooms, it will end up destroying the history integrity of 1:1 conversations, which pretty much everyone agrees is abhorrent. Hence our conclusion to protect erased users from being visible to the general public (or anyone who comes snooping around after the fact) - but preserving their history from the perspective of the people they were talking to at the time.&lt;&#x2F;p&gt;
 &lt;p&gt;In practice, our core to-do list for Right to Erasure is:&lt;&#x2F;p&gt;
 &lt;ul&gt;
- 	&lt;li style=&quot;font-weight: 400;&quot;&gt;As a first cut,  provide Article 17 right-to-erasure at a per-account granularity.  The simplest UX for this will be an option when calling the account deactivation API to request erasure as well as deactivation.  There will be a 30 day grace period, and (ideally) a 2FA confirmation (if available) to avoid the feature being abused. 
-&lt;&#x2F;li&gt;
- 	&lt;li style=&quot;font-weight: 400;&quot;&gt;Homeservers must delete events that nobody has access to any more (i.e. if all the users in a room have GDPR-erased themselves).  If users have deactivated their accounts without GDPR-erasure, then the data will persist in case they reactivate in future.
-&lt;&#x2F;li&gt;
- 	&lt;li style=&quot;font-weight: 400;&quot;&gt;Homeservers must delete media that nobody has access to any more.  This is hard, as media is referenced by mxc:&#x2F;&#x2F; URLs which may be shared across multiple events (e.g. stickers or forwarded events, including E2E encrypted events), and moreover mxc:&#x2F;&#x2F; URLs aren&#x27;t currently authorized.  As a first cut, we track which user uploaded the mxc:&#x2F;&#x2F; content, and if they erase themselves then the content will also be erased.
-&lt;&#x2F;li&gt;
- 	&lt;li style=&quot;font-weight: 400;&quot;&gt;Homeservers must not serve up unredacted events over federation to users who were not in the room at the time.  This poses some interesting problems in terms of the privacy implications of sharing MXIDs of erased users over federation - see “GDPR erasure of MXIDs” below.
-&lt;&#x2F;li&gt;
- 	&lt;li style=&quot;font-weight: 400;&quot; id=&quot;mxid_erasure&quot;&gt;Matrix must specify a way of informing both servers and clients (especially bots and bridges) of GDPR erasures (as distinct from redactions), so that they can apply the appropriate erasure semantics.
-&lt;&#x2F;li&gt;
+&lt;li&gt;As a first cut, provide Article 17 right-to-erasure at a per-account granularity. The simplest UX for this will be an option when calling the account deactivation API to request erasure as well as deactivation. There will be a 30 day grace period, and (ideally) a 2FA confirmation (if available) to avoid the feature being abused.&lt;&#x2F;li&gt;
+&lt;li&gt;Homeservers must delete events that nobody has access to any more (i.e. if all the users in a room have GDPR-erased themselves). If users have deactivated their accounts without GDPR-erasure, then the data will persist in case they reactivate in future.&lt;&#x2F;li&gt;
+&lt;li&gt;Homeservers must delete media that nobody has access to any more. This is hard, as media is referenced by &lt;code&gt;mxc:&#x2F;&#x2F;&lt;&#x2F;code&gt; URLs which may be shared across multiple events (e.g. stickers or forwarded events, including E2E encrypted events), and moreover &lt;code&gt;mxc:&#x2F;&#x2F;&lt;&#x2F;code&gt; URLs aren&#x27;t currently authorized.  As a first cut, we track which user uploaded the &lt;code&gt;mxc:&#x2F;&#x2F;&lt;&#x2F;code&gt; content, and if they erase themselves then the content will also be erased.&lt;&#x2F;li&gt;
+&lt;li&gt;Homeservers must not serve up unredacted events over federation to users who were not in the room at the time. This poses some interesting problems in terms of the privacy implications of sharing MXIDs of erased users over federation - see &amp;quot;GDPR erasure of MXIDs&amp;quot; below.&lt;&#x2F;li&gt;
+&lt;li&gt;Matrix must specify a way of informing both servers and clients (especially bots and bridges) of GDPR erasures (as distinct from redactions), so that they can apply the appropriate erasure semantics.&lt;&#x2F;li&gt;
 &lt;&#x2F;ul&gt;
 &lt;h4 id=&quot;gdpr-erasure-of-matrix-ids&quot;&gt;GDPR erasure of Matrix IDs&lt;&#x2F;h4&gt;
-&lt;p&gt;One interesting edge case that comes out of GDPR erasure is that we need a way to stop GDPR-erased events from leaking out over federation - when in practice they are cryptographically signed into the event Directed Acyclic Graph (DAG) of a given room.  Today, we can remove the message contents (and preserve the integrity of the room&#x27;s DAG) via redaction - but this still leaves personally identifying information in the form of the Matrix IDs (MXIDs) of the sender of these events.&lt;&#x2F;p&gt;
-&lt;p&gt;In practice, this could be quite serious: imagine that you join a public chatroom for some sensitive subject (e.g. #hiv:example.com) and then later on decide that you want to erase yourself from the room.  It would be very undesirable if any new homeserver joining that room received a copy of the DAG showing that your MXID had sent thousands of events into the room - especially if your MXID was clearly identifying (i.e. your real name).&lt;&#x2F;p&gt;
-&lt;p&gt;Mitigating this is a hard problem, as MXIDs are baked into the DAG for a room in many places - not least to identify which servers are participating in a room.  The problem is made even worse by the fact that in Matrix, server hostnames themselves are often personally identifying (for one-person homeservers sitting on a personal domain).&lt;&#x2F;p&gt;
-&lt;p&gt;We&#x27;ve spent quite a lot time reasoning through how to fix this situation, and a full technical spec proposal for removing MXIDs from events can be found at &lt;a href=&quot;https:&#x2F;&#x2F;docs.google.com&#x2F;document&#x2F;d&#x2F;1ni4LnC_vafX4h4K4sYNpmccS7QeHEFpAcYcbLS-J21Q&quot;&gt;https:&#x2F;&#x2F;docs.google.com&#x2F;document&#x2F;d&#x2F;1ni4LnC_vafX4h4K4sYNpmccS7QeHEFpAcYcbLS-J21Q&lt;&#x2F;a&gt;.  The high level proposal is to switch to giving each user a different ID in the form of a cryptographic public key for every room it participates in, and maintaining a mapping of today&#x27;s MXIDs to these per-user-per-room keys.  In the event of a GDPR erasure, these mappings can be discarded, pseudonymising the user and avoiding correlation across different rooms. We&#x27;d also switch to using cryptographic public keys as the identifiers for Rooms, Events and Users (for cross-room APIs like presence).&lt;&#x2F;p&gt;
+&lt;p&gt;One interesting edge case that comes out of GDPR erasure is that we need a way to stop GDPR-erased events from leaking out over federation - when in practice they are cryptographically signed into the event Directed Acyclic Graph (DAG) of a given room. Today, we can remove the message contents (and preserve the integrity of the room&#x27;s DAG) via redaction - but this still leaves personally identifying information in the form of the Matrix IDs (MXIDs) of the sender of these events.&lt;&#x2F;p&gt;
+&lt;p&gt;In practice, this could be quite serious: imagine that you join a public chatroom for some sensitive subject (e.g. &lt;code&gt;#hiv:example.com&lt;&#x2F;code&gt;) and then later on decide that you want to erase yourself from the room. It would be very undesirable if any new homeserver joining that room received a copy of the DAG showing that your MXID had sent thousands of events into the room - especially if your MXID was clearly identifying (i.e. your real name).&lt;&#x2F;p&gt;
+&lt;p&gt;Mitigating this is a hard problem, as MXIDs are baked into the DAG for a room in many places - not least to identify which servers are participating in a room. The problem is made even worse by the fact that in Matrix, server hostnames themselves are often personally identifying (for one-person homeservers sitting on a personal domain).&lt;&#x2F;p&gt;
+&lt;p&gt;We&#x27;ve spent quite a lot time reasoning through how to fix this situation, and a full technical spec proposal for removing MXIDs from events can be found at &lt;a href=&quot;https:&#x2F;&#x2F;docs.google.com&#x2F;document&#x2F;d&#x2F;1ni4LnC_vafX4h4K4sYNpmccS7QeHEFpAcYcbLS-J21Q&quot;&gt;https:&#x2F;&#x2F;docs.google.com&#x2F;document&#x2F;d&#x2F;1ni4LnC_vafX4h4K4sYNpmccS7QeHEFpAcYcbLS-J21Q&lt;&#x2F;a&gt;. The high level proposal is to switch to giving each user a different ID in the form of a cryptographic public key for every room it participates in, and maintaining a mapping of today&#x27;s MXIDs to these per-user-per-room keys.  In the event of a GDPR erasure, these mappings can be discarded, pseudonymising the user and avoiding correlation across different rooms. We&#x27;d also switch to using cryptographic public keys as the identifiers for Rooms, Events and Users (for cross-room APIs like presence).&lt;&#x2F;p&gt;
 &lt;p&gt;This is obviously a significant protocol change, and we&#x27;re not going to do it lightly - we&#x27;re still waiting for legal confirmation on whether we need it for May 25th (it may be covered as an intrinsic technical limitation of the system).  However, the good news is that it paves the way towards many other desirable features: the ability to migrate accounts between homeservers; the ability to solve the problem of how to handle domain names being reused (or hijacked); the ability to decouple homeservers from DNS so that they can run clientside (for p2p matrix); etc.  The chances are high that this proposal will land in the relatively near future (especially if mandated by GDPR), so input is very appreciated at this point!&lt;&#x2F;p&gt;
 &lt;h3 id=&quot;consent&quot;&gt;Consent&lt;&#x2F;h3&gt;
-&lt;p&gt;GDPR describes &lt;a href=&quot;https:&#x2F;&#x2F;gdpr-info.eu&#x2F;art-6-gdpr&#x2F;&quot;&gt;six lawful bases for processing&lt;&#x2F;a&gt; personal data.  For those running Matrix servers, it seems the best route to compliance is the most explicit and active one: 
-&lt;i&gt;consent
-&lt;&#x2F;i&gt;.&lt;&#x2F;p&gt;
-&lt;p&gt;&lt;i&gt;Consent
-&lt;&#x2F;i&gt; requires that our users are
-&lt;b&gt; fully informed&lt;&#x2F;b&gt; as to exactly how their data will be used, where it will be stored, and (in our case) the specific caveats associated with a decentralised, federated communication system. They are then asked to provide their explicit approval before using (or continuing to use) the service.&lt;&#x2F;p&gt;
+&lt;p&gt;GDPR describes &lt;a href=&quot;https:&#x2F;&#x2F;gdpr-info.eu&#x2F;art-6-gdpr&#x2F;&quot;&gt;six lawful bases for processing&lt;&#x2F;a&gt; personal data. For those running Matrix servers, it seems the best route to compliance is the most explicit and active one: &lt;em&gt;consent&lt;&#x2F;em&gt;.&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;em&gt;Consent&lt;&#x2F;em&gt; requires that our users are &lt;strong&gt;fully informed&lt;&#x2F;strong&gt; as to exactly how their data will be used, where it will be stored, and (in our case) the specific caveats associated with a decentralised, federated communication system. They are then asked to provide their explicit approval before using (or continuing to use) the service.&lt;&#x2F;p&gt;
 &lt;p&gt;In order to gather consent in a way that doesn&#x27;t break all of the assorted Matrix clients connecting to matrix.org today, we have identified both an immediate- and a long-term approach.&lt;&#x2F;p&gt;
 &lt;p&gt;The (immediate-term) todo list for gathering consent is:&lt;&#x2F;p&gt;
 &lt;ul&gt;
- 	&lt;li style=&quot;font-weight: 400;&quot;&gt;Modify Synapse to serve up a simple ‘consent tool&#x27; static webapp to display the privacy notice&#x2F;terms and conditions and gather consent to this API.
+&lt;li&gt;Modify Synapse to serve up a simple &#x27;consent tool&#x27; static webapp to display the privacy notice&#x2F;terms and conditions and gather consent to this API.
 &lt;ul&gt;
- 	&lt;li style=&quot;font-weight: 400;&quot;&gt;Add a ‘consent API&#x27; to the CS API which lets a server track whether a given user has consented to the server&#x27;s privacy policy or not.
-&lt;&#x2F;li&gt;
+&lt;li&gt;Add a &#x27;consent API&#x27; to the CS API which lets a server track whether a given user has consented to the server&#x27;s privacy policy or not.&lt;&#x2F;li&gt;
 &lt;&#x2F;ul&gt;
 &lt;&#x2F;li&gt;
- 	&lt;li style=&quot;font-weight: 400;&quot;&gt;Send emails and push notifications to advise users of the upcoming change (and link through to the consent tool)
-&lt;&#x2F;li&gt;
- 	&lt;li style=&quot;font-weight: 400;&quot;&gt;Develop a bot that automatically connects to all users (new and existing), posting a link to the consent tool.  This bot can also be used in the future as a general ‘server notice channel&#x27; for letting server admins inform users of privacy policy changes; planned downtime; security notices etc.
-&lt;&#x2F;li&gt;
- 	&lt;li style=&quot;font-weight: 400;&quot;&gt;Modify synapse to reject message send requests for all users who have not yet provided consent
+&lt;li&gt;Send emails and push notifications to advise users of the upcoming change (and link through to the consent tool)&lt;&#x2F;li&gt;
+&lt;li&gt;Develop a bot that automatically connects to all users (new and existing), posting a link to the consent tool. This bot can also be used in the future as a general &#x27;server notice channel&#x27; for letting server admins inform users of privacy policy changes; planned downtime; security notices etc.&lt;&#x2F;li&gt;
+&lt;li&gt;Modify synapse to reject message send requests for all users who have not yet provided consent
 &lt;ul&gt;
- 	&lt;li style=&quot;font-weight: 400;&quot;&gt;return a useful error message which contains a link to the consent tool
-&lt;&#x2F;li&gt;
+&lt;li&gt;return a useful error message which contains a link to the consent tool&lt;&#x2F;li&gt;
 &lt;&#x2F;ul&gt;
 &lt;&#x2F;li&gt;
- 	&lt;li style=&quot;font-weight: 400;&quot;&gt;Making our anonymised user analytics for Riot.im ‘opt in&#x27; rather than ‘opt out&#x27; - this isn&#x27;t a requirement of GDPR (since our analytics are &lt;a href=&quot;https:&#x2F;&#x2F;gdpr-info.eu&#x2F;recitals&#x2F;no-26&#x2F;&quot;&gt;fully anonymised&lt;&#x2F;a&gt;) but reflects our commitment to user data sovereignty
-&lt;&#x2F;li&gt;
+&lt;li&gt;Making our anonymised user analytics for Riot.im &#x27;opt in&#x27; rather than &#x27;opt out&#x27; - this isn&#x27;t a requirement of GDPR (since our analytics are &lt;a href=&quot;https:&#x2F;&#x2F;gdpr-info.eu&#x2F;recitals&#x2F;no-26&#x2F;&quot;&gt;fully anonymised&lt;&#x2F;a&gt;) but reflects our commitment to user data sovereignty&lt;&#x2F;li&gt;
 &lt;&#x2F;ul&gt;
-Long-term:
+&lt;p&gt;Long-term:&lt;&#x2F;p&gt;
 &lt;ul&gt;
- 	&lt;li style=&quot;font-weight: 400;&quot;&gt;Add a User Interactive Auth flow for the &#x2F;register API to gather consent at register
-&lt;&#x2F;li&gt;
- 	&lt;li style=&quot;font-weight: 400;&quot;&gt;As an alternative to the bot:
+&lt;li&gt;Add a User Interactive Auth flow for the &lt;code&gt;&#x2F;register&lt;&#x2F;code&gt; API to gather consent at register&lt;&#x2F;li&gt;
+&lt;li&gt;As an alternative to the bot:
 &lt;ul&gt;
- 	&lt;li style=&quot;font-weight: 400;&quot;&gt;Fix user authentication in general to distinguish between ‘need to reauthorize without destroying user data&#x27; and ‘destroy user data and login again&#x27;, so we can use the re-authorize API to gather consent via &#x2F;login without destroying user data on the client.
-&lt;&#x2F;li&gt;
- 	&lt;li style=&quot;font-weight: 400;&quot;&gt;port the &#x2F;login API to use User Interactive Auth and also use it to gather consent for existing users when logging in
-&lt;&#x2F;li&gt;
+&lt;li&gt;Fix user authentication in general to distinguish between &#x27;need to reauthorize without destroying user data&#x27; and &#x27;destroy user data and login again&#x27;, so we can use the re-authorize API to gather consent via &lt;code&gt;&#x2F;login&lt;&#x2F;code&gt; without destroying user data on the client.&lt;&#x2F;li&gt;
+&lt;li&gt;port the &lt;code&gt;&#x2F;login&lt;&#x2F;code&gt; API to use User Interactive Auth and also use it to gather consent for existing users when logging in&lt;&#x2F;li&gt;
 &lt;&#x2F;ul&gt;
 &lt;&#x2F;li&gt;
 &lt;&#x2F;ul&gt;
@@ -941,40 +913,29 @@ Long-term:
 &lt;p&gt;Account deactivation (the ability to terminate your account on your homeserver) intersects with GDPR in a number of places.&lt;&#x2F;p&gt;
 &lt;p&gt;Todo list for account deactivation:&lt;&#x2F;p&gt;
 &lt;ul&gt;
- 	&lt;li style=&quot;font-weight: 400;&quot;&gt;Remove deactivated users from all rooms - this finally solves the problem where deactivated users leave zombie users around on bridged networks.
-&lt;&#x2F;li&gt;
- 	&lt;li style=&quot;font-weight: 400;&quot;&gt;Remove deactivated users from the homeserver&#x27;s user directory
-&lt;&#x2F;li&gt;
- 	&lt;li style=&quot;font-weight: 400;&quot;&gt;Remove all 3PID bindings associated with a deactivated user from the identity servers
-&lt;&#x2F;li&gt;
- 	&lt;li style=&quot;font-weight: 400;&quot;&gt;Improve the account deactivation UX to make sure users understand the full consequences of account deactivation
-&lt;&#x2F;li&gt;
+&lt;li&gt;Remove deactivated users from all rooms - this finally solves the problem where deactivated users leave zombie users around on bridged networks.&lt;&#x2F;li&gt;
+&lt;li&gt;Remove deactivated users from the homeserver&#x27;s user directory&lt;&#x2F;li&gt;
+&lt;li&gt;Remove all 3PID bindings associated with a deactivated user from the identity servers&lt;&#x2F;li&gt;
+&lt;li&gt;Improve the account deactivation UX to make sure users understand the full consequences of account deactivation&lt;&#x2F;li&gt;
 &lt;&#x2F;ul&gt;
 &lt;h3 id=&quot;portability&quot;&gt;Portability&lt;&#x2F;h3&gt;
-&lt;p&gt;GDPR states that users have a right to extract their data in a 
-&lt;i&gt;structured, commonly used and machine-readable format
-&lt;&#x2F;i&gt;.&lt;&#x2F;p&gt;
+&lt;p&gt;GDPR states that users have a right to extract their data in a &lt;em&gt;structured, commonly used and machine-readable format&lt;&#x2F;em&gt;.&lt;&#x2F;p&gt;
 &lt;p&gt;In the medium term we would like to develop this as a core feature of Matrix (i.e. an API for exporting your logs and other data, or for that matter account portability between Matrix servers), but in the immediate term we&#x27;ll be meeting our obligations by providing a manual service.&lt;&#x2F;p&gt;
 &lt;p&gt;The immediate todo list for data portability is:&lt;&#x2F;p&gt;
 &lt;ul&gt;
- 	&lt;li style=&quot;font-weight: 400;&quot;&gt;Expose a simple interface for people to request their data
-&lt;&#x2F;li&gt;
- 	&lt;li style=&quot;font-weight: 400;&quot;&gt;Implement the necessary tooling to provide full message logs (as a csv) upon request.  As a first cut this would be the result of manually running something like &lt;code&gt;select * from events where user=?&lt;&#x2F;code&gt;.
-&lt;&#x2F;li&gt;
+&lt;li&gt;Expose a simple interface for people to request their data&lt;&#x2F;li&gt;
+&lt;li&gt;Implement the necessary tooling to provide full message logs (as a csv) upon request. As a first cut this would be the result of manually running something like &lt;code&gt;select * from events where user=?&lt;&#x2F;code&gt;.&lt;&#x2F;li&gt;
 &lt;&#x2F;ul&gt;
 &lt;h3 id=&quot;other&quot;&gt;Other&lt;&#x2F;h3&gt;
 &lt;p&gt;GDPR mandates rules for all the personal data stored by a business, so there are some broader areas to bear in mind which aren&#x27;t really Matrix specific, including:&lt;&#x2F;p&gt;
 &lt;ul&gt;
- 	&lt;li style=&quot;font-weight: 400;&quot;&gt;Making a clear statement as to how data is processed if you apply for a job
-&lt;&#x2F;li&gt;
- 	&lt;li style=&quot;font-weight: 400;&quot;&gt;Ensuring you are seeking appropriate consent for cookies
-&lt;&#x2F;li&gt;
- 	&lt;li style=&quot;font-weight: 400;&quot;&gt;Making sure all the appropriate documentation, processes and training materials are in place to meet GDPR obligations.
-&lt;&#x2F;li&gt;
+&lt;li&gt;Making a clear statement as to how data is processed if you apply for a job&lt;&#x2F;li&gt;
+&lt;li&gt;Ensuring you are seeking appropriate consent for cookies&lt;&#x2F;li&gt;
+&lt;li&gt;Making sure all the appropriate documentation, processes and training materials are in place to meet GDPR obligations.&lt;&#x2F;li&gt;
 &lt;&#x2F;ul&gt;
 &lt;h3 id=&quot;conclusion&quot;&gt;Conclusion&lt;&#x2F;h3&gt;
-&lt;p&gt;So, there you have it.  We&#x27;ll be tracking progress in github issues and an associated dashboard over the coming weeks; for now &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;synapse&#x2F;issues&#x2F;1941&quot;&gt;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;synapse&#x2F;issues&#x2F;1941&lt;&#x2F;a&gt; (for Right to Erasure) or &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;vector-im&#x2F;riot-meta&#x2F;issues&#x2F;149&quot;&gt;https:&#x2F;&#x2F;github.com&#x2F;vector-im&#x2F;riot-meta&#x2F;issues&#x2F;149&lt;&#x2F;a&gt; (GDPR in general) is as good as place as any to gather feedback.  Alternatively, feel free to comment on the original text of this blog post: &lt;a href=&quot;https:&#x2F;&#x2F;docs.google.com&#x2F;document&#x2F;d&#x2F;1JTEI6RENnOlnCwcU2hwpg3P6LmTWuNS9S-ZYDdjqgzA&quot;&gt;https:&#x2F;&#x2F;docs.google.com&#x2F;document&#x2F;d&#x2F;1JTEI6RENnOlnCwcU2hwpg3P6LmTWuNS9S-ZYDdjqgzA&lt;&#x2F;a&gt;.&lt;&#x2F;p&gt;
-&lt;p&gt;It&#x27;s worth noting that we feel that GDPR is an excellent piece of legislation from the perspective of forcing us to think more seriously about our privacy - it has forced us to re-prioritise all sorts of long-term deficiencies in Matrix (e.g. dependence on DNS; improving User Interactive authentication; improving logout semantics etc).  There&#x27;s obviously a lot of work to be done here, but hopefully it should all be worth it!&lt;&#x2F;p&gt;
+&lt;p&gt;So, there you have it. We&#x27;ll be tracking progress in github issues and an associated dashboard over the coming weeks; for now &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;synapse&#x2F;issues&#x2F;1941&quot;&gt;https:&#x2F;&#x2F;github.com&#x2F;matrix-org&#x2F;synapse&#x2F;issues&#x2F;1941&lt;&#x2F;a&gt; (for Right to Erasure) or &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;vector-im&#x2F;riot-meta&#x2F;issues&#x2F;149&quot;&gt;https:&#x2F;&#x2F;github.com&#x2F;vector-im&#x2F;riot-meta&#x2F;issues&#x2F;149&lt;&#x2F;a&gt; (GDPR in general) is as good as place as any to gather feedback. Alternatively, feel free to comment on the original text of this blog post: &lt;a href=&quot;https:&#x2F;&#x2F;docs.google.com&#x2F;document&#x2F;d&#x2F;1JTEI6RENnOlnCwcU2hwpg3P6LmTWuNS9S-ZYDdjqgzA&quot;&gt;https:&#x2F;&#x2F;docs.google.com&#x2F;document&#x2F;d&#x2F;1JTEI6RENnOlnCwcU2hwpg3P6LmTWuNS9S-ZYDdjqgzA&lt;&#x2F;a&gt;.&lt;&#x2F;p&gt;
+&lt;p&gt;It&#x27;s worth noting that we feel that GDPR is an excellent piece of legislation from the perspective of forcing us to think more seriously about our privacy - it has forced us to re-prioritise all sorts of long-term deficiencies in Matrix (e.g. dependence on DNS; improving User Interactive authentication; improving logout semantics etc). There&#x27;s obviously a lot of work to be done here, but hopefully it should all be worth it!&lt;&#x2F;p&gt;
 </content>
 	</entry>
 </feed>
