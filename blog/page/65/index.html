@@ -118,6 +118,285 @@ Matrix, a digest of the past week activity.
     
     <article class="post">
         <header>
+            <h1><a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;2015&#x2F;03&#x2F;09&#x2F;synapse-0-8-0-android-0-2-2-sdk-app-ios-0-3-1-sdk-app-javascript-sdk-0-0-1-released-oh-my&#x2F;" title="Synapse 0.8.0, Android 0.2.2 SDK &amp; App, iOS 0.3.1 SDK &amp; App, JavaScript SDK 0.0.1 released! (oh my!)">Synapse 0.8.0, Android 0.2.2 SDK &amp; App, iOS 0.3.1 SDK &amp; App, JavaScript SDK 0.0.1 released! (oh my!)</a></h1>
+            <span>
+                09.03.2015 00:00
+                —
+                <a href="/category/tutorials">
+                    Tutorials
+                </a>
+                —
+                
+                <a href="/author/matthew-hodgson">
+                    Matthew Hodgson
+                </a>
+                
+            </span>
+            
+        </header>
+        <div>
+            <p>Hi all,</p>
+<p>What with the chaos of Mobile World Congress last week we seem to have been hoarding releases - so here's what's been happening!</p>
+<p><a href="https://github.com/matrix-org/synapse">Synapse 0.8.0</a> was released this afternoon.  This is a major performance/stability release, with lots of good stuff going on - especially adding more customisable push notification support APIs for iOS/Android; support for registering accounts from mobile devices; extensions to the new Application Service API and lots of federation improvements and bug fixes.  <b>Please upgrade at your earliest convenience.</b></p>
+<p>Meanwhile, we quietly released the <a href="https://play.google.com/store/apps/details?id=org.matrix.androidsdk.alpha">Matrix Console</a> Android example app to the Google Play last week, alongside <a href="https://github.com/matrix-org/matrix-android-sdk">v0.2.2 of the Android SDK</a> - release notes below.  There'll be a new version of the Android Console app out tomorrow, but mentioning here for completeness and to share the release notes.  Also, the <a href="https://github.com/matrix-org/matrix-ios-sdk">iOS SDK is now on v0.3.1</a>, with lots of performance and usability improvements.</p>
+<p>Finally, we have a whole new official <a href="https://github.com/matrix-org/matrix-js-sdk">Matrix client SDK for JavaScript</a>, all packaged up ready for use by Node developers and JS purists alike as an NPM with minimal dependencies.  Meanwhile, the <a href="https://github.com/matrix-org/matrix-angular-sdk">matrix-angular-sdk</a> has been switched to use matrix-js-sdk from now on.  You can use the plain JS API with a <code>npm install matrix-js-sdk</code> and then:</p>
+<pre>
+var sdk = require("matrix-js-sdk");
+var client = sdk.createClient("https://matrix.org");
+client.publicRooms(function(err, data) {'{'}
+    console.log("Public Rooms: %s", JSON.stringify(data));
+{'}'});
+
+</pre>
+<p>Meanwhile, release notes for all &amp; sundry lie below.</p>
+<pre>
+
+Changes in synapse v0.8.0 (2015-03-06)
+======================================
+
+General:
+
+* Add support for registration fallback. This is a page hosted on the server
+  which allows a user to register for an account, regardless of what client
+  they are using (e.g. mobile devices).
+
+* Added new default push rules and made them configurable by clients:
+
+  * Suppress all notice messages.
+  * Notify when invited to a new room.
+  * Notify for messages that don't match any rule.
+  * Notify on incoming call.
+
+Federation:
+
+* Added per host server side rate-limiting of incoming federation requests.
+* Added a ``/get_missing_events/`` API to federation to reduce number of
+  ``/events/`` requests.
+
+Configuration:
+
+* Added configuration option to disable registration:
+  ``disable_registration``.
+* Added configuration option to change soft limit of number of open file
+  descriptors: ``soft_file_limit``.
+* Make ``tls_private_key_path`` optional when running with ``no_tls``.
+
+Application services:
+
+* Application services can now poll on the CS API ``/events`` for their events,
+  by providing their application service ``access_token``.
+* Added exclusive namespace support to application services API.
+
+
+</pre>
+<pre>
+Changes in Matrix Android SDK in 0.2.2 (2015-02-27)
+===============================================
+
+-----
+ SDK
+-----
+  
+-----------------
+ Matrix Console
+-----------------
+Improvements:
+ * Exif management : the uploaded image is rotated according to the exif metadata
+   (if the device has enough free memory).
+ * Add a piechart while downloading an image 
+ * Add JSON representation of a message (tap on its row, “Message details”
+ * The public rooms list is now sorted according to the number of members.
+
+Features:
+ * Add configuration and skeleton classes for receiving GCM messages
+ * Add REST client for pushers API with add method for HTTP pushers.
+ * Add the account creation.
+
+Bug fixes:
+ * Reset the image thumbnail when a row is reused.
+ * SYAND-30 Notification should be away when entering a room.
+ * Some images thumbnails were downloaded several times.
+ * Restore the foreground service
+ * The medias cache was not cleared after logging out.
+ * The client crashed when joining #anime:matrix.org.
+ * SYAND-29 Messages in delivery status are not seen
+ * Some user display names were their matrix IDs.
+ * The room name/ topic were invalid when inviting to a room.
+
+
+</pre>
+<pre>
+Changes in Matrix iOS SDK in 0.3.1 (2015-03-03)
+===============================================
+
+-----
+ SDK
+-----
+Improvements:
+ * Improved push notifications documentation.
+ * MXSession: Slightly randomise reconnection times by up to 3s to prevent all
+   Matrix clients from retrying requests to the homeserver at the same time.
+ * Improved logs
+ 
+Bug fixes:
+ * SYIOS-90 - iOS can receive & display messages multiple times when on bad connections
+ 
+-----------------
+ Matrix Console
+-----------------
+Improvements:
+ * Fixed warnings with 64bits builds.
+ * Room history: Improve scrolling handling when keyboard appears.
+ * Contacts: Prompt user when local contacts tab is selected if constact sync is disabled.
+ 
+Bug fixes:
+ * Fix crash when switching rooms while the event stream is resuming.
+ * SYIOS-69 - On Screen Keyboard can end up hiding the most recent messages in a room.
+ * SYIOS-98 - Crash when attempting to attach image on iPad
+ 
+Changes in Matrix iOS SDK in 0.3.0 (2015-02-23)
+===============================================
+
+-----
+ SDK
+-----
+Breaks:
+ * [MXSession initWithMatrixRestClient: andStore: ] and the onStoreDataReady argument in
+   [MXSession start:] has been removed. The SDK client can now use the asynchronous
+   [MXSession setStore:] method to define a store and getting notified when the SDK can
+   read cached data from it. (SYIOS-62)
+ * MXStore implementations must now implement [MXStore openWithCredentials].
+ * All MXRestClient methods now return MXHTTPOperation objects.
+ 
+Improvements:
+ * Created the MXSession.notificationCenter component: it indicates when an event must be
+   notified to the user according to user's push rules settings.
+ * MXFileStore: Improved loading performance by 8x.
+ * Added an option (MXSession.loadPresenceBeforeCompletingSessionStart) to refresh presence
+   data in background when starting a session.
+ * Created MXLogger to redirect NSLog to file and to log crashes or uncaught exception.
+ * MXRestClient: Added [MXRestClient registerFallback].
+ * Logs: Make all NSLog calls follows the same format.
+ 
+Features:
+ * SYIOS-40 - Any HTTP request can fail due to rate-limiting on the server, and need to be retried.
+ * SYIOS-81 - Ability to send messages in the background.
+ 
+Bug fixes:
+ * SYIOS-67 - We should synthesise identicons for users with no avatar.
+ * MXSession: Fixed crash when closing the MXSession before the end of initial Sync.
+</pre>
+
+        </div>
+    </article>
+    
+    <article class="post">
+        <header>
+            <h1><a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;2015&#x2F;03&#x2F;02&#x2F;introduction-to-application-services&#x2F;" title="Introduction to Application Services">Introduction to Application Services</a></h1>
+            <span>
+                02.03.2015 00:00
+                —
+                <a href="/category/tutorials">
+                    Tutorials
+                </a>
+                —
+                
+                <a href="/author/kegan-dougal">
+                    Kegan Dougal
+                </a>
+                
+            </span>
+            
+        </header>
+        <div>
+            <p><strong>This post has now been edited into a guide - you can find <a href="https://github.com/matrix-org/matrix-doc/blob/master/supporting-docs/guides/2015-08-21-application_services.md">the source in github</a>, and the <a href="http://matrix.org/docs/guides/application-services">formatted guide on the matrix.org website</a>!</strong></p>
+<hr />
+<p>Hi everyone. I'm Kegan, one of the core developers on Matrix. I'd like to explain a bit more about one of the upcoming features in Matrix: Application Services. This is an entirely new component in the Matrix architecture which gives great power (along with great responsibility!) to the wielder.</p>
+<p>Application services are distinct modules which which sit alongside a home server providing arbitrary extensible functionality decoupled from the home server implementation. Just like the rest of Matrix, they communicate via HTTP using JSON. Application services function in a very similar way to traditional clients, but they are given much more power than a normal client. They can reserve entire namespaces of room aliases and user IDs for their own purposes. They can silently monitor events in rooms, or any events directed at any user ID. This power allows application services to have extremely useful abilities which overall enhance the end user experience.</p>
+<p>One of the main use cases for application services is for protocol bridges. As you may know, we have an IRC bridge bot on matrix.org which resides as a user on #matrix, #matrix-dev, #openwebrtc and #vuc which bridges into freenode. There is nothing special about this bot; it is just treated as a client. However, this limits the things the bot can do. For example, the bot cannot reserve the virtual user IDs it creates, and cannot lazily bridge arbitrary IRC rooms on-the-fly. By using application services, the IRC bot can do both of these things. This would allow any Matrix user to join a room alias which doesn't exist: say <code>#irc.freenode.python:matrix.org</code>, which would then tell the application service to create a new Matrix room, make the alias for it, join #python on freenode and bridge into it. Any IRC user on #python would then be provisioned as a virtual user e.g. <code>@irc.freenode.alice:matrix.org</code>. This also allows PMs to be sent directly to <code>@irc.freenode.alice:matrix.org</code>, no matter what channel Alice is on.</p>
+<p>Application services have enormous potential for creating new and exciting ways to transform and enhance the core Matrix protocol. For example, you could aggregate information from multiple rooms into a summary room, or create throwaway virtual user accounts to proxy messages for a fixed user ID on-the-fly. As you may expect, all of this power assumes a high degree of trust between application services and home servers. Only home server admins can allow an application service to link up with their home server, and the application service is in no way federated to other home servers. You can think of application services as additional logic on the home server itself, without messing around with the book-keeping that home servers have to do. This makes adding useful functionality very easy.</p>
+<p><strong>Example</strong></p>
+<p>The application service (AS) API itself uses webhooks to communicate from the home server to the AS:</p>
+<ul>
+<li>Room Alias Query API : The home server hits a URL on your application server to see if a room alias exists.</li>
+<li>User Query API : The home server hits a URL on your application server to see if a user ID exists.</li>
+<li>Push API : The home server hits a URL on your application server to notify you of new events for your users and rooms.</li>
+</ul>
+<p>A very basic application service may want to log all messages in rooms which have an alias starting with &quot;#logged_&quot; (side note: logging won't work if these rooms are using end-to-end encryption).</p>
+<p>Here's an example of a very basic application service using Python (with Flask and Requests) which logs room activity:</p>
+<pre># app_service.py:
+
+import json, requests  # we will use this later
+from flask import Flask, jsonify, request
+app = Flask(__name__)
+
+@app.route("/transactions/&lt;transaction&gt;", methods=["PUT"])
+def on_receive_events(transaction):
+    events = request.get_json()["events"]
+    for event in events:
+        print "User: %s Room: %s" % (event["user_id"], event["room_id"])
+        print "Event Type: %s" % event["type"]
+        print "Content: %s" % event["content"]
+    return jsonify({'{'}{'}'})
+
+if __name__ == "__main__":
+    app.run()
+</pre>
+<p>Set your new application service running on port 5000 with:</p>
+<pre>python app_service.py
+</pre>
+<p>The home server needs to know that the application service exists before it will send requests to it. This is done via a registration YAML file which is specified in Synapse's main config file e.g. <code>homeserver.yaml</code>. The server admin needs to add the application service registration configuration file as an entry to this file.</p>
+<pre># homeserver.yaml
+app_service_config_files:
+  - "/path/to/appservice/registration.yaml"
+</pre>
+<p>NB: Note the &quot;-&quot; at the start; this indicates a list element. The registration file <code>registration.yaml</code> should look like:</p>
+<pre># registration.yaml
+
+# this is the base URL of the application service
+url: "http://localhost:5000"
+
+# This is the token that the AS should use as its access_token when using the Client-Server API
+# This can be anything you want.
+as_token: wfghWEGh3wgWHEf3478sHFWE
+
+# This is the token that the HS will use when sending requests to the AS.
+# This can be anything you want.
+hs_token: ugw8243igya57aaABGFfgeyu
+
+# this is the local part of the desired user ID for this AS (in this case @logging:localhost)
+sender_localpart: logging
+namespaces:
+  users: []
+  rooms: []
+  aliases:
+    - exclusive: false
+      regex: "#logged_.*"
+</pre>
+<p><strong>You will need to restart the home server after editing the config file before it will take effect.</strong></p>
+<p>To test everything is working correctly, go ahead and explicitly create a room with the alias &quot;#logged_test:localhost&quot; and send a message into the room: the HS will relay the message to the AS by PUTing to /transactions/&lt;tid&gt; and you should see your AS print the event on the terminal. This will monitor any room which has an alias prefix of &quot;#logged_&quot;, but it won't lazily create room aliases if they don't already exist. This means it will only log messages in the room you created before: #logged_test:localhost. Try joining the room &quot;#logged_test2:localhost&quot; without creating it, and it will fail. Let's fix that and add in lazy room creation:</p>
+<pre>@app.route("/rooms/&lt;alias&gt;")
+def query_alias(alias):
+    alias_localpart = alias.split(":")[0][1:]
+    requests.post(
+        # NB: "TOKEN" is the as_token referred to in registration.yaml
+        "<a href="http://localhost:8008/_matrix/client/api/v1/createRoom?access_token=TOKEN" target="_blank">http://localhost:8008/_matrix/client/api/v1/createRoom?access_token=TOKEN</a>",
+        json.dumps({'{'}
+            "room_alias_name": alias_localpart
+        {'}'}),
+        headers={'{'}"Content-Type":"application/json"{'}'}
+    )
+    return jsonify({'{'}{'}'})
+</pre>
+<p>This makes the application service lazily create a room with the requested alias whenever the HS queries the AS for the existence of that alias (when users try to join that room), allowing any room with the alias prefix #logged_ to be sent to the AS. Now try joining the room &quot;#logged_test2:localhost&quot; and it will work as you'd expect.  You can see that if this were a real bridge, the AS would have checked for the existence of #logged_test2 in the remote network, and then lazily-created it in Matrix as required.</p>
+<p>Application services are powerful components which extend the functionality of home servers, but they are limited. They can only ever function in a &quot;passive&quot; way. For example, you cannot implement an application service which censors swear words in rooms, because there is no way to prevent the event from being sent. Aside from the fact that censoring will not work when using end-to-end encryption, all federated home servers would also need to reject the event in order to stop developing an inconsistent event graph. To &quot;actively&quot; monitor events, another component called a &quot;Policy Server&quot; is required, which is beyond the scope of this post.  Also, Application Services can result in a performance bottleneck, as all events on the homeserver must be ordered and sent to the registered application services.  If you are bridging huge amounts of traffic, you may be better off having your bridge directly talk the Server-Server federation API rather than the simpler Application Service API.</p>
+<p>I hope this post demonstrates how easy it is to create an application service, along with a few ideas of the kinds of things you can do with them. Obvious uses include build protocol bridges, search engines, invisible bots, etc. For more information on the AS HTTP API, check out the new <a href="http://matrix.org/docs/spec/#application-service-api">Application Service API</a> section in the spec, or the raw drafts and spec in <a href="https://github.com/matrix-org/matrix-doc/" target="_blank">https://github.com/matrix-org/matrix-doc/</a>.  The AS API is not yet frozen, so feedback is very welcome!</p>
+
+        </div>
+    </article>
+    
+    <article class="post">
+        <header>
             <h1><a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;2015&#x2F;02&#x2F;26&#x2F;welcoming-the-openmarket-matrix-gateway&#x2F;" title="Welcoming the OpenMarket Matrix Gateway!">Welcoming the OpenMarket Matrix Gateway!</a></h1>
             <span>
                 26.02.2015 00:00
@@ -484,110 +763,6 @@ Changes in synapse 0.6.1 (2015-01-07)
 in large rooms (by up to 10x)</li>
 <li>Media repository now includes a Content-Length header on media downloads.</li>
 <li>Improve quality of thumbnails by changing resizing algorithm.</li>
-</ul>
-</code>
-
-        </div>
-    </article>
-    
-    <article class="post">
-        <header>
-            <h1><a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;2014&#x2F;12&#x2F;24&#x2F;matrix-wins-best-innovation-award-at-webrtc-paris&#x2F;" title="Matrix wins Best Innovation Award at WebRTC Paris!">Matrix wins Best Innovation Award at WebRTC Paris!</a></h1>
-            <span>
-                24.12.2014 00:00
-                —
-                <a href="/category/events">
-                    Events
-                </a>
-                —
-                
-                <a href="/author/matthew-hodgson">
-                    Matthew Hodgson
-                </a>
-                
-            </span>
-            
-        </header>
-        <div>
-            <p>Last week we had a great time attending WebRTC Conference Expo Paris 2014 - chatting to lots of new folks about Matrix; speaking in the &quot;To Build or Not To Build&quot; panel discussion; giving a general presentation on Matrix, and participating in the Demo shoot-out.</p>
-<p>And we're very proud to say that we won the <a href="http://blog.uppersideconferences.com/award-winners-webrtc-2014-conference-expo/">Best Innovation Award</a> for a slightly frantic demo, showing an iPad mounted on our pet Trossen Robotics PhantomX Hexapod being used for robot telepresence by streaming video and audio to an Oculus Rift VR headset.  This was using our proprietary in-house WebRTC stack, but once Matrix has fully taken off we hope to share our WebRTC stack with the world too :)  This was a very last minute demo - we wanted to show something different to normal browser-to-browser IM/Video calling via Matrix and had the idea to use the Rift at the last minute - and in fact it still wasn't working when we went on stage (turns out that iOS 8.1 introduces some quirks in the video capture API which were producing corrupt video).  By switching from an iPhone 5S running iOS 8.1 to an iPad running iOS 6 we were able to turn the demo around in the nick of time and get it working live on stage (modulo a RGB&lt;-&gt;BGR colourspace bug) just in time to win the award.  Huge thanks to the jury for voting for us against the odds :D  For those interested in displaying raw video straight onto the Oculus Rift (without using any head-mounted tracking), there's an OpenGL code snippet up at <a href="https://gist.github.com/ara4n/875b5e8b66be3617efb7">https://gist.github.com/ara4n/875b5e8b66be3617efb7</a>.</p>
-<p><a href="http://matrix.org/blog/wp-content/uploads/2014/12/oculus.jpg"><img src="http://matrix.org/blog/wp-content/uploads/2014/12/oculus-1024x764.jpg" alt="iOS to Oculus Rift Telepresence" width="625" height="466" class="aligncenter size-large wp-image-262" /></a></p>
-<p>(Image credit to <a href="https://twitter.com/victorpascual/status/545247282212667393">Victor Pascual Avila</a> at Quobis)</p>
-<p>Also, huge congratulations to <a href="https://twitter.com/VladimirTechMan/status/545550432542916608">Vladimir Beloborodov</a> who won the Best Data Channel Award for hacking his Romotive telepresence robot to rendezvous via Matrix with his iPad, stream video via Google's WebRTC stack and control the robot's motion via the WebRTC Data Channel:</p>
-<p><a href="http://matrix.org/blog/wp-content/uploads/2014/12/vladimir.jpg"><img src="http://matrix.org/blog/wp-content/uploads/2014/12/vladimir.jpg" alt="Vladimir Beloborodov" width="600" height="800" class="aligncenter size-full wp-image-263" /></a></p>
-<p>We're really excited to see other folks' Matrix projects out there winning prizes!</p>
-
-        </div>
-    </article>
-    
-    <article class="post">
-        <header>
-            <h1><a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;2014&#x2F;12&#x2F;19&#x2F;synapse-0-6-0a-released&#x2F;" title="Synapse 0.6.0a released!">Synapse 0.6.0a released!</a></h1>
-            <span>
-                19.12.2014 00:00
-                —
-                <a href="/category/tech">
-                    Tech
-                </a>
-                —
-                
-                <a href="/author/matthew-hodgson">
-                    Matthew Hodgson
-                </a>
-                
-            </span>
-            
-        </header>
-        <div>
-            <p>We're proud to announce the new 0.6.0 major release of Synapse: the Python reference implementation of Matrix - as well as 0.6.0 of the AngularJS example Matrix client, as a special early Christmas present from the Matrix team :)</p>
-<p>The main priority here has been hunting down stability bugs whilst also adding in a few more features.  The most exciting new feature is the new Media/Content API: this allows every homeserver to replicate, cache and thumbnail any files associated with Matrix rooms, rather than relying on retrieving them from the origin homeserver as was previously the case.  This is really cool, as it effectively makes Matrix a distributed content distribution network and gives the same replication semantics to file attachments as to the rest of JSON in rooms.</p>
-<p>We've also landed a major new branch which changes the way events are represented internally in order to make them immutable, and fixes a whole range of minor stability issues.  In other news, performance issues are still a work in progress...</p>
-<p>To get involved, head over to <a href="https://github.com/matrix-org/synapse">https://github.com/matrix-org/synapse</a> and install and upgrade today!</p>
-<code>
-Changes in synapse 0.6.0 (2014-12-19)
-=====================================
-<ul>
-<li>Add new API for media upload and download that supports thumbnailing.</li>
-<li>Replicate media uploads over multiple homeservers so media is always served
-to clients from their local homeserver.  This obsoletes the
---content-addr parameter and confusion over accessing content directly
-from remote homeservers.</li>
-<li>Implement exponential backoff when retrying federation requests when
-sending to remote homeservers which are offline.</li>
-<li>Implement typing notifications.</li>
-<li>Fix bugs where we sent events with invalid signatures due to bugs where
-we incorrectly persisted events.</li>
-<li>Improve performance of database queries involving retrieving events.</li>
-</ul>
-</code>
-<code>
-Changes in Matrix Angular SDK 0.6.0 (2014-12-19)
-================================================
-<p>Breaking changes:</p>
-<ul>
-<li>Uploading files in the web client will now hit the new content repository URL
-introduced in Synapse 0.6, and be incompatible with previous Matrix clients.</li>
-</ul>
-<p>Bug fixes:</p>
-<ul>
-<li>Fixed a bug which caused the event stream to become wedged when the computer is asleep.</li>
-<li>Fixed a bug which caused the recents to update but not the message window.</li>
-</ul>
-<p>Features:</p>
-<ul>
-<li>Typing notifications will now be sent.</li>
-<li>Typing notifications will now be displayed for other users.</li>
-<li>Use the new content repository introduced in Synapse 0.6 when uploading files.</li>
-</ul>
-<p>Improvements:</p>
-<ul>
-<li>Display more error dialogs rather than silently failing.</li>
-<li>Display loading spinners on signup.</li>
-<li>Display feedback when joining a room.</li>
-<li>CTRL + clicking on a recents entry will now open that room in a new tab.</li>
-<li>Clicking on links in messages will now open them in a new tab.</li>
-<li>Provide a progress dialog when uploading files.</li>
-<li>Display a red bar when the event stream connection is lost for an extended period of time.</li>
 </ul>
 </code>
 

@@ -114,10 +114,227 @@
     <div class="content">
         <header>
             <h1>Matthew Hodgson</h1>
-            149 posts tagged with "Matthew Hodgson" <a href="/author">(See all Author)</a>
+            150 posts tagged with "Matthew Hodgson" <a href="/author">(See all Author)</a>
             
         </header>
 
+        
+        <article class="post">
+            <header>
+                <h2><a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;2023&#x2F;06&#x2F;07&#x2F;introducing-third-room-tp2-the-creator-update&#x2F;" title="Introducing Third Room TP2: The Creator Update">Introducing Third Room TP2: The Creator Update</a></h2>
+                <span>
+                    07.06.2023 15:15
+                    —
+                    <a href="/category/general">
+                        General
+                    </a>
+                    —
+                    <a
+                        href="/author/matthew-hodgson">
+                        Matthew Hodgson
+                    </a>
+                </span>
+                
+            </header>
+            <div>
+                
+                <p>Hi all,</p>
+<p>Back in September 2022 we launched the very <a href="https://matrix.org/blog/2022/09/27/announcing-third-room-tech-preview-1">first public technology preview</a> of <a href="https://thirdroom.io">Third Room</a> - our entirely open source, open standards-based platform for creating decentralised multiparty spatial apps and virtual worlds on top of Matrix.</p>
+<p>The mission of Third Room is to ensure that a truly open and equitable platform exists for powering shared 3D environments - providing an alternative to the closed walled gardens of the bigger vendors, and generally safeguard against a repeat of the fragmented dystopia that has plagued instant messaging and VoIP systems.  In short, just as Matrix aims to be the missing secure communication layer of the open Web, Third Room aims to be the spatial collaboration layer.</p>
+<p>Today, we’re incredibly excited to announce <strong>Third Room Technology Preview 2: The Creator Update</strong>.  As more and more 3D hardware enters the market, the race is on to provide tools to developers and creators so they can build on an open, vendor-agnostic platform - and in this update we’ve focused on building out the <strong>scripting</strong>, <strong>editing</strong> and <strong>authoring</strong> capabilities of Third Room to provide a solid platform for building and running collaborative 3D apps of any kind. Check out the new release at <a href="https://thirdroom.io">https://thirdroom.io</a>.</p>
+<blockquote>
+As a reminder: the Third Room team is a tiny band formed by Robert, Nate and Ajay and operates outside of all the rest of our work on Matrix: the other 97% of our effort goes into making the core of Matrix amazing (particularly the underpinnings for Element X and the next generation of Matrix clients). However, Matrix is about more than just chat and VoIP, and Third Room provides an excellent showcase of Matrix’s abilities as a general purpose communication fabric.
+</blockquote>
+<h3 id="introducing-web-scene-graph">Introducing Web Scene Graph</h3>
+<div style="text-align: center">
+<a href="https://thirdroom.io/docs/guides/websg/"><img src="/blog/img/2023-06-07-websg.jpg" width="480" alt="WebSG"/></a>
+</div>
+<p>At the heart of Third Room TP2 is <a href="https://thirdroom.io/docs/guides/websg/">Web Scene Graph (WebSG)</a> - our new API to let developers create their own spatial multiparty apps and experiences in Third Room. WebSG does to glTF what JavaScript and the DOM did to HTML - it makes it come alive. With WebSG, we’re building the first implementation of an open standard for interoperable programming of virtual worlds, with the hope of submitting it to the W3C as a general purpose building block of the Web.</p>
+<p>All content in Third Room is described using the <a href="https://www.khronos.org/gltf/">glTF 2.0</a> open standard, and so to let developers write their own functionality within Third Room we needed to provide an API that lets you dive into the glTF and manipulate it - much as the DOM API lets web developers edit the HTML DOM.  For whatever reason, an open standard API doesn’t exist for manipulating glTF… so we created Web Scene Graph (WebSG) to fill the void. Just like the DOM, it provides an incredibly powerful generic toolkit for manipulating 3D assets irrespective of the engine being used to render them.</p>
+<p>WebSG isn’t just for manipulating scene graphs though - it also provides a whole in-world UI framework for creating 3D user interfaces in glTF; it provides an Action Bar API to let apps modify the controls available in Third Room’s overlay UI; you also get the Collision Listener API to get callbacks from the physics engine; ECS API to interact directly with the Entity Component System that tracks the world state; and Networking APIs to send and receive messages directly between clients via Matrix-negotiated WebRTC DataChannels.</p>
+<p>As a quick taster - a WebSG app to pulse a light in your scene can be as simple as this:</p>
+<pre data-lang="js" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-js "><code class="language-js" data-lang="js"><span>world.onload = () </span><span style="color:#569cd6;">=&gt; </span><span>{
+</span><span>    </span><span style="color:#569cd6;">const </span><span>directionalLight = world.findLightByName(</span><span style="color:#d69d85;">&quot;DirectionalLight&quot;</span><span>); 
+</span><span>
+</span><span>    world.onupdate = (dt, time) </span><span style="color:#569cd6;">=&gt; </span><span>{
+</span><span>        directionalLight.color[</span><span style="color:#b5cea8;">0</span><span>] = (</span><span style="color:#b5cea8;">Math</span><span>.sin(time) + </span><span style="color:#b5cea8;">1</span><span>) / </span><span style="color:#b5cea8;">2</span><span>;
+</span><span>    };
+</span><span>};
+</span></code></pre>
+<p>Third Room takes the JS and compiles it down to WASM using <a href="https://bellard.org/quickjs/">QuickJS</a>, and then executes it within a WASM sandbox - isolating it entirely from your other conversations and the rest of the Third Room. (In future, we’ll look to provide quota limits to ensure scripts don’t get greedy with resources).</p>
+<p>We also support a low-level C API for WebSG, letting you compile your own native code down to WASM - in C the same script looks like this:</p>
+<pre data-lang="c" style="background-color:#1e1e1e;color:#dcdcdc;" class="language-c "><code class="language-c" data-lang="c"><span style="color:#9b9b9b;">#include </span><span style="color:#d69d85;">&lt;math.h&gt;
+</span><span style="color:#9b9b9b;">#include </span><span style="color:#d69d85;">&quot;websg.h&quot;
+</span><span>
+</span><span>Light </span><span style="color:#569cd6;">*</span><span>directionalLight;
+</span><span>
+</span><span>export </span><span style="color:#569cd6;">void </span><span>websg_load() {
+</span><span>    directionalLight =
+</span><span>        websg_world_find_light_by_name(</span><span style="color:#d69d85;">&quot;DirectionalLight&quot;</span><span>);
+</span><span>}
+</span><span>
+</span><span>export </span><span style="color:#569cd6;">void </span><span>websg_update(float_t dt, float_t time) {
+</span><span>    websg_light_set_color_element(
+</span><span>        directionalLight, </span><span style="color:#b5cea8;">0</span><span>, (sin(time) + </span><span style="color:#b5cea8;">1.0</span><span>) / </span><span style="color:#b5cea8;">2.0
+</span><span>    );
+</span><span>}
+</span></code></pre>
+<p>But don’t worry - we’re not expecting folks to be writing C as a matter of course; the reason to provide the low-level C API is so that in future we can easily provide Rust and Zig (or more!) bindings so folks can use their favourite native language to compile optimised WASM rather than using interpreted JavaScript.  That said, <a href="https://github.com/matrix-org/thirdroom/blob/main/examples/procgen/c/src/procgen.c">procgen</a> is a fun C example of a procedurally generated Perlin noise blob which pulsates in response to local audio, as an idea of what you can do today if you’re willing to write some C!  There’s also a <a href="https://github.com/matrix-org/thirdroom/blob/main/examples/procgen/js">JS version</a> of it too.</p>
+<p>We’ve also bundled basic Matrix widget API support alongside WebSG, so WASM scripts in Third Room can send and receive Matrix events in the underlying chatroom (as well as directly sending messages between clients over WebRTC datachannels).  For instance, one of the commercial WebSG apps which Element has written on top of Third Room is a real-time air traffic simulator, which consumes location-share beacons from the underlying Matrix room (bridged from ADS-B data sources) and procedurally renders them in 3D or AR over a map of the region in question:</p>
+<p><img src="/blog/img/2023-06-07-sfo.jpg" alt="SFO" /></p>
+<p>We’ve also added a native orbit viewer into Third Room, so from WebSG you can simply call <code>node.startOrbit()</code> on any node to temporarily switch into focusing on a given object (WASD to move; mousewheel to zoom; escape to exit).</p>
+<p>Finally, to really show off WebSG at its best, we’ve gone and written a simple game of basketball in precisely <a href="https://github.com/matrix-org/thirdroom/blob/main/examples/basketball/js/basketball.js">100 lines of code</a>, and published a step-by-step tutorial (<a href="https://thirdroom.io/docs/guides/websg/basketball/part-1.html">Part 1</a> covering Interactables, <a href="https://thirdroom.io/docs/guides/websg/basketball/part-2.html">Part 2</a> covering Collisions and <a href="https://thirdroom.io/docs/guides/websg/basketball/part-3.html">Part 3</a> covering Networking) so you can follow along at home.</p>
+<iframe width="1280" height="720" src="https://www.youtube.com/embed/VimOoGCPWWw" title="Third Room Basketball Tutorial End Result" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+<br/>
+<p>Or if you’re impatient you can jump ahead and play with the game <a href="https://thirdroom.io/world/#basketball-court:thirdroom.io">here</a>.</p>
+<p>WebSG has gone through quite a few major iterations since announcing it at <a href="https://www.youtube.com/watch?v=nG8qJ4on00Y">FOSDEM</a>, but we’re feeling happy with the current result and have formalised this initial public release with formal API docs as well as the various tutorials.  That said, we’d love to hear feedback via <a href="https://matrix.to/#/#thirdroom-dev:matrix.org">#thirdroom-dev:matrix.org</a> - so please let us know if you’re missing anything or if there are any rough edges we haven’t spotted!</p>
+<p>For more details on WebSG, see:</p>
+<ul>
+<li>the <a href="https://thirdroom.io/docs/guides/websg/">API overview</a></li>
+<li>the <a href="https://thirdroom.io/docs/guides/websg/basketball/part-1.html">Tutorial</a></li>
+<li>the <a href="https://thirdroom.io/docs/websg-js/">API reference docs</a></li>
+<li>…or the all various <a href="https://github.com/matrix-org/thirdroom/blob/main/examples">examples</a> in the Third Room repository:
+<ul>
+<li><a href="https://github.com/matrix-org/thirdroom/tree/main/examples/basketball/js">basketball/js</a> - the basketball game tutorial</li>
+<li><a href="https://github.com/matrix-org/thirdroom/tree/main/examples/ecs-basic/js">ecs-basic/js</a> - an ECS example which spins a given object</li>
+<li><a href="https://github.com/matrix-org/thirdroom/tree/main/examples/interactable">interactable</a> - an example for switching lights on and off</li>
+<li><a href="https://github.com/matrix-org/thirdroom/tree/main/examples/matrix">matrix</a> - turns the whole world into triplanar Matrix textures via an easter egg</li>
+<li><a href="https://github.com/matrix-org/thirdroom/tree/main/examples/network/c">network/c</a> - synchronise light state via raw network messages</li>
+<li><a href="https://github.com/matrix-org/thirdroom/tree/main/examples/physics/js">physics/js</a> - create boxes and bump them around</li>
+<li><a href="https://github.com/matrix-org/thirdroom/tree/main/examples/platformer/js">platformer/js</a> - the beginnings of a 3D platformer game (needs better character controller)</li>
+<li><a href="https://github.com/matrix-org/thirdroom/tree/main/examples/presentation/js">presentation/js</a> - script for previous/next buttons for swapping slides in a presentation</li>
+<li><a href="https://github.com/matrix-org/thirdroom/tree/main/examples/procgen">procgen</a> - renders an animated blob of Perlin noise whose geometry reacts to local audio</li>
+<li><a href="https://github.com/matrix-org/thirdroom/tree/main/examples/ui-basic/js">ui-basic/js</a> - renders text for in-world UI via the <a href="https://yogalayout.com/">Yoga</a> CSS flexbox engine</li>
+<li><a href="https://github.com/matrix-org/thirdroom/tree/main/examples/ui/js">ui/js</a> - renders nested text using Yoga</li>
+<li><a href="https://github.com/matrix-org/thirdroom/tree/main/examples/websg-v1">websg-v1</a> - moves and spins some platforms</li>
+<li><a href="https://github.com/matrix-org/thirdroom/tree/main/examples/widget-echo/js">widget-echo/js</a> - echos any Matrix message that starts <code>/echo</code> back into the room</li>
+<li><a href="https://github.com/matrix-org/thirdroom/tree/main/examples/widget-hello-world/c">widget-hello-world/c</a> - sends “hello world” into the Matrix room.</li>
+</ul>
+</li>
+</ul>
+<h3 id="introducing-the-third-room-documentation-site">Introducing the Third Room Documentation site</h3>
+<p>Talking of docs, we’re proud to unveil a shiny new documentation website for Third Room at <a href="https://thirdroom.io/docs">https://thirdroom.io/docs</a>. This is the official resource for developers wishing to build on top of Third Room - currently covering:</p>
+<ul>
+<li><a href="https://thirdroom.io/docs/guides/">Getting Started</a> - a basic guide for users first coming to Third Room</li>
+<li><a href="https://thirdroom.io/docs/guides/creators.html">The Creator Guide</a> - explaining how 3D artists and developers can rapidly get up and running by exporting existing assets into glTF for Third Room.</li>
+<li><a href="https://thirdroom.io/docs/guides/unity/">The Unity Exporter Guide</a> - explaining how to use export existing Unity assets to glTF for use in Third Room</li>
+<li><a href="https://thirdroom.io/docs/guides/developers.html">The Developer Guide</a> - an overview of developing applications using the Web Scene Graph API and self-hosting your own Third Room instance</li>
+<li>Web Scene Graph (WebSG)
+<ul>
+<li>An <a href="https://thirdroom.io/docs/guides/websg/">overview</a> of the WebSG API and its JS and C bindings</li>
+<li>The official WebSG Tutorial - learn how to build a basketball game with WebSG!
+<ul>
+<li><a href="https://thirdroom.io/docs/guides/websg/basketball/part-1.html">Part 1: Interactables</a></li>
+<li><a href="https://thirdroom.io/docs/guides/websg/basketball/part-2.html">Part 2: Collisions and UI</a></li>
+<li><a href="https://thirdroom.io/docs/guides/websg/basketball/part-3.html">Part 3: Networking </a>(in progress)</li>
+</ul>
+</li>
+<li><a href="https://thirdroom.io/docs/guides/websg/scenegraph.html">A guide to the Scene Graph itself</a></li>
+<li><a href="https://thirdroom.io/docs/guides/websg/meshes.html">A guide to manipulating meshes</a> with WebSG</li>
+<li><a href="https://thirdroom.io/docs/guides/websg/materials.html">A guide to materials</a> with WebSG</li>
+<li><a href="https://thirdroom.io/docs/guides/websg/lighting.html">A guide to lighting</a> with WebSG</li>
+<li><a href="https://thirdroom.io/docs/guides/websg/physics.html">A guide to physics</a> with WebSG</li>
+<li><a href="https://thirdroom.io/docs/guides/websg/ecs.html">A guide to the ECS API</a> with WebSG</li>
+<li><a href="https://thirdroom.io/docs/guides/websg/actionbar.html">A guide to the Action Bar API</a> with WebSG</li>
+<li><a href="https://thirdroom.io/docs/guides/websg/ui.html">A guide to the in-world UI API</a> with WebSG</li>
+<li><a href="https://thirdroom.io/docs/guides/websg/interactables.html">A guide to interactables</a> with WebSG</li>
+<li><a href="https://thirdroom.io/docs/guides/websg/networking.html">A guide to low-latency networking</a> over MatrixRTC via WebSG</li>
+</ul>
+</li>
+<li>Reference documentation:
+<ul>
+<li>The official <a href="https://thirdroom.io/docs/websg-js/">WebSG API</a> reference documentation</li>
+<li>The official reference for the various <a href="https://thirdroom.io/docs/gltf/">glTF Extensions</a> used by Third Room (in progress).</li>
+</ul>
+</li>
+</ul>
+<p><img src="/blog/img/2023-06-07-docs.png" alt="Docs" /></p>
+<h3 id="introducing-the-in-world-editor">Introducing the In-World Editor</h3>
+<p>Aside from all the WebSG API excitement, another key area in this release is the ability to visualise and manipulate the glTF scene graph in real-time via the in-world editor.  At any time while using Third Room, you can now hit the backtick key ``` and bring up an overlay showing the current scene graph of the world - and go clicking through the nodes to inspect their current state, and experiment with editing them a bit.  Currently this requires you to be an admin in the room.  For instance, you can go in and mess around with the scene’s materials via the Resources tab of the scene graph panel and the Inspector panel on the right hand side:</p>
+<p><img src="/blog/img/2023-06-07-editor-1.png" alt="Editor 1" /></p>
+<p>…or you could go and move the geometry outright:</p>
+<p><img src="/blog/img/2023-06-07-editor-2.png" alt="Editor 2" /></p>
+<p>…or even bring up a <a href="https://microsoft.github.io/monaco-editor/">Monaco</a> editor to directly edit the script controlling the world (if it’s JavaScript):</p>
+<p><img src="/blog/img/2023-06-07-editor-3.png" alt="Editor 3" /></p>
+<p>…and hit Save &amp; Run and see your changes instantly take effect:</p>
+<iframe width="1280" height="751" src="https://www.youtube.com/embed/TWC6MpUh6KY" title="Third Room WebSG demo" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+<br/>
+<p>If it wasn’t obvious, this is Third Room’s equivalent of your browser’s developer tools: letting you jump straight into the scene and see precisely what’s going on, and directly manipulate it in real-time.</p>
+<p>Now, there’s a bit remaining on this: the inspector needs to expose more UI for manipulating the scene (e.g. gizmos for picking objects in-world and translating/rotating them, etc); we need better error feedback in the inspector (or even a debugger); we can’t yet create/copy/delete nodes in the scenegraph, etc.  However, it’s already super-useful for seeing what’s going on and helping debug your WebSG scripts.</p>
+<h3 id="networking">Networking</h3>
+<p>Another area which has seen a lot of work in this update is Third Room’s networking - i.e. how you synchronise world state between clients as efficiently and rapidly as possible, and (critically) how you make that work deterministically now that we have WebSG.</p>
+<p>At the lower levels, all the networking in Third Room operates over WebRTC data channels negotiated via Matrix (aka MatrixRTC), which establish a full mesh between all the peers active in the room. (In future this will be scaled up using <a href="https://fosdem.org/2023/schedule/event/cascaded_selective_forwarding_units/">Selective Forwarding Units</a>, but this work is still in progress).</p>
+<p>However, at the higher levels, things are in flux. In the first Tech Preview of Third Room, we synchronised worlds using so-called peer-to-peer networking. In practice, this means that every client runs its own physics simulation of the world, and each client owns the objects which it creates - and each client sends updates about the state of its objects (position, rotation, etc) to the other members in the room, which overrides with the local view of their objects, with some smoothing, thus keeping everyone roughly in sync.  This worked well for early Third Room before we sprouted WebSG, but it has the problem that there is no single point of control when executing scripts - the world is not deterministic, and if every client executes the world’s script in parallel, they’d race badly as soon the script needs to handle users interacting with one another.</p>
+<p>So, we’ve written a new networking engine called Authoritative Networking - which picks a given client in the room to be the authoritative simulation for the room, and executes any WebSG scripts on that client in order to get consistent results across all participants in the room.  The authoritative client is picked based on the user with the highest power level - you can think of it almost as being a bot (hosted inside someone’s browser) which executes the simulation and scripts for that world.  If that user goes offline, then the baton would be picked up by another user in the scene.  (Obviously, in an ideal world we’d have a way to execute the scripts and simulations in a byzantine-fault tolerant manner, in parallel, with minimal latency, and without any centralisation… but we’re focusing on walking before we can run :)</p>
+<p>The current Authoritative Networking engine has some problems: we decided to synchronise simulator inputs from the scene participants to the authoritative client, rather than synchronising the physics properties of their owned objects - and this has proved difficult to script and author content around.  Therefore we’re experimenting with an alternative implementation inspired by Godot’s networking, where we synchronise object properties rather than inputs instead.</p>
+<p>This means that right now networking is still somewhat up in the air: WebSG can execute on both the original p2p networking engine (but will be racy if user interactions collide), or the new authoritative engine (but interpolation is jumpy).  This doesn’t stop you from experimenting with networking in WebSG however - and local behaviour isn’t affected at all.  You can turn on Authoritative Networking in user settings under View Profile if you want to try.</p>
+<p>We’re working away on sorting this out one way or another - if it was working perfectly it wouldn’t be a Tech Preview, after all ;)</p>
+<h3 id="introducing-the-discover-page">Introducing the Discover page</h3>
+<p>In keeping with the focus on creators in this release, we’ve also added a new Discover view to Third Room, making it easier to find existing scenes and worlds.  A directory of curated content is published in a repository room (<a href="https://github.com/ajbura/matrix-spec-proposals/blob/respository-room/proposals/3948-repository-room.md">MSC3948</a>) - by default #repository-room:thirdroom.io, and then hitting the compass icon in the side menu will let you create your own worlds based on existing scenes, or indeed discover and jump into existing worlds:</p>
+<p><img src="/blog/img/2023-06-07-discover.png" alt="Discover" /></p>
+<p>Meanwhile the Creator tab makes it even easier to get up and running creating new worlds. The Discover view now becomes the default view for new users, to help them onboard when they enter the app for the first time.</p>
+<h3 id="webxr-support">WebXR support</h3>
+<p>Finally, just one more thing… Ready for your fancy new VR/AR headset, we’re happy to announce that this update of Third Room includes WebXR support - and while it’s pretty basic (no UI overlays in XR) it actually works incredibly well, at excellent frame rates even on complex scenes.  To use it, load Third Room in the browser in your headset; enable WebXR in your profile settings, and then click the WebXR button in the bottom right group of buttons to be teleported into XR mode.</p>
+<p>Here’s me &amp; Amandine playing with it using two Quest Pros - on the left you can see my view of her in XR taken as a screenshot from my Quest Pro, showing her interacting with the air traffic simulator (with her headset, controllers and lasers superimposed as well as the map &amp; plane data).  On the right you can see the same scene in plain old 3D Third Room, showing disembodied headset/controllers (and my controller laser pointers) given we don’t have custom avatars yet.</p>
+<p>WebXR <em>should</em> work out of the box on any good VR/AR headset, without having to install any additional software or being locked into any vendor’s app store. We even expect it to work with Apple’s Vision Pro headset, based on the <a href="https://webkit.org/blog/14205/news-from-wwdc23-webkit-features-in-safari-17-beta/">Safari 17 release notes</a>. This is the whole promise of the open Web, and we hope Third Room will provide an amazing open environment to create XR apps and experiences in future.</p>
+<p><img src="/blog/img/2023-06-07-webxr.jpg" alt="WebXR" /></p>
+<h3 id="what-remains">What remains?</h3>
+<p>While we’ve made extraordinary progress since the last release, there’s still a bunch of things remaining which is keeping Third Room as a Technology Preview.  Most important first:</p>
+<ul>
+<li>Networking
+<ul>
+<li>As per the Networking section above, we need to rework Authoritative Networking so we have the final networking model in place, such that WebSG scripts execute deterministically in a single place with smooth but accurate interpolation on the participating clients. We also need to iterate a bit more on the final networking API so that anyone can build multi-user apps with ease.</li>
+</ul>
+</li>
+<li>Persistence
+<ul>
+<li>While we can now edit and script scenes, the edits are only stored in the RAM of the connected clients: when all the clients from a world disconnect, the state is lost and the world resets back to its original state. Instead, we need to store the glTF changes back to the Matrix content repository on a regular basis.</li>
+</ul>
+</li>
+<li>Firefox performance
+<ul>
+<li>We’ve seen a nasty regression in the last month or two on Firefox, where SpiderMonkey (Firefox’s JavaScript engine) starts frantically garbage-collecting, despite us allocating an extremely tiny amount of memory, killing your framerate. We haven’t figured out yet whether this is our fault or Firefox’s (if someone wants to bisect old Firefox releases over the last few months we’d be very grateful!), but for now FF performance is dire in TP2.</li>
+</ul>
+</li>
+<li>Custom Avatars
+<ul>
+<li>Whilst there’s been some work on this in the community, it’s not landed yet.  There’s nothing especially hard here though (other than IK) - it’s just a matter of bandwidth.</li>
+</ul>
+</li>
+<li>Shadows
+<ul>
+<li>We have some cascaded shadow map experiments already, but we need to get it stable and on by default for scenes which would benefit (e.g. the basketball tutorial!)</li>
+</ul>
+</li>
+<li>Mobile web
+<ul>
+<li>Similarly, support for mobile web would be really nice for those dipping their toe in the water - and given the performance we’re seeing on Android-based XR headsets like the Quest, the performance on mobile web should be sensational.  Again, it’s just a matter of time to sort it out.</li>
+</ul>
+</li>
+<li>Fully-fledged editor
+<ul>
+<li>The current editor is effectively just an inspector; it’s great for visualising the glTF scene, but you can’t really go and start changing the fabric of reality yet. An editor isn’t an editor without some fancy 3D gizmos to help you grab and manipulate the world - so for all our in-world direct manipulation Inception dreams to come true, the devtools need a bit more work.</li>
+</ul>
+</li>
+<li>Content!
+<ul>
+<li>Finally, last but not least, we need to start populating these worlds with some fun, beautiful, amazing apps and games.  The whole point of this release is to give creators the tools they need to start properly playing around, building on top of Third Room, and we really hope you’ll give it a go and get involved (not least as our bandwidth to do so within the core team is sorely limited).</li>
+</ul>
+</li>
+</ul>
+<p>Hopefully the next release will be both the final tech preview and the first beta of the complete Third Room experience - but to get there, we need your feedback: please head over to <a href="https://matrix.to/#/#thirdroom-dev:matrix.org">#thirdroom-dev:matrix.org</a> and tell us what you think!</p>
+<h3 id="funding-third-room">Funding Third Room</h3>
+<p>If you’ve read this far, you must surely be pretty interested in Third Room, and hopefully agree that having an open platform for building spatial apps and virtual worlds is absolutely critical for the health and future of the Internet - especially as the VR/AR/3D space slowly but surely gathers momentum as new players and hardware materialise.</p>
+<p>However, funding the team to work full-time on Third Room is increasingly challenging - the macroeconomic environment does not lend itself to moonshot R&amp;D projects, and Matrix as a whole continues to suffer from <a href="https://matrix.org/blog/2022/12/25/the-matrix-holiday-update-2022">insufficient financial support</a> (quite aside from Third Room).  This is particularly frustrating given the massive range of obvious commercial applications for Third Room - whether that’s for building digital twins, situational awareness, telepresence, gaming, providing an open platform to glue together real-time 3D data from other existing data feeds, etc.</p>
+<p>To try to spell out the opportunities and why it clearly makes sense for commercial players to invest in supporting Third Room development, we recently put together a quick enterprise demo reel (which also serves to demo everything mentioned above, albeit in a more businessy manner than normal). <strong>If this resonates and your organisation is interested in funding Third Room - please contact <a href="mailto:funding@matrix.org">funding@matrix.org</a> asap.</strong></p>
+<iframe width="1280" height="720" src="https://www.youtube.com/embed/cFKJ-IuGaKA" title="Third Room Enterprise Demo" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+<br/>
+<p>Otherwise, we hope you enjoy the new update - and please let us know how you get on with it!</p>
+<p>Matthew, Robert, Nate &amp; Ajay</p>
+
+                
+            </div>
+        </article>
         
         <article class="post">
             <header>
@@ -1000,384 +1217,6 @@ figure out the best solution for decentralised identity in the next 3-4 years
 in order to realise the most exciting benefits of the DMA.</p>
 <hr />
 <p>For a much deeper dive into the above, please check out our post at &quot;<a href="https://matrix.org/blog/2022/03/29/how-do-you-implement-interoperability-in-a-dma-world">How do you implement interoperability in a DMA world?</a>&quot;</p>
-
-                
-            </div>
-        </article>
-        
-        <article class="post">
-            <header>
-                <h2><a href="https:&#x2F;&#x2F;matrix.turbo.fish&#x2F;blog&#x2F;2022&#x2F;03&#x2F;29&#x2F;how-do-you-implement-interoperability-in-a-dma-world&#x2F;" title="How do you implement interoperability in a DMA world?">How do you implement interoperability in a DMA world?</a></h2>
-                <span>
-                    29.03.2022 17:57
-                    —
-                    <a href="/category/general">
-                        General
-                    </a>
-                    —
-                    <a
-                        href="/author/matthew-hodgson">
-                        Matthew Hodgson
-                    </a>
-                </span>
-                <br>
-                <small>Last update: 29.03.2022 09:23</small>
-            </header>
-            <div>
-                
-                <p>With last week’s revelation that the <a href="https://www.europarl.europa.eu/news/en/press-room/20220315IPR25504/deal-on-digital-markets-act-ensuring-fair-competition-and-more-choice-for-users">EU Digital Markets Act</a>
-will require tech gatekeepers (companies valued at over $75B or with over
-$7.5B of turnover) to open their communication APIs for the purposes of
-interoperability, there’s been a lot of speculation on what this could mean
-in practice, To try to ground the conversation a bit, we’ve had a go at
-outlining some concrete proposals for how it could work.</p>
-<p>However, before we jump in, we should review how the DMA has come to pass.</p>
-<h3 id="what-s-driven-the-dma">What’s driven the DMA?</h3>
-<p>Today’s gatekeepers all began with a great product, which got more and more
-popular until it grew to such a size that one of the biggest reasons to use
-the service is not necessarily the product any more, but the benefits of
-being able to talk to a large network of users. This rapidly becomes
-anti-competitive, however: the user becomes locked into the network and can’t
-switch even if they want to.  Even when people have a <strong>really</strong> good reason
-to move provider (e.g. <a href="https://www.theregister.com/2021/01/06/whatsapp_privacy_policy_demand/">WhatsApp’s terms of use changing</a> to
-share user data with Facebook, <a href="https://blog.elcomsoft.com/2021/01/apple-scraps-end-to-end-encryption-of-icloud-backups/">Apple doing a 180 on end-to-end encrypting iCloud backups</a>,
-or <a href="https://www.wired.co.uk/article/telegram-encryption-end-to-end-features">Telegram not actually being end-to-end encrypted</a>),
-in practice <a href="https://medium.com/@carlagriggio/the-great-messaging-app-migration-that-didnt-really-happen-56af637bc5d8">hardly anything changes</a> -
-because the users are socially obligated to keep using the service in order
-to talk to the rest of the users on it.</p>
-<p>As a result, it’s literally harmful to the users. Even if a new service
-launches with a shiny new feature, there is enormous inertia that must be
-overcome for users to switch, thanks to the pull of their existing network -
-and even if they do, they’ll just end up with their conversations haphazardly
-fragmented over multiple apps. This isn’t accepted for email; it isn’t
-accepted for the phone network; it isn’t accepted on the Internet itself -
-and it shouldn’t be accepted for messaging apps either.</p>
-<p>Similarly: the closed networks of today’s gatekeepers put a completely
-arbitrary limit on how users can extend and enrich their own conversations.
-On email, if you want to use a fancy new client like Superhuman - you can. If
-you want to hook up a digital assistant or translation service to help you
-wrangle your email - you can.  If you want to hook up your emails to a CRM to
-help you run your business - you can.  But with today’s gatekeepers, you have
-literally no control: you’re completely at the mercy of the service
-provider - and for something like WhatsApp or iMessage the options are
-limited at best.</p>
-<p>Finally - all the users’ conversation metadata for that service (who talks to
-who, and when) ends up centralised in the gatekeepers’ databases, which then
-become an incredibly valuable and sensitive treasure trove, at risk of abuse.
-And if the service provider identifies users by phone number, the user is
-forced to disclose their phone number (a deeply sensitive personal
-identifier) to participate, whether they want to or not.  Meanwhile the user
-is massively incentivised not to move away: effectively they are held hostage
-by the pull of the service’s network of users.</p>
-<p>So, the DMA exists as a strategy to improve the situation for users and
-service providers alike by building a healthier dynamic ecosystem for
-communication apps; encouraging products to win by producing the best quality
-product rather than the biggest network. To quote Cédric O (Secretary of
-State for the Digital Sector of France), the strategy of the legislation came
-from Washington advice to address the anticompetitive behaviour of the
-gatekeepers “not by breaking them up… but by breaking them open.”  By
-requiring the gatekeepers to open their APIs, the door has at last been
-opened to give users the option to pick whatever service they prefer to use,
-to choose who they trust with their data and control their conversations as
-they wish - without losing the ability to talk to their wider audience.</p>
-<p>However, something as groundbreaking as this is never going to be completely
-straightforward.  Of course while some basic use cases (i.e. non-E2EE chat)
-are easy to implement, they initially may not have a UX as smooth as a closed
-network which has ingested all your address book; and other use cases(eg E2EE
-support) may require some compromises at first.  It’s up to the industry to
-figure out how to make the most of that challenge, and how to do it in a way
-which minimises the impact on privacy - especially for end-to-end encrypted
-services.</p>
-<h3 id="what-problems-need-to-be-solved">What problems need to be solved?</h3>
-<p>We’ve <a href="https://matrix.org/blog/2022/03/25/interoperability-without-sacrificing-privacy-matrix-and-the-dma">already written about this</a>
-from a Matrix perspective, but to recap - the main challenge is the trade-off
-between interoperability and privacy for gatekeepers who provide end-to-end
-encryption, which at a rough estimate means: WhatsApp, iMessage, secret chats
-in Facebook Messenger, and Google Messages.  The problem is that even with
-open APIs which correctly expose the end-to-end encrypted semantics (as DMA
-requires), the point where you interoperate with a different system
-inevitably means that you’ll have to re-encrypt the messages for that system,
-unless they speak precisely the same protocol - and by definition you end up
-trusting the different system to keep the messages safe.  Therefore this
-increases the attack surface on the conversations, putting the end-to-end
-encryption at risk.</p>
-<p>Alex Stamos (ex-CISO at Facebook) said that “<a href="https://twitter.com/alexstamos/status/1507366543360897028">WhatsApp rolling out mandatory
-end-to-end encryption was the largest improvement in communications privacy
-in human history</a>” – and we agree.
-Guaranteed end-to-end encrypted conversations on WhatsApp is amazing, and
-should be protected at all costs. If users are talking to other users on
-WhatsApp (or any set of users communicating within the same E2EE messenger),
-E2EE should and must be maintained - and there is nothing in the DMA which says otherwise.</p>
-<p>But what if the user consciously wants to prioritise interoperability over
-encryption?  What if the user wants to hook their WhatsApp messages into a
-CRM, or run them through a machine translation service, or try to start a
-migration to an alternative service because they don’t trust Meta?  Should
-privacy really come so spectacularly at the expense of user freedom?</p>
-<p>We also have the problem of figuring out how to reference users on other
-platforms.  Say that I want to talk to a user with a given phone number, but
-they’re not on my platform - how do I locate them?  What if my platform only
-knows about phone numbers, but you’re trying to talk to a user on a platform
-which uses a different format for identifiers?</p>
-<p>Finally, we have the problem of mitigating abuse: opening up APIs makes it
-easier for bad actors to try to spam or phish or otherwise abuse users within
-the gatekeepers. There are going to have to be changes in anti-abuse
-services/software, and some signals that the gatekeeper platforms currently
-use are going to go away or be less useful, but that doesn't mean the whole
-thing is intractable. It will require changes and innovative thinking, but
-we’ve been making steady progress (e.g. the work done by <a href="https://element.io/blog/moderation-needs-a-radical-change/">Element’s trust and
-safety team</a>). Meanwhile, the
-gatekeepers already have massive anti-abuse systems in place to handle the
-billions of users within their walled gardens, and unofficial APIs are
-already widespread: adding official APIs does not change the landscape
-significantly (assuming interoperability is implemented in such a way that
-the existing anti-abuse mechanisms still apply).</p>
-<p>In the past, gatekeepers dismissed the effort of interop as not being
-worthwhile - after all, the default course of action is to build a walled
-garden, and having built one, the temptation is to try to trap as many users
-as possible.  It was also not always clear that there were services worth
-interoperating with (thanks to the chilling effects of the gatekeepers
-themselves, in terms of stifling innovation for communication startups).
-Nowadays this situation has fundamentally changed however: there is a vibrant
-ecosystem of open communication startups out there, and a huge appetite to
-build a vibrant open ecosystem for interoperable communication, but like the
-open web itself.</p>
-<h3 id="what-are-the-requirements">What are the requirements?</h3>
-<p>Before going further in considering solutions, we need to review the actual
-requirements of the DMA.  Our best understanding at this point is that the
-DMA will mandate that:</p>
-<ul>
-<li>Gatekeepers will have to provide open and documented APIs to their services, on request, in order to facilitate interoperability (i.e. so that other services can communicate with their users).</li>
-<li>These APIs must preserve the same level of end-to-end encryption (if any) to remote users as is available to local users.</li>
-<li>This applies to 1:1 messaging and file transfer in the short term, and group messaging, file-transfer, 1:1 VoIP and group VoIP in the longer term.</li>
-</ul>
-<h3 id="so-what-could-this-actually-look-like">So, what could this actually look like?</h3>
-<p>The DMA legislation deliberately doesn’t focus on implementation, instead
-letting the industry figure out how this could actually work in practice.
-There are many different possible approaches, and so from our point of view
-as Matrix we’ve tried to sketch out some options to make the discussion more
-concrete. Please note these are preliminary thoughts, and are far from
-perfect - but hopefully useful as a starting point for discussion.</p>
-<h4 id="finding-bob">Finding Bob</h4>
-<p>Imagine that you have a user Alice on an existing gatekeeper, which we’ll call
-AliceChat, who runs an E2EE messaging service which identifies users using
-phone numbers.  Say that they want to start a 1-to-1 conversation with Bob,
-who doesn’t use AliceChat, but Alice knows he is a keen user of BobChat.
-Today, you’d have no choice but to send them an SMS and nag them to join
-AliceChat (sucks to be them if they don’t want to use that service, or if
-they’re unable to for whatever reason - e.g. their platform isn’t supported,
-or their government has blocked access, etc), or join BobChat yourself.</p>
-<div style="text-align: center">
-<img src="/blog/img/2022-03-29-bob-invite.jpg" width="430"/>
-<img src="/blog/img/2022-03-29-bob-invite-b.png" width="430"/>
-</div>
-<br/>
-<p>However, imagine if instead the gatekeeper app had a user experience where the
-app prompted you to talk to the user via a different platform instead.  It’d
-be no different to your operating system prompting you to pick which app to
-use to open a given file extension (rather than the OS vendor hardcoding it
-to one of their own apps - another win for user rights <a href="https://en.wikipedia.org/wiki/Microsoft_Corp._v._Commission">led by the EU</a>!).</p>
-<div style="text-align: center">
-<img src="/blog/img/2022-03-29-bob-invite2.jpg" width="430"/>
-</div>
-<br/>
-<p>Now, the simplest approach in the short term would be for each gatekeeper to
-pre-provision a set of options of possible alternative networks.  (The DMA
-says that, on request, other service providers can ask to have access to the
-gatekeeper’s APIs for the purposes of interoperability, so the gatekeeper
-knows who the alternative networks may be).  “Bob is not on AliceChat - do
-you want to try to reach him instead on BobChat, CharlieChat, DaveChat
-(etc)”.</p>
-<p>Much like users can configure their preferred applications for file extensions
-in an operating system today, users would also be able to add their own
-preferred service providers - simply specifying their domain name.</p>
-<h4 id="connecting-to-bob">Connecting to Bob</h4>
-<p>Now, AliceChat itself needs to figure out how to query the remote service
-provider to see if Bob actually exists there.  Given the DMA requires that
-gatekeepers provide open APIs with the same level of security to remote users
-as their local ones using today’s private APIs - and very deliberately
-doesn’t mandate specific protocols for interoperability - they will need to
-locate a bridge which can connect to the other system.</p>
-<p>In this thought experiment, the bridge used would be up to the destination
-provider.  For instance, bobchat.com could announce that AliceChat users
-should connect to it via alicechat-bridge.bobchat.com using the AliceChat
-protocol(or matrix-bridge.bobchat.com via Matrix or xmpp-bridge.bobchat.com
-via XMPP) by a simple HTTP API or even a .well-known URL.  Users might also
-be able to override the bridge used to connect to them (e.g. to point instead
-at a client-side bridge), and could sign the advertisement to prove that it
-hadn’t been tampered with.</p>
-<p>AliceChat would then connect to the discovered bridge using AliceChat’s
-vendor-specific newly opened API, and would then effectively treat Bob as if
-they were a real AliceChat user and client to all intents and purposes.  In
-other words, Bob would effectively be a “ghost user” on AliceChat, and
-subject to all their existing anti-abuse mechanisms.</p>
-<p>Meanwhile, the other side of the bridge converts through to whatever the
-target system is - be that XMPP, Matrix, a different proprietary API, etc.
-For Matrix, it’d be chatting away to a homeserver via the <a href="https://spec.matrix.org/latest/application-service-api/">Application Service
-API</a> (using
-<a href="https://docs.mau.fi/bridges/general/end-to-bridge-encryption.html">End-to-Bridge Encryption</a> via
-<a href="https://github.com/matrix-org/matrix-spec-proposals/blob/travis/msc/otk-dl-appservice/proposals/3202-encrypted-appservices.md">MSC3202</a>).
-It’s also worth noting that the target might not even be a bridge - it could
-be a system which already natively speaks AliceChat’s end-to-end encrypted
-API, thus preserving end-to-end encryption without any need to re-encrypt.
-It’s also worth noting that while historically bridges have had a bad
-reputation as being a second class (often a second class afterthought),
-Matrix has shown that by considering them as a first class citizen and really
-focusing on mapping the highest common denominator between services rather
-than lowest common denominator, it’s possible for them to work transparently
-in practice.  <a href="https://beeper.com">Beeper</a> is a great example of Matrix
-bridging being used for real in the wild (rather amusingly they just
-<a href="https://twitter.com/ericmigi/status/1507827177374445569">shipped emoji reactions for WhatsApp</a> on iOS via their
-WhatsApp&lt;-&gt;Matrix bridge before WhatsApp themselves did…)</p>
-<p>Architecturally, it could look like this:</p>
-<p><img src="/blog/img/2022-03-29-alice-bob.jpg" alt="" /></p>
-<p>Or, more likely (given a dedicated bridge between two proprietary services
-would be a bit of a special case, and you’d have to solve the dilemma of who
-hosts the bridge), both services could run a bridge to a common open standard
-protocol like Matrix or XMPP instead (thus immediately enabling
-interoperability with everyone else connected to that network):</p>
-<p><img src="/blog/img/2022-03-29-alice-bob-bridged.jpg" alt="" /></p>
-<p>Please note that while these examples show server-side bridges, in practice it
-would be infinitely preferable to use client-side bridges when connecting to
-E2EE services - meaning that decrypted message data would only ever be
-exposed on the client (which obviously has access to the decrypted data
-already).  Client-side bridges are currently complicated by OS limits on
-background tasks and push notification semantics (on mobile, at least), but
-one could envisage a scenario where you install a little stub AliceChat
-client on your phone which auths you with AliceChat and then sits in the
-background receiving messages and bridging them through to Matrix or XMPP,
-like this:</p>
-<p><img src="/blog/img/2022-03-29-alice-bob-clientside.jpg" alt="" /></p>
-<p>Another possible architecture could be for the E2EE gatekeeper to expose their
-open APIs on the clients, rather than the server.  DMA allows this, to the
-best of our knowledge - and would allow other apps on the device to access
-the message data locally (with appropriate authorisation, of course) - effectively
-doing a form of realtime
-<a href="https://en.wikipedia.org/wiki/Google_Data_Liberation_Front">data liberation</a>
-from the closed service to an open system, looking something like this:</p>
-<p><img src="/blog/img/2022-03-29-alice-bob-clientside-apis.jpg" alt="" /></p>
-<p>Finally, it's worth noting that when peer-to-peer decentralised protocols
-like <a href="https://matrix.org/blog/2020/06/02/introducing-p-2-p-matrix/">P2P Matrix</a>
-enter production, clientside bridges could bridge directly into a local
-communication server running on the handset - thus avoiding metadata being
-exposed on Matrix or XMPP servers providing a common language between the
-service providers.</p>
-<h4 id="locating-users">Locating users</h4>
-<p>Now, the above describes the simplest and most naive directory lookup system
-imaginable - the problem of deciding which provider to use to connect to each
-user is shouldered by the users.  This isn’t that unreasonable - after all,
-users may have strong feelings about what providers to use to talk to a given
-user.  Alice might be quite happy to talk to Bob via BobChat, but might be
-very deliberately avoiding talking to him on DaveChat, for whatever ominous
-reasons.</p>
-<p>However, it’s likely in future we will also see other directory services
-appear in order to map phone numbers (or other identities) to providers -
-whether these piggyback on top of existing identity providers
-(gatekeepers, DNS, telcos, SSO providers, governments) or are decentralised
-through some other mechanism.  For instance, Bob could send AliceChat a
-blinded proof that he authorises them to automatically route traffic to him
-over at BobChat, with BobChat maintaining a matching proof that Bob is who he
-claims to be (having gone through BobChat’s auth process) - and the proofs
-could be linked using a temporary key such that Bob doesn’t even need to
-maintain a long-term one. (Thanks to James Monaghan for suggesting this one!)</p>
-<p>Another alternative to having the user decide where to find each other could
-be to use a decentralised Keybase-style identity system to track verified
-mappings of identities (phone numbers, email addresses etc) through to
-service providers - perhaps something like <a href="https://idx.xyz/">IDX</a> might fit
-the bill?  While this decentralised identity lookups have historically been a
-hard problem, there is a <em>lot</em> of promising work happening in this space
-currently and the future looks promising.</p>
-<h4 id="talking-to-bob">Talking to Bob</h4>
-<p>Meanwhile, Alice still needs to talk to Bob. As already discussed, unless
-everyone speaks the same end-to-end encrypted protocol (be it Matrix,
-WhatsApp or anything else), we inevitably have a trade-off here between
-interoperability and privacy if Bob is not on the same system as Alice
-(assuming AliceChat is end-to-end encrypted) - and we will need to clearly
-warn Alice that the conversation is no longer end-to-end encrypted:</p>
-<div style="text-align: center">
-<img src="/blog/img/2022-03-29-warning.jpg" width="430"/>
-</div>
-<br/>
-<p>To be clear: right now, today, if Bob were on AliceChat, he could be
-copy-pasting all your messages into (say) Google Translate in a frantic
-effort to workaround the fact that his closed E2EE chat platform has no way
-to do machine translation.  However, in a DMA world, Bob could legitimately
-loop a translation bot into the conversation… and Alice would be warned that
-the conversation was no longer secure (given the data is now being bridged
-over to Google).</p>
-<p>This is a clear improvement in user experience and transparency.  Likewise, if
-I’m talking to a bridged user today on one of these platforms, I have no way
-of telling that they have chosen to prioritise interop over E2EE - which is
-frankly terrifying.  If I’m talking to someone on WhatsApp today I blindly
-assume that they are E2EE as they are on the same platform - and if they’re
-using an unofficial app or bridge, I have no way to tell.  Whereas in a DMA
-world, you would expect the gatekeeper to transparently expose it.</p>
-<p>If anything, this is good news for the gatekeeper in that it consciously
-advertises a big selling point for them: that for full E2EE, users need to
-talk to other users in the same walled garden (unless of course the platform
-speaks the same protocol).  No more need for bus shelter adverts to remind
-everywhere that WhatsApp is E2EE - instead they can remind the user every
-time they talk to someone outside the walled garden!</p>
-<p>Just to spell it out: the DMA does not require or encourage any reduction in
-end-to-end encryption for WhatsApp or similar: full end-to-end encryption
-will still be there for users in the same platform, including through to
-users on custom clients (assuming the gatekeeper doesn’t flex and turn it off
-for other reasons).</p>
-<p>Obviously, this flow only considers the simple case of Alice inviting Bob. The
-flow is of course symmetrical for Bob inviting Alice; AliceChat will need to
-advertise bridges which can be used to connect to its users.  As Bob pops up
-from BobChat, the bridge would use AliceChat’s newly open APIs to provision a
-user for him, authing him as per any other user (thus ensuring that AliceChat
-doesn’t need to have trusted BobChat to have authenticated the user).  The
-bridge then sends/receives messages on Bob’s behalf within AliceChat.</p>
-<h4 id="group-communication">Group communication</h4>
-<p>This is all very well for 1:1 chats - which are the initial scope of the DMA.
-However, over the coming years, we expect group chats to also be in scope.
-The good news is that the same general architecture works for group chats
-too.  We need a better source of identity though: AliceChat can’t possibly
-independently authenticate all the new users which might be joining via group
-conversations on other servers (especially if they join indirectly via
-another server).  This means adopting one of the decentralised identity
-lookup approaches outlined earlier to determine whether Charlie on
-CharlieChat is the real Charlie or an imposter.</p>
-<p>Another problem which emerges with group chats which span multiple service
-providers is that of indirect routing, especially if the links between the
-providers use different protocols.  What if AliceChat has a direct bridge to
-BobChat (a bit like AIM and ICQ both spoke OSCAR), BobChat and CharlieChat
-are connected by Matrix bridges, and AliceChat and CharlieChat are connected
-via XMPP bridges?  We need a way for the bridges to decide who forwards
-traffic for each network, and who bridges the users for which network.  If
-they were all on Matrix or XMPP this would happen automatically, but with
-mixed protocols we’d probably have to extend the lookup protocol to establish
-a spanning tree for each conversation to prevent forwarding loops.</p>
-<p>Here’s a deliberately twisty example to illustrate the above thought experiment:</p>
-<p><img src="/blog/img/2022-03-29-alice-bob-charlie.jpg" alt="" /></p>
-<p>There is also a risk of bridge proliferation here - in the worst case, every
-service would have to source bridges to directly connect to every other
-service who came along, creating a nightmarish n-by-m problem.  But in
-practice, we expect direct proprietary-to-proprietary bridges to be rare:
-instead, we already have open standard communication protocols like Matrix
-and XMPP which provide a common language between bridges - so in practice,
-you could just end up in a world where each service has to find a
-them-to-Matrix or them-to-XMPP bridge (which could be run by them, or
-whatever trusted party they delegate to).</p>
-<h3 id="conclusion">Conclusion</h3>
-<p>A mesh of bridges which connect together the open APIs of proprietary vendors
-by converting them into open standards may seem unwieldy at first - but it’s
-precisely the sort of ductwork which links both phone networks and the
-Internet together in practice.  As long as the bridging provides for highest
-common denominator fidelity at the best impedance ratio, then it’s
-conceptually no different to converting circuit switched phone calls to VoIP,
-or wired to wireless Ethernet, or any of the other bridges which we take
-entirely for granted in our lives thanks to their transparency.</p>
-<p>Meanwhile, while this means a bit more user interface in the communication
-apps in order to select networks and warn about trustedness, the benefits to
-users are enormous as they put the user squarely back in control of their
-conversations. And the UX will improve as the tech evolves.</p>
-<p>The bottom line is, we should not be scared of interoperability, just because
-we’ve grown used to a broken world where nothing can interconnect.  There are
-tractable ways to solve it in a way that empowers and informs the user - and
-the DMA has now given the industry the opportunity to demonstrate that it can
-work.</p>
 
                 
             </div>
